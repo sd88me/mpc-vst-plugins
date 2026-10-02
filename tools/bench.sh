@@ -13,7 +13,7 @@ if [ "$target" = local ]; then
 fi
 bin="$here/../build/bench-armhf"
 if [ ! -f "$bin" ] || [ "$here/bench.c" -nt "$bin" ]; then
-  docker run --rm --platform linux/arm/v7 -u "$(id -u):$(id -g)" -v "$here/..":/b -w /b arm32v7/gcc:12 \
+  docker run --rm --platform linux/arm/v7 -u "$(id -u):$(id -g)" -v "$here/..":/b -w /b arm32v7/gcc:11-bullseye \
     gcc -O2 -Wall -o build/bench-armhf tools/bench.c -ldl -lm
 fi
 scp -q "$bin" "root@$target:/tmp/vstbench"

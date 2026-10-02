@@ -1,0 +1,4 @@
+{ "id": "tr-6w6", "name": "6W6", "author": "athousanddetails", "repo": "sd88me/mpc-vst-TR-MPC",
+  "kind": "instrument", "style": "drum-machine", "tags": ["tr-606"], "license": "GPL-3.0-only",
+  "asset_pattern": "6W6-*-mpc-armv7.zip",
+  "summary": "MPC/Force port of athousanddetails' schwung-6W6 drum machine, with a touchscreen skin and Q-Links." }

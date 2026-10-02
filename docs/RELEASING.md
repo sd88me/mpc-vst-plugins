@@ -6,7 +6,7 @@ the plugin as one folder (`portable/<skin>/`: the `.so`, the skin, its data and 
 the only layout: it can be dropped into any `Synths` folder by other installers too (`docs/CATALOG_SPEC.md`, "Plugin folder").
 
 ## Checklist
-1. **Build** with the port's `build.sh` (armhf, `arm32v7/gcc:12`; highest GLIBC symbol ≤ 2.36).
+1. **Build** with the port's `build.sh` (armhf, `arm32v7/gcc:11-bullseye`; highest GLIBC symbol ≤ 2.32).
 2. **Host test** (x86, ASan): `tools/test_port.sh <port>/vst.json` (must print PASSED), or the port's own test for a
    hand-written wrapper. It must be clean.
 3. **Skin preview**: `tools/studio.py preview "<skin>/Plugin Skins" -o page_%d.png`, and look at every page.

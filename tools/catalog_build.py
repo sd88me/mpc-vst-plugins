@@ -151,8 +151,9 @@ def load_registry(path):
         if not errs:
             if e["id"] in ids:
                 errs.append("duplicate id, also in " + ids[e["id"]])
-            if e["repo"].lower() in repos:
-                errs.append("repo already listed as " + repos[e["repo"].lower()])
+            other = repos.get(e["repo"].lower())   # (id, asset_pattern): a repo may hold several plugins if each names its own asset_pattern
+            if other and not (e.get("asset_pattern") and other[1] and e["asset_pattern"] != other[1]):
+                errs.append("repo already listed as " + other[0])
             for c in e.get("components", []):   # component ids share the id namespace with entries (its own id is fine)
                 if c["id"] != e["id"] and (c["id"] in ids or c["id"] in comp_ids):
                     errs.append("component id %r is already used by %s" % (c["id"], ids.get(c["id"]) and c["id"] or comp_ids[c["id"]]))
@@ -161,7 +162,7 @@ def load_registry(path):
         for x in errs:
             problems.append((f, x))
         if not errs:
-            ids[e["id"]], repos[e["repo"].lower()] = f, e["id"]
+            ids[e["id"]], repos[e["repo"].lower()] = f, (e["id"], e.get("asset_pattern"))
             for c in e.get("components", []):
                 comp_ids[c["id"]] = e["id"]
             entries.append(e)
@@ -316,6 +317,8 @@ def build(entries, src, cache, yanked, keep=10, now=None):
                 continue
             tag = rel.get("tag_name")
             assets = [a for a in rel.get("assets", []) if fnmatch.fnmatch(a["name"], e.get("asset_pattern", "*-mpc-armv7.zip"))]
+            if not assets and "asset_pattern" in e:
+                continue   # a release of another plugin in a shared repo
             if len(assets) != 1:
                 problems.append({"id": e["id"], "tag": tag, "error": "expected one asset matching the pattern, found %d" % len(assets)})
                 continue

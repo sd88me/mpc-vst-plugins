@@ -51,14 +51,14 @@ anywhere, engines must find their data next to it (`wrapper/plugin_dir.h`, `MODU
 | `extras` | data shipped next to the `.so`, relative to the plugin folder |
 | `user_data` | list of folders inside the plugin folder that hold the user's own files; the installer keeps them (and moves them in from `/sdcard/vst` for an old-layout install) |
 | `arch` | ELF machine of the `.so`; the catalog accepts `armv7` only |
-| `max_glibc` | highest `GLIBC_x.y` symbol version needed; the catalog limit is 2.36 |
+| `max_glibc` | highest `GLIBC_x.y` symbol version needed; the catalog limit is 2.32 (MPC OS 2.x) |
 | `about`, `requires` | one-line description; extra requirements |
 | `source_repo`, `license` | `owner/name` on GitHub; SPDX id. **Required for the catalog** |
 | `cpu` | `{p99_pct, max_pct, verdict}` from `tools/bench.sh -j`, or null |
 
 ## Validator rules (`catalog_check.py`)
 Errors (exit 1): unsafe paths; missing required file; manifest missing a field or wrong schema; bad id/version;
-`param_compat` != major; arch not armv7; GLIBC above 2.36; `.so` not ELF; a file missing from or wrong in `SHA256SUMS`;
+`param_compat` != major; arch not armv7; GLIBC above 2.32; `.so` not ELF; a file missing from or wrong in `SHA256SUMS`;
 a plugin folder (`portable/<skin>/`) that is missing `version.xml`, `Plugin Skins/TUI.json`, `plugin-meta.xml`, the `.so` or
 an extra; a `plugin-meta.xml` whose `file=` is not `%payload-path%/<skin>/<so>` or whose `uid`/`name` disagree with the manifest;
 an unknown `layout`; with `--catalog`, no `source_repo` or `license`; with `--expect-id/--expect-repo`, a registry mismatch.

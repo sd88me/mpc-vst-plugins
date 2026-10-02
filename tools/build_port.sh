@@ -41,7 +41,7 @@ else
     "pip install -q --no-warn-script-location --target /tmp/p pillow >/dev/null 2>&1; PYTHONPATH=/tmp/p python3 /mv/tools/gen_vst.py '$PORT/vst.json'"
 fi
 
-# 3. the plugin (armhf, glibc 2.36 so it loads on the device's 2.39)
+# 3. the plugin (armhf, glibc 2.31 (bullseye) so it loads on MPC OS 2.x (glibc 2.32) as well as 3.x (2.39); keep the highest symbol <= 2.32)
 # All-C sources (every port so far): unchanged single gcc command (byte-identical Maze builds).
 # Any .cpp source (e.g. a real emulator engine like jv880's): vst2_wrap.c is always plain C
 # (gcc -std=gnu11; it uses void*-to-typed-pointer conversions g++ rejects), so each source compiles
@@ -51,7 +51,7 @@ case "$SOURCES" in
   *) CXXPORT=0 ;;
 esac
 if [ "$CXXPORT" = 0 ]; then
-  docker run --rm --platform linux/arm/v7 -u "$U" -v "$ROOT":/b -v "$MV":/mv:ro -w /b arm32v7/gcc:12 bash -euc "
+  docker run --rm --platform linux/arm/v7 -u "$U" -v "$ROOT":/b -v "$MV":/mv:ro -w /b arm32v7/gcc:11-bullseye bash -euc "
     gcc -O2 -Wall -Wextra -Wno-unused-parameter -fPIC -shared -fvisibility=hidden -std=gnu11 $CFLAGS -I'$PORT/build' \
         $SOURCES $ADAPTER_SRC /mv/wrapper/vst2_wrap.c $LIBS -Wl,--no-undefined -o '$PORT/build/$SO'
     strip '$PORT/build/$SO'
@@ -59,7 +59,7 @@ if [ "$CXXPORT" = 0 ]; then
     echo \"highest glibc: \$(readelf -V '$PORT/build/$SO' | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1) (device has 2.39)\"
   "
 else
-  docker run --rm --platform linux/arm/v7 -u "$U" -v "$ROOT":/b -v "$MV":/mv:ro -w /b arm32v7/gcc:12 bash -euc "
+  docker run --rm --platform linux/arm/v7 -u "$U" -v "$ROOT":/b -v "$MV":/mv:ro -w /b arm32v7/gcc:11-bullseye bash -euc "
     OBJS=''
     for f in $SOURCES; do
       o=\"$PORT/build/\${f//\//_}.o\"

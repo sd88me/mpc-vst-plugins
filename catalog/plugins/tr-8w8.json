@@ -1,0 +1,4 @@
+{ "id": "tr-8w8", "name": "8W8", "author": "athousanddetails", "repo": "sd88me/mpc-vst-TR-MPC",
+  "kind": "instrument", "style": "drum-machine", "tags": ["tr-808"], "license": "GPL-3.0-only",
+  "asset_pattern": "8W8-*-mpc-armv7.zip",
+  "summary": "MPC/Force port of athousanddetails' schwung-8W8 drum machine, with a touchscreen skin and Q-Links." }

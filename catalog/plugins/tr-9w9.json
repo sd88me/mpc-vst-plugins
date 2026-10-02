@@ -1,0 +1,4 @@
+{ "id": "tr-9w9", "name": "9W9", "author": "athousanddetails", "repo": "sd88me/mpc-vst-TR-MPC",
+  "kind": "instrument", "style": "drum-machine", "tags": ["tr-909"], "license": "GPL-3.0-only",
+  "asset_pattern": "9W9-*-mpc-armv7.zip",
+  "summary": "MPC/Force port of athousanddetails' schwung-9W9 drum machine (ER-99 derived hats, ride and crash samples), with a touchscreen skin and Q-Links." }

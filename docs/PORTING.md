@@ -36,7 +36,7 @@ for the pattern). This applies to every future port, not just ones that hit the 
 ## 1. Engine
 - [ ] Third-party DSP source (not written in this repo) is vendored -- committed into the port's own repo,
       not fetched at build time. See the Quick Start section above for exactly how and why.
-- [ ] Builds for armhf with glibc ≤ the device's (`arm32v7/gcc:12` is fine), exporting only `VSTPluginMain`.
+- [ ] Builds for armhf with glibc ≤ the device's (`arm32v7/gcc:11-bullseye`, glibc 2.31, is what `build_port.sh` uses; bookworm images bind pthread_create to GLIBC_2.34 and do not load on MPC OS 2.x), exporting only `VSTPluginMain`.
 - [ ] 44.1 kHz / 128-frame blocks (MPC's own period). Compile out host-specific quirks with `-D<NAME>_VST`.
 - [ ] Build links with `-Wl,--no-undefined` (build_port.sh does): an unresolved symbol would otherwise only
       show up as MPC crashing when the plugin loads.

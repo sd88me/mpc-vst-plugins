@@ -1,0 +1,4 @@
+{ "id": "tr-cw78", "name": "CW-78", "author": "athousanddetails", "repo": "sd88me/mpc-vst-TR-MPC",
+  "kind": "instrument", "style": "drum-machine", "tags": ["cr-78"], "license": "GPL-3.0-only",
+  "asset_pattern": "CW-78-*-mpc-armv7.zip",
+  "summary": "MPC/Force port of athousanddetails' schwung-CW-78 drum machine, with a touchscreen skin and Q-Links." }
