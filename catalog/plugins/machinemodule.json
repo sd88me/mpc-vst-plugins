@@ -1,4 +1,4 @@
-{ "id": "machinedrum-module", "name": "Machinedrum Module", "author": "sd88me", "repo": "sd88me/mpc-vst-machinedrum",
+{ "id": "machinemodule", "name": "Machinemodule", "author": "sd88me", "repo": "sd88me/mpc-vst-machinedrum",
   "kind": "instrument", "style": "drum-machine", "tags": ["elektron", "machinedrum", "firmware-derived"], "license": "AGPL-3.0-only",
   "summary": "The Elektron Machinedrum SPS-1 UW sound engine as a native instrument: all 16 tracks from one plugin instance, with its own touchscreen skin and Q-Links.",
   "distribution": "build-yourself",
@@ -13,5 +13,5 @@
     "needs": ["Docker (running)", "git, cmake, ninja and python3 (macOS: xcode-select --install, then brew install cmake ninja llvm)", "ssh and scp (only with -d)"]
   },
   "components": [
-    { "id": "machinedrum-module", "name": "Machinedrum Module", "kind": "instrument", "uid": "MdOn" }
+    { "id": "machinemodule", "name": "Machinemodule", "kind": "instrument", "uid": "MdOn" }
   ] }
