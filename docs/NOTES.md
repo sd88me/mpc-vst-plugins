@@ -639,6 +639,9 @@ nudge is lost. Fix: `norm_to_str` rounds params flagged `"display": "int"`, and 
 unrounded position last set, and returns that from `getParameter` while the DSP still holds the value it rounds to
 (dropped if anything else changes the param). Applies to every port with `display: int` params (jv880, dx7).
 Float params (maze) are parsed with `atof` and never had this.
+**Superseded (2026-09-30):** `shadow[]` is gone; `settle()` (see "Whole-number params stuck under the data wheel" and
+"That nudge made sweeps flicker") covers integer and option params alike, and on an MPC One also the data wheel, where
+sub-step accumulation needed many clicks per step. Re-check a slow Q-Link turn on jv880's 0..127 params.
 
 **Native labels ignore `label=`.** A control's name text is the assigned parameter's own name (see "Control names"
 above), so the same key placed twice shows the same name twice. A `REVERB` knob in an OUTPUT frame and the
@@ -817,3 +820,93 @@ Machinedrum-only patch (mpc-vst-machinedrum `release/mpc_patch`): the plugin-nam
 uninstall from either backup, upgrade from the earlier patches, refusal of other firmware) and on a Force (6W6, 8W8, CW-78, 9W9: drum
 layout, pads 1-n play voices 1-n). Needs plugin notes 0-15 for the pads (the tr-drums ports remap them). To add a plugin: add its exact
 plugin name to the table, rebuild (`asm.sh`, `make_patch.py <stock MPC>`, `build_script.py`) and run both tests.
+
+## Knob filmstrips over 16384 px drift as they turn (MPC One, 2026-09-27, MPC Plaits)
+A knob with r=80 (170 px frames x 128 = 21760 px strip) visibly moved up and down on the screen while its value
+changed; r=58 knobs (126 px frames, 16128 px) on the same page were fine. Most likely MPC's image/texture limit of
+16384 px, beyond which the strip is resampled and the frame offsets no longer line up. Keep `2r+10 <= 128`, i.e.
+r <= 58 (the largest seen working; r=59 lands exactly on 16384 and is untested). `shadow_skin.py` now warns.
+
+## Whole-number params stuck under the data wheel (MPC One, 2026-09-27, MPC Plaits)
+An int-range param (polyphony 1..8, `"display": "int"`) only trembled under the data wheel: each tick sends the
+current value plus a fraction of a step, the DSP rounds it back, MPC snaps the knob back. `vst2_wrap.c` now treats
+a change that rounds back to the current value as a one-step nudge for `int_display` params (as it already did
+for options), and sends such params to the DSP as integers. Big moves (a fast Q-Link turn) behave as before.
+
+**That nudge made sweeps flicker (MPC One, 2026-09-29, MPC Plaits v1.1).** A drag or Q-Link sweep keeps sending
+positions from where it started, not from the value the plugin settled on, so right after a one-step nudge the
+next position rounds back to the old value, gets nudged again, and so on: NOTES / UNISON (1..8) visibly flickered.
+Offline, a slow sweep over a 1..8 param flipped 246 times. `vst2_wrap.c` `settle()` now rounds toward the way the
+knob moves (from the host's previous position while it sweeps, else from the current value), for option lists and
+`int_display` params alike: a data-wheel tick still moves one step, a sweep moves steadily. Test:
+`mpc-vst-plaits/tests/controls.c`. Not yet re-checked on the device.
+
+## step_of on an option param (2026-09-27, MPC Plaits)
+`step_of`/`step_delta` now also works when the target is an option list: it steps by index, wrapping like a hardware
+selector button, and reports the new value with `audioMasterAutomate` from `processReplacing` so the host redraws
+anything bound to it (the value text, `IndexedEnabling` pictures). Used for Plaits' two model buttons (a `stepper`
+with `prev=`/`next=`). Verified offline; not yet on a device.
+
+## Eurorack/firmware DSP assumes zeroed RAM; a plugin's heap isn't (MPC One, 2026-09-27, MPC Plaits)
+Plaits' FM 2-Op engine and most engines after it played silence inside MPC but fine in every offline test (x86,
+32-bit ARM under QEMU, and `tools/bench.sh` on the device itself). A device log showed healthy raw engine output
+and LPG gain, yet the voice output stayed at Plaits' silence value. Cause: several engines' `Init()` never set
+some state (e.g. `FMEngine`'s downsampler taps). On the module that RAM is `.bss`, zeroed at boot; MPC's
+long-running process hands the plugin reused heap, so the state could start as NaN, which then stuck in the
+voice's LPG filter (a NaN reaches ARM's float->int conversion as 0, i.e. silence) and silenced every LPG engine
+on that voice. Fresh test processes get zeroed pages, which is why nothing offline ever failed. Reproduced
+offline by overriding `operator new` to fill allocations with 0xFF (`mpc-vst-plaits/tests/dirty_heap.cc`); fixed
+by allocating the engine state with `calloc` + placement new. For any port of firmware code: allocate its state
+zeroed, and run the host tests with a dirty heap.
+
+## Restarting MPC from inside a plugin via `systemd-run` (MPC One, 2026-10-01)
+For a plugin that must restart MPC (e.g. to register a new `pluginList-arm` entry), the restart script must not be a plain
+child: `acvs.service` has `KillMode=control-group`, so `systemctl stop acvs` kills everything spawned from MPC.
+`systemd-run --unit=<name> --collect /bin/sh <script>` starts a transient service in its own cgroup instead. Verified:
+launched from a shell placed in `/system.slice/acvs.service` with `LD_PRELOAD=/usr/lib/libforce_cursor.so` set (as a
+plugin child would be), `systemd-run` returned 0; the script ran in `/system.slice/<name>.service` with `LD_PRELOAD`
+unset (systemd builds the unit's environment, nothing is inherited from MPC), stopped `acvs` (rc 0, inactive),
+survived the stop, started it again (new MPC pid, active ~8 s later). The device also has `unzip`, `sha256sum`, `wget`
+(BusyBox 1.36.1), `libarchive.so.13`, `libz.so.1`. On this unit `/sdcard` is an empty dir on the nearly full root fs
+(~17 MB free); plugins live in `/media/az01-internal/Synths`.
+
+## Plugin Manager POC: install from the MPC screen (MPC One, 2026-10-01)
+`mpc-vst-manager` (separate folder) lists `catalog.json` on the plugin's screen, queues installs/removals and applies them:
+the plugin downloads each zip with the system libcurl (`dlopen("libcurl.so.4")`, CA bundle `/etc/ssl/certs/ca-certificates.crt`),
+checks the catalog sha256 with `sha256sum`, unpacks with `unzip` (children spawned with a clean environment), writes `apply.sh`
+and starts it with `systemd-run`, which stops MPC, runs the package's own `install.sh -y [-n] -t /media/az01-internal/Synths`
+and starts MPC. Verified end to end with MPC Plaits 1.0.0: one plugin-list entry, settings backup made, MPC back up.
+Lessons: GitHub release downloads from the device can stall for tens of seconds (a 30 s low-speed abort failed at 4.5/7 MB),
+so resume with `CURLOPT_RESUME_FROM_LARGE` and retry; and text a worker thread changes is never redrawn unless the plugin
+sends `audioMasterUpdateDisplay`: `HAS_DISPLAY_REV` in the wrapper polls the engine's `display_rev` every ~100 ms for that.
+
+## Engine-driven skins: long text, when= panels and meters switch without a tap (MPC One, 2026-10-01, poc/uiprobe)
+`poc/uiprobe` (62 params, 152 IndexedEnabling parts, `HAS_DISPLAY_REV` + `PARAM_TEXT_MAX 128`), nothing touched:
+- **Value text up to 80+ characters shows in full** on a wide readout. The 23-character limit was only the wrapper's own
+  copy (`copy_str(…, 24)`); `PARAM_TEXT_MAX` raises it per port.
+- **when= panels follow values the engine changes by itself** (a 4-state phase every 2 s, three rows with a 6-way
+  button state and two badges, 40 three-way values every 0.5 s), once the wrapper reports them with
+  `audioMasterAutomate` (it does now under `HAS_DISPLAY_REV`, for every non-text, non-trigger param whose value moved).
+- **`meter` redraws live** from an engine-driven value (a 2 s sawtooth), pauses and resumes with it.
+- **A dense page stays responsive**: the 40-value tab cycling every 0.5 s, with pads, scrolling and tab switches normal.
+So a skin can be a real app screen: status lines, state-dependent buttons/badges/banners and progress bars, all driven
+from a worker thread.
+
+## MPC's filmstrip cache fills internal storage over a session (MPC One, 2026-10-01)
+Every time a plugin screen loads, MPC decodes its filmstrip images (knobs, sliders, `meter`s: `Knob` components with
+`knobType: FilmStrip`) into `/var/tmp/filmstrips/temp_<hex>.img`, raw RGBA, and never deletes them while running. `/var` is
+an overlay whose upper dir is on the internal data partition (`/data/system/var/overlay`, the same 2.7 GB partition as
+`/media/az01-internal`), so the cache eats the space plugins and settings live on. All files dated from the last boot,
+so a reboot seems to clear it (not confirmed); MPC restarts (`acvs`) don't. A test session with many plugin reloads
+and restarts reached 729 files / 2.2 GB and filled the partition (copies failed with "No space left on device").
+The files are not held open between loads, so `rm -f /var/tmp/filmstrips/temp_*.img` frees the space safely
+(delete through `/var`, never the overlay's upper dir).
+Size per load is frames × frame area × 4: filmstrip frames are square (`square_strip`), so a wide thin bar as a
+`meter` is very expensive (a 360×4 bar became 128 frames of 360×360 = 66 MB per load). For bars use `picture`
+(one image per step, mode images, no filmstrip), as the Plugin Manager does.
+
+## Device screenshots (MPC One, 2026-10-01)
+`/dev/fb0` exists but stays black: MPC draws through DRM/KMS. The scanout buffer is readable instead: `/dev/dri/card0`
+(the display; `card1` is the GPU and refuses KMS ioctls) has one active CRTC with an 800x1280 XRGB8888 buffer, linear
+(modifier 0), so GETFB2 + PRIME export + mmap gives the exact screen. The panel is portrait: rotate 270 degrees. The plugin
+area is 1280x628 at y=110 of the upright image. `tools/screenshot.sh` does all of it.

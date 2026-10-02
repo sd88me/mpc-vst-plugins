@@ -1,0 +1,12 @@
+{
+  "name": "MPC UI Probe",
+  "vendor": "sd88me",
+  "uid": "UiPr",
+  "version": 1000,
+  "so": "uiprobe.so",
+  "params": "params.json",
+  "layout": "layout.conf",
+  "art": "html",
+  "defines": {"HAS_DISPLAY_REV": 1, "PARAM_TEXT_MAX": 128},
+  "build": {"root": "../..", "sources": ["poc/uiprobe/engine.c"], "cflags": [], "libs": ["-lm"]}
+}

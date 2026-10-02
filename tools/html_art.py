@@ -516,6 +516,16 @@ class Art:
         out = []
         for path, iid in self.images.items():
             iw, ih = skin_assets.image_size(path)
+            if path.lower().endswith(".svg"):
+                # inlined, not a data: URI: an SVG drawn as an image can't use the page's fonts, so its text would fall
+                # back to a serif. Inline it keeps Titillium Web (and any @font-face the stylesheets add).
+                src = re.sub(r"<\?xml[^>]*\?>|<!DOCTYPE[^>]*>", "", open(path, encoding="utf-8").read()).strip()
+                m = re.match(r"<svg\b", src)
+                if m:
+                    out.append('<svg id="%s" width="%d" height="%d"%s' % (iid, iw, ih, re.sub(r'\s(id|width|height)="[^"]*"', "",
+                                                                                             src[4:src.index(">") + 1]))
+                               + src[src.index(">") + 1:])
+                    continue
             mime = skin_assets.MIME.get(os.path.splitext(path)[1].lower(), "image/png")
             with open(path, "rb") as f:
                 data = base64.b64encode(f.read()).decode()

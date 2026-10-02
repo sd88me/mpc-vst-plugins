@@ -213,6 +213,8 @@ manifest = {
     "cpu": {"p99_pct": bench["p99_pct"], "max_pct": bench["max_pct"], "verdict": bench["verdict"]} if bench else None,
 }
 open(os.path.join(root, "mpc-plugin.json"), "w").write(json.dumps(manifest, indent=2) + "\n")
+# a copy travels with the installed folder, so a device-side manager can tell which version is installed
+open(os.path.join(pdir, "mpc-plugin.json"), "w").write(json.dumps(manifest, indent=2) + "\n")
 
 # MODES: the executable files and symlinks inside the plugin folder (tab separated: "x<TAB>path", "l<TAB>path<TAB>target").
 # A zip unpacked on Windows, or copied file by file, loses exec bits and turns symlinks into small text files; install.sh

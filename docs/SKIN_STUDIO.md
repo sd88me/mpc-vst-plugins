@@ -116,7 +116,7 @@ the build in Docker with only that folder (and this repo) mounted. Images: `.png
 | Page background | `art file=bg.jpg [fit=cover]` | fills the plugin area (`fit`: contain, cover, stretch) |
 | Placed image, logo | `art file=logo.png x= y= w= h=` | anywhere, at any size; ends up baked into the background |
 | Value pictures | `picture x= y= w= h= key=<param> files="a.png,b.png,.."` | one image per option of the parameter, the current one shown (MPC switches them: mode images) |
-| Meter | `meter cx= cy= w= h= key=<param> strip=meter.png` | experimental: a display-only filmstrip. The engine must set the parameter; whether MPC redraws it live is still to be checked on a device |
+| Meter | `meter cx= cy= w= h= key=<param> strip=meter.png` | a display-only filmstrip. The engine sets the parameter; MPC redraws it live when the wrapper reports the change (`HAS_DISPLAY_REV`, verified on an MPC One) |
 
 **Defaults for a whole kind:** a top-level `<group>_<attr>=` line, e.g. `knob_look=moog`, `slider_img=images/cap.png`,
 `seg_img=images/seg.png` (groups `knob`, `slider`, `toggle`, `button`, `seg`, `frame`, `popup`, `meter`). A line that

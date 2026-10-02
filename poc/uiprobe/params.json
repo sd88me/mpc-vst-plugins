@@ -1,0 +1,535 @@
+{
+ "name": "MPC UI Probe",
+ "params": [
+  {
+   "key": "long_ruler",
+   "name": "Ruler",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "long_sentence",
+   "name": "Sentence",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "phase",
+   "name": "Phase",
+   "options": [
+    "idle",
+    "preparing",
+    "ready",
+    "error"
+   ]
+  },
+  {
+   "key": "phase_text",
+   "name": "Phase text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "progress",
+   "name": "Progress",
+   "min": 0.0,
+   "max": 1.0,
+   "default": 0.0
+  },
+  {
+   "key": "run",
+   "name": "Run",
+   "options": [
+    "paused",
+    "running"
+   ],
+   "default": "running"
+  },
+  {
+   "key": "tap",
+   "name": "Tap",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r1_state",
+   "name": "Row 1 state",
+   "options": [
+    "install",
+    "update",
+    "installed",
+    "q_install",
+    "q_update",
+    "disabled"
+   ]
+  },
+  {
+   "key": "r1_tested",
+   "name": "Row 1 tested",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r1_cpu",
+   "name": "Row 1 cpu",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r1_name",
+   "name": "Row 1 name",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r1_meta",
+   "name": "Row 1 meta",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r2_state",
+   "name": "Row 2 state",
+   "options": [
+    "install",
+    "update",
+    "installed",
+    "q_install",
+    "q_update",
+    "disabled"
+   ]
+  },
+  {
+   "key": "r2_tested",
+   "name": "Row 2 tested",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r2_cpu",
+   "name": "Row 2 cpu",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r2_name",
+   "name": "Row 2 name",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r2_meta",
+   "name": "Row 2 meta",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r3_state",
+   "name": "Row 3 state",
+   "options": [
+    "install",
+    "update",
+    "installed",
+    "q_install",
+    "q_update",
+    "disabled"
+   ]
+  },
+  {
+   "key": "r3_tested",
+   "name": "Row 3 tested",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r3_cpu",
+   "name": "Row 3 cpu",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r3_name",
+   "name": "Row 3 name",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r3_meta",
+   "name": "Row 3 meta",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d01",
+   "name": "Dense 1",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d02",
+   "name": "Dense 2",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d03",
+   "name": "Dense 3",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d04",
+   "name": "Dense 4",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d05",
+   "name": "Dense 5",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d06",
+   "name": "Dense 6",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d07",
+   "name": "Dense 7",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d08",
+   "name": "Dense 8",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d09",
+   "name": "Dense 9",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d10",
+   "name": "Dense 10",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d11",
+   "name": "Dense 11",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d12",
+   "name": "Dense 12",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d13",
+   "name": "Dense 13",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d14",
+   "name": "Dense 14",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d15",
+   "name": "Dense 15",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d16",
+   "name": "Dense 16",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d17",
+   "name": "Dense 17",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d18",
+   "name": "Dense 18",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d19",
+   "name": "Dense 19",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d20",
+   "name": "Dense 20",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d21",
+   "name": "Dense 21",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d22",
+   "name": "Dense 22",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d23",
+   "name": "Dense 23",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d24",
+   "name": "Dense 24",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d25",
+   "name": "Dense 25",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d26",
+   "name": "Dense 26",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d27",
+   "name": "Dense 27",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d28",
+   "name": "Dense 28",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d29",
+   "name": "Dense 29",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d30",
+   "name": "Dense 30",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d31",
+   "name": "Dense 31",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d32",
+   "name": "Dense 32",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d33",
+   "name": "Dense 33",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d34",
+   "name": "Dense 34",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d35",
+   "name": "Dense 35",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d36",
+   "name": "Dense 36",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d37",
+   "name": "Dense 37",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d38",
+   "name": "Dense 38",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d39",
+   "name": "Dense 39",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  },
+  {
+   "key": "d40",
+   "name": "Dense 40",
+   "options": [
+    "a",
+    "b",
+    "c"
+   ]
+  }
+ ]
+}
