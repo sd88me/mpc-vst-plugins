@@ -1,0 +1,3 @@
+{ "id": "euclidier", "name": "Euclidier", "author": "sd88me", "repo": "sd88me/mpc-vst-euclidier",
+  "kind": "instrument", "style": "sequencer", "tags": ["euclidean", "midi", "drum", "polyrhythm"], "license": "MIT",
+  "summary": "8-lane Euclidean MIDI sequencer: live pattern circle and lane rows with a play-head, per-lane and global randomise, a drum-mode switch, and a touchscreen skin with Q-Links." }
