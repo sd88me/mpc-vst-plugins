@@ -34,7 +34,8 @@ import catalog_check  # noqa: E402
 
 ID = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 REPO = re.compile(r"[\w.-]+/[\w.-]+")
-KINDS = ("instrument", "effect")
+KINDS = ("instrument", "effect")   # what a plugin (or a build-yourself component) is
+ENTRY_KINDS = KINDS + ("addin",)    # an addin: a library MPC preloads (tools/release_addin.py, docs/ADDINS.md)
 DISTRIBUTIONS = ("release", "build-yourself")
 BUILD_YOURSELF_FIELDS = ("requires_user_files", "build", "components")
 TAG_VERSION = re.compile(r"v?(\d+)\.(\d+)\.(\d+)")
@@ -59,8 +60,8 @@ def check_entry(e, fname=None):
         p.append("file name must be <id>.json")
     if not REPO.fullmatch(e["repo"]):
         p.append("repo must be owner/name")
-    if e["kind"] not in KINDS:
-        p.append("kind must be one of %s" % ", ".join(KINDS))
+    if e["kind"] not in ENTRY_KINDS:
+        p.append("kind must be one of %s" % ", ".join(ENTRY_KINDS))
     if e["license"] not in OPEN_LICENSES and e.get("source_available") is not True:
         p.append("license %r is not on the open-source list: set \"source_available\": true if the source is public "
                  "but the license limits use (shown as a badge), see docs/CATALOG.md" % e["license"])
@@ -77,6 +78,8 @@ def check_entry(e, fname=None):
         for k in BUILD_YOURSELF_FIELDS:
             if k in e:
                 p.append("%s only applies to distribution \"build-yourself\"" % k)
+    elif e["kind"] == "addin":
+        p.append("an addin is distributed as a release zip (tools/release_addin.py), not build-yourself")
     else:
         p += check_build_yourself(e)
     return p
@@ -333,6 +336,9 @@ def build(entries, src, cache, yanked, keep=10, now=None):
             except Exception as ex:
                 problems.append({"id": e["id"], "tag": tag, "error": "download/validate failed: %s" % ex})
                 continue
+            if not errors and (rec["manifest"]["kind"] == "addin") != (e["kind"] == "addin"):
+                errors = ["the release is a%s but the registry entry's kind is %s" % (
+                    "n addin" if rec["manifest"]["kind"] == "addin" else " plugin", e["kind"])]
             if errors:
                 problems.append({"id": e["id"], "tag": tag, "error": "; ".join(errors)})
                 continue

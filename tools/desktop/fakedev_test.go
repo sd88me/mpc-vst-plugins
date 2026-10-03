@@ -28,7 +28,12 @@ type fakeDevice struct {
 	mpcLog string // systemctl calls, one per line
 }
 
-func newFakeDevice(t *testing.T) *fakeDevice {
+func newFakeDevice(t *testing.T) *fakeDevice { t.Helper(); return newFake(t, false) }
+
+// newOpenFakeDevice: a device whose root has no password, so the "none" method logs in (some modified firmware).
+func newOpenFakeDevice(t *testing.T) *fakeDevice { t.Helper(); return newFake(t, true) }
+
+func newFake(t *testing.T, open bool) *fakeDevice {
 	t.Helper()
 	dir := t.TempDir()
 	fd := &fakeDevice{t: t, dir: dir, shims: filepath.Join(dir, "shims"), mpcLog: filepath.Join(dir, "mpc.log")}
@@ -53,7 +58,7 @@ func newFakeDevice(t *testing.T) *fakeDevice {
 			return nil, nil
 		}
 		return nil, io.ErrUnexpectedEOF
-	}}
+	}, NoClientAuth: open}
 	conf.AddHostKey(signer)
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -95,7 +100,8 @@ func (fd *fakeDevice) cfg() Config {
 	aliases, _ := filepath.Glob(filepath.Join(fd.dir, "Aliases", "*", "Synths"))
 	roots = append(append(roots, aliases...), cards...)
 	return Config{Port: port, User: "root", RemoteTmp: filepath.Join(fd.dir, "tmp"), SynthsDir: filepath.Join(fd.dir, "Synths"),
-		RootGlobs: strings.Join(roots, " "), MountsFile: "/proc/mounts", SettingsGlob: filepath.Join(fd.dir, "Settings", "*", "MPC.settings")}
+		RootGlobs: strings.Join(roots, " "), MountsFile: "/proc/mounts", SettingsGlob: filepath.Join(fd.dir, "Settings", "*", "MPC.settings"),
+		AddinsDir: filepath.Join(fd.dir, "addins")}
 }
 
 func (fd *fakeDevice) calls() []string {
@@ -132,7 +138,9 @@ func (fd *fakeDevice) serve(nc net.Conn, conf *ssh.ServerConfig) {
 				cmd := string(r.Payload[4 : 4+n])
 				r.Reply(true, nil)
 				c := exec.Command("sh", "-c", cmd)
-				c.Env = append(os.Environ(), "PATH="+fd.shims+":"+os.Getenv("PATH"))
+				// the addin installer edits systemd units under SYSTEMD_ROOT and logs its systemctl calls instead of making them
+				c.Env = append(os.Environ(), "PATH="+fd.shims+":"+os.Getenv("PATH"), "ADDIN_INSTALL_TEST=1",
+					"SYSTEMD_ROOT="+filepath.Join(fd.dir, "root"), "ADDIN_TEST_LOG="+filepath.Join(fd.dir, "addin.log"))
 				c.Stdin, c.Stdout, c.Stderr = ch, ch, ch.Stderr()
 				code := 0
 				if err := c.Run(); err != nil {

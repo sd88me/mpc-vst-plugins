@@ -31,3 +31,4 @@ printf 'PermitRootLogin yes\nPasswordAuthentication yes\nUsePAM no\n' >> /etc/ss
 sleep 1
 python3 /out/ui_test.py
 python3 /out/ui_filters.py
+python3 /out/ui_addins.py

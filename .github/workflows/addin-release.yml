@@ -1,0 +1,181 @@
+# Reusable: build an addin, package it with tools/release_addin.py and attach the zip to a DRAFT release in the
+# calling repo. A person then installs that exact zip on a device (docs/ADDINS.md "Releasing", step 3) and publishes
+# the draft, which creates the tag. The plugin counterpart is vst-release.yml.
+#
+# Call it from the addin's repo, pinning this repo to one commit in BOTH places:
+#   uses: sd88me/mpc-vst-plugins/.github/workflows/addin-release.yml@<sha>
+#   with: { tools_ref: <sha>, ... }
+name: Addin draft release
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Release tag, e.g. remote-addin-v1.2.0
+        type: string
+        required: true
+      version:
+        description: Version for the zip, addin.manifest and INSTALL.md, e.g. 1.2.0
+        type: string
+        required: true
+      tools_ref:
+        description: This repo's commit - the same one as in the caller's uses:@ref
+        type: string
+        required: true
+      package_dir:
+        description: The folder the build fills with addin.manifest, the .so and the files the manifest names, relative to the caller's repo root
+        type: string
+        required: true
+      build:
+        description: Command, run from the caller's repo root, that fills <package_dir>; MPC_VST is set
+        type: string
+        required: true
+      host_test:
+        description: Optional host test command, run from the caller's repo root; MPC_VST is set
+        type: string
+        default: ''
+      about:
+        description: One line about the addin, for INSTALL.md and the release notes
+        type: string
+        default: ''
+      license:
+        description: SPDX license id of the addin (e.g. MIT); required to be listed in the catalog
+        type: string
+        default: ''
+      requires:
+        description: One line of extra requirements for the manifest (e.g. a cable or a firmware)
+        type: string
+        default: ''
+      dry_run:
+        description: Build and package only (zip as a run artifact), no draft release
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag }}
+      VERSION: ${{ inputs.version }}
+      PACKAGE_DIR: ${{ inputs.package_dir }}
+      MPC_VST: ${{ github.workspace }}/mpc-vst-plugins
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Refuse to touch a published release
+        if: ${{ !inputs.dry_run }}
+        run: |
+          state=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+                    --jq ".[] | select(.tag_name == \"$TAG\") | if .draft then \"draft\" else \"published\" end" | head -1)
+          echo "existing release for $TAG: ${state:-none}"
+          if [ "$state" = published ]; then
+            echo "::error::$TAG is already published - bump the version"; exit 1
+          fi
+
+      - name: Check out the addin
+        uses: actions/checkout@v4
+        with:
+          path: addin
+
+      - name: Check out mpc-vst-plugins (tools)
+        uses: actions/checkout@v4
+        with:
+          repository: sd88me/mpc-vst-plugins
+          ref: ${{ inputs.tools_ref }}
+          path: mpc-vst-plugins
+
+      - name: Set up QEMU (addins are built for armhf under emulation)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm
+
+      - name: Build
+        working-directory: addin
+        env:
+          BUILD: ${{ inputs.build }}
+        run: bash -euo pipefail -c "$BUILD"
+
+      - name: Host test
+        if: ${{ inputs.host_test != '' }}
+        working-directory: addin
+        env:
+          HOST_TEST: ${{ inputs.host_test }}
+        run: bash -euo pipefail -c "$HOST_TEST"
+
+      - name: Package with release_addin.py
+        id: pkg
+        working-directory: addin
+        env:
+          ABOUT: ${{ inputs.about }}
+          LICENSE_ID: ${{ inputs.license }}
+          REQUIRES: ${{ inputs.requires }}
+        run: |
+          m="$PACKAGE_DIR/addin.manifest"
+          [ -f "$m" ] || { echo "::error::no $m: the build must write addin.manifest into $PACKAGE_DIR"; exit 1; }
+          key() { sed -n "s/^$1=//p" "$m" | head -1 | sed 's/^"\(.*\)"$/\1/'; }
+          so="$PACKAGE_DIR/$(key ADDIN_SO)"
+          file -b "$so" | grep -q 'ELF 32-bit LSB.*ARM' || { echo "::error::$so is not a 32-bit ARM ELF: $(file -b "$so")"; exit 1; }
+          args=(--dir "$PACKAGE_DIR" --version "$VERSION" --about "$ABOUT" --repo "$GITHUB_REPOSITORY" -o "$GITHUB_WORKSPACE/dist")
+          [ -z "$LICENSE_ID" ] || args+=(--license "$LICENSE_ID")
+          [ -z "$REQUIRES" ] || args+=(--requires "$REQUIRES")
+          python3 "$MPC_VST/tools/release_addin.py" "${args[@]}"
+          zip=$(ls "$GITHUB_WORKSPACE"/dist/*.zip)
+          # catalog conformance (docs/CATALOG_SPEC.md): warnings are shown, errors fail the run
+          if [ -n "$LICENSE_ID" ]; then flags=(--catalog --expect-id "$(key ADDIN_ID)" --expect-repo "$GITHUB_REPOSITORY")
+          else flags=(); echo "::warning::no license input: this release can't be listed in the catalog"; fi
+          python3 "$MPC_VST/tools/catalog_check.py" "$zip" "${flags[@]}"
+          echo "zip=$zip" >> "$GITHUB_OUTPUT"
+          echo "name=$(key ADDIN_NAME)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload the zip as a run artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.tag }}
+          path: dist/*.zip
+          retention-days: 14
+
+      - name: Create or update the draft release
+        if: ${{ !inputs.dry_run }}
+        env:
+          ZIP: ${{ steps.pkg.outputs.zip }}
+          NAME: ${{ steps.pkg.outputs.name }}
+          ABOUT: ${{ inputs.about }}
+          TOOLS_REF: ${{ inputs.tools_ref }}
+        run: |
+          python3 - "$ZIP" > notes.md <<'PY'
+          import os, re, sys, zipfile
+          z = zipfile.ZipFile(sys.argv[1])
+          md = z.read(next(n for n in z.namelist() if n.endswith("/INSTALL.md"))).decode()
+          keep = [s for s in re.split(r"(?m)^(?=## )", md) if s.startswith(("## Requirements", "## Install"))]
+          if os.environ["ABOUT"]:
+              print(os.environ["ABOUT"] + "\n")
+          print("".join(keep).rstrip() + "\n")
+          print("Uninstalling and the file list are in `INSTALL.md` inside the zip.")
+          PY
+          printf '\n---\nBuilt by GitHub Actions from %s@%s with mpc-vst-plugins@%s.\n' \
+            "$GITHUB_REPOSITORY" "${GITHUB_SHA::7}" "${TOOLS_REF::7}" >> notes.md
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" --clobber
+            gh release edit "$TAG" --draft --target "$GITHUB_SHA" --title "$NAME v$VERSION" --notes-file notes.md
+          else
+            gh release create "$TAG" "$ZIP" --draft --target "$GITHUB_SHA" --title "$NAME v$VERSION" --notes-file notes.md
+          fi
+
+      - name: Summary
+        env:
+          ZIP: ${{ steps.pkg.outputs.zip }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          {
+            echo "## $TAG"
+            if [ "$DRY" = true ]; then
+              echo "Dry run: no release. The zip is in this run's artifacts."
+            else
+              echo "Draft release updated: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases (drafts are only visible to maintainers)."
+            fi
+            echo "- Zip: \`$(basename "$ZIP")\` ($(du -h "$ZIP" | cut -f1))"
+            echo
+            echo "Before publishing (docs/ADDINS.md, \"Releasing\"):"
+            echo "1. Install **this** zip on a device with its install.sh, use the addin, run its uninstall.sh."
+            echo "2. Publish the draft. That creates the tag."
+          } >> "$GITHUB_STEP_SUMMARY"

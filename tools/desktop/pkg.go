@@ -19,7 +19,8 @@ import (
 
 // A release zip made by tools/release.py (docs/RELEASING.md): one top folder with install.sh, uninstall.sh, plugin_list.awk,
 // SHA256SUMS, mpc-plugin.json and portable/<skin>/. A per-user "bundle" (Monomodule: One and FX) has a top install.sh and one such
-// package per sub folder instead of a manifest of its own.
+// package per sub folder instead of a manifest of its own. An addin (tools/release_addin.py: layout "addin") has the addin installer,
+// addin.manifest and the addin's files at the top instead of a plugin folder, and installs to /data/mpc-addins/<id>.
 
 const (
 	maxUncompressed = 2 << 30 // refuse a zip that would unpack to more than this
@@ -45,6 +46,7 @@ type Manifest struct {
 	Requires    string   `json:"requires"`
 	UID         string   `json:"uid"`
 	UserData    []string `json:"user_data"`
+	So          string   `json:"so"`
 }
 
 type Package struct {
@@ -53,6 +55,7 @@ type Package struct {
 	Version  string     `json:"version"`
 	Plugins  []Manifest `json:"plugins"`
 	Bundle   bool       `json:"bundle"`
+	Addin    bool       `json:"addin"`    // a library MPC preloads, not a plugin: it goes to the addins folder, not a Synths folder
 	Defer    bool       `json:"defer"`    // every installer in it understands -n (MPC is stopped and started by the caller)
 	Symlinks int        `json:"symlinks"` // links inside it (an engine's bundled Python): a FAT/exFAT drive cannot hold them
 	Size     int64      `json:"size"`     // the zip
@@ -139,10 +142,8 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 		return nil
 	}
 	readManifest := func(dir string) (*Manifest, error) {
-		for _, f := range []string{"install.sh", "uninstall.sh", "SHA256SUMS", "plugin_list.awk", "mpc-plugin.json"} {
-			if err := need(dir + "/" + f); err != nil {
-				return nil, err
-			}
+		if err := need(dir + "/mpc-plugin.json"); err != nil {
+			return nil, err
 		}
 		rc, err := names[dir+"/mpc-plugin.json"].Open()
 		if err != nil {
@@ -153,9 +154,26 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 		if err := json.NewDecoder(io.LimitReader(rc, 1<<20)).Decode(&m); err != nil {
 			return nil, fmt.Errorf("bad mpc-plugin.json: %w", err)
 		}
+		files := []string{"install.sh", "uninstall.sh", "SHA256SUMS", "plugin_list.awk"}
+		if m.Layout == "addin" {
+			files = []string{"install.sh", "uninstall.sh", "SHA256SUMS", "addin-lib.sh", "addin.manifest", m.So}
+		}
+		for _, f := range files {
+			if err := need(dir + "/" + f); err != nil {
+				return nil, err
+			}
+		}
 		switch {
 		case m.Schema != 1:
 			return nil, fmt.Errorf("mpc-plugin.json has schema %d, this app understands 1", m.Schema)
+		case m.Layout == "addin":
+			if m.Kind != "addin" || !idRe.MatchString(m.ID) || m.Name == "" || m.Version == "" || !strings.HasSuffix(m.So, ".so") || strings.Contains(m.So, "/") {
+				return nil, errors.New("mpc-plugin.json of this addin is missing its id, name, version or library")
+			}
+			if m.Arch != "armv7" {
+				return nil, fmt.Errorf("built for %s: MPC OS standalone devices need armv7", m.Arch)
+			}
+			return &m, nil
 		case m.Layout != "portable":
 			return nil, errors.New("this zip uses the old /sdcard/vst layout: get a newer release")
 		case m.Arch != "armv7":
@@ -188,6 +206,7 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 			return nil, err
 		}
 		p.Plugins, p.Title, p.Version = []Manifest{*m}, m.Name, m.Version
+		p.Addin = m.Layout == "addin"
 		p.Defer = strings.Contains(readAll(top+"/install.sh"), "DEFER=")
 	} else { // a bundle: install.sh at the top, one package per sub folder
 		if err := need(top + "/install.sh"); err != nil {
@@ -212,6 +231,9 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 			m, err := readManifest(s)
 			if err != nil {
 				return nil, err
+			}
+			if m.Layout == "addin" {
+				return nil, errors.New("an addin cannot be part of a bundle: release it as a zip of its own")
 			}
 			p.Plugins = append(p.Plugins, *m)
 			titles = append(titles, m.Name)

@@ -103,6 +103,9 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 	}
 	var need int64
 	for _, p := range pkgs {
+		if p.Addin { // goes to the addins folder on /data, not to the chosen plugin location
+			continue
+		}
 		need += p.Unpacked
 		if root.NoSymlinks && p.Symlinks > 0 {
 			return fmt.Errorf("%s contains %d symbolic links (for example a bundled Python), but %s is formatted %s, which cannot store them: install it on the internal drive instead", p.Title, p.Symlinks, root.Label, strings.ToUpper(root.FS))
@@ -111,9 +114,19 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 	if needKB := (need*11/10 + 1023) / 1024; root.FreeKB > 0 && needKB > root.FreeKB { // with a tenth to spare, rounded up
 		return fmt.Errorf("%s has %d MB free, these plugins need about %d MB", root.Label, root.FreeKB/1024, (needKB+1023)/1024)
 	}
-	j.log("Installing to %s (%s)", root.Label, root.Path)
-	if !root.InContent && root.Path != "" {
-		j.log("Note: MPC does not list %s as a content location, so a plugin's screen may not show until you add it in MPC's settings", root.Path)
+	plugins := false
+	for _, p := range pkgs {
+		if p.Addin {
+			j.log("%s is an addin: it goes to %s/%s", p.Title, dev.cfg.AddinsDir, p.Plugins[0].ID)
+		} else {
+			plugins = true
+		}
+	}
+	if plugins {
+		j.log("Installing to %s (%s)", root.Label, root.Path)
+		if !root.InContent && root.Path != "" {
+			j.log("Note: MPC does not list %s as a content location, so a plugin's screen may not show until you add it in MPC's settings", root.Path)
+		}
 	}
 	if dev.Info.TmpFreeKB > 0 && need/1024*13/10 > dev.Info.TmpFreeKB {
 		return fmt.Errorf("the device's /tmp has %d MB free, these packages need about %d MB to unpack", dev.Info.TmpFreeKB/1024, need*13/10/(1<<20))
@@ -133,7 +146,7 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 			return fmt.Errorf("copying %s failed (status %d): %v %s", p.Title, code, rerr, strings.Join(out, " "))
 		}
 	}
-	script := installScript(root.Path, tmp, pkgs)
+	script := installScript(root.Path, dev.cfg.AddinsDir, tmp, pkgs)
 	j.log("Installing (MPC is stopped once and started again at the end)")
 	code, rerr := dev.Run(script, nil, func(l string) { j.log("  %s", l) })
 	if rerr != nil {
@@ -147,8 +160,9 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 }
 
 // installScript is the one shell script that runs on the device. Packages with an old installer go first (each restarts MPC
-// itself); the rest run between one stop and one start. MPC is started again even when something fails.
-func installScript(synths, tmp string, pkgs []*Package) string {
+// itself); the rest run between one stop and one start. MPC is started again even when something fails. An addin installs to
+// <addins>/<id> and records its version in its own folder (addin.manifest), not in .mpc-store.
+func installScript(synths, addins, tmp string, pkgs []*Package) string {
 	var b strings.Builder
 	w := func(f string, a ...any) { fmt.Fprintf(&b, f+"\n", a...) }
 	w("T=%s; SYN=%s; STATE=\"$SYN/.mpc-store\"; rc=0", shQuote(tmp), shQuote(synths))
@@ -156,7 +170,17 @@ func installScript(synths, tmp string, pkgs []*Package) string {
 	// A zip built before its installer picked the service itself runs `systemctl stop acvs` and fails where there is no acvs. Put a
 	// systemctl in front of it that says the real unit where the installer says acvs (the plain name only, other arguments pass through).
 	w(`if [ "$SVC" != acvs ]; then mkdir -p "$T/bin"; REAL=$(command -v systemctl); printf '%%s\n' '#!/bin/sh' 'n=$#; while [ $n -gt 0 ]; do a=$1; shift; [ "$a" = acvs ] && a="'"$SVC"'"; set -- "$@" "$a"; n=$((n-1)); done' 'exec '"$REAL"' "$@"' > "$T/bin/systemctl"; chmod 755 "$T/bin/systemctl"; PATH="$T/bin:$PATH"; export PATH; fi`)
+	target := func(p *Package) string { // what install.sh gets as -t
+		if p.Addin {
+			return shQuote(addins + "/" + p.Plugins[0].ID)
+		}
+		return `"$SYN"`
+	}
 	record := func(p *Package) {
+		if p.Addin {
+			w("  :") // its folder records the version; a then-branch may not be empty
+			return
+		}
 		for _, m := range p.Plugins {
 			if m.ID == "" {
 				continue
@@ -171,7 +195,7 @@ func installScript(synths, tmp string, pkgs []*Package) string {
 		}
 		w("if [ $rc = 0 ]; then")
 		w("  printf '%%s\\n' %s", shQuote("Installing "+p.Title+" (its installer restarts MPC by itself)"))
-		w(`  if sh "$T/p%d/install.sh" -y -t "$SYN"; then`, i+1)
+		w(`  if sh "$T/p%d/install.sh" -y -t %s; then`, i+1, target(p))
 		record(p)
 		w("  else rc=1; fi")
 		w("fi")
@@ -192,7 +216,7 @@ func installScript(synths, tmp string, pkgs []*Package) string {
 			}
 			w("if [ $rc = 0 ]; then")
 			w("  printf '%%s\\n' %s", shQuote("Installing "+p.Title))
-			w(`  if sh "$T/p%d/install.sh" -y -n -t "$SYN"; then`, i+1)
+			w(`  if sh "$T/p%d/install.sh" -y -n -t %s; then`, i+1, target(p))
 			record(p)
 			w("  else rc=1; fi")
 			w("fi")

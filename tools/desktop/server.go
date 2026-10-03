@@ -200,6 +200,18 @@ func (a *App) catalog(w http.ResponseWriter, r *http.Request) {
 	}
 	rows := []row{}
 	for _, c := range a.cat {
+		if c.Kind == "addin" { // an addin is found by its id in the addins folder, and its folder records the version
+			iv, ok := "", false
+			if a.dev != nil {
+				for _, da := range a.dev.Info.Addins {
+					if da.ID == c.ID {
+						iv, ok = da.Version, true
+					}
+				}
+			}
+			rows = append(rows, row{c, ok, "", iv, iv != "" && iv != c.Version})
+			continue
+		}
 		dp, ok := where[c.Skin]
 		iv, at := "", ""
 		if ok {
@@ -460,6 +472,7 @@ type knownPlugin struct {
 	Known     bool     `json:"known"`
 	Keep      []string `json:"keep"`
 	Source    string   `json:"source,omitempty"`
+	Addin     bool     `json:"addin"`
 }
 
 // classify matches the device's plugin folders to the catalog and to the dropped zips. Caller holds a.mu and a.dev != nil.
@@ -492,6 +505,10 @@ func (a *App) classify() []knownPlugin {
 			kp.RootLabel = rt.Label
 		}
 		out = append(out, kp)
+	}
+	for _, da := range a.dev.Info.Addins { // listed after the plugins, as one more location; removable when it carries its uninstall.sh
+		out = append(out, knownPlugin{DevPlugin: DevPlugin{Root: a.dev.cfg.AddinsDir, Folder: da.ID, Name: da.Name}, ID: da.ID,
+			Version: da.Version, RootLabel: "Addins", Known: da.Removable, Keep: []string{}, Source: "addin", Addin: true})
 	}
 	return out
 }
@@ -571,11 +588,15 @@ func (a *App) remove(w http.ResponseWriter, r *http.Request) {
 			fail(w, 400, fmt.Sprintf("%q is not a plugin folder on the device", it.Folder))
 			return
 		}
+		if kp.Addin && !kp.Known {
+			fail(w, 400, fmt.Sprintf("the addin %s has no uninstall.sh in its folder (it was not installed by the addin installer): remove it by hand", it.Folder))
+			return
+		}
 		if !kp.Known {
 			fail(w, 400, fmt.Sprintf("%s was not installed from the catalog, so the app cannot tell which files in it are yours. Drop its release zip above to manage it, or remove it by hand.", it.Folder))
 			return
 		}
-		plans = append(plans, RemovePlan{Root: kp.Root, Folder: kp.Folder, UID: kp.UID, ID: kp.ID, Keep: kp.Keep})
+		plans = append(plans, RemovePlan{Root: kp.Root, Folder: kp.Folder, UID: kp.UID, ID: kp.ID, Keep: kp.Keep, Addin: kp.Addin})
 	}
 	if len(plans) == 0 {
 		fail(w, 400, "nothing selected")

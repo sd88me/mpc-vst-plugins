@@ -17,12 +17,15 @@ var pluginListAWK []byte
 var uidRe = regexp.MustCompile(`^[0-9a-fA-F]{1,16}$`)
 
 // RemovePlan is one plugin to remove. Keep lists the folders inside it that hold the user's own files (ROMs, kits, dumps): they stay.
+// An addin (Addin set) is the folder <Root>/<Folder> in the addins folder; the uninstall.sh it carries takes it out of MPC's LD_PRELOAD
+// and deletes it, and MPC.settings is not touched for it.
 type RemovePlan struct {
-	Root   string // the Synths folder the plugin folder is in
+	Root   string // the Synths folder the plugin folder is in (the addins folder for an addin)
 	Folder string
 	UID    string
 	ID     string // the catalog id, to forget the version recorded for it ("" when unknown)
 	Keep   []string
+	Addin  bool
 }
 
 var keepRe = regexp.MustCompile(`^[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$`) // what release.py allows for --user-data
@@ -46,6 +49,12 @@ func (p RemovePlan) check() error {
 	if p.Folder == "" || p.Folder == "." || p.Folder == ".." || strings.ContainsAny(p.Folder, "/\\\x00\n") {
 		return fmt.Errorf("unsafe folder name %q", p.Folder)
 	}
+	if p.Addin {
+		if !idRe.MatchString(p.Folder) {
+			return fmt.Errorf("unsafe addin folder %q", p.Folder)
+		}
+		return nil
+	}
 	if !uidRe.MatchString(p.UID) {
 		return fmt.Errorf("%s has no usable uid in its plugin-meta.xml", p.Folder)
 	}
@@ -58,8 +67,16 @@ func (p RemovePlan) check() error {
 }
 
 // removeScript runs on the device: stop MPC, back up MPC.settings, take every plugin's entry out, check the result, and only then
-// delete the folders (your own files inside them are kept). MPC is started again whatever happens.
-func removeScript(tmp, settings string, plans []RemovePlan) string {
+// delete the folders (your own files inside them are kept); then each addin's own uninstall.sh. MPC is started again whatever happens.
+func removeScript(tmp, settings string, all []RemovePlan) string {
+	var plans, addins []RemovePlan
+	for _, p := range all {
+		if p.Addin {
+			addins = append(addins, p)
+		} else {
+			plans = append(plans, p)
+		}
+	}
 	var b strings.Builder
 	w := func(f string, a ...any) { fmt.Fprintf(&b, f+"\n", a...) }
 	w("T=%s; SET=%s; rc=0", shQuote(tmp), shQuote(settings))
@@ -67,6 +84,24 @@ func removeScript(tmp, settings string, plans []RemovePlan) string {
 	w("systemctl stop $SVC")
 	w("i=0; while pidof MPC >/dev/null && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done")
 	w(`if pidof MPC >/dev/null; then echo "MPC did not stop: nothing was removed"; rc=3; fi`)
+	if len(plans) > 0 {
+		pluginsPart(w, plans)
+	}
+	for _, p := range addins {
+		d := shQuote(p.Root + "/" + p.Folder)
+		w(`if [ $rc = 0 ]; then`)
+		w(`  if sh %s -y -n -t %s; then echo %s; else echo %s; rc=10; fi`, shQuote(p.Root+"/"+p.Folder+"/uninstall.sh"), d,
+			shQuote("Removed the addin "+p.Folder), shQuote("removing the addin "+p.Folder+" failed"))
+		w(`fi`)
+	}
+	w("systemctl start $SVC")
+	w(`rm -rf "$T"`)
+	w("exit $rc")
+	return b.String()
+}
+
+// pluginsPart: back up MPC.settings, take the plugins' entries out, write it once checked, delete their folders.
+func pluginsPart(w func(string, ...any), plans []RemovePlan) {
 	w(`if [ $rc = 0 ]; then`)
 	w(`  BAK="$SET.bak-remove-$(date +%%Y%%m%%d-%%H%%M%%S)"`)
 	w(`  if cp "$SET" "$BAK" && cp "$SET" "$T/cur"; then echo "Settings backup: $BAK"; else echo "cannot back up MPC.settings"; rc=4; fi`)
@@ -108,10 +143,6 @@ func removeScript(tmp, settings string, plans []RemovePlan) string {
 		}
 		w(`fi`)
 	}
-	w("systemctl start $SVC")
-	w(`rm -rf "$T"`)
-	w("exit $rc")
-	return b.String()
 }
 
 // RunRemove removes the plugins in plans from the device in one MPC stop and start.
@@ -139,7 +170,7 @@ func RunRemove(dev *Device, plans []RemovePlan, j *Job, refresh func()) (err err
 	if rerr != nil || code != 0 {
 		return fmt.Errorf("cannot prepare the device (status %d): %v %s", code, rerr, strings.Join(out, " "))
 	}
-	j.log("Removing %d plugin(s) (MPC is stopped once and started again at the end)", len(plans))
+	j.log("Removing %d item(s) (MPC is stopped once and started again at the end)", len(plans))
 	code, rerr = dev.Run(removeScript(tmp, dev.Info.Settings, plans), nil, func(l string) { j.log("  %s", l) })
 	if rerr != nil {
 		dev.Run("rm -rf "+shQuote(tmp), nil, nil)

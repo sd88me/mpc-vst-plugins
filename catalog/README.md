@@ -22,6 +22,10 @@ Design: `docs/CATALOG.md`. Formats: `docs/CATALOG_SPEC.md`.
 Open-source licenses (list in `tools/catalog_build.py`) or public source with `source_available` set. No versions or
 checksums go in the entry.
 
+## Addins
+An addin (a library MPC loads when it starts, through `LD_PRELOAD`) is listed the same way, with `"kind": "addin"` in its
+entry. Package it with `tools/release_addin.py` instead of `release.py`: see `docs/ADDINS.md`.
+
 ## If your plugin can't publish a zip: build-yourself
 Some ports compile the user's own firmware into the plugin (for example a DSP statically recompiled from an Elektron OS
 file, with ROM samples), so the built `.so` and installer zip are firmware-derived and must never be published or shared.

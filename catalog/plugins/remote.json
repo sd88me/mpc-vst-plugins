@@ -1,0 +1,17 @@
+{
+  "id": "remote",
+  "name": "MPC Remote",
+  "author": "jacob-sabella",
+  "repo": "jacob-sabella/mpc-addin-remote",
+  "kind": "addin",
+  "style": "utility",
+  "tags": [
+    "remote",
+    "screen",
+    "touch",
+    "mcp",
+    "midi"
+  ],
+  "license": "MIT",
+  "summary": "The MPC screen in a browser, and an MCP server so an AI model can see and touch it, play MIDI and read files."
+}

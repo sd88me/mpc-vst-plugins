@@ -5,6 +5,8 @@ the plugin as one folder (`portable/<skin>/`: the `.so`, the skin, its data and 
 `uninstall.sh` and a generated `INSTALL.md` (scripted and manual steps, requirements, CPU result, checksums). The folder is
 the only layout: it can be dropped into any `Synths` folder by other installers too (`docs/CATALOG_SPEC.md`, "Plugin folder").
 
+An addin (a library MPC preloads) is released with `tools/release_addin.py`, or from CI with `addin-release.yml`, instead: `docs/ADDINS.md`.
+
 ## Checklist
 1. **Build** with the port's `build.sh` (armhf, `arm32v7/gcc:11-bullseye`; highest GLIBC symbol ≤ 2.32).
 2. **Host test** (x86, ASan): `tools/test_port.sh <port>/vst.json` (must print PASSED), or the port's own test for a

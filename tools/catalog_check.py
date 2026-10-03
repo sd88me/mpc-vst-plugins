@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Validate a release zip made by tools/release.py against the catalog spec (docs/CATALOG_SPEC.md). Zips of the
-old layout (payload/, no "layout" field) are still accepted so the catalog can list earlier releases.
+"""Validate a release zip made by tools/release.py (or, for an addin, tools/release_addin.py) against the catalog spec
+(docs/CATALOG_SPEC.md). Zips of the old layout (payload/, no "layout" field) are still accepted so the catalog can list earlier releases.
 
   tools/catalog_check.py dist/Name-1.2.0-mpc-armv7.zip [--catalog] [--json] [--expect-id ID] [--expect-repo O/N]
 
@@ -21,6 +21,24 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MAX_GLIBC = (2, 32)
 SEMVER = re.compile(r"\d+\.\d+\.\d+")
 ID = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
+ADDIN_KEYS = ("ADDIN_ID", "ADDIN_NAME", "ADDIN_SO", "ADDIN_CONF", "ADDIN_FILES", "ADDIN_DONE", "ADDIN_VERSION")
+ADDIN_SCRIPTS = ("install.sh", "uninstall.sh", "addin-lib.sh")
+ADDIN_FILE = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9._-]*")
+
+
+def parse_addin_manifest(text):
+    """addin.manifest -> {key: value}. install.sh sources it as root, so only plain assignments of the known keys are allowed:
+    KEY=bare, KEY="text" or KEY='text' (no $, backquote or backslash), comments and blank lines. Raises ValueError."""
+    out = {}
+    for n, line in enumerate(text.splitlines(), 1):
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        m = re.fullmatch(r"""([A-Z_]+)=("[^"$`\\]*"|'[^']*'|[A-Za-z0-9._/:,+-]*)(\s+#.*)?\s*""", line)
+        if not m or m.group(1) not in ADDIN_KEYS:
+            raise ValueError("addin.manifest line %d is not a plain assignment of a known key: %r" % (n, line))
+        v = m.group(2)
+        out[m.group(1)] = v[1:-1] if v[:1] in ("'", '"') else v
+    return out
 
 
 def check(zpath, catalog=False, expect_id=None, expect_repo=None):
@@ -56,18 +74,21 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
         return errors, warnings, None
     # Releases made before the portable layout (no "layout" field) keep validating so the catalog can list their history.
     legacy = m.get("layout") is None
-    for need in ("install.sh", "uninstall.sh", "plugin_list.awk", "INSTALL.md", "SHA256SUMS") + (("plugin.xml",) if legacy else ()):
+    addin = m.get("layout") == "addin"   # a library MPC preloads (tools/release_addin.py), not a plugin
+    needs = (("addin.manifest",) + ADDIN_SCRIPTS if addin else ("install.sh", "uninstall.sh", "plugin_list.awk")) + ("INSTALL.md", "SHA256SUMS")
+    for need in needs + (("plugin.xml",) if legacy else ()):
         if need not in files:
             err("missing " + need)
     if legacy and "plugin.xml" not in files:
         return errors, warnings, None
-    if not legacy and m.get("layout") != "portable":
+    if not legacy and m.get("layout") not in ("portable", "addin"):
         err("unknown layout %r" % m.get("layout"))
         return errors, warnings, None
 
     if m.get("schema") != 1:
         err("unsupported manifest schema %r" % m.get("schema"))
-    for k in ("id", "name", "version", "kind", "uid", "so", "skin", "arch", "param_compat") + (("so_dir",) if legacy else ("folder",)):
+    keys = ("id", "name", "version", "kind", "so", "arch", "param_compat")
+    for k in keys + (() if addin else ("uid", "skin")) + (("so_dir",) if legacy else () if addin else ("folder",)):
         if m.get(k) in (None, ""):
             err("manifest missing " + k)
     if errors:
@@ -78,7 +99,9 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
         err("version %r is not X.Y.Z" % m["version"])
     elif m["param_compat"] != int(m["version"].split(".")[0]):
         err("param_compat must equal the major version")
-    if m["kind"] not in ("instrument", "effect"):
+    if addin and m["kind"] != "addin":
+        err("an addin's kind must be addin")
+    elif not addin and m["kind"] not in ("instrument", "effect"):
         err("kind must be instrument or effect")
     if m["arch"] != "armv7":
         err("arch is %s, catalog is armv7 only" % m["arch"])
@@ -146,6 +169,40 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
                 if meta and norm(meta) != norm(entry):
                     err("plugin-meta.xml differs from plugin.xml apart from file=")
 
+    elif addin:
+        # every file at the top: the installer, addin.manifest, the .so, its settings and data files; nothing else
+        try:
+            am = parse_addin_manifest(files["addin.manifest"].decode(errors="replace"))
+        except ValueError as e:
+            err(str(e))
+            am = None
+        conf, extra = m.get("conf") or "", m.get("files") or []
+        own = [m["so"]] + ([conf] if conf else []) + list(extra)
+        for f in own:
+            if not isinstance(f, str) or not ADDIN_FILE.fullmatch(f) or f in needs:
+                err("bad addin file name %r" % f)
+            elif f not in files:
+                err("missing " + f)
+        if files.get(m["so"], b"\x7fELF")[:4] != b"\x7fELF":
+            err(m["so"] + " is not an ELF file")
+        elif m["so"] in files and int.from_bytes(files[m["so"]][18:20], "little") != 40:
+            err(m["so"] + " is not a 32-bit ARM library")
+        if not m["so"].endswith(".so"):
+            err("so must be a .so")
+        for f in sorted(set(files) - set(needs) - set(own) - {"mpc-plugin.json"}):
+            err("unexpected file %s (an addin package is the installer, addin.manifest, mpc-plugin.json and the files it names)" % f)
+        if am is not None:
+            want = {"ADDIN_ID": m["id"], "ADDIN_NAME": m["name"], "ADDIN_SO": m["so"], "ADDIN_CONF": conf,
+                    "ADDIN_FILES": " ".join(extra), "ADDIN_VERSION": m["version"]}
+            for k, v in want.items():
+                got = am.get(k, "")
+                if k == "ADDIN_NAME" and not got:
+                    got = am.get("ADDIN_ID", "")
+                if " ".join(got.split()) != v:
+                    err("addin.manifest %s=%r but mpc-plugin.json says %r" % (k, got, v))
+        if m.get("user_data") not in ([conf] if conf else [], None):
+            err("an addin's user_data is its settings file only")
+
     else:
         # the plugin folder: skin, the .so, extras and a plugin-meta.xml using %payload-path%
         expect = "portable/" + m["skin"]
@@ -199,11 +256,11 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
             err("SHA256SUMS lists a missing file: " + f)
 
     # installer: regenerate from the current template and compare (releases of the old layout were made by older templates)
-    sub = {"@NAME@": m["name"], "@SO_NAME@": m["so"], "@SKIN@": m["skin"],
+    sub = {"@NAME@": m["name"], "@SO_NAME@": m["so"], "@SKIN@": m.get("skin", ""),
            "@EXTRAS@": " ".join("'%s'" % e for e in m.get("extras", [])), "@VERSION@": m["version"],
-           "@UID@": str(m["uid"]), "@LEGACY_SO@": "/sdcard/vst/" + m["so"], "@USER_DATA@": " ".join(m.get("user_data", []))}
-    for script in ([] if legacy else ["install.sh", "uninstall.sh"]):
-        tpl = os.path.join(HERE, "release", script)
+           "@UID@": str(m.get("uid", "")), "@LEGACY_SO@": "/sdcard/vst/" + m["so"], "@USER_DATA@": " ".join(m.get("user_data", []))}
+    for script in ([] if legacy else list(ADDIN_SCRIPTS) if addin else ["install.sh", "uninstall.sh"]):
+        tpl = os.path.join(HERE, "release", "addin" if addin else "", script)
         if os.path.exists(tpl) and script in files:
             text = open(tpl).read()
             for k, v in sub.items():

@@ -126,7 +126,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="s4" class="off">
 <details id="d4" class="collapse">
   <summary><h2><span class="n">4</span>Remove plugins</h2><span class="hint">Show</span></summary>
-  <p class="sub">The plugins on your device. Removing deletes the plugin's folder and its entry in MPC's plugin list (MPC's settings are backed up first). Your own files inside it, such as ROMs, kits and dumps, are kept.</p>
+  <p class="sub">The plugins on your device. Removing deletes the plugin's folder and its entry in MPC's plugin list (MPC's settings are backed up first). Your own files inside it, such as ROMs, kits and dumps, are kept. Addins (libraries MPC loads when it starts) are listed last: removing one runs its own uninstaller, which takes it out of MPC's start-up list and deletes its folder, settings included.</p>
   <ul class="list" id="dev"><li class="small">Connect to see what is on the device.</li></ul>
   <button id="rm" disabled>Remove…</button>
   <p class="msg" id="rmresult" role="status" aria-live="polite"></p>
@@ -204,7 +204,7 @@ function loadCatalog() {
 }
 var SHOWS = { "": "All plugins", "new": "Not on the device yet", "on": "Already on the device", "upd": "Updates available", "sel": "Only the ones I ticked" };
 var SORTS = { name: "Name", dev: "Developer", kind: "Kind", size: "Smallest download" };
-var KINDS = { instrument: "Instruments", effect: "Effects" };
+var KINDS = { instrument: "Instruments", effect: "Effects", addin: "Addins" };
 function fill(id, opts, val) {
   var sel = $(id); sel.textContent = "";
   opts.forEach(function (o) { var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op); });
@@ -298,7 +298,7 @@ function loadDevice() {
 }
 function devKey(p) { return p.root + "\u0000" + p.folder; }
 function drawDev() {
-  var ul = $("dev"); ul.textContent = ""; var last = null, grouped = S.roots.length > 1;
+  var ul = $("dev"); ul.textContent = ""; var last = null, grouped = S.roots.length > 1 || S.dev.some(function (p) { return p.addin; });
   S.dev.forEach(function (p, i) {
     if (grouped && p.root !== last) { last = p.root; ul.appendChild(el("li", "grp", (p.rootLabel || rootLabelOf(p.root)) + " · " + p.root)); }
     var key = devKey(p), li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "d_" + i; cb.disabled = !p.known; cb.checked = !!S.pickDev[key] && p.known;
@@ -306,7 +306,9 @@ function drawDev() {
     var t = el("div", "t"), b = el("b", null, p.name || p.folder);
     if (p.version) b.appendChild(el("span", "tag", "v" + p.version));
     t.appendChild(b);
-    t.appendChild(el("span", "d", p.known ? p.folder + (p.keep.length ? " · your files kept: " + p.keep.join(", ") : " · nothing in it is kept") + " · " + (p.source === "catalog" ? "from the catalog" : "from a zip you added")
+    if (p.addin) t.appendChild(el("span", "d", p.known ? "addin · removed by its own uninstaller, its settings with it"
+      : "addin · no uninstall.sh in its folder (not installed by the addin installer): remove it by hand"));
+    else t.appendChild(el("span", "d", p.known ? p.folder + (p.keep.length ? " · your files kept: " + p.keep.join(", ") : " · nothing in it is kept") + " · " + (p.source === "catalog" ? "from the catalog" : "from a zip you added")
       : p.folder + " · not from the catalog, so the app can't tell which files in it are yours. Drop its release zip above to manage it here, or remove it by hand."));
     var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);
     li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
@@ -403,8 +405,11 @@ function chosenDev() { return S.dev.filter(function (p) { return S.pickDev[devKe
 $("rm").addEventListener("click", function () {
   var ch = chosenDev(); S.mode = "remove"; $("dlgsave").hidden = false;
   text($("dlgtitle"), "Remove from your device?"); text($("yes"), "Remove");
-  text($("dlgtxt"), "About to remove: " + ch.map(function (p) { return p.name || p.folder; }).join(", ") + ". Each plugin's folder and its entry in MPC's plugin list are deleted (a backup of MPC's settings is made first)." +
-    (ch.some(function (p) { return p.keep.length; }) ? " Your own files are kept: " + ch.filter(function (p) { return p.keep.length; }).map(function (p) { return (p.name || p.folder) + " (" + p.keep.join(", ") + ")"; }).join("; ") + "." : " Nothing inside is kept.") + " MPC restarts once.");
+  var plugs = ch.filter(function (p) { return !p.addin; }), adds = ch.filter(function (p) { return p.addin; });
+  text($("dlgtxt"), "About to remove: " + ch.map(function (p) { return p.name || p.folder; }).join(", ") + "." +
+    (plugs.length ? " Each plugin's folder and its entry in MPC's plugin list are deleted (a backup of MPC's settings is made first)." : "") +
+    (adds.length ? " Each addin is taken out of MPC's start-up list and its folder deleted, settings included." : "") +
+    (!plugs.length ? "" : ch.some(function (p) { return p.keep.length; }) ? " Your own files are kept: " + ch.filter(function (p) { return p.keep.length; }).map(function (p) { return (p.name || p.folder) + " (" + p.keep.join(", ") + ")"; }).join("; ") + "." : " Nothing inside is kept.") + " MPC restarts once.");
   $("dlg").showModal();
 });
 $("prune").addEventListener("click", function () {

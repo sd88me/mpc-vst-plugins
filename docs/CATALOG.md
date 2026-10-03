@@ -186,6 +186,13 @@ Locrian's installer uses a drop-in folder in `Synths` (`docs/CATALOG_SPEC.md`, "
       (`defer`), so the app states the exact restart count; `mpc-store.sh` runs an older installer by itself instead of passing it `-n`.
 - [ ] Update notices honour `param_compat` (a major bump warns that saved projects will change).
 
+### Addins (2026-10-02)
+- [x] Libraries MPC preloads are a catalog kind (`addin`, `docs/ADDINS.md`): the shared LD_PRELOAD installer lives in
+      `tools/release/addin` (tested with sh and BusyBox, `tools/test_addin.sh`), `tools/release_addin.py` packages an addin,
+      `catalog_check.py` validates it, the registry, `catalog.tsv` and the site list it, and `mpc-store.sh` and the desktop app
+      install, update and remove addins in the same single MPC restart as plugins.
+- [x] Device test of released addins through the zip, `mpc-store.sh` and the desktop app (NOTES.md 2026-10-03).
+
 ### Phase 5: Nice to have
 - [ ] Automated screenshot generation of every skin page from the zip (reuses `studio.py preview`).
 - [ ] Skin-only and preset-pack entries (`kind: skin | presets`).

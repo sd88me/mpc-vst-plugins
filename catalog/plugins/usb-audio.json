@@ -1,0 +1,16 @@
+{
+  "id": "usb-audio",
+  "name": "MPC USB audio",
+  "author": "jacob-sabella",
+  "repo": "jacob-sabella/mpc-addin-usb-audio",
+  "kind": "addin",
+  "style": "audio-interface",
+  "tags": [
+    "usb",
+    "audio-interface",
+    "recording",
+    "inputs"
+  ],
+  "license": "MIT",
+  "summary": "The MPC as a USB audio interface: its outputs and inputs as channels on the computer, next to its MIDI ports."
+}

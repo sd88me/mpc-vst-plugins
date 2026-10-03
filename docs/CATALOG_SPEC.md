@@ -36,6 +36,8 @@ anywhere, engines must find their data next to it (`wrapper/plugin_dir.h`, `MODU
 `/sdcard/...` path; `gen_vst.py` warns about a fixed path.
 
 ## `mpc-plugin.json`
+(For a plugin. An addin's manifest is under "Addins" below.)
+
 | field | meaning |
 |---|---|
 | `schema` | `1` |
@@ -124,6 +126,25 @@ Every plugin also has `distribution`. For `build-yourself` plugins the record ca
 `build` and `components`, and each version is `{version, tag, date, channel: "stable", source_url, yanked, downloads: 0,
 warnings, tested, notes: ""}`: no `url`, `size`, `sha256`, `param_compat` or `manifest`. Readers must treat those
 keys as absent for such entries (an installer must skip them: there is nothing to download).
+
+## Addins (`kind: "addin"`)
+An addin is a library MPC preloads (`docs/ADDINS.md`), released with `tools/release_addin.py`. Schema 1 is unchanged; an addin's
+zip uses `layout: "addin"`:
+
+- **Zip:** `<Name>-<X.Y.Z>-mpc-armv7.zip`, one top folder holding exactly `mpc-plugin.json`, `install.sh`, `uninstall.sh`,
+  `addin-lib.sh` (from `tools/release/addin`), `addin.manifest`, `INSTALL.md`, `SHA256SUMS`, the `.so` and the settings and data
+  files the manifest names. No sub folders, nothing else.
+- **`mpc-plugin.json`:** `schema`, `id`, `name`, `version`, `param_compat` (the major version), `kind: "addin"`, `layout: "addin"`,
+  `so`, `conf` (the settings file or null), `files` (the other files), `user_data` (`[conf]`), `arch`, `max_glibc`, `about`,
+  `requires`, `source_repo`, `license`, `cpu: null`. No `uid`, `skin` or `folder`.
+- **Validator:** the plugin rules that apply (paths, checksums, id, version, glibc, `--catalog` fields, registry match), plus:
+  `addin.manifest` is only plain assignments of the known `ADDIN_*` keys and agrees with `mpc-plugin.json` (id, name, so, conf,
+  files, version); the `.so` is a 32-bit ARM ELF; nothing else is in the package. A changed installer is a warning, as for plugins.
+  `defer` is true for the installer (it understands `-n`).
+- **Registry:** `"kind": "addin"` on a release entry (never `build-yourself`); the builder refuses a release whose zip is an addin
+  under a plugin entry, or the reverse.
+- **`catalog.tsv`:** `skin` and `uid` are `-`. `mpc-store.sh` installs an addin to `/data/mpc-addins/<id>` and reads the installed
+  version from the folder's `addin.manifest` (`ADDIN_VERSION`), not from `.mpc-store`.
 
 ## Portable paths (for engines)
 Engines locate their data next to the `.so` (`wrapper/plugin_dir.h`, `MODULE_SUBDIR`), never at a fixed `/sdcard`.

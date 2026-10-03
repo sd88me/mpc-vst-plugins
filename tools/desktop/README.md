@@ -11,7 +11,7 @@ one MPC stop and start around the whole batch when the installers allow it.
 
 ## What it does, in order
 
-1. **Connect:** SSH as root with your password or a key in `~/.ssh` (no passphrase). It reads the device (32-bit ARM? `tar`?
+1. **Connect:** SSH as root with your password, a key in `~/.ssh` (no passphrase), or neither on a device whose root has no password. It reads the device (32-bit ARM? `tar`?
    `systemctl`? where is `MPC.settings`?) and refuses one that is not an MPC OS device. The device's key fingerprint is shown; nothing
    about the device is saved.
    The device scan lists every writable `Synths` location (the internal drive, and `/media/*/Synths` for cards and drives; read-only mounts such as
@@ -42,6 +42,12 @@ one MPC stop and start around the whole batch when the installers allow it.
    `MPC.settings.bak-<what>-<date>` that nothing deletes. The page counts them and deletes all but the newest N (default 10, at least 1:
    the newest is never deleted, and only files named like that are touched). MPC is not stopped. `mpc-store.sh prune [--keep N]` does the
    same on the device.
+
+**Addins** (catalog kind `addin`: libraries MPC loads when it starts, `docs/ADDINS.md`) go through the same steps. A catalog addin or a
+dropped addin zip installs to `/data/mpc-addins/<id>` with its own `install.sh -y -n`, inside the same single MPC stop and start, whatever
+location step 3 picked. Step 4 lists the addins found there after the plugins; one installed by its `install.sh` carries its own `uninstall.sh`,
+which removal runs (it takes the addin out of MPC's `LD_PRELOAD` and deletes its folder; `MPC.settings` is not touched). A folder
+without one is listed but not removable here.
 
 The catalog says, for every version, whether its installer understands `-n` (`defer` in `catalog.json`, the last column of `catalog.tsv`).
 The page uses that to state the exact number of MPC restarts before you confirm, and marks releases whose older installer restarts MPC by

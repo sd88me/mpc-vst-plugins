@@ -20,7 +20,7 @@
   <section class="mast">
     <div>
       <h1>Plugins for MPC OS, in one place</h1>
-      <p>Community-built VST2 instruments and effects for Akai MPC and Force standalone units. Every plugin links to its source, its license and a checksummed release zip.</p>
+      <p>Community-built VST2 instruments and effects for Akai MPC and Force standalone units, and addins that extend MPC itself. Every plugin links to its source, its license and a checksummed release zip.</p>
     </div>
     <svg class="mpc" viewBox="0 0 560 334" role="img" aria-label="Line drawing of an MPC: screen with four Q-Link encoders and buttons beneath it, a jog wheel below, and sixteen pads on the left">
       <rect class="body" x="4" y="4" width="552" height="326" rx="18"/>
@@ -115,7 +115,7 @@ function uniq(f) { var o = {}; P.forEach(function (p) { var v = f(p); if (v) o[v
 function fillSelect(id, all, values, label) {
   $(id).innerHTML = '<option value="">' + all + '</option>' + values.map(function (v) { return '<option value="' + esc(v) + '">' + esc(label ? label(v) : v) + '</option>'; }).join("");
 }
-var KINDS = { instrument: "Instruments", effect: "Effects" };
+var KINDS = { instrument: "Instruments", effect: "Effects", addin: "Addins" };
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
 var allKinds = {}; P.forEach(function (p) { kindsOf(p).forEach(function (k) { allKinds[k] = 1; }); });
 fillSelect("f-kind", "All kinds", Object.keys(allKinds).sort(), function (v) { return KINDS[v] || v; });
@@ -154,7 +154,7 @@ function safeUrl(u) { return /^https:\/\//.test(u) ? u : "#"; }
 function card(p) {
   var by = isBY(p), v = shown(p), tags = [];
   if (by) tags.push('<span class="tag build" title="No download: you build it from your own files">Build it yourself</span>');
-  tags.push('<span class="tag">' + esc(p.kind) + '</span>');
+  tags.push(p.kind === "addin" ? '<span class="tag" title="Loaded into MPC when it starts (LD_PRELOAD), not a plugin on a track">addin</span>' : '<span class="tag">' + esc(p.kind) + '</span>');
   if (p.style) tags.push('<span class="tag">' + esc(title(p.style)) + '</span>');
   tags.push('<span class="tag">' + esc(p.license) + '</span>');
   if (p.source_available) tags.push('<span class="tag warn" title="Source is public but the license limits how it may be used">Restricted use</span>');
@@ -186,7 +186,7 @@ function card(p) {
   }
   return head +
     '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) +
-    (v ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
+    (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
     '<div class="actions">' + (v ? '<a class="btn-l primary" href="' + esc(v.url) + '">Download</a>' : '') +
     '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a>' +
     (v && ID_RE.test(p.id) ? '<label class="pick"><input type="checkbox" data-pick="' + esc(p.id) + '"' + (state.sel.indexOf(p.id) >= 0 ? " checked" : "") + '> Add to install list</label>' : '') +

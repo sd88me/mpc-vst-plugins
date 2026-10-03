@@ -1,21 +1,25 @@
 #!/bin/sh
-# mpc-store: install, update, remove and list catalog plugins on an MPC OS device. BusyBox sh + wget/curl + unzip + sha256sum.
+# mpc-store: install, update, remove and list catalog plugins and addins on an MPC OS device. BusyBox sh + wget/curl + unzip + sha256sum.
 # Run on the device as root:
 #   sh mpc-store.sh [-y] [-t <synths-dir>] [--url <catalog.tsv url>] [--dry-run] <command> [args]
 #     list                       the catalog's plugins, what is installed ("manual" = a folder that was not put there by this script), what is newer
 #     install <id[@version]>...  download, verify (sha256 from the catalog), then run each zip's own install.sh with MPC stopped once and started once
 #                                (an older installer without -n runs first and restarts MPC by itself)
 #     update [id...]             install the newest version of what is installed (a major version change needs --major)
-#     remove <id>...             delete the plugin folder (your own files in it are kept) and its plugin-list entry
+#     remove <id>...             delete the plugin folder (your own files in it are kept) and its plugin-list entry; an addin runs the
+#                                uninstall.sh in its folder (out of LD_PRELOAD, folder deleted)
 #     prune [--keep N]           delete the older MPC.settings.bak-* backups (each install, removal and sync leaves one), keeping the newest N (default 10)
 #     sync                       register plugin folders that have no entry and drop entries whose file is gone (sync.sh)
 # Nothing on the device changes until every download has been verified and you confirmed (-y skips the question). MPC is stopped
 # once and started once, and is started again if something fails. What was installed is remembered in <synths-dir>/.mpc-store.
+# Addins (catalog kind "addin": libraries MPC preloads, docs/ADDINS.md) go to /data/mpc-addins/<id> instead of a Synths folder; each
+# installed addin folder holds its version (addin.manifest) and its own uninstall.sh.
 # The catalog is https://sd88me.github.io/mpc-vst-plugins/catalog.tsv (docs/CATALOG.md); the helper files it lists (sync.sh,
 # plugin_list.awk) are fetched from the same folder and checked against the hashes in it. Build-yourself plugins are not here.
 set -e
 URL="${MPC_STORE_URL:-https://sd88me.github.io/mpc-vst-plugins/catalog.tsv}"
 SYNTHS=/sdcard/Synths; YES=0; DRY=0; MAJOR=0
+ADDINS="${MPC_ADDINS:-/data/mpc-addins}"
 TAB=$(printf '\t')
 die() { echo "error: $*" >&2; exit 1; }
 while [ $# -gt 0 ]; do
@@ -59,9 +63,21 @@ row() {   # row <id> [version]: the catalog line (latest when no version)
     awk -F'\t' -v id="$1" -v v="${2:-}" '$1 == "plugin" && $2 == id && ((v == "" && $4 == 1) || (v != "" && $3 == v)) { print; exit }' "$W/catalog.tsv"
 }
 col() { echo "$1" | cut -d"$TAB" -f"$2"; }   # plugin id version latest kind name skin uid param_compat size sha256 url user_data
-installed_version() { [ -f "$STATE" ] && awk -F'\t' -v id="$1" '$1 == id { print $2; exit }' "$STATE"; }
-installed_compat() { [ -f "$STATE" ] && awk -F'\t' -v id="$1" '$1 == id { print $4; exit }' "$STATE"; }
-record() {   # record <id> <version> <skin> <param_compat>
+addin_version() {   # the version an installed addin's folder records ("" for one installed without a catalog release)
+    case "$1" in ""|*/*|.*) return 0 ;; esac
+    [ -f "$ADDINS/$1/addin.manifest" ] && sed -n 's/^ADDIN_VERSION=//p' "$ADDINS/$1/addin.manifest" | head -n 1 || true
+}
+installed_version() {
+    v=$(addin_version "$1"); [ -z "$v" ] || { echo "$v"; return 0; }
+    [ -f "$STATE" ] && awk -F'\t' -v id="$1" '$1 == id { print $2; exit }' "$STATE"
+}
+installed_compat() {
+    v=$(addin_version "$1"); [ -z "$v" ] || { echo "${v%%.*}"; return 0; }
+    [ -f "$STATE" ] && awk -F'\t' -v id="$1" '$1 == id { print $4; exit }' "$STATE"
+}
+target() { if [ "$1" = addin ]; then echo "$ADDINS/$2"; else echo "$SYNTHS"; fi; }   # target <kind> <id>: where install.sh puts it
+record() {   # record <kind> <id> <version> <skin> <param_compat> (an addin's folder records its own version)
+    [ "$1" != addin ] || return 0; shift
     mkdir -p "$SYNTHS"; touch "$STATE"
     awk -F'\t' -v id="$1" '$1 != id' "$STATE" > "$STATE.new" || true
     printf '%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "$4" >> "$STATE.new"; mv "$STATE.new" "$STATE"
@@ -88,10 +104,8 @@ mpc_ctl() {   # stop | start; a test run logs the call to $MPC_TEST_LOG instead 
 stop_mpc() {
     mpc_ctl stop
     trap 'mpc_ctl start; rm -rf "$W"' EXIT
-    if [ -z "$MPC_INSTALL_TEST" ]; then
-        i=0; while pidof MPC >/dev/null && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done
-        pidof MPC >/dev/null && die "MPC did not stop"
-    fi
+    i=0; while pidof MPC >/dev/null 2>&1 && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done   # a test run has no MPC: it passes through
+    if pidof MPC >/dev/null 2>&1; then die "MPC did not stop"; fi   # an `if`: as the function's last command, a failing `pidof` would make `set -e` end the script
 }
 confirm() {   # confirm <question>
     [ $YES = 1 ] && return 0
@@ -100,9 +114,11 @@ confirm() {   # confirm <question>
 
 do_list() {
     printf '%-18s %-9s %-10s %s\n' "ID" "LATEST" "INSTALLED" "NAME"
-    awk -F'\t' '$1 == "plugin" && $4 == 1 { print $2 "\t" $3 "\t" $6 "\t" $7 }' "$W/catalog.tsv" | while IFS=$TAB read -r id ver name skin; do
+    awk -F'\t' '$1 == "plugin" && $4 == 1 { print $2 "\t" $3 "\t" $6 "\t" $7 "\t" $5 }' "$W/catalog.tsv" | while IFS=$TAB read -r id ver name skin kind; do
         inst=$(installed_version "$id" || true)
-        if [ -z "$inst" ]; then if [ -d "$SYNTHS/$skin" ]; then inst="manual"; else inst="-"; fi; fi
+        where="$SYNTHS/$skin"; [ "$kind" != addin ] || where="$ADDINS/$id"
+        if [ -z "$inst" ]; then if [ -d "$where" ]; then inst="manual"; else inst="-"; fi; fi
+        [ "$kind" != addin ] || name="$name (addin)"
         mark=""; if [ "$inst" != "-" ] && [ "$inst" != "manual" ] && [ "$inst" != "$ver" ]; then mark="  (update available)"; fi
         printf '%-18s %-9s %-10s %s%s\n' "$id" "$ver" "$inst" "$name" "$mark"
     done
@@ -125,7 +141,7 @@ do_install_rows() {
         printf '%s\n' "$r" >> "$W/todo"; n=$((n + 1))
     done
     [ $n -gt 0 ] || { echo "Nothing to install."; return 0; }
-    echo "Verified. About to install:"; awk -F'\t' '{ print "  " $2 " " $3 " (" $6 ")" }' "$W/todo"
+    echo "Verified. About to install:"; awk -F'\t' '{ print "  " $2 " " $3 " (" $6 ($5 == "addin" ? ", an addin" : "") ")" }' "$W/todo"
     [ $DRY = 1 ] && { echo "Dry run: nothing changed."; return 0; }
     confirm "MPC will be stopped and restarted. Save your project first. Continue?"
     ok=0; failed=0
@@ -133,7 +149,7 @@ do_install_rows() {
         [ "$(cat "$W/defer.$id")" = 0 ] || continue
         dir=$(ls -d "$W/x/$id"/*/ | head -n 1); dir="${dir%/}"
         echo "Installing $name $ver (its installer restarts MPC by itself)"
-        if sh "$dir/install.sh" -y -t "$SYNTHS"; then record "$id" "$ver" "$skin" "$compat"; ok=$((ok + 1))
+        if sh "$dir/install.sh" -y -t "$(target "$k" "$id")"; then record "$k" "$id" "$ver" "$skin" "$compat"; ok=$((ok + 1))
         else echo "error: $name failed; continuing would leave a mixed state, so stopping here" >&2; failed=1; break; fi
     done < "$W/todo"
     batch=0; for f in "$W"/defer.*; do if [ "$(cat "$f")" = 1 ]; then batch=1; fi; done
@@ -143,7 +159,7 @@ do_install_rows() {
             [ "$(cat "$W/defer.$id")" = 1 ] || continue
             dir=$(ls -d "$W/x/$id"/*/ | head -n 1); dir="${dir%/}"
             echo "Installing $name $ver"
-            if sh "$dir/install.sh" -y -n -t "$SYNTHS"; then record "$id" "$ver" "$skin" "$compat"; ok=$((ok + 1))
+            if sh "$dir/install.sh" -y -n -t "$(target "$k" "$id")"; then record "$k" "$id" "$ver" "$skin" "$compat"; ok=$((ok + 1))
             else echo "error: $name failed; continuing would leave a mixed state, so stopping here" >&2; break; fi
         done < "$W/todo"
     fi
@@ -164,8 +180,12 @@ do_install() {
 }
 
 do_update() {
-    [ -f "$STATE" ] || { echo "Nothing installed through mpc-store yet."; return 0; }
-    ids="$*"; [ -n "$ids" ] || ids=$(cut -f1 "$STATE")
+    ids="$*"
+    if [ -z "$ids" ]; then
+        [ ! -f "$STATE" ] || ids=$(cut -f1 "$STATE")
+        for d in "$ADDINS"/*/; do [ -d "$d" ] || continue; d="${d%/}"; d="${d##*/}"; [ -z "$(addin_version "$d")" ] || ids="$ids $d"; done
+    fi
+    [ -n "$ids" ] || { echo "Nothing installed through mpc-store yet."; return 0; }
     set --
     for id in $ids; do
         cur=$(installed_version "$id" || true); [ -n "$cur" ] || { echo "$id: not installed through mpc-store, skipped"; continue; }
@@ -183,20 +203,32 @@ do_update() {
 
 do_remove() {
     [ $# -gt 0 ] || die "remove what?"
-    helper plugin_list.awk
+    plugins=0
     for id in "$@"; do
         r=$(row "$id" ""); [ -n "$r" ] || die "$id is not in the catalog"
+        if [ "$(col "$r" 5)" = addin ]; then   # an addin removes itself with the uninstall.sh its folder carries
+            [ -f "$ADDINS/$id/uninstall.sh" ] || die "$id is not installed in $ADDINS (or its folder was made by hand: remove it by hand)"
+            echo "Will remove the addin $ADDINS/$id (and take it out of MPC's LD_PRELOAD)"
+            continue
+        fi
+        plugins=$((plugins + 1))
         skin=$(col "$r" 7); [ -d "$SYNTHS/$skin" ] || die "$id is not installed in $SYNTHS"
         echo "Will remove $SYNTHS/$skin (keeping: $(col "$r" 13))"
     done
     [ $DRY = 1 ] && { echo "Dry run: nothing changed."; return 0; }
     confirm "MPC will be stopped once and restarted at the end. Save your project first. Continue?"
-    [ -n "$SETTINGS" ] && [ -f "$SETTINGS" ] || die "MPC.settings not found"
+    if [ $plugins -gt 0 ]; then
+        helper plugin_list.awk
+        [ -n "$SETTINGS" ] && [ -f "$SETTINGS" ] || die "MPC.settings not found"
+    fi
     stop_mpc
-    BAK="$SETTINGS.bak-store-$(date +%Y%m%d-%H%M%S)"; cp "$SETTINGS" "$BAK"
-    cp "$SETTINGS" "$W/cur"
+    if [ $plugins -gt 0 ]; then BAK="$SETTINGS.bak-store-$(date +%Y%m%d-%H%M%S)"; cp "$SETTINGS" "$BAK"; cp "$SETTINGS" "$W/cur"; fi
     for id in "$@"; do
         r=$(row "$id" ""); skin=$(col "$r" 7); uid=$(col "$r" 8); keep=$(col "$r" 13)
+        if [ "$(col "$r" 5)" = addin ]; then
+            sh "$ADDINS/$id/uninstall.sh" -y -n -t "$ADDINS/$id" || die "removing the addin $id failed"
+            forget "$id"; echo "removed $id"; continue
+        fi
         awk -v mode=remove -v file="$SYNTHS/$skin/.none" -v uid="$uid" -f "$W/h/plugin_list.awk" "$W/cur" > "$W/next" && mv "$W/next" "$W/cur"
         if [ -n "$keep" ] && [ "$keep" != "-" ]; then   # keep the user's own folders: move them out, delete the rest, move them back
             mkdir -p "$W/keep/$id"; oldifs=$IFS; IFS=,
@@ -211,6 +243,7 @@ do_remove() {
         else rm -rf "$SYNTHS/$skin"; fi
         forget "$id"; echo "removed $id"
     done
+    if [ $plugins = 0 ]; then echo "Done. MPC is being started."; return 0; fi
     grep -q '<PROPERTIES' "$W/cur" && grep -q '</PROPERTIES>' "$W/cur" || die "edited settings lost their root element; MPC.settings unchanged"
     if command -v python3 >/dev/null; then
         python3 -c 'import sys, xml.etree.ElementTree as E; E.parse(sys.argv[1])' "$W/cur" 2>/dev/null || die "edited settings aren't valid XML; MPC.settings unchanged"
