@@ -7,7 +7,7 @@ import os
 import re
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-VERSION = "2"
+VERSION = "3"
 
 patch = open(os.path.join(HERE, "mpc-3.9.1.2.patch")).read().splitlines()
 patched_md5 = next(l.split()[1] for l in patch if l.startswith("patched_md5"))

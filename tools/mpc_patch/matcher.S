@@ -40,9 +40,11 @@ L1:     .word 0x4ab2760 - (BASE + (Ladd1 - _start) + 8)
 L2:     .word 0x9289ec  - (BASE + (Ladd2 - _start) + 8)
 table:
         .asciz "Machinedrum Module"
+        .asciz "Machinemodule"
         .asciz "6W6"
         .asciz "8W8"
         .asciz "CW-78"
         .asciz "9W9"
         .asciz "TR-MPC"
+        .asciz "Lucky Dip"
         .byte 0

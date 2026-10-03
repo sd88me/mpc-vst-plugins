@@ -14,7 +14,7 @@
 # drum layout 16 pads instead of 8, and (c) lights all 16 pads (red). Pad n then sends MIDI note n-1. Akai's DrumSynth Multi
 # keeps its layout but also shows 16 lit pads. Nothing else changes.
 #
-# Plugins in the table (6): Machinedrum Module, 6W6, 8W8, CW-78, 9W9, TR-MPC
+# Plugins in the table (8): Machinedrum Module, Machinemodule, 6W6, 8W8, CW-78, 9W9, TR-MPC, Lucky Dip
 #
 # WARNINGS
 #  - It modifies the factory MPC OS. Do it only if you are comfortable with that; you use it at your own risk.
@@ -27,12 +27,13 @@
 #  - Nothing of Akai's is in this file: only the changed bytes and checksums. The device uses its own copy.
 #  - Not affiliated with Akai Professional / inMusic.
 #
-# Version 2. Source and plugin-name table: see the README of the repository this came from.
+# Version 3. Source and plugin-name table: see the README of the repository this came from.
 set -u
 STOCK_MD5=592eebc8e1ce0797dc8c98e7002143b8
-PATCHED_MD5=f899e581cba179a831212083f9a55ae0
+PATCHED_MD5=7cf96599ec61b1079688f253f3b65b9f
 V1_MD5=10a7d0bb4e5fb66ffaa6b2c6a001eef2     # the earlier Machinedrum-only patch (mpc-vst-machinedrum release/mpc_patch)
 V2_MD5=730c959f317ea405c472f273342bc235     # this patch with the name table of 2026-10-01 (it still said "TR-Kit")
+V3_MD5=f899e581cba179a831212083f9a55ae0     # this patch with the name table of 2026-10-02 (before Machinemodule and Lucky Dip)
 BK=${MPC_PATCH_BACKUP:-/sdcard/MPC-backup}
 REG=$BK/orig-regions.txt
 FULL=$BK/MPC-3.9.1.2.orig
@@ -43,7 +44,7 @@ PATCH_DATA='2494954 002090e500c09fe50cf08fe0cc695e02
 4a7b330 00c09fe50cf08fe04476df01
 2494bb4 00c09fe50cf08fe040dd3d04
 6872900 0040a0e3040095e50410a0e128209fe51cc09fe50cc08fe03cff2fe1014084e2100054e3f6ffff1a040095e504c09fe50cf08fe04c05bffba822c2fb00007f00
-6872980 04402de564108fe20040d1e5000054e30f00000a0230a0e10140d3e401c0d1e40c0054e10400001a000054e3f9ffff1a04409de40100a0e31eff2fe100005ce3f0ffff0a01c0d1e400005ce3fcffff1aecffffea04409de408109fe501108fe004c09fe50cf08fe07cfd23fe00600bfa4d616368696e656472756d204d6f64756c6500365736003857380043572d3738003957390054522d4d50430000000000
+6872980 04402de564108fe20040d1e5000054e30f00000a0230a0e10140d3e401c0d1e40c0054e10400001a000054e3f9ffff1a04409de40100a0e31eff2fe100005ce3f0ffff0a01c0d1e400005ce3fcffff1aecffffea04409de408109fe501108fe004c09fe50cf08fe07cfd23fe00600bfa4d616368696e656472756d204d6f64756c65004d616368696e656d6f64756c6500365736003857380043572d3738003957390054522d4d5043004c75636b79204469700000000000
 18ff260 10
 18ffbd8 10
 18ffc84 10
@@ -58,7 +59,7 @@ usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 if [ -n "$TEST" ]; then F=$TEST; else F=$MNT/usr/bin/MPC; fi
 
 state_of() {   # md5 -> word
-    case "$1" in "$STOCK_MD5") echo stock ;; "$PATCHED_MD5") echo patched ;; "$V1_MD5"|"$V2_MD5") echo old-patch ;; *) echo unknown ;; esac
+    case "$1" in "$STOCK_MD5") echo stock ;; "$PATCHED_MD5") echo patched ;; "$V1_MD5"|"$V2_MD5"|"$V3_MD5") echo old-patch ;; *) echo unknown ;; esac
 }
 
 need_root_device() {
@@ -125,7 +126,7 @@ cmd_status() {
     echo "MPC checksum: $cur"
     case "$st" in
         stock) echo "State: stock MPC OS 3.9.1.2, not patched." ;;
-        patched) echo "State: PATCHED (plugin names: Machinedrum Module, 6W6, 8W8, CW-78, 9W9, TR-MPC)." ;;
+        patched) echo "State: PATCHED (plugin names: Machinedrum Module, Machinemodule, 6W6, 8W8, CW-78, 9W9, TR-MPC, Lucky Dip)." ;;
         old-patch) echo "State: patched with an earlier version of this patch (Machinedrum-only, or an older name table); 'install' upgrades it." ;;
         *) echo "State: not MPC OS 3.9.1.2 (or modified some other way). This script will not touch it." ;;
     esac
@@ -144,7 +145,7 @@ cmd_install() {
     cat <<EOF
 
  This modifies the FACTORY MPC OS (/usr/bin/MPC) on this device, for MPC OS 3.9.1.2 only.
-  - Plugins that get the 16-pad drum layout: Machinedrum Module, 6W6, 8W8, CW-78, 9W9, TR-MPC
+  - Plugins that get the 16-pad drum layout: Machinedrum Module, Machinemodule, 6W6, 8W8, CW-78, 9W9, TR-MPC, Lucky Dip
   - MPC will be stopped and started again: save your project first.
   - A firmware update replaces the file and removes the patch.
   - The full original MPC (112 MB) and the original bytes are saved to $BK first.

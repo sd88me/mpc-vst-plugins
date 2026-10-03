@@ -33,6 +33,7 @@ STOCK_MD5=592eebc8e1ce0797dc8c98e7002143b8
 PATCHED_MD5=@@PATCHED_MD5@@
 V1_MD5=10a7d0bb4e5fb66ffaa6b2c6a001eef2     # the earlier Machinedrum-only patch (mpc-vst-machinedrum release/mpc_patch)
 V2_MD5=730c959f317ea405c472f273342bc235     # this patch with the name table of 2026-10-01 (it still said "TR-Kit")
+V3_MD5=f899e581cba179a831212083f9a55ae0     # this patch with the name table of 2026-10-02 (before Machinemodule and Lucky Dip)
 BK=${MPC_PATCH_BACKUP:-/sdcard/MPC-backup}
 REG=$BK/orig-regions.txt
 FULL=$BK/MPC-3.9.1.2.orig
@@ -48,7 +49,7 @@ usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 if [ -n "$TEST" ]; then F=$TEST; else F=$MNT/usr/bin/MPC; fi
 
 state_of() {   # md5 -> word
-    case "$1" in "$STOCK_MD5") echo stock ;; "$PATCHED_MD5") echo patched ;; "$V1_MD5"|"$V2_MD5") echo old-patch ;; *) echo unknown ;; esac
+    case "$1" in "$STOCK_MD5") echo stock ;; "$PATCHED_MD5") echo patched ;; "$V1_MD5"|"$V2_MD5"|"$V3_MD5") echo old-patch ;; *) echo unknown ;; esac
 }
 
 need_root_device() {

@@ -3,7 +3,7 @@
 **Not part of any plugin release.** `mpc-drum-pad-patch.sh` is a standalone script you run on the device yourself, if you want it.
 
 ## What it does
-Stock MPC OS 3.9.1.2 treats only Akai's own `DrumSynth:Multi` as a drum instrument. The patch makes MPC treat the plugins in its name table (Machinedrum Module, 6W6, 8W8, CW-78, 9W9, TR-MPC) as drum instruments with **16 pads, all lit**; pad n sends MIDI note n-1, which these plugins accept. Akai's DrumSynth Multi keeps its layout but also shows 16 lit pads. The pad colour is one red for every plugin. You can edit the pad colours with the standard Pad Colour Editor like normal manually.
+Stock MPC OS 3.9.1.2 treats only Akai's own `DrumSynth:Multi` as a drum instrument. The patch makes MPC treat the plugins in its name table (Machinedrum Module / Machinemodule, 6W6, 8W8, CW-78, 9W9, TR-MPC, Lucky Dip) as drum instruments with **16 pads, all lit**; pad n sends MIDI note n-1, which these plugins accept. Akai's DrumSynth Multi keeps its layout but also shows 16 lit pads. The pad colour is one red for every plugin. You can edit the pad colours with the standard Pad Colour Editor like normal manually.
 
 ## Read this first
 - It **modifies Akai's factory MPC program (`/usr/bin/MPC`)**. Use it at your own risk; it is not an Akai product.
