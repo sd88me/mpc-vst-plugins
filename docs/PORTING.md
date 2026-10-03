@@ -65,6 +65,9 @@ for the pattern). This applies to every future port, not just ones that hit the 
 - [ ] Stable order (the VST index is what skins and projects bind to). Append only; never reorder a shipped plugin.
 - [ ] Options: an index; nudges step one option (the wrapper does this). Triggers: `"momentary": true`, which springs back.
 - [ ] Display strings are the only dynamic text channel into the skin (see NOTES on refresh behaviour).
+      Text that changes on its own (a background scan finishing, a MIDI note moving a selection) is only re-read after a
+      `setParameter`; an engine can instead expose a `"_refresh"` counter via `get_param` (lock-free: the wrapper polls it from
+      the audio thread) and bump it whenever such text changes.
       A param whose `get_param()` returns real text (a name, a status message), not a number, needs
       `"display": "string"` in its parameter entry -- otherwise the wrapper's default numeric
       reformatting mangles it down to "0" (see NOTES).

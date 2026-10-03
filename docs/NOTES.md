@@ -886,3 +886,11 @@ A user batch-installed plugins to the Force's SSD with the desktop installer: al
 
 ## 2026-10-03: patches step (read only) in the installer app, offline only
 Design in `docs/PATCHES.md`. Built so far: the drum-pad patch script v4 (`status` ends with a `STATE` line; `install --confirmed` skips the typed question; `status` unmounts the bind mount of `/` that it opened, which v1-v3 left mounted: found by reading the script, fixed and checked with shimmed `mount`/`umount`/`mountpoint`), `catalog/patches.json` + `tools/patch_check.py` (the site build publishes it only if it validates), and step 7 of the app (list and `status` only; no apply). Checked on the host only: `tools/test_patches.py` (13 tests: the script contract against a synthetic stand-in for the MPC binary with its checksums rewritten, the checker, the site build), `go test -race` in `tools/desktop` (new `patches_test.go`, six mutations each fail a test), and `tools/desktop/ui_test/ui_patches.py` (Chromium, API stubbed). **Not run:** `tools/mpc_patch/test_script.sh` with Akai's real MPC (not in the repo), the app against a real Force, or any apply/undo from the app (not built).
+
+## 2026-10-04: engines can request a text refresh ("_refresh")
+MPC re-reads a parameter's display text only after `audioMasterUpdateDisplay`, which the wrapper called only after a `setParameter`.
+Text that changes by itself (Lucky Dip's scan/export status, a pad hit moving the selected pad) therefore lagged until the
+next touch. `housekeeping()` now polls `get_param("_refresh")` on every block; when the number changes it schedules the same
+deferred UpdateDisplay. Engines without the key (get_param <= 0) are unaffected. The engine's answer must be lock-free
+(it runs on the audio thread), e.g. an atomic counter it increments when such text changes. Offline-tested in mpc-vst-luckydip;
+not yet verified on a device.

@@ -1,0 +1,27 @@
+#include <stdio.h>
+#include <string.h>
+static unsigned call(const char *text) {
+    register unsigned r0 __asm__("r0") = 0x1234;
+    register const char *r2 __asm__("r2") = text;
+    register unsigned r4 __asm__("r4") = 0xC0FFEE;
+    __asm__ volatile("blx %[f]" : "+r"(r0), "+r"(r4) : "r"(r2), [f] "r"(0x6872980u) : "r1", "r3", "ip", "lr", "cc", "memory");
+    if (r4 != 0xC0FFEE) { printf("r4 NOT PRESERVED\n"); return 0xdead; }
+    return r0;
+}
+int main(void) {
+    struct { const char *name; unsigned want; } t[] = {
+        {"Machinedrum Module", 1}, {"6W6", 1}, {"8W8", 1}, {"CW-78", 1}, {"9W9", 1}, {"TR-MPC", 1},
+        {"Machinemodule", 1}, {"Lucky Dip", 1},
+        {"DrumSynth:Multi", 0x4ab2760}, {"Machinedrum Mod", 0x4ab2760}, {"Machinedrum Modules", 0x4ab2760},
+        {"6W", 0x4ab2760}, {"6W66", 0x4ab2760}, {"TR-MPC2", 0x4ab2760}, {"CW-7", 0x4ab2760}, {"", 0x4ab2760},
+        {"Monomodule One", 0x4ab2760}, {"Clementine-XT", 0x4ab2760}, {"Dexed", 0x4ab2760}, {"9W", 0x4ab2760}, {"Lucky", 0x4ab2760}, {"Lucky Dips", 0x4ab2760}, {"Machinemodule Tap", 0x4ab2760},
+    };
+    int bad = 0;
+    for (unsigned i = 0; i < sizeof t / sizeof *t; ++i) {
+        unsigned got = call(t[i].name);
+        int ok = got == t[i].want; bad += !ok;
+        printf("%s \"%s\" -> %#x (want %#x)\n", ok ? "ok  " : "FAIL", t[i].name, got, t[i].want);
+    }
+    puts(bad ? "FAILED" : "PASSED");
+    return bad != 0;
+}
