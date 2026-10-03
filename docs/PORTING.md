@@ -46,6 +46,9 @@ for the pattern). This applies to every future port, not just ones that hit the 
       convention (`MODULE_DIR` itself, or `MODULE_DIR/banks/`?) against the port's on-device layout. A mismatch
       fails silently (no files found, default patch) and an offline test built on the upstream's own folder
       layout never shows it; build the test fixture to the port's layout.
+- [ ] Optional, instruments only: `"defines": {"SAMPLE_ACCURATE": 1}` starts each note at its in-block position (MPC sends 0..127 for
+      sequenced notes) instead of at the 128-frame block start. The engine's `render()` must then accept any 1..128 frames
+      (check block-counting clocks, fixed-block cores) and `tools/test_port.sh` plus a bench (docs/BENCH.md) must pass.
 - [ ] Never hardcode `/sdcard/...` in an engine. Set `"defines": {"MODULE_SUBDIR": "\"engine\""}` in vst.json and
       the wrapper passes `<dir of the .so>/engine` to `create()`, found at runtime with `dladdr` (`wrapper/plugin_dir.h`,
       also usable directly via `mpc_plugin_dir()`), so the plugin works from `/sdcard/Synths`, `/media/*/Synths` or anywhere

@@ -1,0 +1,10 @@
+{
+  "name": "MPC Sample Probe",
+  "vendor": "sd88me",
+  "uid": "SmpP",
+  "version": 1000,
+  "so": "sampleprobe.so",
+  "params": "params.json",
+  "defines": {"SAMPLE_ACCURATE": 1, "SAMPLE_PROBE": 1},
+  "build": {"root": "../..", "sources": ["poc/sampleprobe/engine.c"], "cflags": [], "libs": []}
+}

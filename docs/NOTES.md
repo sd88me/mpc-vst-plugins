@@ -829,3 +829,17 @@ Unit: MPC Live (first generation), MPC OS 2.15.1, Buildroot 2021.02, BusyBox use
 - **Imports exist.** Our `TUI.json` imports `/usr/share/Akai/Content/Synths/Generic/Generic Knob Overlay.json` and `Generic Menu Overlay.json`; both exist on 2.15.1 (also `Generic Slider.json`, `version.xml`).
 - **Format versions (counts of `"version": N` over every stock `Plugin Skins/TUI.json`).** 2.15.1: 1 = 10884, 2 = 3030, and 45 for a value cut off in the report (probably 3). Force, OS base 5.0.17: 1 = 9259, 2 = 5929, 3 = 224, 4 = 388, 5 = 76. Our generator (`tools/shadow_skin.py`) writes component definitions at version 4 (94 in the Dexed skin), tabs at 3, film-strip knob data at 5, `Q-Links.json` at 4: the same shape as the Force's stock Decimator skin. Hypothesis: 2.x does not accept versions above its own. **Open:** the 2.x shape of those objects; needs a stock `TUI.json` (and one with knobs) from a 2.x unit. The same stock AIR Compressor skin lays out identically on 2.15.1 (MPC Live) and on the Force, so screen size is not the issue.
 - Akai's support pages (read 2026-10-03) say standalone MPC does not support third-party plugins at all, list the standalone models, and say new built-in plugins need newer OS versions (Native Instruments 3.5+, Spitfire 3.7.1+). Forum posts say 2.15.x is no longer updated by Akai. None of this covers skin formats.
+
+## Sample-accurate note starts (opt-in, 2026-10-03; offline only here, device numbers from issue #137)
+`effProcessEvents` used to hand each event to `engine->midi()` and drop `VstMidiEvent.deltaFrames`, so every note started at
+the block start (README's "128-sample blocks, ~3 ms"). Reported on a Force (MPC 3.x, issue #137): sequenced notes arrive with
+`deltaFrames` 0..127 (e.g. 9, 73, 72, 8, 71, 7), drifting with tempo; live pad notes always 0. `"defines": {"SAMPLE_ACCURATE": 1}`
+(instruments only; an effect build is an `#error`) makes the wrapper queue each block's events (256 at most, sorted by frame, more
+are applied at once) and render the block in pieces: `render()` gets exactly the frames up to the next event, at most 128 per call,
+the event goes in, the rest follows. No 128-frame buffering in that mode, so a host block that is not a multiple of 128 is
+handled too, and there is no added latency. An event past the end of the block (`deltaFrames >= n`) goes in at the start of the next
+one; a negative one at frame 0. Cost: up to one `render()` call per distinct event frame, so bench a dense chord on a heavy engine.
+Default off: every existing port builds as before, because engines written for 128-frame blocks (block-counting sequencers,
+fixed-block cores) may not take other sizes. Test: `poc/sampleprobe` (note-on switches a constant level on from the next frame) with
+the `SAMPLE_PROBE` section of `tools/host_test.c`; with the define set to 0 the same checks fail, so they do test the wrapper.
+Still to do on a device: the first real port to opt in.

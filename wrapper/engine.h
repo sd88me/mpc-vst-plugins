@@ -14,7 +14,9 @@ typedef struct {
     void (*render)(void *inst, int16_t *out_lr, int frames);
     /* Effects only (a port built with "effect": true in vst.json): filter one block of the host's audio, same format as
      * render (interleaved int16 stereo, 128 frames); in_lr may not alias out_lr. NULL for synths (add it last: engines
-     * initialise this struct positionally). */
+     * initialise this struct positionally).
+ * A port that sets "defines": {"SAMPLE_ACCURATE": 1} in vst.json (instruments only) has render() called with any
+ * frame count from 1 to 128, so MIDI can start at its in-block position: the engine must not assume 128. */
     void (*process)(void *inst, const int16_t *in_lr, int16_t *out_lr, int frames);
 } mpc_engine_t;
 

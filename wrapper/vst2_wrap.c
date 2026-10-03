@@ -22,6 +22,14 @@
 #ifndef HAS_LFO_BPM
 #define HAS_LFO_BPM 0 /* 1: pass the host tempo to the DSP as "lfo_bpm" */
 #endif
+#ifndef SAMPLE_ACCURATE
+#define SAMPLE_ACCURATE 0 /* 1 (instruments only): start each MIDI event at its VstMidiEvent.deltaFrames instead of at the
+                            * block start. The wrapper then renders exactly the frames the host asks for, in pieces of at
+                            * most 128 between events, so the engine's render() must accept any 1..128 frames (engine.h) */
+#endif
+#if SAMPLE_ACCURATE && defined(PLUG_EFFECT)
+#error "SAMPLE_ACCURATE is for instruments: an effect has no notes to place"
+#endif
 #ifndef MODULE_DIR
 #define MODULE_DIR NULL /* set via vst.json "defines" for a DSP that reads its own files
                           * (ROMs, etc.) from "<module_dir>/..." (see jv880's create_instance) */
@@ -34,6 +42,7 @@
 #include "popup.h"
 
 #define DSP_BLOCK 128
+#define WRAP_EVQ 256   /* SAMPLE_ACCURATE: events queued per block; more are applied at once */
 
 /* ---- VST2 ABI (hand-written; no Steinberg SDK) -------------------------- */
 typedef struct AEffect AEffect;
@@ -92,6 +101,10 @@ typedef struct {
     volatile char need_update_display;  /* deferred audioMasterUpdateDisplay -- see setParameter() */
     float open[NPARAMS];     /* popup "open" flags (popup.h): kept here, never sent to the DSP or saved */
     char chunk[8192];
+#if SAMPLE_ACCURATE
+    struct { int32_t frame; uint8_t msg[3]; } evq[WRAP_EVQ];   /* this block's MIDI, sorted by frame (see queue_midi) */
+    int nev;
+#endif
 } wrap_t;
 
 static const mpc_engine_t *g_api;
@@ -213,6 +226,7 @@ static void update_tempo(wrap_t *w) {
 
 /* accumulate=1 is VST2's legacy process(), which must ADD to the output buffers; hosts here call
  * processReplacing, but a NULL e->process would crash any host that tried the old call. */
+#if !SAMPLE_ACCURATE
 static void render_frames(wrap_t *w, float **out, int32_t n, int accumulate) {
     for (int32_t i = 0; i < n; i++) {
         if (w->pos >= DSP_BLOCK) {
@@ -225,6 +239,47 @@ static void render_frames(wrap_t *w, float **out, int32_t n, int accumulate) {
         w->pos++;
     }
 }
+#endif
+
+#if SAMPLE_ACCURATE
+/* Instruments with SAMPLE_ACCURATE: no 128-frame buffering. The engine renders exactly the frames the host asked for
+ * (at most DSP_BLOCK per call), and each queued MIDI event goes in right before its own frame. An event past the end
+ * of the block (deltaFrames >= n) goes in after the last frame, i.e. at the start of the next block. */
+static void queue_midi(wrap_t *w, const uint8_t *msg, int32_t frame) {
+    if (w->nev == WRAP_EVQ) { g_api->midi(w->dsp, msg, 3); return; }   /* full: apply now, as without SAMPLE_ACCURATE */
+    if (frame < 0) frame = 0;
+    int k = w->nev++;
+    while (k > 0 && w->evq[k - 1].frame > frame) { w->evq[k] = w->evq[k - 1]; k--; }   /* stable: after equal frames */
+    w->evq[k].frame = frame;
+    memcpy(w->evq[k].msg, msg, 3);
+}
+
+static void drain_midi(wrap_t *w) {
+    for (int k = 0; k < w->nev; k++) g_api->midi(w->dsp, w->evq[k].msg, 3);
+    w->nev = 0;
+}
+
+static void render_events(wrap_t *w, float **out, int32_t n, int accumulate) {
+    int32_t i = 0;
+    int k = 0;
+    while (i < n) {
+        while (k < w->nev && w->evq[k].frame <= i) g_api->midi(w->dsp, w->evq[k++].msg, 3);
+        int32_t end = (k < w->nev && w->evq[k].frame < n) ? w->evq[k].frame : n;
+        while (i < end) {
+            int len = end - i > DSP_BLOCK ? DSP_BLOCK : (int)(end - i);
+            g_api->render(w->dsp, w->block, len);
+            for (int j = 0; j < len; j++) {
+                float l = w->block[j * 2] * (1.0f / 32768.0f), r = w->block[j * 2 + 1] * (1.0f / 32768.0f);
+                if (accumulate) { out[0][i + j] += l; out[1][i + j] += r; }
+                else { out[0][i + j] = l; out[1][i + j] = r; }
+            }
+            i += len;
+        }
+    }
+    for (; k < w->nev; k++) g_api->midi(w->dsp, w->evq[k].msg, 3);
+    w->nev = 0;
+}
+#endif
 
 static void housekeeping(AEffect *e, int32_t n) {
     wrap_t *w = e->object;
@@ -287,7 +342,11 @@ static void process(AEffect *e, float **in, float **out, int32_t n) { run_block(
 static void run_block(AEffect *e, float **out, int32_t n, int accumulate) {
     wrap_t *w = e->object;
     housekeeping(e, n);
+#if SAMPLE_ACCURATE
+    render_events(w, out, n, accumulate);
+#else
     render_frames(w, out, n, accumulate);
+#endif
 }
 
 static void processReplacing(AEffect *e, float **in, float **out, int32_t n) { (void)in; run_block(e, out, n, 0); }
@@ -352,10 +411,17 @@ static intptr_t dispatcher(AEffect *e, int32_t op, int32_t idx, intptr_t v, void
     case effSetSampleRate: case effSetBlockSize: case effMainsChanged: return 1;
     case effProcessEvents: {
         VstEvents *ev = p;
+#if SAMPLE_ACCURATE
+        drain_midi(w);   /* left over if the host never processed the last block: late beats lost */
+#endif
         for (int i = 0; i < ev->numEvents; i++)
             if (ev->events[i]->type == 1) {
                 VstMidiEvent *m = (VstMidiEvent *)ev->events[i];
+#if SAMPLE_ACCURATE
+                queue_midi(w, (const uint8_t *)m->midiData, m->deltaFrames);
+#else
                 g_api->midi(w->dsp, m->midiData, 3);
+#endif
             }
         return 1;
     }

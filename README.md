@@ -134,7 +134,9 @@ design.
 - **No text entry** on the page.
 - **Plugin MIDI out is ignored by MPC.** Generators work around it by opening their own MIDI port, which MPC picks up
   like a new device. This is confirmed on a modded Force but not yet on a stock unit.
-- **Timing resolution:** notes land on 128-sample blocks (about 3 ms).
+- **Timing resolution:** notes land on 128-sample blocks (about 3 ms), because the wrapper ignores the in-block position MPC
+  sends with sequenced notes. An instrument whose engine renders any 1..128 frames can opt in to sample-accurate starts
+  (`"defines": {"SAMPLE_ACCURATE": 1}`, docs/NOTES.md "Sample-accurate note starts").
 - A plugin crash takes MPC down with it, so risky work belongs in a separate process.
 
 What's next is in [docs/ROADMAP.md](docs/ROADMAP.md).
