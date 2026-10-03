@@ -33,11 +33,17 @@ if [ -n "$TITLE_FONT" ]; then
   FONT_MOUNT=(-v "$ROOT/$PORT/$TITLE_FONT:/w/$PORT/$TITLE_FONT:ro")
   FONT_ENV=(-e "SHADOW_TITLE_FONT=/w/$PORT/$TITLE_FONT")
 fi
+# SHADOW_SKIN_MPC_OS=2 in the caller's environment writes the skin in the MPC OS 2.x shape (shadow_skin.py to_mpc2x,
+# experimental); unset or 3 is the normal 3.x skin.
+SKIN_ENV=()
+if [ -n "${SHADOW_SKIN_MPC_OS:-}" ]; then
+  SKIN_ENV=(-e "SHADOW_SKIN_MPC_OS=$SHADOW_SKIN_MPC_OS")
+fi
 if [ "$ART" = html ]; then
-  docker run --rm -u "$U" -e HOME=/tmp -v "$ROOT":/w -v "$MV":/mv:ro "${FONT_MOUNT[@]}" "${FONT_ENV[@]}" -w /w mpc-vst-html-art \
+  docker run --rm -u "$U" -e HOME=/tmp -v "$ROOT":/w -v "$MV":/mv:ro "${FONT_MOUNT[@]}" "${FONT_ENV[@]}" "${SKIN_ENV[@]}" -w /w mpc-vst-html-art \
     python3 /mv/tools/gen_vst.py "$PORT/vst.json"
 else
-  docker run --rm -u "$U" -v "$ROOT":/w -v "$MV":/mv:ro "${FONT_MOUNT[@]}" "${FONT_ENV[@]}" -w /w python:3.11-slim sh -c \
+  docker run --rm -u "$U" -v "$ROOT":/w -v "$MV":/mv:ro "${FONT_MOUNT[@]}" "${FONT_ENV[@]}" "${SKIN_ENV[@]}" -w /w python:3.11-slim sh -c \
     "pip install -q --no-warn-script-location --target /tmp/p pillow >/dev/null 2>&1; PYTHONPATH=/tmp/p python3 /mv/tools/gen_vst.py '$PORT/vst.json'"
 fi
 
