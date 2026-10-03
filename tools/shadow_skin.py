@@ -32,7 +32,8 @@ Layout file:
     stepper cx= cy= w= h= label="..." key=<param> [label_align=center]   (live text;
                                                         arrows = <param>_prev / <param>_next;
                                                         label_align=center needs "art": "html")
-    list    x= y= w= h= cols= rows= th= gap= key=<p>   (rows = params <p>_1..<p>_N: text + tap)
+    list    x= y= w= h= cols= rows= th= gap= key=<p>   (rows = params <p>_1..<p>_N: text + tap;
+                                                        order=pads numbers the rows from the bottom, like a pad bank)
     art     file="drawing.svg" [x= y= w= h=] [fit=]    (an SVG drawing, e.g. from studio.py from-svg, or a .png/.jpg/.webp
                                                         image, drawn into the page background: the whole plugin area, or
                                                         the box; fit=contain|cover|stretch; browser renderer only)
@@ -77,6 +78,7 @@ W, H, Y_OFF = 1280, 628, 86
 PLATE, INK, INK_DIM, ACCENT, ACCENT_HI = "131211", "efe9d8", "8f8878", "c1552f", "e2793f"
 SEG_ON, SEG_OFF, SEG_ON_TX = "f2f1ee", "050403", "1c1a17"
 LCD, LINE, BTN_BG, BTN_TEXT, BOX = "1a120d", "2a2823", "", "fdf3ea", "1f1f1f"
+TILE_ON = ""             # theme_tile_on: fill of a selected/sounding list tile ("" = the LCD fill, border only)
 DISPLAY_INK = "cdeb63"   # theme_display_ink: live-text colour over a dotreadout/dotstepper (see readout/stepper below)
 TD3 = False   # style=td3: frames are filled boxes, so widget crops sit on BOX, not the page bg
 LABEL_SCALE = 1.0   # label_scale=<n>: scales knob/toggle/pill name+value live-text size and their boxes
@@ -94,7 +96,7 @@ POP_ROW, POP_GAP, POP_PAD = 40, 2, 6
 THEME_KEYS = {"bg": "PLATE", "ink": "INK", "ink_dim": "INK_DIM", "accent": "ACCENT", "accent_hi": "ACCENT_HI",
               "seg_active": "SEG_ON", "seg_inactive": "SEG_OFF", "seg_active_tx": "SEG_ON_TX",
               "lcd": "LCD", "line": "LINE", "btn_bg": "BTN_BG", "btn_text": "BTN_TEXT", "box": "BOX",
-              "display_ink": "DISPLAY_INK"}
+              "display_ink": "DISPLAY_INK", "tile_on": "TILE_ON"}
 
 
 FONT_LABEL_PATH = None   # font_label=<path> (layout.conf top level) -- see apply_theme()
@@ -179,6 +181,9 @@ def apply_theme(top):
         if line.startswith("label_scale="):
             g["LABEL_SCALE"] = float(line[len("label_scale="):].strip())
             continue
+        if line.startswith("scale_names="):
+            g["SCALE_NAMES"] = line[len("scale_names="):].strip() not in ("", "0", "no", "off")
+            continue
         k, _, v = line.partition("=")
         if k.startswith("theme_") and k[6:] in THEME_KEYS:
             g[THEME_KEYS[k[6:]]] = v.strip()
@@ -205,6 +210,15 @@ def expand_pictures(widgets):
     return out
 
 
+# scale_names=1: the names MPC draws under knobs and toggles follow label_scale (21 px x it) and a toggle's box
+# grows with them. Off (the default), they are the fixed 17 px (knob) / 15 px (toggle) names in the 120 px toggle box
+# every existing skin was drawn with, whatever label_scale says.
+SCALE_NAMES = False
+def NAME_FONT(kind): return 21.0 * LABEL_SCALE if SCALE_NAMES else (17.0 if kind == "knob" else 15.0)
+def NAME_H(): return round(28 * LABEL_SCALE) if SCALE_NAMES else 20
+def TOG_W(): return round(170 * LABEL_SCALE) if SCALE_NAMES else 120
+
+
 def toggle_rect(w, base_dir="."):
     """A toggle's image box (shadow coords): the stock pill, or its look's size."""
     tw, th = skin_assets.toggle_size(w, look_of(w, base_dir))
@@ -226,7 +240,11 @@ def shade(hexcol, f):
 
 
 def list_keys(w):
-    return ["%s_%d" % (w["key"], i + 1) for i in range(w["cols"] * w["rows"])]
+    """tile i's param: rows top-down, or bottom-up like a pad bank (order=pads: pad 1 is bottom left)"""
+    n, cols = w["cols"] * w["rows"], w["cols"]
+    if w.get("order") == "pads":
+        return ["%s_%d" % (w["key"], (w["rows"] - 1 - i // cols) * cols + i % cols + 1) for i in range(n)]
+    return ["%s_%d" % (w["key"], i + 1) for i in range(n)]
 
 
 def list_tiles(w):
@@ -664,8 +682,8 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
                 looks[lid] = lk
             if kind == "knob":
                 r = w["r"]
-                s, cw = 2 * r + 10, max(130, 2 * r + 10)   # value label width; LFO knobs sit 138 px apart
-                name_h = round(20 * LABEL_SCALE)
+                s, cw = 2 * r + 10, max(round(130 * LABEL_SCALE) if SCALE_NAMES else 130, 2 * r + 10)   # value label width; LFO knobs sit 138 px apart
+                name_h = NAME_H() if SCALE_NAMES else round(20 * LABEL_SCALE)
                 name_y = s // 2 + r + 2
                 value_y = name_y + name_h + 2
                 value_h = round(26 * LABEL_SCALE)
@@ -679,7 +697,7 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
                     _sub("Knob", {"version": 5, "knobType": "FilmStrip", "filmStrip": "sh_knob_r%d%s.png" % (r, sfx),
                                   "numFrames": ROT_FRAMES, "invert": False, "dragOrientation": "Vertical",
                                   "handleName": "Data"}, _bounds((cw - s) // 2, 0, s, s), "Knob"),
-                    _name_label(0, name_y, cw, name_h, 17.0 * LABEL_SCALE, INK),
+                    _name_label(0, name_y, cw, name_h, NAME_FONT("knob"), INK),
                     _sub("Label", {"version": 1, "textStyle": {"version": 1, "font": {"version": 1, "name": "Titillium Web",
                                                                                      "style": "SemiBold", "height": 22.0 * LABEL_SCALE},
                                                                "colour": "ff" + INK_DIM,
@@ -691,7 +709,7 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
             elif kind == "toggle" and lk:
                 tw, th = skin_assets.toggle_size(w, lk)
                 key = "shToggle_%s_%dx%d" % (lid, tw, th)
-                cw, ch = max(120, tw + 10), th + 26
+                cw, ch = max(TOG_W(), tw + 10), th + 6 + NAME_H()
                 if key not in defs:
                     img = "sh_tog_%s_%dx%d" % (lid, tw, th)
                     for on in (0, 1):
@@ -699,18 +717,19 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
                                    "crop|%s|200|300|%d|%d" % (art("%s_%s" % (img, "on" if on else "off")), tw, th)]
                     defs[key] = _local(key, [_action("Mouse Down", "Q-Link"), _action("Enter Pressed", "Toggle Switch")],
                                        [_focus(cw, ch), _button(img + "_on.png", img + "_off.png", 1, 1, tw, th, (cw - tw) // 2, 0),
-                                        _name_label(0, th + 4, cw, 20, 15.0, INK)])
+                                        _name_label(0, th + 4, cw, NAME_H(), NAME_FONT("toggle"), INK)])
                 kids.append(_placed(key, name, i, w["cx"] - cw // 2, w["cy"] - th // 2, cw, ch))
             elif kind == "toggle":
-                key = "shToggle"
+                cw = TOG_W()
+                key = "shToggle" + (("_ls%g" % LABEL_SCALE) if SCALE_NAMES and LABEL_SCALE != 1.0 else "")
                 if key not in defs:
                     for on in (0, 1):
                         script += ["clear|" + under(), "pill|100|100|%d" % on,
                                    "crop|%s|74|86|53|29" % art("sh_pill_%s" % ("on" if on else "off"))]
                     defs[key] = _local(key, [_action("Mouse Down", "Q-Link"), _action("Enter Pressed", "Toggle Switch")],
-                                       [_focus(120, 58), _button("sh_pill_on.png", "sh_pill_off.png", 1, 1, 53, 29, 33, 4),
-                                        _name_label(0, 34, 120, 20, 15.0, INK)])
-                kids.append(_placed(key, name, i, w["cx"] - 60, w["cy"] - 18, 120, 58))
+                                       [_focus(cw, 38 + NAME_H()), _button("sh_pill_on.png", "sh_pill_off.png", 1, 1, 53, 29, (cw - 53) // 2, 4),
+                                        _name_label(0, 34, cw, NAME_H(), NAME_FONT("toggle"), INK)])
+                kids.append(_placed(key, name, i, w["cx"] - cw // 2, w["cy"] - 18, cw, 38 + NAME_H()))
             elif kind == "button":
                 x, y, bw, bh = button_rect(w, base_dir)
                 img = "sh_btn_%s_%s%s" % (w["key"], slug(w.get("label", "")), sfx)
@@ -861,7 +880,8 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
                 for slot, ((x, y, tw, th), sk) in enumerate(zip(list_tiles(w), list_keys(w))):
                     img = "sh_tile_%dx%d" % (tw, th)
                     for state, border in (("on", 3), ("off", 0)):
-                        script += ["clear|" + under(), "tile|%d|%d|%d|%d|%s|%s|%d" % (x, y, tw, th, LCD, SEG_ON if border else LINE, border),
+                        script += ["clear|" + under(), "tile|%d|%d|%d|%d|%s|%s|%d" % (x, y, tw, th, (TILE_ON or LCD) if border else LCD,
+                                                                              SEG_ON if border else LINE, border),
                                    "crop|%s|%d|%d|%d|%d" % (art("%s_%s" % (img, state)), x, y, tw, th)]
                     key = "shRow_%dx%d" % (tw, th)
                     # the Value label lies over the button and takes the touch, so the row itself toggles on touch
@@ -1011,8 +1031,8 @@ def qlink_bounds(tab, keys):
         elif w["kind"] in ("button", "meter"):
             continue   # a shared trigger (e.g. GENERATE) would stretch the box across frames; meters take no Q-Link
         elif w["kind"] == "toggle":
-            xs += [w["cx"] - 60, w["cx"] + 60]
-            ys += [w["cy"] - 18, w["cy"] + 38]
+            xs += [w["cx"] - TOG_W() // 2, w["cx"] + TOG_W() // 2]
+            ys += [w["cy"] - 18, w["cy"] + 18 + NAME_H()]
         else:
             for x, y, sw, sh in seg_rects(w):
                 xs += [x, x + sw]

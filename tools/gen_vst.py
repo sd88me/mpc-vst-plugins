@@ -13,6 +13,7 @@ vst.json (paths are relative to the vst.json's folder):
       "layout": "layout.conf",                   # optional; without it the skin studio's auto-layout is used
       "short_names": {"LFO1 > ": "L1 "},          # optional on-screen name shortening
       "art": "html",                             # optional: draw the skin artwork in a browser (tools/html_art.py)
+      "tile": "art/tile.png",                    # optional: 270x110 Instruments-browser tile (+ a Default preset; tools/xpl.py)
       "effect": true,                            # optional: an audio effect (2 inputs, category Effect); the engine provides process()
       "custom_skin": true,                       # optional: params.h + plugin-list entry only; the port makes the skin itself
       "defines": {"HAS_LFO_BPM": 1},             # optional extra #defines in params.h
@@ -77,7 +78,8 @@ def gen_params(cfg, params, out):
              "#pragma once",
              "typedef struct { const char *key, *name, *unit; float min, max, def; int nopts; "
              "const char *const *opts; int momentary; int string_display; int int_display; "
-             "int step_target; float step_delta; int popup_of; int hold_ms; int dynamic_name; int dynamic_display; } param_t;"]
+             "int step_target; float step_delta; int popup_of; int hold_ms; int dynamic_name; int dynamic_display; "
+             "int qlink_ticks; int no_poll; } param_t;"]
     key_to_index = {p["key"]: i for i, p in enumerate(params)}
     rows = []
     for i, p in enumerate(params):
@@ -109,22 +111,31 @@ def gen_params(cfg, params, out):
         # "dynamic_display" -- likewise for the value text (effGetParamDisplay): get_param("<key>_display")
         # first. The value itself stays numeric, so knobs, Q-Links and automation work as usual.
         dyn_disp = int(bool(p.get("dynamic_display")))
+        # "qlink_ticks" -- Q-Link turn events per option, or per integer step. 0 = the wrapper's default for an
+        # option list (QLINK_TICKS in vst2_wrap.c) and the host's own rate for an integer. Short integer ranges
+        # (a MIDI channel, a list of sets) want it, or they race past.
+        qticks = int(p.get("qlink_ticks", 0))
+        # "poll": false -- a "display":"string" param the wrapper should not poll every 10 ms for "<key>_on" and
+        # for text changes (housekeeping in vst2_wrap.c): a readout that only changes on a tap, or one whose
+        # get_param() is costly.
+        no_poll = int(p.get("poll", True) is False)
         if opts:
             lines.append("static const char *const OPTS_%d[] = {%s};" % (i, ", ".join(c_str(o) for o in opts)))
             d = p.get("default", 0)
             if isinstance(d, str):
                 d = opts.index(d) if d in opts else 0
             norm = d / (len(opts) - 1) if len(opts) > 1 else 0
-            rows.append("    {%s, %s, \"\", 0, 0, %s, %d, OPTS_%d, %d, %d, %d, %d, %s, %d, %d, %d, %d}," % (
+            rows.append("    {%s, %s, \"\", 0, 0, %s, %d, OPTS_%d, %d, %d, %d, %d, %s, %d, %d, %d, %d, %d, %d}," % (
                 c_str(p["key"]), name, fl(norm), len(opts), i, bool(p.get("momentary")), is_str, is_int,
-                step_target, fl(step_delta), popup_of, p.get("hold_ms", 0), dyn, dyn_disp))
+                step_target, fl(step_delta), popup_of, p.get("hold_ms", 0), dyn, dyn_disp, qticks, no_poll))
         else:
             lo, hi = p.get("min", 0), p.get("max", 1)
             d = p.get("default", lo)
             norm = (d - lo) / (hi - lo) if hi > lo else 0
-            rows.append("    {%s, %s, %s, %s, %s, %s, 0, 0, %d, %d, %d, %d, %s, %d, %d, %d, %d}," % (
+            rows.append("    {%s, %s, %s, %s, %s, %s, 0, 0, %d, %d, %d, %d, %s, %d, %d, %d, %d, %d, %d}," % (
                 c_str(p["key"]), name, c_str(p.get("unit", "")), fl(lo), fl(hi), fl(norm),
-                bool(p.get("momentary")), is_str, is_int, step_target, fl(step_delta), popup_of, p.get("hold_ms", 0), dyn, dyn_disp))
+                bool(p.get("momentary")), is_str, is_int, step_target, fl(step_delta), popup_of, p.get("hold_ms", 0), dyn, dyn_disp,
+                qticks, no_poll))
     lines += ["static const param_t PARAMS[] = {"] + rows + ["};", "#define NPARAMS %d" % len(params),
               "#define PLUG_NAME %s" % c_str(cfg["name"]), "#define PLUG_VENDOR %s" % c_str(cfg["vendor"]),
               "#define PLUG_UID 0x%08x /* '%s' */" % (int.from_bytes(cfg["uid"].encode(), "big"), cfg["uid"]),
@@ -190,7 +201,13 @@ def main():
     shutil.rmtree(os.path.join(build, "skin"), ignore_errors=True)   # no stale images from older builds
     art = os.environ.get("SHADOW_ART") or (os.path.join(TOOLS, "html_art.py") if cfg.get("art") == "html"
                                            else os.path.join(build, "shadow_art"))
-    print("skin:", shadow_skin.write_skin(os.path.join(build, "skin"), cfg["vendor"], cfg["name"], layout, plist, art))
+    skin = shadow_skin.write_skin(os.path.join(build, "skin"), cfg["vendor"], cfg["name"], layout, plist, art)
+    print("skin:", skin)
+    if cfg.get("tile"):   # the browser tile only does something with a preset to open: ship a Default one with it
+        import xpl
+        print("tile:", xpl.write_tile(os.path.join(here, cfg["tile"]), skin))
+        print("preset:", xpl.write_default_preset(skin, cfg["name"], cfg["vendor"], cfg["uid"], cfg["so"],
+                                                  cfg.get("version", 1000), bool(cfg.get("effect"))))
 
 
 if __name__ == "__main__":

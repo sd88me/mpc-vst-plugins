@@ -72,6 +72,11 @@ fi
 NEW="$SYNTHS/$SKIN"; STAGE="$SYNTHS/.$SKIN.new"; OLD="$SYNTHS/.$SKIN.old"
 rm -rf "$STAGE" "$OLD"
 cp -a "portable/$SKIN" "$STAGE"
+SYNTHS_SED=$(printf '%s' "$SYNTHS" | sed 's/[|&\\]/\\&/g')   # the folder as a sed replacement (| & \ escaped)
+for f in "$STAGE"/Presets/*.xpl; do   # shipped presets name the plugin with the same placeholder as plugin-meta.xml
+    [ -f "$f" ] || continue
+    sed "s|%payload-path%|$SYNTHS_SED|g" "$f" > "$f.new" && mv "$f.new" "$f"
+done
 if [ -f MODES ]; then   # a zip unpacked on Windows or copied file by file loses exec bits and symlinks: put them back
     TAB=$(printf '\t')
     while IFS=$TAB read -r kind rel target; do
@@ -96,7 +101,7 @@ rm -rf "$OLD"
 # 2. the plugin-list entry: %payload-path% is the Synths folder; entries with the same file= or uid are replaced
 BAK="$SETTINGS.bak-$(echo "$SO" | sed 's/\.so$//')-$(date +%Y%m%d-%H%M%S)"
 cp "$SETTINGS" "$BAK"
-sed "s|%payload-path%|$SYNTHS|g" "portable/$SKIN/plugin-meta.xml" > "$SETTINGS.entry"
+sed "s|%payload-path%|$SYNTHS_SED|g" "portable/$SKIN/plugin-meta.xml" > "$SETTINGS.entry"
 awk -v mode=add -v file="$FILE" -v alt="$LEGACY_SO" -v uid="$UID_HEX" -v entryfile="$SETTINGS.entry" -f plugin_list.awk "$SETTINGS" > "$SETTINGS.new"
 rm -f "$SETTINGS.entry"
 n=$(grep -c "file=\"$FILE\"" "$SETTINGS.new" || true)

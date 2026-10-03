@@ -286,8 +286,8 @@ def widget_svg(w, art, params, base_dir):
         dot = w.get("style") == "dotmatrix"
         live.append(live_text(x0 + h + 11, y0, w["w"] - 2 * h - 22, h, name, 26, ss.DISPLAY_INK if dot else ss.ACCENT))
     elif k == "list":
-        for i, (x, y, tw, th) in enumerate(ss.list_tiles(w)):
-            live.append(live_text(x + 12, y, tw - 24, th, "%s %d" % (w.get("key", ""), i + 1), 24, ss.ACCENT, "start"))
+        for (x, y, tw, th), sk in zip(ss.list_tiles(w), ss.list_keys(w)):
+            live.append(live_text(x + 12, y, tw - 24, th, sk.replace("_", " "), 24, ss.ACCENT, "start"))
     try:
         box = box_of(w, base_dir)
     except (KeyError, ValueError):

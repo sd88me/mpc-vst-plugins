@@ -220,6 +220,54 @@ class CatalogTest(Base):
 import catalog_build  # noqa: E402
 
 
+class TilePresetTest(Base):
+    """tools/xpl.py: the Instruments-browser tile and the Default preset ship inside the skin folder."""
+
+    def test_tile_and_preset_ship_in_the_folder(self):
+        import xpl
+        import zlib
+        skin = os.path.join(self.tmp, "Acme - VST - Test Synth")
+        os.makedirs(skin)
+        png = os.path.join(self.tmp, "tile.png")
+        open(png, "wb").write(fake_png(270, 110))
+        xpl.write_tile(png, skin)
+        xpl.write_default_preset(skin, "Test Synth", "Acme", "TsSy", "test_synth.so")
+        z = self.build()
+        errors, warnings, rec = catalog_check.check(z, catalog=True)
+        self.assertEqual((errors, warnings), ([], []))
+        with zipfile.ZipFile(z) as zf:
+            top = zf.namelist()[0].split("/")[0]
+            base = "%s/portable/Acme - VST - Test Synth/" % top
+            self.assertIn(base + "Plugin Skins/browser_images/soundsmode.png", zf.namelist())
+            preset = zf.read(base + "Presets/0000-Default.xpl").decode()
+            inst = zf.read(top + "/install.sh").decode()
+        self.assertIn('file="%payload-path%/Acme - VST - Test Synth/test_synth.so"', preset)
+        self.assertIn('uid="54735379"', preset)   # 'TsSy'
+        self.assertIn("<preset>Default</preset>", preset)
+        self.assertIn('Presets/*.xpl', inst)   # the installer fills in the placeholder
+        state = preset.split("<state>")[1].split("</state>")[0]
+        b = xpl.b64dec(state)
+        self.assertEqual(b[:4] + b[8:12], b"CcnKFBCh")
+        self.assertEqual(b[16:20], b"TsSy")
+        self.assertEqual(b[-5:], b"\0\0\0\1\0")   # a 1-byte chunk: the empty state
+        self.assertEqual(xpl.b64enc(b), state)
+        self.assertEqual(xpl.b64dec(xpl.b64enc(bytes(range(256)))), bytes(range(256)))
+        self.assertEqual(xpl.b64enc(b"\x01"), "1.A.")   # six-bit groups, least-significant bits first, as JUCE writes them
+        open(png, "wb").write(fake_png(64, 64))
+        with self.assertRaises(SystemExit):
+            xpl.write_tile(png, skin)
+
+
+def fake_png(w, h):
+    import struct
+    import zlib
+    def chunk(t, d):
+        return struct.pack(">I", len(d)) + t + d + struct.pack(">I", zlib.crc32(t + d) & 0xffffffff)
+    raw = b"".join(b"\0" + bytes(w * 3) for _ in range(h))
+    return (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 2, 0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
 class LayoutWarningTest(unittest.TestCase):
     def test_hardcoded_data_path(self):
         import gen_vst

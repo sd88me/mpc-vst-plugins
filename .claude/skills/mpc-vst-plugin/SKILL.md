@@ -42,7 +42,10 @@ Stop any separately attached audio engines first.
 
 ## Gotchas
 - Integer DSP params: set `"display": "int"`. The wrapper then rounds and keeps the unrounded knob position, so slow
-  Q-Link turns accumulate (else they stick between two values). List-tile highlights need `<key>_on` from the DSP.
+  Q-Link turns accumulate (else they stick between two values). List-tile highlights need `<key>_on` from the DSP
+  (polled every 10 ms, so a tile can light from MIDI alone; `theme_tile_on=` fills the lit tile, `list ... order=pads`
+  numbers the rows from the bottom like a pad bank). A Q-Link steps an option list one option per `QLINK_TICKS`
+  turn events (`"qlink_ticks": N` per param, also for a short `"display": "int"` range such as a MIDI channel).
   The orange box on a control is the transparent-able Focus ring, not Q-Link bounds. Details: docs/NOTES.md
   "Skin design lessons from the jv880 redesign".
 - AEffect magic `'VstP'` 0x56737450 (the forum PoC's value is wrong).
@@ -134,6 +137,14 @@ Parameter entries feeding `gen_vst.py` (`tools/params.py` format) can carry:
 - `vst.json`'s `"title_font"` (a `.ttf`/`.otf` path, e.g. a real downloaded font under an OFL-style licence,
   never a recreation of a manufacturer's proprietary font) overlays frame titles in that font via PIL after
   the PNGs are drawn; off by default, every other port keeps its current look.
+- `scale_names=1` in `layout.conf` makes the knob and toggle names MPC draws follow `label_scale` (21 px × it,
+  toggle box grown to fit); without it they stay the fixed 15-17 px / 120 px box every existing skin has.
+- A `"display": "string"` param is polled every 10 ms for `<key>_on` (list tiles lit from MIDI) and every 100 ms
+  for text changes (readouts refreshed without a tap); `"poll": false` on the param turns that off for one
+  whose text only changes on a tap or whose `get_param()` is costly.
+- `vst.json`'s `"tile"` (a 270x110 PNG) becomes `Plugin Skins/browser_images/soundsmode.png` plus
+  `Presets/0000-Default.xpl` in the skin folder (`tools/xpl.py`): the Sounds > INSTRUMENTS browser draws the
+  artwork and a tap opens the plugin. MPC indexes `Presets/` at startup, so a new preset file needs a restart.
 - In `layout.conf`, a stepper's `prev=`/`next=` can call a different param's key than the one it displays,
   and `get=` (paired with the widget's own separate "Text" handle) can display a different key than the one
   it steps -- both needed together when the DSP's stepping verb and its human-readable name live on

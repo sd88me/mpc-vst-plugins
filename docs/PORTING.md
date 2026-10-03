@@ -97,6 +97,9 @@ for the pattern). This applies to every future port, not just ones that hit the 
       artwork drawn in Inkscape) set `"art": "html"` and restyle with `art_css=` (SKIN_STUDIO "Artwork renderers").
 - [ ] Controls that only matter in one mode (per oscillator type, sync on/off): `when=<param>:<option>` on their
       layout lines, so each mode shows its own set in the same space (SKIN_STUDIO "Mode panels").
+- [ ] Instruments-browser tile: `"tile": "art/tile.png"` (270x110 PNG) in vst.json puts the artwork tile in the Sounds >
+      INSTRUMENTS browser and ships a Default preset so the tile opens the plugin (`tools/xpl.py`; NOTES.md
+      "Instruments-browser tiles"). Without it the plugin is a folder tile in the browser.
 
 ## 4. Device
 - [ ] The plugin is one folder, `/sdcard/Synths/<vendor> - VST - <name>/`: the `.so`, `Plugin Skins/`, `version.xml` and any data next to the `.so`.

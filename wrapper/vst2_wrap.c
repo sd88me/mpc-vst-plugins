@@ -88,13 +88,21 @@ typedef struct {
     double bpm;
     volatile int holdFrames[NPARAMS];  /* momentary params: frames left before reporting back to 0 (hold_ms) */
     float shadow[NPARAMS];   /* unrounded position last set on an integer param; <0 = none */
-    signed char last_on[NPARAMS];  /* last "<key>_on" value told to the host, +1 (0 = unknown) */
+    float qacc[NPARAMS];     /* Q-Link turn events counted toward the next option of a list (see setParameter) */
+    signed char last_on[NPARAMS];  /* last "<key>_on" value told to the host, +1 (0 = unknown, -1 = the engine has no such key) */
+    unsigned last_text[NPARAMS];   /* hash of a text readout's last value (see housekeeping) */
+    int on_poll, text_poll;        /* frames until the next "<key>_on" poll / readout poll (see housekeeping) */
     volatile char need_update_display;  /* deferred audioMasterUpdateDisplay -- see setParameter() */
     float open[NPARAMS];     /* popup "open" flags (popup.h): kept here, never sent to the DSP or saved */
     char chunk[8192];
 } wrap_t;
 
 static const mpc_engine_t *g_api;
+
+/* Q-Link turn events per option of a list, unless a param sets qlink_ticks (see setParameter). An event is one
+ * 1/128 step of the range on the Key 37's smooth encoders, which give about 80 of them per revolution, so a
+ * 9-option list takes about half a turn at 6 (3 ran through it in a quarter turn; docs/NOTES.md "Q-Links") */
+#define QLINK_TICKS 6
 
 static float clamp01(float v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 
@@ -177,18 +185,44 @@ static void setParameter(AEffect *e, int32_t i, float n) {
         return;
     }
     if (p->nopts > 1) {
-        /* A value on an option (button press, preset, automation) selects it. A value
-         * between options is a Q-Link/encoder nudge from the current one: step one
-         * option that way, else small nudges round back and never change state. */
+        /* A value on an option (button press, preset, automation) selects it. A value between options is
+         * a Q-Link turn from the current one (MPC adds a small delta to what getParameter said). Count those
+         * events and step one option per qlink_ticks of them in the same direction, like a detented knob:
+         * stepping on every event raced through a list on a slow turn, and the slightest wobble flipped a
+         * switch. Turning back starts over. A jump of half an option or more is no Q-Link tick (automation, a
+         * drag): it selects the nearest option outright, as the integer branch below sets its value directly. */
         float pos = clamp01(n) * (p->nopts - 1);
         if (fabsf(pos - roundf(pos)) > 0.001f) {
-            nudge = 1;
-            float cur = get_norm(w, i) * (p->nopts - 1);
-            int idx = (int)lroundf(cur) + (pos > cur ? 1 : -1);
+            float cur = get_norm(w, i) * (p->nopts - 1), d = pos - cur;
+            int ticks = p->qlink_ticks > 0 ? p->qlink_ticks : QLINK_TICKS, idx;
+            nudge = 1;   /* not a pick: an open popup list stays open */
+            if (fabsf(d) >= 0.5f) {
+                w->qacc[i] = 0;
+                idx = d > 0 ? (int)floorf(pos + 0.5f) : (int)ceilf(pos - 0.5f);   /* nearest option, a tie toward the move */
+            } else {
+                if (d * w->qacc[i] < 0) w->qacc[i] = 0;
+                w->qacc[i] += d > 0 ? 1 : -1;
+                if (fabsf(w->qacc[i]) < ticks) return;   /* the host reads the same option back */
+                w->qacc[i] = 0;
+                idx = (int)lroundf(cur) + (d > 0 ? 1 : -1);
+            }
             if (idx < 0) idx = 0;
             if (idx > p->nopts - 1) idx = p->nopts - 1;
             n = (float)idx / (p->nopts - 1);
-        }
+        } else
+            w->qacc[i] = 0;                  /* picked outright: nothing banked */
+    } else if (p->int_display && p->qlink_ticks > 0 && p->max > p->min) {
+        /* an integer with its own Q-Link rate: one step per qlink_ticks turn events, counted as for a list.
+         * A move of half a step or more is a direct set (automation, a drag), not a tick. */
+        float range = p->max - p->min, pos = clamp01(n) * range, cur = get_norm(w, i), d = (n - cur) * range;
+        if (fabsf(pos - roundf(pos)) > 0.001f && fabsf(d) < 0.5f) {
+            if (d * w->qacc[i] < 0) w->qacc[i] = 0;
+            w->qacc[i] += d > 0 ? 1 : -1;
+            if (fabsf(w->qacc[i]) < p->qlink_ticks) return;   /* the host reads the same value back */
+            w->qacc[i] = 0;
+            n = clamp01((roundf(cur * range) + (d > 0 ? 1 : -1)) / range);
+        } else
+            w->qacc[i] = 0;
     }
     norm_to_str(p, n, buf, sizeof buf);
     g_api->set_param(w->dsp, PARAMS[i].key, buf);
@@ -234,21 +268,46 @@ static void housekeeping(AEffect *e, int32_t n) {
      * setParameter, so the host is not re-entered from its own call. */
     for (int i = 0; i < NPARAMS; i++)
         if (w->holdFrames[i] > 0 && (w->holdFrames[i] -= n) <= 0) { w->holdFrames[i] = 0; w->master(&w->fx, audioMasterAutomate, i, 0, 0, 0.0f); }
+    /* Text params, polled every 10 ms, not only after a screen tap, because MIDI alone can change them (a pad
+     * plays a chord, nothing on screen touched):
+     * - list-tile selection ("<key>_on"): the host doesn't re-read a button's value on UpdateDisplay, so push
+     *   a change with audioMasterAutomate (a tile lights while the pad is held);
+     * - a readout's text: the host only re-reads it on UpdateDisplay, so ask for one when the text changed (a
+     *   chord name on a page without tiles stayed stale until something else was tapped).
+     * Only "display":"string" params without "poll":false are polled. A "<key>_on" the engine does not answer is
+     * asked once, then skipped. The text poll runs every 100 ms, so a readout that changes constantly (a clock)
+     * asks for at most 10 UpdateDisplays a second. Costs about one get_param per polled param per poll on the
+     * audio thread; docs/BENCH.md measures it (Chordsmith, 10 polled params: idle p99 under 4% of a block). */
+    int poll_on = (w->on_poll -= n) <= 0, poll_text = (w->text_poll -= n) <= 0;
+    if (poll_on) w->on_poll = 441;
+    if (poll_text) w->text_poll = 4410;
+    for (int i = 0; poll_on && i < NPARAMS; i++) {
+        if (!PARAMS[i].string_display || PARAMS[i].no_poll) continue;
+        char k2[96], b2[64];   /* 64: the hash sees the first 63 characters, enough for a 47-character readout */
+        if (w->last_on[i] >= 0) {
+            snprintf(k2, sizeof k2, "%s_on", PARAMS[i].key);
+            if (g_api->get_param(w->dsp, k2, b2, sizeof b2) > 0) {
+                int on = atoi(b2) ? 1 : 0;
+                if (w->last_on[i] != on + 1) {
+                    w->last_on[i] = (signed char)(on + 1);
+                    w->master(&w->fx, audioMasterAutomate, i, 0, 0, (float)on);
+                    w->need_update_display = 1;
+                }
+            } else
+                w->last_on[i] = -1;
+        }
+        if (poll_text && g_api->get_param(w->dsp, PARAMS[i].key, b2, sizeof b2) > 0) {
+            unsigned h = 2166136261u;   /* FNV-1a */
+            for (const char *s = b2; *s; s++) h = (h ^ (unsigned char)*s) * 16777619u;
+            if (h != w->last_text[i]) {
+                w->last_text[i] = h;
+                w->need_update_display = 1;
+            }
+        }
+    }
     if (w->need_update_display) {
         w->need_update_display = 0;
         w->master(&w->fx, audioMasterUpdateDisplay, 0, 0, 0, 0.0f);
-        /* list-tile selection: the host doesn't re-read a button's value on UpdateDisplay, so push changes */
-        for (int i = 0; i < NPARAMS; i++) {
-            if (!PARAMS[i].string_display) continue;
-            char k2[96], b2[16];
-            snprintf(k2, sizeof k2, "%s_on", PARAMS[i].key);
-            if (g_api->get_param(w->dsp, k2, b2, sizeof b2) <= 0) continue;
-            int on = atoi(b2) ? 1 : 0;
-            if (w->last_on[i] != on + 1) {
-                w->last_on[i] = (signed char)(on + 1);
-                w->master(&w->fx, audioMasterAutomate, i, 0, 0, (float)on);
-            }
-        }
     }
 }
 
@@ -338,14 +397,15 @@ static intptr_t dispatcher(AEffect *e, int32_t op, int32_t idx, intptr_t v, void
         const param_t *pp = &PARAMS[idx];
         char k2[96];
         snprintf(k2, sizeof k2, "%s_display", pp->key);
+        /* MPC's host hands a 256-byte buffer (JUCE); 48 keeps a status readout to one line of a 1280 px page */
         if (pp->dynamic_display && g_api->get_param(w->dsp, k2, buf, sizeof buf) > 0) {
-            copy_str(p, buf, 24);   /* text the DSP composes (e.g. a destination's own name) */
+            copy_str(p, buf, 48);   /* text the DSP composes (e.g. a destination's own name) */
         } else if (pp->nopts) {
             int k = (int)lroundf(get_norm(w, idx) * (pp->nopts - 1));
-            copy_str(p, pp->opts[k], 24);
+            copy_str(p, pp->opts[k], 48);
         } else if (g_api->get_param(w->dsp, pp->key, buf, sizeof buf) > 0) {
-            if (pp->string_display) copy_str(p, buf, 24);   /* real text (a name, a status), not a number */
-            else snprintf(p, 24, "%.*f", (pp->int_display || fabs(pp->max - pp->min) > 20) ? 0 : 1, atof(buf));
+            if (pp->string_display) copy_str(p, buf, 48);   /* real text (a name, a status), not a number */
+            else snprintf(p, 48, "%.*f", (pp->int_display || fabs(pp->max - pp->min) > 20) ? 0 : 1, atof(buf));
         }
         return 1;
     }
