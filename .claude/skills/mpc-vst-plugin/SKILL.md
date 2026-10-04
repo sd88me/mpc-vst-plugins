@@ -37,8 +37,8 @@ Stop any separately attached audio engines first.
    stop acvs (or inmusic-mpc) → back up `MPC.settings` → insert the `<PLUGIN …/>` line before `</KNOWNPLUGINS>` (first time:
    add a whole `<VALUE name="pluginList-arm"><KNOWNPLUGINS>…</KNOWNPLUGINS></VALUE>` before `</PROPERTIES>`)
    → start the service again → check force_shadow.so is still in MPC's environ. An `.so` update alone (same path) needs no settings
-   edit and no restart: remove every instance of the plugin, then insert it again (verified 2026-09-24). A skin-only change needs **no restart**: swap the folder, then re-insert the
-   plugin or reload the project.
+   edit and no restart: remove every instance of the plugin, then insert it again (verified 2026-09-24). A skin-only change needs **an MPC restart** on a
+   Key 37 (MPC keeps skins in memory; re-inserting showed the old one, NOTES 2026-10-04).
 7. The user tests on the device: plugin list → insert → play → edit screen → Q-Links → save/reload project.
 
 ## Gotchas
@@ -110,7 +110,8 @@ from: pick theme colours on purpose instead of leaving the default.
 Check offline before deploying: composite TUI.json + PNGs into a preview image (`tools/studio.py preview`)
 and look at it -- and if the app has a real screenshot/mockup (its `docs/*.png`, or its own shadow
 page's look), compare against *that*, not just "does this look like a plausible skin". Skin-only changes
-need no restart.
+need an MPC restart to show. Every MPC start adds ~170 MB to `/var/tmp/filmstrips` on `/data`: check `df -h /data`
+after many restarts (NOTES 2026-10-04).
 
 ## Param opt-ins beyond a plain knob (added porting jv880; details + rationale in docs/NOTES.md)
 Parameter entries feeding `gen_vst.py` (`tools/params.py` format) can carry:

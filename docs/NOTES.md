@@ -671,7 +671,7 @@ inserting mid-list shifts every later saved value (docs/RELEASING.md, versioning
 
 **Offline preview needs Pillow.** `tools/studio.py preview` imports `PIL`; on a bare WSL install it is missing and
 there is no `pip`. Preview is what to look at before deploying; without it, deploy the skin alone (skin-only
-changes need no restart, re-insert the plugin) and read the screenshot.
+changes may need an MPC restart: see "MPC keeps skins in memory" below) and read the screenshot.
 
 **Integer param display beats truncation everywhere.** Any port with integer DSP params should set
 `"display": "int"` on them (gen_vst.py `int_display`): it fixes the formatting *and* enables the rounding and
@@ -1041,3 +1041,20 @@ whole number of 1/128 of the range, exact to float precision; a slow turn sends 
   ends, but a selection on a step must clear the stored drag position or the next wheel click does nothing.
 Not tried: what MPC does with a read-back on a multiple of 1/128 for a whole number, and how the stock plugins handle the same Q-Link
 (ROADMAP). Per-param counting stays an opt-in in #90 (`qlink_ticks`) with this caveat.
+
+## 2026-10-04: MPC's filmstrip cache fills `/data`; MPC keeps skins in memory (device, MPC Key 37, MPC OS 3.9.1)
+- **`/var/tmp/filmstrips` grows on every MPC start and is never cleaned.** MPC writes a `temp_<hex>.img` there for each
+  filmstrip it loads: about 70 to 140 files and 170 MB per start with one project of plugins. `/var/tmp` lives on the
+  `/data` partition (2.5 GB on the Key 37), so a day of restarts (skin and addin testing) filled it to 100%: 1,201 files,
+  2.4 GB. With the disk full, MPC's next start wrote its cache files at 0 bytes, and an installer failed with "No space
+  left on device" (the addin installer stages `.new` files first, so the live install was untouched). The running MPC had
+  none of the files open or mapped; deleting them all (`rm -f /var/tmp/filmstrips/temp_*.img`) freed the space and the
+  next start wrote a fresh set. The device had not rebooted for 39 hours; whether a reboot clears the folder is not known.
+  Check `df -h /data` before installing after many restarts.
+- **A changed skin is not reloaded by re-inserting the plugin.** On the Key 37, swapping a port's `Plugin Skins` folder
+  and inserting the plugin again (or reloading the project) kept showing the old skin; `systemctl restart acvs` showed
+  the new one (2026-10-03, NAM, several times). The older note that a skin-only change needs no restart (2026-09-24) did
+  not hold here: plan a restart for a skin change.
+- **MPC finds a skin by folder name.** NAM's `.so` loads from `/storage/Synths/NAM/` (no skin there) and MPC draws the
+  skin from `/storage/Synths/jacob-sabella - VST - NAM/Plugin Skins/`: `<vendor> - VST - <product>` beside the `.so`'s
+  folder. Tools that look for a skin next to the `.so` miss it (mpc-addin-commander 0.1.2 looks in both places).
