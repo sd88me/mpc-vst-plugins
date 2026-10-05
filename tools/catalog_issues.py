@@ -82,9 +82,21 @@ def main():
     a = ap.parse_args()
     problems = json.load(open(a.problems))
     repo = ["--repo", a.repo] if a.repo else []
-    listing = subprocess.run(["gh", "issue", "list", *repo, "--state", "all", "--search", "Catalog: in:title",
-                              "--json", "number,title,state", "--limit", "1000"],
-                             capture_output=True, text=True, check=True).stdout
+    try:
+        listing = subprocess.run(
+            ["gh", "issue", "list", *repo, "--state", "all", "--search", "Catalog: in:title",
+             "--json", "number,title,state", "--limit", "1000"],
+            capture_output=True, text=True, check=True
+        ).stdout
+    except subprocess.CalledProcessError as e:
+        print(f"Error running gh issue list: {e}", file=sys.stderr)
+        print(f"stdout: {e.stdout}", file=sys.stderr)
+        print(f"stderr: {e.stderr}", file=sys.stderr)
+        return 1
+    except json.JSONDecodeError as e:
+        print(f"Failed to parse gh output: {e}", file=sys.stderr)
+        return 1
+        
     to_open, to_close = plan(problems, json.loads(listing))
     for t, body in to_open:
         print("open:", t)
