@@ -80,32 +80,39 @@ def main():
     ap.add_argument("--repo", help="owner/name (default: the current repo)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
-    problems = json.load(open(a.problems))
-    repo = ["--repo", a.repo] if a.repo else []
     try:
-        listing = subprocess.run(
-            ["gh", "issue", "list", *repo, "--state", "all", "--search", "Catalog: in:title",
-             "--json", "number,title,state", "--limit", "1000"],
-            capture_output=True, text=True, check=True
-        ).stdout
+        with open(a.problems) as f:
+            problems = json.load(f)
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Cannot read {a.problems}: {e}", file=sys.stderr)
+        return 1
+    repo = ["--repo", a.repo] if a.repo else []
+
+    def gh(*args):
+        return subprocess.run(["gh", *args], capture_output=True, text=True, check=True).stdout
+
+    try:
+        listing = json.loads(gh("issue", "list", *repo, "--state", "all", "--search", "Catalog: in:title",
+                                "--json", "number,title,state", "--limit", "1000"))
+        to_open, to_close = plan(problems, listing)
+        for t, body in to_open:
+            print("open:", t)
+            if not a.dry_run:
+                gh("issue", "create", *repo, "--title", t, "--body", body)
+        for n, comment in to_close:
+            print("close: #%d (%s)" % (n, comment))
+            if not a.dry_run:
+                gh("issue", "close", *repo, str(n), "--comment", comment)
+    except FileNotFoundError:
+        print("Error: the gh CLI is not installed or not on PATH", file=sys.stderr)
+        return 1
     except subprocess.CalledProcessError as e:
-        print(f"Error running gh issue list: {e}", file=sys.stderr)
-        print(f"stdout: {e.stdout}", file=sys.stderr)
+        print(f"Error running {' '.join(map(str, e.cmd[:3]))}: {e}", file=sys.stderr)
         print(f"stderr: {e.stderr}", file=sys.stderr)
         return 1
     except json.JSONDecodeError as e:
         print(f"Failed to parse gh output: {e}", file=sys.stderr)
         return 1
-        
-    to_open, to_close = plan(problems, json.loads(listing))
-    for t, body in to_open:
-        print("open:", t)
-        if not a.dry_run:
-            subprocess.run(["gh", "issue", "create", *repo, "--title", t, "--body", body], check=True)
-    for n, comment in to_close:
-        print("close: #%d (%s)" % (n, comment))
-        if not a.dry_run:
-            subprocess.run(["gh", "issue", "close", *repo, str(n), "--comment", comment], check=True)
     return 0
 
 
