@@ -10,12 +10,13 @@ Design: `docs/CATALOG.md`. Formats: `docs/CATALOG_SPEC.md`.
    ```json
    { "id": "my-synth", "name": "My Synth", "author": "Your name", "repo": "you/my-synth-vst",
      "kind": "instrument", "license": "MIT", "summary": "One line.",
-     "style": "sampler", "tags": ["rompler"], "screenshot": "optional URL", "asset_pattern": "*-mpc-armv7.zip" }
+     "style": "sampler", "tags": ["rompler"], "screenshot": "optional https URL", "asset_pattern": "*-mpc-armv7.zip" }
    ```
    `style` and `tags` (lowercase slugs) feed the site's Style filter and search; pick a short, common word such as
    `synth`, `sampler`, `drum-machine`, `reverb`, `delay`, `utility`. If your license is not on the open-source list but
    the source is public, add `"source_available": true`: the plugin is listed with a "Restricted use" badge and
-   its own license text shown.
+   its own license text shown. `screenshot` is an `https://` link to an image (a raw GitHub link to a PNG/JPG in your
+   repo, pinned to a tag or commit); the card shows it in a 2:1 frame, cropping other shapes. Anything but `https://` is ignored.
 3. CI checks the entry and your latest release. Once merged, new releases appear automatically (nightly, or
    run the "Catalog build" workflow).
 

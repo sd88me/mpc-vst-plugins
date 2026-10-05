@@ -31,7 +31,7 @@ vst-release.yml  --release-->   nightly + on-dispatch workflow:       device scr
 
 ### Registry entry (`plugins/<id>.json`, hand-written once)
 `id`, `name`, `author`, `repo` (owner/name), `kind` (instrument | effect), `license`, `summary`, `screenshot`
-(optional path or URL), `asset_pattern` (default `*-mpc-armv7.zip`), `homepage` (optional). Nothing versioned.
+(optional `https://` URL; the site ignores anything else), `asset_pattern` (default `*-mpc-armv7.zip`), `homepage` (optional). Nothing versioned.
 
 ### Distribution types
 `distribution` in the registry entry: `release` (default; everything above) or `build-yourself`.

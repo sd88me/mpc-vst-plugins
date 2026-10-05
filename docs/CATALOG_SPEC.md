@@ -83,7 +83,7 @@ Warnings (need a human look): `install.sh`/`uninstall.sh`/`plugin_list.awk` diff
 { "id": "my-synth", "name": "My Synth", "author": "Someone", "repo": "someone/my-synth-vst",
   "kind": "instrument", "license": "MIT", "summary": "One line.",
   "style": "synth", "tags": ["poly"], "source_available": false,
-  "screenshot": "optional URL or path", "asset_pattern": "*-mpc-armv7.zip" }
+  "screenshot": "optional https URL", "asset_pattern": "*-mpc-armv7.zip" }
 ```
 `style` (one slug) and `tags` (slugs) are optional and drive the site filters. `source_available: true` is required
 when `license` is not on the open-source list; the site shows a "Restricted use" badge.

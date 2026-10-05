@@ -42,10 +42,21 @@ Open a pull request to [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugi
 | `license` | An SPDX id such as `MIT` or `GPL-3.0-only` |
 | `source_available` | `true` if the license is not on the open-source list but the source is public. Shows the *Restricted use* badge. |
 | `style`, `tags` | Optional lowercase words for the Style filter and search: `synth`, `sampler`, `drum-machine`, `reverb`, `delay`, `utility` |
-| `screenshot`, `homepage` | Optional links |
+| `screenshot` | Optional. An `https://` link to an image, shown at the top of your card; see [Screenshots](#screenshots). |
+| `homepage` | Optional link |
 | `asset_pattern` | Optional. Which release file to use. The default is `*-mpc-armv7.zip`. |
 
 Do not put versions or checksums in this file. The catalog reads them from your release.
+
+### Screenshots
+Add a `screenshot` field to your entry and the card shows that image at the top, edge to edge. Clicking it opens the full image.
+1. Commit a PNG or JPG of your plugin's MPC screen to your plugin's repo, for example `docs/screenshots/your-plugin.png`.
+2. Put its public raw link in the entry: `"screenshot": "https://raw.githubusercontent.com/you/your-plugin-repo/<tag-or-commit>/docs/screenshots/your-plugin.png"`.
+3. Open the pull request. The image appears after the next catalog build; it is not part of a release, so you do not need a new one.
+
+- The link must start with `https://`. Anything else, including a relative path, is ignored and the card shows no image.
+- Every card uses the same 2:1 frame. An image close to 2:1 is shown whole; other shapes are cropped at the edges, so keep the important part in the middle. A very wide banner is cropped hardest.
+- The site links to your image instead of copying it. Use a tag or commit in the link, not a branch, so renaming or deleting the branch does not leave an empty box on your card.
 
 ## 3. What happens next
 - The pull request runs a check on your entry, and a maintainer merges it.
