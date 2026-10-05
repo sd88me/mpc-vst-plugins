@@ -1,0 +1,39 @@
+#!/bin/sh
+
+# find dfu util info
+DFUUTILINFO=$(dfu-util -l | grep "0x08000000")
+
+#if in dfu-update mode run firmware update script
+[ "x$DFUUTILINFO" != "x" ] && sh /usr/share/Akai/SME0/Firmware/update.sh
+
+if type systemd-inhibit >/dev/null 2>&1
+then
+    exec systemd-inhibit --what=handle-power-key /usr/bin/MPC "$@"
+else
+    # Reduce the soft stack size limit to 1MiB (from the default 8MiB).  This
+    # is used as the default stack size for new threads and since MPC is
+    # locked in memory this memory is allocated.  Since the limit is read
+    # before main, we cannot set it in the application and must do so here.
+    ulimit -S -s 1024
+    export GLIBC_TUNABLES=glibc.malloc.hugetlb=2
+    export MALLOC_ARENA_MAX=1
+
+    # --- SD-card hook (the only addition to Akai's 3.9.1 launcher) ---
+    # A card labelled 662522 carrying boot.sh takes over MPC startup
+    # (MockbaMod-compatible). The exports above are inherited by it.
+    SD_DEV=/dev/disk/by-label/662522
+    SD_MNT=/media/662522
+    if [ -e "$SD_DEV" ]; then
+        if ! mountpoint -q "$SD_MNT"; then
+            edisksctl mount "$(readlink -f "$SD_DEV")"
+            sleep 1
+        fi
+        mount -o remount,rw,exec "$SD_MNT" 2>/dev/null
+        if [ -f "$SD_MNT/boot.sh" ]; then
+            exec sh "$SD_MNT/boot.sh" "$@"
+        fi
+    fi
+    # --- end SD-card hook ---
+
+    exec setarch -R -- /usr/bin/MPC "$@"
+fi
