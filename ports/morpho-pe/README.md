@@ -1,4 +1,4 @@
-# Blueberry-PE
+# Morpho-PE
 
 A four-voice synthesizer for Akai MPC OS standalone devices (Force, MPC Live / One / X / Key), built as a native VST2 instrument with
 its own screen skin and Q-Link pages. It plays the way the DSI Poly Evolver's voice does: two analog-style oscillators and two
@@ -7,8 +7,8 @@ three-tap delay and output hack, three envelopes, four LFOs, the modulation slot
 sequencer with its trigger modes. Its program is the instrument's own 128 parameters and 64 sequencer steps, so Poly Evolver and
 Evolver program dumps load as they are.
 
-*The name follows Clementine-XT's (an orange for the orange Microwave XT): a blue fruit for the blue panel.
-Blueberry-PE is an independent project, not affiliated with or endorsed by Dave Smith Instruments or Sequential. The PE in the
+*The name: the Blue Morpho is an iridescent blue butterfly, and to morph is to change form, as the instrument's sounds do.
+Morpho-PE is an independent project, not affiliated with or endorsed by Dave Smith Instruments or Sequential. The PE in the
 name is a nod to the instrument it is modelled on.*
 
 **Status: development build, offline only.** It builds and passes the offline host test and its own engine tests; it has not
@@ -63,13 +63,13 @@ channel and poly pressure, program change, and the instrument's parameter CCs (m
 
 ## Building
 
-This folder is staged inside [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (`ports/blueberry-pe/`) and is meant to
+This folder is staged inside [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (`ports/morpho-pe/`) and is meant to
 move to its own repository. From the mpc-vst-plugins root:
 
 ```
-ports/blueberry-pe/tools/make_layout.sh                      # params.json, src/patch_tab.h and the skin layout
-tools/test_port.sh ports/blueberry-pe/vst/vst.json           # offline host test (ASan)
-tools/build_port.sh ports/blueberry-pe/vst/vst.json          # armhf .so + skin (Docker; the skin uses the browser renderer)
+ports/morpho-pe/tools/make_layout.sh                      # params.json, src/patch_tab.h and the skin layout
+tools/test_port.sh ports/morpho-pe/vst/vst.json           # offline host test (ASan)
+tools/build_port.sh ports/morpho-pe/vst/vst.json          # armhf .so + skin (Docker; the skin uses the browser renderer)
 ```
 
 Engine tests: see the first lines of `test/test_engine.c`.

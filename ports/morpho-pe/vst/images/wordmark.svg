@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="340" height="100" viewBox="0 0 340 100">
+  <!-- Morpho-PE wordmark, our own: a stylised blue butterfly and the name; not the instrument's logo -->
+  <defs>
+    <linearGradient id="wing" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#9fd8ff"/><stop offset="0.55" stop-color="#3a7bff"/><stop offset="1" stop-color="#1b2fb8"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(46,52)">
+    <path d="M0,-2 C-10,-34 -40,-40 -40,-18 C-40,-4 -22,4 0,0 Z" fill="url(#wing)" stroke="#e6f0ff" stroke-width="1.5"/>
+    <path d="M0,-2 C10,-34 40,-40 40,-18 C40,-4 22,4 0,0 Z" fill="url(#wing)" stroke="#e6f0ff" stroke-width="1.5"/>
+    <path d="M0,2 C-8,8 -30,10 -28,26 C-26,36 -8,26 0,6 Z" fill="url(#wing)" stroke="#e6f0ff" stroke-width="1.5"/>
+    <path d="M0,2 C8,8 30,10 28,26 C26,36 8,26 0,6 Z" fill="url(#wing)" stroke="#e6f0ff" stroke-width="1.5"/>
+    <rect x="-1.6" y="-14" width="3.2" height="34" rx="1.6" fill="#0d1450"/>
+    <path d="M-1,-13 C-4,-22 -8,-26 -12,-28 M1,-13 C4,-22 8,-26 12,-28" stroke="#f5b400" stroke-width="1.6" fill="none"/>
+  </g>
+  <text x="98" y="58" font-family="Titillium Web, sans-serif" font-weight="700" font-size="42" fill="#ffffff" letter-spacing="1">morpho</text>
+  <text x="100" y="82" font-family="Titillium Web, sans-serif" font-weight="600" font-size="13" fill="#f5b400" letter-spacing="3.2">PE  ·  FOUR-VOICE SYNTH</text>
+</svg>

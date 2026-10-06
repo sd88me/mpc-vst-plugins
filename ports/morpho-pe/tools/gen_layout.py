@@ -82,7 +82,7 @@ def mid(b): return b[1] + b[3] // 2
 def right(b): return b[0] + b[2]
 def bottom(b): return b[1] + b[3]
 
-HEADER = """# Blueberry-PE skin: an ultramarine plate with rounded blue sections, black pointer knobs, red LEDs, a grey LCD and amber
+HEADER = """# Morpho-PE skin: an ultramarine plate with rounded blue sections, black pointer knobs, red LEDs, a grey LCD and amber
 # signal-flow lines, drawn as our own motif (no logos, no traced panel art). Written by tools/gen_layout.py: do not edit.
 theme_bg=1c2b93
 theme_panel=2b47d6

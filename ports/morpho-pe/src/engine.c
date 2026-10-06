@@ -1,4 +1,4 @@
-/* Blueberry-PE: a four-voice instrument modelled on the DSI Poly Evolver's voice (manual v1.4 and the DSP 3.5 firmware tables).
+/* Morpho-PE: a four-voice instrument modelled on the DSI Poly Evolver's voice (manual v1.4 and the DSP 3.5 firmware tables).
  * The program is the instrument's own 192 bytes (128 parameters + 4 x 16 sequencer steps), so its SysEx dumps load as they are.
  *
  * One voice = two analog-style channels (Osc 1 + Osc 3 left, Osc 2 + Osc 4 right) into a 2/4-pole lowpass and a VCA per channel,
@@ -811,7 +811,7 @@ static void *pe_create(const char *dir) {
         if (!s->v[i].dly) { for (int j = 0; j <= i; j++) free(s->v[j].dly); free(s); return NULL; }
     }
     waves_open(s->waves);
-    strcpy(s->banks[0].name, "Blueberry");
+    strcpy(s->banks[0].name, "Morpho");
     s->nbanks = 1;
     if (dir && *dir) {
         snprintf(s->dir, sizeof s->dir, "%s", dir);

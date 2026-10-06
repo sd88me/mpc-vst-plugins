@@ -1,9 +1,9 @@
 {
-  "name": "Blueberry-PE",
+  "name": "Morpho-PE",
   "vendor": "sd88me",
-  "uid": "BlbP",
+  "uid": "MrpP",
   "version": 1000,
-  "so": "blueberry_pe.so",
+  "so": "morpho_pe.so",
   "params": "params.json",
   "layout": "layout.conf",
   "art": "html",
