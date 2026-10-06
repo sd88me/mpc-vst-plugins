@@ -1,11 +1,12 @@
 {
-  "name": "Persimmon-PE",
+  "name": "Blueberry-PE",
   "vendor": "sd88me",
-  "uid": "PrsP",
+  "uid": "BlbP",
   "version": 1000,
-  "so": "persimmon_pe.so",
+  "so": "blueberry_pe.so",
   "params": "params.json",
   "layout": "layout.conf",
+  "art": "html",
   "defines": {"MODULE_SUBDIR": "\".\"", "HAS_LFO_BPM": 1, "HAS_TRANSPORT": 1, "HAS_DISPLAY_REV": 1, "PARAM_TEXT_MAX": 32},
   "build": {
     "root": "..",

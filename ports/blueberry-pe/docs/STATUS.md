@@ -9,7 +9,8 @@
   feedback with grunge, 4-pole highpass, distortion with noise gate, three-tap delay with both feedback paths and synced times,
   output hack, three envelopes (env 3 with delay), four LFOs (synced rates, key sync above 100), four mod slots and the
   seven fixed routes, the 4 x 16 sequencer with rests, resets, swing, clock modulation and the trigger modes, MIDI CCs.
-- Plugin: 219 parameters (128 program + 64 steps + host controls + popup state), an eight-tab skin, banks from `.syx`,
+- Plugin: 219 parameters (128 program + 64 steps + host controls + popup state), an eight-tab skin in the browser renderer
+  (`"art": "html"`, `vst/skin.css`, signal-flow drawings written by `tools/gen_layout.py`), banks from `.syx`,
   user waveshape dumps, state chunk.
 - Tests: `tools/test_port.sh` passes every check but one (below); `test/test_engine.c` passes (pitch to 0.1 Hz, every built-in
   program, sequencer, extremes, SysEx and state round trips, a folder of banks and a waveshape).
@@ -26,6 +27,11 @@
   plugin: the Ext In trigger modes act like their keyboard counterparts and the input sources read zero.
 - Sequencer MIDI-out destinations (notes, velocity, controllers) are ignored: MPC does not take MIDI from a VST.
 - Not run on a device: skin, Q-Links, CPU and the MPC OS 2.x shape are unchecked.
+
+## Skin previews without Docker (2026-10-06)
+`SHADOW_ART=<mpc-vst-plugins>/tools/html_art.py python3 <mpc-vst-plugins>/tools/gen_vst.py vst/vst.json`, then `tools/studio.py preview`.
+It needs the `playwright` Python package matching the installed Chromium (in this environment: `pip install playwright==1.56.0`
+for Chromium build 1194).
 
 ## Next steps
 1. Device: build, bench, play, save/reload a project (mpc-vst-plugins docs/PORTING.md section 4).

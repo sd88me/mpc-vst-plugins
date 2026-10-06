@@ -1,4 +1,4 @@
-# Persimmon-PE: agent guide
+# Blueberry-PE: agent guide
 
 MPC OS VST2 instrument modelled on the DSI Poly Evolver voice. Start with `README.md`, `docs/STATUS.md` and `docs/FIRMWARE.md`,
 then mpc-vst-plugins' `CLAUDE.md`, `docs/NOTES.md` and `docs/PORTING.md`.

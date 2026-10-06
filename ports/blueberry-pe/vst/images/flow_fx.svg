@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="628" viewBox="0 0 1280 628">
+<text x="20" y="170" font-family="Titillium Web, sans-serif" font-weight="700" font-size="15" letter-spacing="2" fill="#f5b400" text-anchor="start">FROM AMP</text>
+<path d="M150,73 L190,73" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="150" cy="73" r="5.5" fill="#f5b400"/>
+<polygon points="190,73 177,66 177,80" fill="#f5b400"/>
+<path d="M610,73 L650,73" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="610" cy="73" r="5.5" fill="#f5b400"/>
+<polygon points="650,73 637,66 637,80" fill="#f5b400"/>
+<path d="M720,146 L720,184" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="720" cy="146" r="5.5" fill="#f5b400"/>
+<polygon points="720,184 713,171 727,171" fill="#f5b400"/>
+<path d="M930,257 L970,257" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="930" cy="257" r="5.5" fill="#f5b400"/>
+<polygon points="970,257 957,250 957,264" fill="#f5b400"/>
+<path d="M1040,330 L1040,364" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1040" cy="330" r="5.5" fill="#f5b400"/>
+<polygon points="1040,364 1033,351 1047,351" fill="#f5b400"/>
+<path d="M1110,437 L1255,437" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1110" cy="437" r="5.5" fill="#f5b400"/>
+<polygon points="1255,437 1242,430 1242,444" fill="#f5b400"/>
+<text x="1255" y="422" font-family="Titillium Web, sans-serif" font-weight="700" font-size="15" letter-spacing="2" fill="#f5b400" text-anchor="end">OUT</text>
+<path d="M370,394 L300,394 L300,508" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="370" cy="394" r="5.5" fill="#f5b400"/>
+<polygon points="300,508 293,495 307,495" fill="#f5b400"/>
+<text x="300" y="532" font-family="Titillium Web, sans-serif" font-weight="700" font-size="15" letter-spacing="2" fill="#f5b400" text-anchor="middle">FEEDBACK 2 TO THE FILTER</text>
+</svg>

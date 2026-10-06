@@ -1,4 +1,4 @@
-# Persimmon-PE
+# Blueberry-PE
 
 A four-voice synthesizer for Akai MPC OS standalone devices (Force, MPC Live / One / X / Key), built as a native VST2 instrument with
 its own screen skin and Q-Link pages. It plays the way the DSI Poly Evolver's voice does: two analog-style oscillators and two
@@ -7,7 +7,8 @@ three-tap delay and output hack, three envelopes, four LFOs, the modulation slot
 sequencer with its trigger modes. Its program is the instrument's own 128 parameters and 64 sequencer steps, so Poly Evolver and
 Evolver program dumps load as they are.
 
-*Persimmon-PE is an independent project, not affiliated with or endorsed by Dave Smith Instruments or Sequential. The PE in the
+*The name follows Clementine-XT's (an orange for the orange Microwave XT): a blue fruit for the blue panel.
+Blueberry-PE is an independent project, not affiliated with or endorsed by Dave Smith Instruments or Sequential. The PE in the
 name is a nod to the instrument it is modelled on.*
 
 **Status: development build, offline only.** It builds and passes the offline host test and its own engine tests; it has not
@@ -44,10 +45,14 @@ Without any files, eight built-in programs of this project's own play on the ope
 
 ## Using it
 
-Eight tabs: **PROGRAM** (banks, programs, key mode, voices, sequencer run/clock/tempo/divide/trigger, sequence destinations),
-**OSC** (oscillators 1-4, glide, sync, noise, FM and ring modulation, hacks), **FILTER** (lowpass, filter and amp envelopes,
-VCA, highpass, distortion), **FX** (tuned feedback, delay taps and feedback), **LFO** (four LFOs and envelope 3), **MODS**
-(four modulation slots and the fixed routes), **SEQ 1-2** and **SEQ 3-4** (the step sequencer, one Q-Link page per track).
+Eight tabs, grouped like the instrument's panel sections and in its signal order, with amber flow lines showing the path:
+**PROGRAM** (program and bank, misc parameters, sequencer clock and run, sequence destinations), **OSC** (oscillators 1-4, noise
+and external input feeding the filter), **FILTER** (low pass filter into the amplifier), **FX** (high pass, tuned feedback,
+distortion, delay, output hack, voice volume), **MOD** (envelope 3 and the four LFOs), **MODS** (the four modulators and the fixed
+controller routes), **SEQ 1-2** and **SEQ 3-4** (the step sequencer, one Q-Link page per track).
+
+The look takes its cues from the instrument without copying it: an ultramarine plate, brighter rounded blue sections, black
+pointer knobs, red LEDs and a grey LCD. The wordmark and every drawing are this project's own.
 
 **Sequencer.** RUN starts the sequencer on voice 1 (Run, or Transport to follow MPC's play button); CLOCK picks the program's
 BPM or MPC's tempo. The gated trigger modes (Key Gates Seq and the others the manual marks AUTO) start a sequence on each key,
@@ -58,13 +63,13 @@ channel and poly pressure, program change, and the instrument's parameter CCs (m
 
 ## Building
 
-This folder is staged inside [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (`ports/persimmon-pe/`) and is meant to
+This folder is staged inside [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (`ports/blueberry-pe/`) and is meant to
 move to its own repository. From the mpc-vst-plugins root:
 
 ```
-ports/persimmon-pe/tools/make_layout.sh                      # params.json, src/patch_tab.h and the skin layout
-tools/test_port.sh ports/persimmon-pe/vst/vst.json           # offline host test (ASan)
-tools/build_port.sh ports/persimmon-pe/vst/vst.json          # armhf .so + skin (Docker)
+ports/blueberry-pe/tools/make_layout.sh                      # params.json, src/patch_tab.h and the skin layout
+tools/test_port.sh ports/blueberry-pe/vst/vst.json           # offline host test (ASan)
+tools/build_port.sh ports/blueberry-pe/vst/vst.json          # armhf .so + skin (Docker; the skin uses the browser renderer)
 ```
 
 Engine tests: see the first lines of `test/test_engine.c`.

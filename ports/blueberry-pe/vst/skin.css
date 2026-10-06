@@ -1,0 +1,45 @@
+/* Blueberry-PE skin stylesheet (loaded after tools/html_art/default.css of mpc-vst-plugins). Colours come from the theme_* lines.
+ * Cues from the instrument's panel, drawn as our own: a deep ultramarine plate with a soft sheen, brighter rounded blue sections
+ * with a pale outline and white caps titles, black knobs with a white pointer line, red LEDs, a grey LCD in a black bezel.
+ * Geometry is never touched (MPC puts its live controls on top). */
+:root { --label-size: 13px; --title-size: 14px; --radius: 6px; --sheen: 0.12; }
+
+/* the plate */
+#g > rect:first-child[width="1280"] { fill: transparent; }
+#c:has(#g > rect:first-child[width="1280"]) {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 60% at 30% 0%, rgba(120, 150, 255, 0.28), rgba(120, 150, 255, 0) 70%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, rgba(5, 10, 60, 0) 60%, rgba(5, 10, 60, 0.55) 100%),
+    linear-gradient(170deg, #2436b4 0%, #1b2a92 55%, #15207a 100%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.015) 0 1px, rgba(0, 0, 0, 0.02) 1px 3px);
+}
+
+/* sections: brighter blue, rounded, a pale outline, white caps titles top left, no rule */
+.frame-border { fill: var(--panel); stroke: var(--line); stroke-width: 1.6; rx: 12px;
+  filter: drop-shadow(0 2px 3px rgba(4, 8, 50, 0.55)); }
+.frame-rule { display: none; }
+.frame-title { font-size: var(--title-size); font-weight: 700; fill: #ffffff; letter-spacing: 0.12em; }
+
+/* black knobs, white pointer line, a thin pale value arc on a dark track */
+.knob-face { fill: #141417; stroke: #050507; stroke-width: 1; filter: drop-shadow(0 3px 3px rgba(2, 6, 40, 0.7)); }
+.knob-sheen { opacity: 0.55; }
+.knob-pointer { stroke: #ffffff; stroke-width: 3.5; }
+.knob-track { stroke: rgba(8, 14, 70, 0.75); }
+.knob-arc { stroke: #c9d4ff; opacity: 0.9; }
+.text, .box-label { fill: #ffffff; letter-spacing: 0.06em; }
+
+/* red LEDs */
+.look-led-bezel { fill: #10142e; stroke: #8fa3ff; stroke-width: 1; }
+.look-led { fill: #4a0c18; }
+.on .look-led { fill: #ff2d55; filter: drop-shadow(0 0 6px #ff2d55); }
+
+/* popups and text fields: dark blue wells; the LCD: grey glass in a black bezel */
+.box { fill: #15207a; stroke: #93a8ff; stroke-width: 1.2; rx: 5px; }
+.arrow-bg { fill: #c8ccd6; }
+.arrow { fill: #15161a; }
+.dot-bezel { fill: #101216; }
+.dot-arrow { fill: #c8ccd6; }
+.button-bg { fill: #c8ccd6; }
+.seg-tx { fill: #ffffff; }
+.tile-border { stroke: rgba(150, 170, 255, 0.5); }

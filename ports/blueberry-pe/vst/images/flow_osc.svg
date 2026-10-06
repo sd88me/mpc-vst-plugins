@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="628" viewBox="0 0 1280 628">
+<path d="M850,73 L1090,73" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="850" cy="73" r="5.5" fill="#f5b400"/>
+<path d="M850,227 L1090,227" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="850" cy="227" r="5.5" fill="#f5b400"/>
+<path d="M990,381 L1090,381" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="990" cy="381" r="5.5" fill="#f5b400"/>
+<path d="M990,535 L1090,535" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="990" cy="535" r="5.5" fill="#f5b400"/>
+<path d="M1130,73 L1090,73" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1130" cy="73" r="5.5" fill="#f5b400"/>
+<path d="M1130,227 L1090,227" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1130" cy="227" r="5.5" fill="#f5b400"/>
+<path d="M1090,73 L1090,535" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<path d="M1090,458 L1255,458" fill="none" stroke="#f5b400" stroke-width="3" stroke-linejoin="round"/>
+<circle cx="1090" cy="458" r="5.5" fill="#f5b400"/>
+<polygon points="1255,458 1242,451 1242,465" fill="#f5b400"/>
+<text x="1255" y="443" font-family="Titillium Web, sans-serif" font-weight="700" font-size="15" letter-spacing="2" fill="#f5b400" text-anchor="end">LOW PASS</text>
+</svg>
