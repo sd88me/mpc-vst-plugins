@@ -127,6 +127,35 @@ Branch `force-fw-builder`, commit `daa0157` (not merged to `main`, not pushed):
     hardware-unconfirmed (QEMU fastboot may not reflect the real `oem` handler), but they lower confidence in
     the fastboot-unlock lead for Gen2 specifically. Lewinator56 also confirmed Windows fastboot binaries don't
     detect the MPC at all (matches our usbipd-win/WSL caveat) and that Gen2 is an RK3588 (vs. RK3288 on Gen1).
+  - **Discord, 2026-10-06 later (Lewinator56, fuzboxz, Dream Static), with screenshots fetched and read
+    2026-10-06.** Two different real devices were tested, which resolves the ambiguity above:
+    - **Gen1 confirmed — unlock string present.** Hostname `mpc-key-37` (an MPC Key 37). `lsblk` matches the
+      8-partition Gen1 layout already in this doc (`uboot-spl, env, uboot, splash, recoverysplash, rootfs,
+      content, data`). `strings /dev/mmcblk0p3 | grep -i inmusic` (p3 = `uboot`) **finds**
+      `inmusic-unlock-magic-7de5fbc22b8c524e` in plain text. This is now hardware-confirmed for Gen1, not just
+      sourced from the RedHate repo.
+    - **Gen2 confirmed — unlock string absent.** Hostname `mpc-live-iii` (real Gen2 hardware, not QEMU).
+      `lsblk` gives an 11-partition layout — `spl1, spl2, env1, env2, uboot1, uboot2, factory, boot, recovery,
+      rootfs, data` — matching a more detailed partition map someone decoded from U-Boot's own `partitions=`
+      env var (screenshot, source unstated): `spl1`/`spl2` are the idbloader FIT (ATF + OP-TEE), BootROM-verified
+      **only if eFuses are burned — annotated as not evidenced here**; `uboot1`/`uboot2` are U-Boot proper FITs,
+      checked by SPL via key `stage2-akai-1` (RSA-2048); `boot` (`kernel.fit`) is checked by U-Boot via key
+      `akai-1`, required. `strings … | grep -i inmusic` across `spl1`, `spl2`, `env1-4`, `uboot1`, `uboot2`
+      shows no `unlock-magic` string anywhere (only generic `vendor=inmusic`, `inmusic,az04-*` build tags).
+      `grep -i magic` turns up only generic FIT/bootcount magic-number strings, nothing unlock-related.
+      `grep -i fastboot` does find `fastboot_mmc_flash_write` and other fastboot plumbing, so fastboot is
+      compiled in without the unlock command, as suspected. **This supersedes fuzboxz's earlier QEMU-only
+      result with a same conclusion from real hardware: the Gen1 unlock-magic route does not exist on Gen2.**
+    - **New lead worth tracking, not yet pursued:** the partition-map screenshot flags Gen2's BootROM-level
+      verification of `spl1`/`spl2` as fuse-gated and (per that source) not evidenced as enabled. If accurate,
+      only the U-Boot-level chain (SPL→uboot, uboot→kernel) is actually enforced, and a custom *unsigned* SPL
+      written to `spl1`/`spl2` would run before any signature check applies — a different bypass angle from
+      reverse-engineering `stage2-akai-1`/`akai-1`. This needs independent verification (confirm the fuse state
+      from the SoC itself, not just this screenshot) before anyone treats it as more than a hint.
+    - Other ideas raised in the same thread, unverified and untried: dumping the U-Boot partitions for someone
+      to reverse the signature checks; spoofing Akai's plugin-manager server via local DNS + a local repo and
+      certificate (separate from this builder, and still blocked by the aarch64 build problem below); asking
+      Akai/inMusic directly; speculation that a future OS could lock Gen1 down the same way ("MPC 4.0").
   - **Origin of the unlock command (github.com/RedHate/Unbricking-inMusic-Products).** This repo documents the
     same `fastboot oem inmusic-unlock-magic-7de5fbc22b8c524e` command, with no stated origin, for MPC ONE,
     Gen1 MPC, Force and Numark Mixstream Pro (ENGINE OS). It does **not** cover Gen2 or RK3588, and never
