@@ -1,0 +1,27 @@
+{
+ "name": "Boris Granular",
+ "params": [
+  {"key": "density",       "name": "Density",   "min": 0.04, "max": 1,    "default": 0.5},
+  {"key": "grain_size",    "name": "Size",      "min": 20,   "max": 2000, "default": 200, "unit": "ms"},
+  {"key": "position",      "name": "Position",  "min": 0,    "max": 1,    "default": 0},
+  {"key": "pitch",         "name": "Pitch",     "min": 0.25, "max": 4,    "default": 1, "unit": "x"},
+  {"key": "feedback",      "name": "Feedback",  "min": 0,    "max": 90,   "default": 0, "unit": "%", "display": "int"},
+  {"key": "pan_width",     "name": "Pan Width", "min": 0,    "max": 100,  "default": 50, "unit": "%", "display": "int"},
+  {"key": "freeze",        "name": "Freeze",    "options": ["off", "on"], "default": 0},
+  {"key": "mix",           "name": "Dry/Wet",   "min": 0,    "max": 100,  "default": 50, "unit": "%", "display": "int"},
+  {"key": "envelope",      "name": "Envelope",  "min": 0,    "max": 1,    "default": 0},
+  {"key": "drift",         "name": "Drift",     "min": 0,    "max": 1,    "default": 0},
+  {"key": "random_length", "name": "Rdm Size",  "min": 0,    "max": 100,  "default": 0, "unit": "%", "display": "int"},
+  {"key": "random_delay",  "name": "Rdm Delay", "min": 0,    "max": 100,  "default": 0, "unit": "%", "display": "int"},
+  {"key": "random_pitch",  "name": "Rdm Shift", "min": 0,    "max": 100,  "default": 0, "unit": "%", "display": "int"},
+  {"key": "reverse_prob",  "name": "Reverse",   "min": 0,    "max": 100,  "default": 0, "unit": "%", "display": "int"},
+  {"key": "random_vol",    "name": "Rdm Vol",   "min": 0,    "max": 100,  "default": 0, "unit": "%", "display": "int"},
+  {"key": "chance",        "name": "Chance",    "min": 0,    "max": 100,  "default": 100, "unit": "%", "display": "int"},
+  {"key": "sync",          "name": "Sync",      "options": ["off", "on"], "default": 0},
+  {"key": "division",      "name": "Division",  "options": ["1/16", "1/8", "1/4", "1/2", "1/1", "2/1", "4/1"], "default": 2},
+  {"key": "rhythm",        "name": "Rhythm",    "options": ["normal", "dotted", "triplet"], "default": 0},
+  {"key": "gain",          "name": "Input",     "min": 0,    "max": 1.5,  "default": 1},
+  {"key": "mute",          "name": "Mute",      "options": ["off", "on"], "default": 0},
+  {"key": "voice_count",   "name": "Voices",    "min": 1,    "max": 24,   "default": 24, "display": "int"}
+ ]
+}

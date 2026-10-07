@@ -1175,3 +1175,16 @@ The contributor shared his package (a systemd timer service that makes one folde
 
 ## 2026-10-05: long integer lists skipped entries on a Q-Link and the wheel (Dexed banks, a Force); `nudge_pct` and `order=cols`
 Reported on a Force (Dexed 1.0.5 test build): on the BANKS tab the bank Q-Link and the wheel skipped several carts at a time. Cause, from the wrapper (`wrapper/vst2_wrap.c`, "whole numbers"): the bank index is an integer parameter spanning 0..998, and MPC sends a Q-Link event as the read-back value plus 1/128 of the range and a wheel click as plus 1/100 (NOTES "Input probe"), i.e. about 8 and 10 entries on that span; `settle()` rounds toward the move, so each event landed that far on (a short range such as 0..31 stays one step per event, as measured). Fix, opt-in per parameter: `"nudge_pct": N` (gen_vst.py, `param_t.nudge_pct`) makes any move up to N% of the range one step in its direction (combinable with `qlink_ticks`); a larger move still sets outright, and a move that lands on the minimum or maximum from inside that distance counts as a step, because MPC clamps what it sends (a nudge down from bank 3 sends 0, not -4.8). Test: `poc/steptest` has a `long` 0..998 param with `nudge_pct` 10, and `tools/host_test.c` checks six Q-Link events and six wheel clicks up one step each, back down to the minimum, a jump landing outright, and a clamped move at the top (all pass, `tools/test_port.sh poc/steptest/vst.json`, 31 checks). Offline only; not yet tried with a hand on the Force. Same report: the BANKS lists numbered across each row (1 2 / 3 4 ...), so a Q-Link stepping through them jumped left and right; `list ... order=cols` (`shadow_skin.list_keys`) numbers down each column first (left column 1..rows, then the next), so the lists read and step top to bottom.
+
+## 2026-10-07: Boris Granular effect port (offline only, not yet on a device)
+`ports/boris-granular/`: boris-move's Schwung `audio_fx_api_v2` DSP behind a small `mpc_engine_t` glue with `process()`.
+Found offline while porting:
+- Option labels that start with a digit ("1/16", "4/1") are read back by the wrapper's `str_to_norm()` as an option
+  index (`atoi`), so `get_param` returning the label lands on the wrong option. Return the index from the engine
+  (the port's glue does this for `division`); `tools/test_port.sh` catches it (option/nudge checks fail).
+- A wide `slider_h` (720 px) makes a 92160 px filmstrip, far over MPC's 16384 px image limit (`catalog_check.py`
+  warns). Keep horizontal sliders short or use knobs.
+- Effect Sync: an insert effect gets no MIDI clock, so `HAS_LFO_BPM` feeds the host tempo in as `lfo_bpm`.
+- Build host without QEMU/binfmt (and no Debian mirrors): `zig cc -target arm-linux-gnueabihf.2.31 -mcpu=cortex_a9`
+  (zig from PyPI) gives an armv7 hard-float `.so` exporting only `VSTPluginMain`, highest symbol GLIBC_2.4. The
+  normal path stays `tools/build_port.sh` (arm32v7/gcc:11-bullseye).

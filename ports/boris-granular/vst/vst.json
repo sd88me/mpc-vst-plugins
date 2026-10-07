@@ -1,0 +1,12 @@
+{
+  "name": "Boris Granular",
+  "vendor": "sd88me",
+  "uid": "BoGr",
+  "version": 1000,
+  "so": "boris_granular.so",
+  "effect": true,
+  "params": "params.json",
+  "layout": "layout.conf",
+  "defines": {"HAS_LFO_BPM": 1},
+  "build": {"root": "..", "sources": ["src/engine.c", "src/dsp/granular.c"], "cflags": ["-DBORIS_VST", "-Isrc/dsp"], "libs": ["-lm"]}
+}
