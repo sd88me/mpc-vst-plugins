@@ -19,7 +19,8 @@ Add a `vst.json` next to the engine (format in `tools/gen_vst.py`'s docstring; e
 `mpc-vst-maze/vst/vst.json`), then run `tools/build_port.sh path/to/vst.json`. That builds the skin from
 `layout` (or from an auto-layout when there's none, which is a good first pass), `params.h`, the `.so` (linked with
 `wrapper/vst2_wrap.c`) and `pluginlist-entry.xml`, all in `build/` next to `vst.json`. The port's own `build.sh` should
-just call it. Don't vendor copies of the wrapper or tools -- a port source that implements `mpc_engine()` itself
+just call it (a build that links `wrapper/vst2_wrap.c` itself must add `-lpthread`: the wrapper's engine lock needs
+it on the device's glibc 2.31 toolchain). Don't vendor copies of the wrapper or tools -- a port source that implements `mpc_engine()` itself
 can `#include "engine.h"` directly (the builder puts `wrapper/` on the include path). Then bench it (docs/BENCH.md) and package it (docs/RELEASING.md).
 
 **Vendor the engine's own source into the port's repo; don't fetch it at build time.** If the DSP comes from a
@@ -120,6 +121,18 @@ for the pattern). This applies to every future port, not just ones that hit the 
 - [ ] Instruments-browser tile: `"tile": "art/tile.png"` (270x110 PNG) in vst.json puts the artwork tile in the Sounds >
       INSTRUMENTS browser and ships a Default preset so the tile opens the plugin (`tools/xpl.py`; NOTES.md
       "Instruments-browser tiles"). Without it the plugin is a folder tile in the browser.
+- [ ] Presets in MPC's PRESET menu (2026-10-07; menu listing and loading checked on a Force, reload behaviour not yet): an engine with its own preset parameter
+      sets vst.json `"programs": {"param": "<key>"}` (an option list, or a `"display": "int"` range whose names the engine
+      gives as `get_param("<key>:<n>")`); one without sets `"presets": "presets.json"` (`{"presets": [{"name", "values":
+      {key: value}}]}`, values in each parameter's units or an option's label; gen_vst.py checks them). Set every
+      parameter in every preset, in the order the engine needs, and make the first one the plugin's default sound.
+- [ ] MIDI control (2026-10-07, offline): CC 20-35 on the track's MIDI input move the first page's Q-Links (first `qlinks`
+      line, column 1 top to bottom = CC 20-23) and NRPN n (CC 99/98, value on CC 6, fine on 38) sets parameter n. Both on by
+      default, and those CCs then don't reach the engine: an engine that reads CC 20-35 or NRPN itself sets vst.json
+      `"cc": false` / `"nrpn": false`.
+- [ ] Skin touch-ups the layout can't express (per-role live-text sizes/colours in `TUI.json`): a script named by
+      vst.json `"skin_post"`, run on the built skin folder; make it fail when its targets are missing. Design ideas from
+      other ports: `docs/COMMUNITY_SKINS.md`.
 
 ## 4. Device
 - [ ] The plugin is one folder, `/sdcard/Synths/<vendor> - VST - <name>/`: the `.so`, `Plugin Skins/`, `version.xml` and any data next to the `.so`.

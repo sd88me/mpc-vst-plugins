@@ -534,8 +534,13 @@ def preview(skin_dir, out_pattern, frame=40):
                     im.paste(img, (x + sx, y + sy), img)
                 elif sd["type"] == "Knob":
                     st = Image.open(os.path.join(skin_dir, sd["data"]["filmStrip"])).convert("RGBA")
-                    fw = st.size[0]
-                    fr = st.crop((0, frame * fw, fw, (frame + 1) * fw))
+                    # frames are image height / numFrames tall (non-square for sliders and meters, as stock);
+                    # `frame` is a position on the 128-frame knob scale
+                    n = max(1, int(sd["data"].get("numFrames") or shadow_skin.FRAMES))
+                    n_img = n + 1 if st.size[1] == (n + 1) * st.size[0] else n   # knobs: 128 square frames, numFrames 127
+                    fw, fh = st.size[0], st.size[1] // n_img
+                    k = min(n_img - 1, round(frame * (n_img - 1) / (shadow_skin.FRAMES - 1)))
+                    fr = st.crop((0, k * fh, fw, (k + 1) * fh))
                     im.paste(fr, (x + sx, y + sy), fr)
                 elif sd["type"] == "Button":
                     img = sd["data"]["offImage"]

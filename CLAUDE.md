@@ -7,7 +7,7 @@ built-in JUCE plugin host, with native MPC screen skins. Start here:
    truth, and add to it whenever you verify something new (with the date).
 2. `docs/PORTING.md`: the checklist for porting an engine or app to a plugin.
 3. `docs/BENCH.md` (CPU check) and `docs/RELEASING.md` (release zip + installer) before shipping a port.
-   `docs/ROADMAP.md`: repo features still to do. `docs/ADDINS.md`: addins (libraries MPC preloads) in the catalog.
+   `docs/ROADMAP.md`: repo features still to do. `docs/COMMUNITY_SKINS.md`: design techniques from other people's ports. `docs/ADDINS.md`: addins (libraries MPC preloads) in the catalog.
 4. `.claude/skills/mpc-vst-plugin/SKILL.md`: the build → skin → register → test workflow and gotchas.
 
 Ground rules:
