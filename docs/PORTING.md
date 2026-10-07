@@ -9,7 +9,7 @@
   same engine has an in-process build that fits the first category: an engine designed as an always-running
   standalone process (control socket, shared-memory audio) gives `processReplacing` nothing to read without real
   bridge work on the engine side. The DX7 port hit this and switched to an in-process build of the same engine.
-- A port can live in its own repo next to a checkout of this one (`MPC_VST`), as mpc-vst-maze/-dx7/-acid do.
+- A port can live in its own repo next to a checkout of this one (`MPC_VST`), as mpc-vst-maze/-dx7/-acid/-ott do.
 - **MIDI generator** (sequencer/arp): MPC ignores VST MIDI out, so send through an ALSA seq port (`poc/midiport.c`).
 - **App** (network, files, child processes): allowed, see NOTES "Beyond synths". Keep the audio thread
   non-blocking, use `posix_spawn` with LD_PRELOAD stripped (never `fork()`), and use libcurl for HTTPS.
@@ -49,7 +49,7 @@ for the pattern). This applies to every future port, not just ones that hit the 
       layout never shows it; build the test fixture to the port's layout.
 - [ ] Engine with NEON intrinsics (Vital DSP, many C++ DSP libraries): put `-mfpu=neon` (and any ARM-only defines, e.g.
       Vital's `-DNEON_ARM32`, since `vdivq_f32` is AArch64-only) in vst.json `build.cflags_arm`, which only the device
-      compile gets, so the x86 host test still builds (`ports/vitottx`).
+      compile gets, so the x86 host test still builds (mpc-vst-ott).
 - [ ] Optional, instruments only: `"defines": {"SAMPLE_ACCURATE": 1}` starts each note at its in-block position (MPC sends 0..127 for
       sequenced notes) instead of at the 128-frame block start. The engine's `render()` must then accept any 1..128 frames
       (check block-counting clocks, fixed-block cores) and `tools/test_port.sh` plus a bench (docs/BENCH.md) must pass.

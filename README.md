@@ -239,7 +239,6 @@ screen shows. If you are comfortable in a terminal and on 2.x, the output of thi
 - `tools/probe_device.sh`: a read-only device report (CPU, 32/64-bit MPC, audio threads, plugin formats: VST2 yes,
   VST3 no on current firmware).
 - `poc/gain.c`, `poc/synth.c`: minimal effect / instrument examples.
-- `ports/vitottx/`: vitOTTx (Vital's OTT multiband compressor) as an insert effect, with live band meters.
 - `poc/midiport.c`: a MIDI-generating plugin (tempo-synced) that drives other tracks through an ALSA port
   (MPC OS ignores VST MIDI output; `poc/midiout.c` shows that).
 - `poc/menuprobe.c`, `poc/textprobe.c`, `poc/netprobe.c`: the probes behind the picker, live-text and

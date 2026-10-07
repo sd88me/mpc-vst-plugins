@@ -1252,7 +1252,7 @@ controls through the track's MIDI input; MIDI-learning from a plugin's port froz
 host_test checks a CC 20 move and its report, and an NRPN set, on any parameter that keeps a value set from outside
 (engine-driven displays don't). Not yet run on a device.
 ## 2026-10-07: vitOTTx port (Vital DSP on armhf, wide meters as pictures), offline only
-`ports/vitottx`: Vital's OTT compressor (vendored from vitOTTx) as an insert effect. Vital's SIMD layer needs NEON on the
+[mpc-vst-ott](https://github.com/sd88me/mpc-vst-ott) (moved there from `ports/vitottx`, 2026-10-07): Vital's OTT compressor (vendored from vitOTTx) as an insert effect. Vital's SIMD layer needs NEON on the
 device: `-mfpu=neon` (the armhf compiler doesn't assume it) and `-DNEON_ARM32` (its `vdivq_f32` path is AArch64-only and fails
 to compile on armv7). Both go in the new vst.json `build.cflags_arm`, which the x86 host test doesn't get. Checked offline: the
 host test PASSED (ASan/UBSan), and a sine sweep through the engine gives the same levels on x86 and on armv7 under QEMU
