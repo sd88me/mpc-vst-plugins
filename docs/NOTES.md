@@ -1253,7 +1253,7 @@ host_test checks a CC 20 move and its report, and an NRPN set, on any parameter 
 (engine-driven displays don't). Not yet run on a device.
 
 ## 2026-10-07: Boris Granular effect port (offline only, not yet on a device)
-`ports/boris-granular/`: boris-move's Schwung `audio_fx_api_v2` DSP behind a small `mpc_engine_t` glue with `process()`.
+[sd88me/mpc-vst-boris](https://github.com/sd88me/mpc-vst-boris): boris-move's Schwung `audio_fx_api_v2` DSP behind a small `mpc_engine_t` glue with `process()`.
 Found offline while porting:
 - Option labels that start with a digit ("1/16", "4/1") are read back by the wrapper's `str_to_norm()` as an option
   index (`atoi`), so `get_param` returning the label lands on the wrong option. Return the index from the engine
