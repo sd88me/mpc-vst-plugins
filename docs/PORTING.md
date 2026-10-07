@@ -46,6 +46,9 @@ for the pattern). This applies to every future port, not just ones that hit the 
       convention (`MODULE_DIR` itself, or `MODULE_DIR/banks/`?) against the port's on-device layout. A mismatch
       fails silently (no files found, default patch) and an offline test built on the upstream's own folder
       layout never shows it; build the test fixture to the port's layout.
+- [ ] Engine with NEON intrinsics (Vital DSP, many C++ DSP libraries): put `-mfpu=neon` (and any ARM-only defines, e.g.
+      Vital's `-DNEON_ARM32`, since `vdivq_f32` is AArch64-only) in vst.json `build.cflags_arm`, which only the device
+      compile gets, so the x86 host test still builds (`ports/vitottx`).
 - [ ] Optional, instruments only: `"defines": {"SAMPLE_ACCURATE": 1}` starts each note at its in-block position (MPC sends 0..127 for
       sequenced notes) instead of at the 128-frame block start. The engine's `render()` must then accept any 1..128 frames
       (check block-counting clocks, fixed-block cores) and `tools/test_port.sh` plus a bench (docs/BENCH.md) must pass.

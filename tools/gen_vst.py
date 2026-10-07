@@ -22,6 +22,8 @@ vst.json (paths are relative to the vst.json's folder):
                                                  #   refreshes the host; PARAM_TEXT_MAX: readout length, default 24 -- see wrapper/vst2_wrap.c)
       "build": {"root": "..", "sources": ["src/engine.c"], "cflags": ["-Isrc"], "libs": ["-lm"]}
     }
+build.cflags_arm (optional): flags for the device (armhf) compile only, not the x86 host test, e.g. ["-mfpu=neon"]
+for an engine with NEON intrinsics (every MPC/Force CPU has NEON; the armhf compiler doesn't assume it).
 The sources provide mpc_engine() (wrapper/engine.h). An engine from another ecosystem names its own
 parameter source instead of "params" and gets its adapter linked in (adapters/<name>/README.md).
 The VST parameter index of each key is its position in the list; skins bind to it as "Parameter N".
@@ -181,6 +183,7 @@ def main():
         root = os.path.normpath(os.path.join(here, b.get("root", ".")))
         for k, v in (("ROOT", root), ("PORT", os.path.relpath(here, root)), ("SO", cfg["so"]),
                      ("SOURCES", " ".join(b.get("sources", []))), ("CFLAGS", " ".join(b.get("cflags", []))),
+                     ("ARM_CFLAGS", " ".join(b.get("cflags_arm", []))),
                      ("LIBS", " ".join(b.get("libs", ["-lm"]))),
                      ("LAYOUT", "1" if cfg.get("layout") else ""),
                      ("TITLE_FONT", cfg.get("title_font", "")),

@@ -18,7 +18,7 @@ Stop any separately attached audio engines first.
 1. **Engine**: anything providing `mpc_engine()` (`wrapper/engine.h`: create/destroy/midi/set_param/get_param/
    render, 44.1 kHz int16 stereo in 128-frame blocks, the Force's own period) links against `wrapper/vst2_wrap.c`
    + generated `params.h` → one `.so` exporting `VSTPluginMain`. Compile out host-specific quirks with a
-   `-D<NAME>_VST` flag. An engine written for another host comes in through `adapters/<name>/`.
+   `-D<NAME>_VST` flag. Device-only flags (`-mfpu=neon` for NEON intrinsics) go in vst.json `build.cflags_arm`. An engine written for another host comes in through `adapters/<name>/`.
    **Vendor third-party engine source into the port's own repo (committed), never `git clone` it at build
    time into a gitignored scratch dir** -- see docs/PORTING.md's Quick Start for the full rationale/pattern
    (`mpc-vst-dx7`'s `src/VENDORED.md` is the worked example: vendored commit, license, and exactly what was

@@ -47,7 +47,7 @@ else
     "pip install -q --no-warn-script-location --target /tmp/p pillow >/dev/null 2>&1; PYTHONPATH=/tmp/p python3 /mv/tools/gen_vst.py '$PORT/vst.json'"
 fi
 
-# 3. the plugin (armhf, glibc 2.31 (bullseye) so it loads on MPC OS 2.x (glibc 2.32) as well as 3.x (2.39); keep the highest symbol <= 2.32 or the plugin is listed as MPC OS 3.x only)
+# 3. the plugin (vst.json build.cflags_arm is added to these compiles only, not the host test) (armhf, glibc 2.31 (bullseye) so it loads on MPC OS 2.x (glibc 2.32) as well as 3.x (2.39); keep the highest symbol <= 2.32 or the plugin is listed as MPC OS 3.x only)
 # All-C sources (every port so far): unchanged single gcc command (byte-identical Maze builds).
 # Any .cpp source (e.g. a real emulator engine like jv880's): vst2_wrap.c is always plain C
 # (gcc -std=gnu11; it uses void*-to-typed-pointer conversions g++ rejects), so each source compiles
@@ -58,7 +58,7 @@ case "$SOURCES" in
 esac
 if [ "$CXXPORT" = 0 ]; then
   docker run --rm --platform linux/arm/v7 -u "$U" -v "$ROOT":/b -v "$MV":/mv:ro -w /b arm32v7/gcc:11-bullseye bash -euc "
-    gcc -O2 -Wall -Wextra -Wno-unused-parameter -fPIC -shared -fvisibility=hidden -std=gnu11 $CFLAGS -I'$PORT/build' -I/mv/wrapper \
+    gcc -O2 -Wall -Wextra -Wno-unused-parameter -fPIC -shared -fvisibility=hidden -std=gnu11 $CFLAGS $ARM_CFLAGS -I'$PORT/build' -I/mv/wrapper \
         $SOURCES $ADAPTER_SRC /mv/wrapper/vst2_wrap.c $LIBS -Wl,--no-undefined -o '$PORT/build/$SO'
     strip '$PORT/build/$SO'
     echo \"exported: \$(readelf --dyn-syms -W '$PORT/build/$SO' | grep -E ' GLOBAL .* [0-9]+ [A-Za-z]' | grep -v UND | awk '{print \$8}' | tr '\n' ' ')\"
@@ -70,8 +70,8 @@ else
     for f in $SOURCES; do
       o=\"$PORT/build/\${f//\//_}.o\"
       case \"\$f\" in
-        *.cpp|*.cc|*.cxx) g++ -O2 -Wall -Wextra -Wno-unused-parameter -fPIC -fvisibility=hidden -std=gnu++11 $CFLAGS -I'$PORT/build' -I/mv/wrapper -c \"\$f\" -o \"\$o\" ;;
-        *) gcc -O2 -Wall -Wextra -Wno-unused-parameter -fPIC -fvisibility=hidden -std=gnu11 $CFLAGS -I'$PORT/build' -I/mv/wrapper -c \"\$f\" -o \"\$o\" ;;
+        *.cpp|*.cc|*.cxx) g++ -O2 -Wall -Wextra -Wno-unused-parameter -fPIC -fvisibility=hidden -std=gnu++11 $CFLAGS $ARM_CFLAGS -I'$PORT/build' -I/mv/wrapper -c \"\$f\" -o \"\$o\" ;;
+        *) gcc -O2 -Wall -Wextra -Wno-unused-parameter -fPIC -fvisibility=hidden -std=gnu11 $CFLAGS $ARM_CFLAGS -I'$PORT/build' -I/mv/wrapper -c \"\$f\" -o \"\$o\" ;;
       esac
       OBJS=\"\$OBJS \$o\"
     done
