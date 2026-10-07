@@ -248,7 +248,7 @@ int main(void) {
     }
     for (int i = 0; i < NPARAMS; i++) {   /* a long whole-number list (a bank list): nudge_pct makes each Q-Link event and wheel click one step */
         const param_t *p = &PARAMS[i];
-        if (p->nopts || !p->int_display || p->nudge_pct <= 0 || p->max - p->min < 2) continue;
+        if (p->nopts || !p->int_display || p->nudge_pct <= 0 || p->max - p->min < 128) continue;   /* a Q-Link event (1/128) is at least one step of a list this long */
         float range = p->max - p->min, rate[2] = {1.0f / 128, 0.01f};   /* a Q-Link event and a data wheel click, of the whole range */
         const char *who[2] = {"Q-Link events", "data wheel clicks"};
         for (int r = 0; r < 2; r++) {
@@ -276,7 +276,7 @@ int main(void) {
         break;
     }
     for (int i = 0; i < NPARAMS; i++)   /* the first whole-number param */
-        if (!PARAMS[i].nopts && PARAMS[i].int_display && PARAMS[i].qlink_ticks <= 1 && PARAMS[i].max - PARAMS[i].min >= 2) { step_tests(a, i, "int", (int)(PARAMS[i].max - PARAMS[i].min)); break; }
+        if (!PARAMS[i].nopts && PARAMS[i].int_display && PARAMS[i].qlink_ticks <= 1 && !PARAMS[i].nudge_pct && PARAMS[i].max - PARAMS[i].min >= 2) { step_tests(a, i, "int", (int)(PARAMS[i].max - PARAMS[i].min)); break; }
     if (pop >= 0) {
         int t = PARAMS[pop].popup_of, n = PARAMS[t].nopts;
         a->setP(a, pop, 1); CHECK(a->getP(a, pop) > 0.5f, "popup %s opens", PARAMS[pop].key);
