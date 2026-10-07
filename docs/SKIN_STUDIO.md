@@ -116,7 +116,7 @@ the build in Docker with only that folder (and this repo) mounted. Images: `.png
 | Page background | `art file=bg.jpg [fit=cover]` | fills the plugin area (`fit`: contain, cover, stretch) |
 | Placed image, logo | `art file=logo.png x= y= w= h=` | anywhere, at any size; ends up baked into the background |
 | Value pictures | `picture x= y= w= h= key=<param> files="a.png,b.png,.."` | one image per option of the parameter, the current one shown (MPC switches them: mode images) |
-| Meter | `meter cx= cy= w= h= key=<param> strip=meter.png` | a display-only filmstrip. The engine sets the parameter; MPC redraws it live when the wrapper reports the change (`HAS_DISPLAY_REV`, verified on an MPC One) |
+| Meter | `meter cx= cy= w= h= key=<param> strip=meter.png` | a display-only filmstrip. The engine sets the parameter; MPC redraws it live when the wrapper reports the change (`HAS_DISPLAY_REV`, verified on an MPC One). Frames are the meter's own w x h, as many as the strip has (`frames=`, else counted), at most 12288 px of strip (2026-10-07, as stock skins; device check pending) |
 
 **Defaults for a whole kind:** a top-level `<group>_<attr>=` line, e.g. `knob_look=moog`, `slider_img=images/cap.png`,
 `seg_img=images/seg.png` (groups `knob`, `slider`, `toggle`, `button`, `seg`, `frame`, `popup`, `meter`). A line that
@@ -190,6 +190,23 @@ MPC reads two maps from the skin's `Q-Links.json`:
   MPC's bottom-up grid numbering for you). Without a `qlinks` line, a tab uses its first 16 controls in file order.
 - **Program/track mode** (Q-Links fixed to the track or program, whatever page is showing): one map. Set it with a
   top-level `qlinks_track = key,...` line (same ordering); without it, page 1's set is used.
+- **Per sub-page controls (2026-10-07, offline):** `banks="ONE|TWO"` on a control, frame, text or art line keeps it to
+  those `qlinks` pages of its tab, so each sub-page can show and touch-edit what its Q-Links turn (a step sequencer's
+  PITCH / GATE lanes in the same cells). Baked parts get their own image on those sub-pages. Not yet seen on a device.
+
+## Built-skin check (2026-10-07)
+`tools/skin_check.py "<plugin folder>"` reads the built `TUI.json`/`Q-Links.json` and reports, per page: TOUCH (two
+controls' touch boxes overlap while both show: MPC gives the touch to one), EDGE (a box past 1280x628) and QLINK (a
+Q-Link on a parameter no control on that page shows) and OPTS (a switch group missing some of its options). `gen_vst.py` runs it after every skin build and prints the
+findings as `warning: skin:` lines. It complements the browser editor's layout checks, and sees what the builder made
+(label widths, `when=` modes, `banks=` sub-pages).
+
+## Text size and touch width per control (2026-10-07, offline)
+`knob` and `slider_v`/`slider_h` take `ns=<px>` (name text; `ns=0` drops the name), `vs=<px>` (value text) and
+`bw=<px>` (touch box and text width; default 130). Narrow `bw=` where neighbours sit closer than ~130 px, or MPC gives
+a touch to the wrong control. Toggles take `bw=` and `ns=0` (the switch alone); `enum_v` takes `sh=` like `enum_h`.
+`knob ... lay=side bw= bh= vs=` puts the knob's picture at the left of a bw x bh box and its value, large, in the rest
+(no name): a step cell you drag like a knob. From `saustin2010/vst_instruments`' fork; not yet seen on a device.
 
 ## Coming next
 Tracked in [ROADMAP.md](ROADMAP.md) ("Skin controls" and "Porting and tooling"), including a build-and-preview

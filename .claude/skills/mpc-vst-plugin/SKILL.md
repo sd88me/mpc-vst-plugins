@@ -111,6 +111,8 @@ force-acid: theme-less first pass looked "plausible" until checked against the s
 look -- yellow chassis, red buttons, dark knobs -- see mpc-vst/docs/NOTES.md). No shadow page to copy
 from: pick theme colours on purpose instead of leaving the default.
 
+`gen_vst.py` runs `tools/skin_check.py` on every built skin: `warning: skin:` lines name overlapping touch boxes (TOUCH:
+narrow with `bw=` or move), boxes past 1280x628 (EDGE) and Q-Links on parameters the page doesn't show (QLINK). Fix them.
 Check offline before deploying: composite TUI.json + PNGs into a preview image (`tools/studio.py preview`)
 and look at it -- and if the app has a real screenshot/mockup (its `docs/*.png`, or its own shadow
 page's look), compare against *that*, not just "does this look like a plausible skin". Skin-only changes
@@ -142,6 +144,8 @@ Parameter entries feeding `gen_vst.py` (`tools/params.py` format) can carry:
 - `vst.json`'s `"title_font"` (a `.ttf`/`.otf` path, e.g. a real downloaded font under an OFL-style licence,
   never a recreation of a manufacturer's proprietary font) overlays frame titles in that font via PIL after
   the PNGs are drawn; off by default, every other port keeps its current look.
+- Per control: `ns=`/`vs=` (name/value px, `ns=0` no name) and `bw=` (touch width) on knobs and sliders; `banks="A|B"`
+  on any line keeps it to those `qlinks` sub-pages; toggles take `bw=`/`ns=0`; `knob lay=side bw= bh= vs=` is a step cell (docs/SKIN_STUDIO.md; offline only so far).
 - `scale_names=1` in `layout.conf` makes the knob and toggle names MPC draws follow `label_scale` (21 px × it,
   toggle box grown to fit); without it they stay the fixed 15-17 px / 120 px box every existing skin has.
 - A `readout` or `list` line can style its live text: `tsize=`, `tcolor=`, `tweight=`, `talign=` (left|center|right),
@@ -169,6 +173,30 @@ Parameter entries feeding `gen_vst.py` (`tools/params.py` format) can carry:
   background thread: the bench harness has no pacing and races through blocks far faster than real time. For
   such a plugin, sample real cost live instead: `/proc/<pid>/task/<tid>/stat` deltas against `/proc/uptime`
   while actually playing it on-device.
+
+## Presets (MPC's PRESET menu)
+vst.json `"presets": "presets.json"` (the wrapper's own list) or `"programs": {"param": "<key>"}` (the engine's preset
+param) makes the plugin report VST programs; MPC lists them in the plugin header's PRESET menu (seen loading on a Force,
+2026-10-07). Details: docs/PORTING.md.
+The host test checks names, picking and the host redraw. A re-pick of the current program is ignored (JUCE does it at load).
+
+## MIDI control and the engine lock
+CC 20-35 drive the first page's Q-Links, NRPN n sets parameter n (vst.json `"cc"`/`"nrpn": false` to turn off; the
+CCs used never reach the engine). Every engine call is serialised per instance (`eng_set()` etc.): an engine needn't be
+thread-safe, but a slow `set_param` holds audio. Links need `-lpthread`. host_test covers both. Details: docs/NOTES.md.
+
+## Design techniques (from community skins; docs/COMMUNITY_SKINS.md)
+- `"art": "html"` + `art_css` + a full `theme_*` palette; one script-made background `art` per tab with frames and
+  captions baked in; only live parts are widgets. Keep coordinates in one place (script writes or reads the layout).
+- Free-form hit targets (a circle of fifths): one-cell `list` widgets on the background, text from the engine.
+- Displays: rows of `picture` widgets on read-only option params (bar graphs, waveforms); never animate (screen thread
+  cost, NOTES 2026-10-07).
+- App-like screens: stack image `button`s on one spot with `when=<state>:<x>`; badges are image buttons on a no-op key.
+- Type roles: bright for what you read, quiet for names, accent only for live values. Live text is in MPC font
+  heights (~1.52 x CSS px). For per-role sizes the layout can't set, vst.json `"skin_post"` runs a script on TUI.json.
+- Q-Links: one bank of 4 per tab if the target has 4 knobs (MPC Key 37 sub-pages don't cycle); nothing destructive
+  on a Q-Link; `-` slots give each panel its own column; keep watched controls left of x ~1025 (Q-Link sidebar).
+- Ship `tested.json`, a `TESTING.md` (offline + numbered device table) and, for skin rework, a design-QA note.
 
 ## Skin studio (layout design)
 `tools/studio.py`: `auto` (params → first-pass layout.conf), `to-svg` / `from-svg` (Inkscape round trip; tabs are layers,

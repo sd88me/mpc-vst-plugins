@@ -1,7 +1,13 @@
 /* The engine interface vst2_wrap.c drives: any synth/effect core that provides mpc_engine().
  * Contract: 44100 Hz, interleaved int16 stereo, rendered in 128-frame blocks. Parameters are
  * string key/value pairs; the keys and their ranges come from the port's generated params.h.
- * An engine written for another host plugs in through a small adapter (see adapters/). */
+ * An engine written for another host plugs in through a small adapter (see adapters/).
+ * Optional keys the wrapper asks get_param() for: "state" (chunk save/restore), "<key>_name" / "<key>_display"
+ * (dynamic names and value text), and with vst.json "programs" on a whole-number param, "<key>:<n>" (preset n's
+ * name, without loading it; unanswered = "<Name> <n>").
+ * Threads: the wrapper never calls two of these at once for one instance (a per-instance lock, vst2_wrap.c eng_set()),
+ * though they may come from different threads (screen and audio). A slow set_param (a file load) holds audio for its
+ * duration: keep such work a discrete trigger, or hand it to a worker thread. */
 #pragma once
 #include <stdint.h>
 

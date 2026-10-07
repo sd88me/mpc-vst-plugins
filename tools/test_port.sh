@@ -30,7 +30,7 @@ build='
     gcc $SAN -std=gnu11 -I"$PORT/build" -c "$f" -o "$o"
     OBJS="$OBJS $o"
   done
-  g++ $SAN $OBJS $LIBS -o "$OUT"
+  g++ $SAN $OBJS $LIBS -lpthread -o "$OUT"
 '
 export SOURCES CFLAGS PORT LIBS SAN MV ADAPTER_SRC OUT
 cd "$ROOT"

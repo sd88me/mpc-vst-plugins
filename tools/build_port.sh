@@ -59,7 +59,7 @@ esac
 if [ "$CXXPORT" = 0 ]; then
   docker run --rm --platform linux/arm/v7 -u "$U" -v "$ROOT":/b -v "$MV":/mv:ro -w /b arm32v7/gcc:11-bullseye bash -euc "
     gcc -O2 -Wall -Wextra -Wno-unused-parameter -fPIC -shared -fvisibility=hidden -std=gnu11 $CFLAGS -I'$PORT/build' -I/mv/wrapper \
-        $SOURCES $ADAPTER_SRC /mv/wrapper/vst2_wrap.c $LIBS -Wl,--no-undefined -o '$PORT/build/$SO'
+        $SOURCES $ADAPTER_SRC /mv/wrapper/vst2_wrap.c $LIBS -lpthread -Wl,--no-undefined -o '$PORT/build/$SO'
     strip '$PORT/build/$SO'
     echo \"exported: \$(readelf --dyn-syms -W '$PORT/build/$SO' | grep -E ' GLOBAL .* [0-9]+ [A-Za-z]' | grep -v UND | awk '{print \$8}' | tr '\n' ' ')\"
     echo \"highest glibc: \$(readelf -V '$PORT/build/$SO' | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1) (device has 2.39)\"
@@ -80,7 +80,7 @@ else
       gcc -O2 -Wall -Wextra -fPIC -fvisibility=hidden -std=gnu11 -c '$ADAPTER_SRC' -o '$PORT/build/adapter.o'
       OBJS=\"\$OBJS $PORT/build/adapter.o\"
     fi
-    g++ -O2 -shared -fPIC -fvisibility=hidden \$OBJS '$PORT/build/vst2_wrap.o' $LIBS -Wl,--no-undefined -o '$PORT/build/$SO'
+    g++ -O2 -shared -fPIC -fvisibility=hidden \$OBJS '$PORT/build/vst2_wrap.o' $LIBS -lpthread -Wl,--no-undefined -o '$PORT/build/$SO'
     strip '$PORT/build/$SO'
     echo \"exported: \$(readelf --dyn-syms -W '$PORT/build/$SO' | grep -E ' GLOBAL .* [0-9]+ [A-Za-z]' | grep -v UND | awk '{print \$8}' | tr '\n' ' ')\"
     echo \"highest glibc: \$(readelf -V '$PORT/build/$SO' | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1) (device has 2.39)\"

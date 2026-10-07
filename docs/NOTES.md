@@ -1059,8 +1059,9 @@ so a reboot seems to clear it (not confirmed); MPC restarts (`acvs`) don't. A te
 and restarts reached 729 files / 2.2 GB and filled the partition (copies failed with "No space left on device").
 The files are not held open between loads, so `rm -f /var/tmp/filmstrips/temp_*.img` frees the space safely
 (delete through `/var`, never the overlay's upper dir).
-Size per load is frames × frame area × 4: filmstrip frames are square (`square_strip`), so a wide thin bar as a
-`meter` is very expensive (a 360×4 bar became 128 frames of 360×360 = 66 MB per load). For bars use `picture`
+Size per load is frames × frame area × 4. Filmstrip frames used to be square-padded (`square_strip`), so a wide thin
+bar as a `meter` was very expensive (a 360×4 bar became 128 frames of 360×360 = 66 MB per load); since 2026-10-07
+slider and meter frames are their own w × h (see "reported by other forks" below), which makes that bar ~0.7 MB. For bars use `picture`
 (one image per step, mode images, no filmstrip), as the Plugin Manager does.
 
 ## Device screenshots (MPC One, 2026-10-01)
@@ -1175,6 +1176,81 @@ The contributor shared his package (a systemd timer service that makes one folde
 
 ## 2026-10-05: long integer lists skipped entries on a Q-Link and the wheel (Dexed banks, a Force); `nudge_pct` and `order=cols`
 Reported on a Force (Dexed 1.0.5 test build): on the BANKS tab the bank Q-Link and the wheel skipped several carts at a time. Cause, from the wrapper (`wrapper/vst2_wrap.c`, "whole numbers"): the bank index is an integer parameter spanning 0..998, and MPC sends a Q-Link event as the read-back value plus 1/128 of the range and a wheel click as plus 1/100 (NOTES "Input probe"), i.e. about 8 and 10 entries on that span; `settle()` rounds toward the move, so each event landed that far on (a short range such as 0..31 stays one step per event, as measured). Fix, opt-in per parameter: `"nudge_pct": N` (gen_vst.py, `param_t.nudge_pct`) makes any move up to N% of the range one step in its direction (combinable with `qlink_ticks`); a larger move still sets outright, and a move that lands on the minimum or maximum from inside that distance counts as a step, because MPC clamps what it sends (a nudge down from bank 3 sends 0, not -4.8). Test: `poc/steptest` has a `long` 0..998 param with `nudge_pct` 10, and `tools/host_test.c` checks six Q-Link events and six wheel clicks up one step each, back down to the minimum, a jump landing outright, and a clamped move at the top (all pass, `tools/test_port.sh poc/steptest/vst.json`, 31 checks). Offline only; not yet tried with a hand on the Force. Same report: the BANKS lists numbered across each row (1 2 / 3 4 ...), so a Q-Link stepping through them jumped left and right; `list ... order=cols` (`shadow_skin.list_keys`) numbers down each column first (left column 1..rows, then the next), so the lists read and step top to bottom.
+
+## 2026-10-07: reported by other forks (Live II, 2026-10-02..05; read from their notes, not re-verified here)
+`saustin2010/vst_instruments` keeps a patch against an older commit of this repo (`framework/mpc-vst-plugins.patch`)
+whose NOTES sections were verified on an MPC Live II by its owner. Summarised here so ports don't re-learn them; each
+needs a check on our devices before it becomes a rule. Survey of the techniques: `docs/COMMUNITY_SKINS.md`.
+- **FilmStrip `numFrames` is the frame count.** Stock skins use non-square frames: frame height = image height /
+  `numFrames` (Bassline `knob_phase` 76x258 = 3 frames of 86; Electric `slider_distance` 250x6969 = 101 of 69).
+  Display meters square-padded and resampled to 128 frames with `numFrames` 127 drew each frame a few px off per step
+  (~4.5 px with 32 frames of 141 px). Laid out as stock (frames of the meter's own w x h, `numFrames` = count) they
+  drew right. Knob strips (128 square frames, `numFrames` 127) are fine as they are.
+- **Tall slider strips.** Square-padded 128-frame slider strips 16640 to 30720 px tall animated wrongly; knob strips
+  up to 96x12288 are fine. Their builder caps slider strips at 12288 px (fewer frames). Compare our own 16384 px
+  knob limit ("Knob filmstrips over 16384 px drift", 2026-09-27).
+- **Animation is expensive.** A display parameter changed from `processReplacing` plus `audioMasterUpdateDisplay` or
+  `audioMasterAutomate` does repaint, but MPC's main (screen) thread pays: one 566x122 strip at 15 fps 25-55% of a
+  core; a 48-column dot scope at 10 fps 46-58% (peaks ~95%); with one `audioMasterAutomate` per column 107-113%.
+  Audio threads were unaffected. Keep pictures still between changes. MPC decodes skin images at 4 bytes/pixel:
+  a 566x122 x 384-frame set is ~106 MB of ~970 MB free.
+- **Q-Link outlines: one per column.** A 4-knob MPC drives one 4-slot column at a time and outlines that column's
+  `qlinkBoundsData` rectangle, so lay each column's controls out together (cf. our `qlink_bounds=column`).
+- **The Q-Link sidebar covers x >= ~1025.** Touching a Q-Link slides MPC's panel over the right ~255 px of the page;
+  keep controls you watch while turning out of that strip.
+- **MPC's PRESET menu lists VST programs** (`numPrograms`, `effGetProgramNameIndexed`, `effSetProgram`): their wrapper
+  maps an engine preset parameter (vst.json `"programs"`) or a `presets.json` to programs. In this repo since 2026-10-07 (section "VST programs from the wrapper" below).
+- **Plugin menu.** Sorted by type, VST plugins land in one VST folder (instruments, or effects with two inputs); the
+  plugin-list `category` moves nothing. Sorted by manufacturer, each manufacturer is a folder. Names sort
+  case-sensitively (digits, capitals, lower case).
+- **Two-thread engine calls.** The JUCE host sets/reads parameters on its message thread while audio runs on another;
+  an engine that assumes one caller can crash (Noisemaker's voice-count change). Their wrapper holds a recursive,
+  priority-inheriting mutex per instance around every engine call. In this repo since 2026-10-07 (section "one engine
+  call at a time" below).
+- **Screen grabs.** `/dev/fb0` is black (MPC draws through a DRM plane); map the scanout buffer from `/dev/dri/cardN`
+  (GETPLANE, GETFB, MAP_DUMB). The card number changed between boots (card0, then card1). Cf. `tools/drmgrab.c`.
+- **ALSA mirror ports.** MPC adds its own copy ("<client> <port>") of each new sequencer port on its client, which has
+  a lower number, so a substring search by port name finds MPC's copy first. Match exactly, or by pid.
+
+## 2026-10-07: VST programs from the wrapper (offline; device-checked in part)
+`wrapper/vst2_wrap.c` now reports VST programs (`numPrograms`, `effSetProgram`/`effGetProgram`, `effGetProgramName`,
+`effGetProgramNameIndexed`) when vst.json has `"presets"` (a `presets.json` compiled into `params.h` by gen_vst.py) or
+`"programs": {"param": key}` (an engine preset parameter: one program per option or whole number). Another fork saw
+MPC's PRESET menu list and load such programs on a Live II ("reported by other forks" above). Behaviour, host-tested
+(`tools/host_test.c` program checks, ASan) on `poc/steptest` variants:
+- Picking a preset sets each listed parameter through the engine's `set_param`, in file order, and reports each one to
+  the host from `housekeeping()` (never from inside the host's call), plus `audioMasterUpdateDisplay`.
+- Picking the program that is already current does nothing, so a host re-selecting program 0 at load can't overwrite
+  a restored chunk. The picked preset index isn't in the engine's state: after a project reload the menu shows the
+  first preset's name (the sound is restored from the chunk as before).
+- `"programs"` on a `"display": "int"` param names program n by `get_param("<key>:<n>")`, else "<Name> <n>".
+- Device check (2026-10-07, Force, MPC OS version not noted; test port = `poc/steptest` copy with `presets.json` of Init/Bright/Dark
+  and a 3-control layout): MPC's PRESET menu lists the presets, and picking Bright, Dark and Init moves MODE, NUM and CONT
+  on screen (user-observed). **Not checked on the device:** a tweak surviving a project reload and the name the menu then
+  shows, re-picking the current preset, and CC 20 moving the first Q-Link (the MIDI CC section stays offline only).
+
+## 2026-10-07: one engine call at a time per instance (offline)
+`wrapper/vst2_wrap.c` now wraps every engine call but create/destroy (`eng_set`, `eng_get`, `eng_midi`, `eng_render`,
+`eng_process`) in a per-instance recursive, priority-inheriting mutex, never held while calling the host. Why: the
+JUCE host calls parameters, chunks and displays on its message thread while audio runs on another, and another fork
+saw an engine that assumed one caller abort MPC on a Live II ("reported by other forks" above). `tools/host_test.c`
+now runs 3000 screen-side sets/reads/display reads on a second thread while rendering (ASan); every `poc/` port with
+a test passes. Links need `-lpthread` (added to `build_port.sh` and `test_port.sh`): on the device toolchain's glibc
+2.31, `pthread_mutexattr_setprotocol` is in libpthread. Not yet run on a device; the uncontended cost (one atomic
+operation per call) should be checked with docs/BENCH.md.
+
+## 2026-10-07: MIDI CC 20-35 and NRPN control in the wrapper (offline)
+After the other fork's Live II finding ("reported by other forks": CC 20/21 from a sequencer moved an instrument's
+controls through the track's MIDI input; MIDI-learning from a plugin's port froze MPC there):
+- gen_vst.py writes `PLUG_CC[16]` from the first tab's first `qlinks` line (column 1 top to bottom = CC 20-23, column 2 =
+  24-27, ...; `-`, triggers and text readouts get none). `effProcessEvents` sets the parameter as a touch would (option
+  lists and whole numbers round to the nearest step) and keeps the CC from the engine.
+- NRPN n (CC 99 MSB / 98 LSB) with its value on CC 6 (7-bit) and CC 38 (14-bit with the last CC 6) sets parameter n on
+  any page; CC 101/100 (an RPN) deselects it and goes to the engine as before.
+- The host hears of CC-driven changes from `housekeeping()` at most every 1024 frames, so the screen follows without a
+  flood. On by default; vst.json `"cc": false` / `"nrpn": false` turn each off (an engine that reads those CCs itself).
+host_test checks a CC 20 move and its report, and an NRPN set, on any parameter that keeps a value set from outside
+(engine-driven displays don't). Not yet run on a device.
 
 ## 2026-10-07: Boris Granular effect port (offline only, not yet on a device)
 `ports/boris-granular/`: boris-move's Schwung `audio_fx_api_v2` DSP behind a small `mpc_engine_t` glue with `process()`.
