@@ -1259,4 +1259,4 @@ host test PASSED (ASan/UBSan), and a sine sweep through the engine gives the sam
 (-53.5 dB in → -29.0 dB out, -3.9 dB in → -9.0 dB out at depth 100 %). The per-band meters are option parameters
 (24 steps) the engine moves under `HAS_DISPLAY_REV`, shown with `picture` (400x40 and 400x8 per step, cropped mode
 images), not filmstrip `meter`s, because of the filmstrip cache cost of wide bars (above). **Not yet on a device**: load,
-CPU (bench), meters redrawing during playback, and whether MPC's automation recording picks up the engine-moved meter params.
+CPU (bench), meters redrawing during playback, its 10 `presets.json` presets in MPC's PRESET menu (host test only), and whether MPC's automation recording picks up the engine-moved meter params.

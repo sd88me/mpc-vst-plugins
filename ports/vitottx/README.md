@@ -12,6 +12,9 @@ compressor) for MPC OS standalone devices, with an OTT-style skin and live per-b
   zones, -60..0 dB in 24 steps, plus the output level as text. They are `picture` widgets on engine-driven option
   parameters (`HAS_DISPLAY_REV`), not filmstrip `meter`s: wide bars as square filmstrip frames would cost tens of MB
   of MPC's filmstrip cache per load (docs/NOTES.md "MPC's filmstrip cache").
+- Presets (`presets.json`, MPC's PRESET menu via vst.json `"presets"`): OTT Default, Flat (Bypass-ish), Gentle Glue,
+  Parallel Smash, Upward Only, Downward Only, Drum Bus, Vocal Air, Bass Tighten, Lo-Fi Squash. Each sets all 12
+  controls. "Flat" (depth 0, band gains 0 dB) passes audio unchanged (checked offline).
 - Skin art: `art/make_art.py` (Pillow) draws `art/*.png` to match `layout.conf`; rerun it after changing either.
 
 Build and test from the repo root:

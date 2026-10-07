@@ -36,5 +36,6 @@
       "-mfpu=neon",
       "-DNEON_ARM32"
     ]
-  }
+  },
+  "presets": "presets.json"
 }
