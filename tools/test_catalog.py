@@ -518,7 +518,7 @@ class AddinTest(Base):
         row = catalog_site.tsv(cat, []).splitlines()[1].split("\t")
         self.assertEqual(row[:8], ["plugin", "test-addin", "1.2.0", "1", "addin", "Test addin", "-", "-"])
         self.assertEqual((row[12], row[13]), ("test.conf", "1"))
-        self.assertEqual(row[14:], ["-", row[15]])   # an addin has no skin, so no os_compat; max_glibc is whatever its library needs
+        self.assertEqual(row[14:16], ["-", row[15]])   # an addin has no skin, so no os_compat; max_glibc is whatever its library needs
         # an addin release listed under an instrument entry (or the reverse) is refused
         cat, problems = catalog_build.build([dict(entry, kind="instrument")], gh, os.path.join(self.tmp, "cache"), set())
         self.assertEqual(cat["plugins"][0]["versions"], [])
@@ -564,6 +564,44 @@ class BuildTest(Base):
         self.assertTrue(p["versions"][1]["yanked"])
         self.assertEqual(p["downloads"], 9)   # all time: every published zip, including the yanked 1.0.0 and the invalid 1.2.0
         self.assertEqual(sorted((x["tag"] for x in problems)), ["v1.2.0", "v1.3.0-b"])
+
+    def gen2_release(self, tag, a32, a64):
+        r = self.rel(tag, a32)
+        r["assets"].append({"id": a64, "name": "x-mpc-aarch64.zip", "browser_download_url": "https://x/x-mpc-aarch64.zip", "download_count": 1})
+        return r
+
+    def test_an_aarch64_asset_is_attached_to_the_same_version(self):
+        z32, z64 = self.build("1.0.0"), self.build("1.0.0", machine=183, elf_class=2)
+        gh = FakeGitHub({"acme/test-synth": [self.gen2_release("v1.0.0", 1, 2)]}, {1: z32, 2: z64})
+        cat, problems = catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "cache"), set())
+        self.assertEqual(problems, [])
+        v = cat["plugins"][0]["versions"][0]
+        self.assertTrue(v["gen2"])
+        self.assertEqual(set(v["assets"]), {"armv7", "aarch64"})
+        self.assertEqual(v["url"], v["assets"]["armv7"]["url"])   # schema-1 readers still get the armv7 zip
+        self.assertEqual(v["assets"]["aarch64"]["url"], "https://x/x-mpc-aarch64.zip")
+        self.assertNotEqual(v["assets"]["aarch64"]["sha256"], v["assets"]["armv7"]["sha256"])
+        row = catalog_site.tsv(cat, []).splitlines()[1].split("\t")
+        self.assertEqual(row[16:19], [str(v["assets"]["aarch64"]["size"]), v["assets"]["aarch64"]["sha256"], "https://x/x-mpc-aarch64.zip"])
+
+    def test_a_version_without_an_aarch64_asset_has_no_gen2(self):
+        gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1)]}, {1: self.build("1.0.0")})
+        cat, problems = catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "cache"), set())
+        v = cat["plugins"][0]["versions"][0]
+        self.assertFalse(v.get("gen2"))
+        self.assertEqual(list(v["assets"]), ["armv7"])
+        self.assertEqual(catalog_site.tsv(cat, []).splitlines()[1].split("\t")[16:19], ["-", "-", "-"])
+
+    def test_a_bad_aarch64_asset_is_reported_and_does_not_hide_the_gen1_release(self):
+        z32 = self.build("1.0.0")
+        wrong = self.build("1.1.0", machine=183, elf_class=2)   # a different version than the armv7 zip
+        gh = FakeGitHub({"acme/test-synth": [self.gen2_release("v1.0.0", 1, 2)]}, {1: z32, 2: wrong})
+        cat, problems = catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "cache"), set())
+        v = cat["plugins"][0]["versions"][0]
+        self.assertEqual(v["version"], "1.0.0")
+        self.assertFalse(v.get("gen2"))
+        self.assertEqual([x["tag"] for x in problems], ["v1.0.0"])
+        self.assertIn("aarch64 asset", problems[0]["error"])
 
     def test_a_newest_release_without_the_pattern_asset_is_reported_unless_the_repo_is_shared(self):
         good = self.build("1.0.0")
@@ -1292,7 +1330,7 @@ class StoreTest(Base):
         open(self.settings_path, "w").write(SyncTest.ONLY_OTHER)
         self.log = os.path.join(self.tmp, "mpc_ctl.log")
 
-    def write_catalog(self, published, addins=()):
+    def write_catalog(self, published, addins=(), gen2=None):
         vs = []
         for v, path in self.versions:
             if v not in published:
@@ -1303,6 +1341,9 @@ class StoreTest(Base):
                        "param_compat": int(v.split(".")[0]), "manifest": m, "channel": "stable", "yanked": False,
                        "os_compat": rec.get("os_compat"), "max_glibc": rec.get("max_glibc"),
                        "url": "http://127.0.0.1:%d/%s" % (self.port, os.path.basename(path))})
+            if gen2 and v == "1.2.0":   # the aarch64 zip of the same version: assets{} as catalog_build.py writes them
+                vs[-1]["assets"] = {"aarch64": {"size": os.path.getsize(gen2), "sha256": self.hashlib.sha256(open(gen2, "rb").read()).hexdigest(),
+                                                "url": "http://127.0.0.1:%d/%s" % (self.port, os.path.basename(gen2))}}
         vs.sort(key=lambda x: [int(n) for n in x["version"].split(".")], reverse=True)
         cat = {"schema": 1, "plugins": [{"id": "test-synth", "name": "Test Synth", "kind": "instrument", "distribution": "release",
                                           "latest": vs[0]["version"], "versions": vs},
@@ -1396,6 +1437,38 @@ class StoreTest(Base):
         self.assertIn("Other", self.entries())
         self.assertEqual(self.calls(), ["stop", "start"])
         self.assertEqual(self.state(), [["test-synth", "1.2.0", self.SKIN, "1"]])
+
+    def with_gen2(self):
+        """Rewrite the catalog so 1.2.0 also has an aarch64 zip (the Gen2 build of the same version)."""
+        z64 = self.build(version="1.2.0", machine=183, elf_class=2)
+        shutil.copy(z64, self.web)
+        self.write_catalog(["1.2.0"], gen2=os.path.join(self.web, os.path.basename(z64)))
+
+    def test_a_gen2_device_installs_the_aarch64_zip(self):
+        self.with_gen2()
+        r = self.store("install", "test-synth", env_extra={"MPC_STORE_ARCH": "aarch64"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        so = open(os.path.join(self.synths, self.SKIN, "test_synth.so"), "rb").read(20)
+        self.assertEqual(int.from_bytes(so[18:20], "little"), 183, "installed the armv7 library on a Gen2 device")
+
+    def test_a_gen1_device_still_installs_the_armv7_zip(self):
+        self.with_gen2()
+        r = self.store("install", "test-synth", env_extra={"MPC_STORE_ARCH": "armv7l"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        so = open(os.path.join(self.synths, self.SKIN, "test_synth.so"), "rb").read(20)
+        self.assertEqual(int.from_bytes(so[18:20], "little"), 40)
+
+    def test_a_gen2_device_refuses_a_plugin_with_no_gen2_build(self):
+        r = self.store("install", "test-synth", env_extra={"MPC_STORE_ARCH": "aarch64"})
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("no Gen2", r.stdout + r.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.synths, self.SKIN)))
+
+    def test_list_on_a_gen2_device_marks_plugins_without_a_gen2_build(self):
+        r = self.store("list", env_extra={"MPC_STORE_ARCH": "aarch64"})
+        self.assertIn("[no Gen2 build]", r.stdout)
+        self.with_gen2()
+        self.assertNotIn("[no Gen2 build]", self.store("list", env_extra={"MPC_STORE_ARCH": "aarch64"}).stdout)
 
     def test_an_old_installer_is_not_given_n_and_restarts_mpc_by_itself(self):
         import re

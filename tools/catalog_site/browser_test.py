@@ -71,6 +71,22 @@ with sync_playwright() as p:
     ok_tags = pg.locator(".tag.ok")
     if ok_tags.count():
         check("a 2.x badge says what it is", "2.x" in ok_tags.first.text_content() and ok_tags.first.get_attribute("title"))
+    # Gen2 (docs/GEN2.md): the badge, the filter and the two download buttons come from the version's gen2 flag and assets{}
+    pg.goto(URL)
+    check("device filter exists", pg.locator("#f-gen").count() == 1)
+    gen2_cards = pg.locator("article.card:has(.tag.gen)").count()
+    for val, want in (("gen2", True), ("gen1", False)):
+        pg.select_option("#f-gen", val)
+        cards = pg.locator("article.card")
+        wrong = [i for i in range(cards.count()) if (cards.nth(i).locator(".tag.gen").count() == 1) != want]
+        check("device filter %s shows only the matching cards" % val, not wrong, str(wrong))
+        if val == "gen2":
+            check("the Gen2 filter shows the cards that have the badge", cards.count() == gen2_cards, "%d vs %d" % (cards.count(), gen2_cards))
+            if cards.count():
+                check("a Gen2 card has both download buttons",
+                      cards.first.locator("a.btn-l:has-text('Gen1')").count() == 1 and cards.first.locator("a.btn-l:has-text('Gen2')").count() == 1)
+    pg.select_option("#f-gen", index=0)
+    check("no script errors", not errors, str(errors))
     m = b.new_page(viewport={"width": 390, "height": 800}, device_scale_factor=2)
     m.goto(URL + "#sel=" + ids[0]); m.reload()
     m.locator("#inst > summary").click(); m.fill("#ip", "192.168.1.20")
