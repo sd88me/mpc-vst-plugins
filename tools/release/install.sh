@@ -29,7 +29,14 @@ LEGACY=0; [ -f "$OLDFILE" ] && LEGACY=1; MIGRATED=""
 # MPC_INSTALL_TEST=1 skips the device checks so tests can run against a copy of MPC.settings.
 if [ -z "$MPC_INSTALL_TEST" ]; then
     [ "$(id -u)" = 0 ] || die "run as root"
-    case "$(uname -m)" in armv7*) ;; *) die "this build is for 32-bit ARM MPC OS devices (Gen1); this one is $(uname -m)" ;; esac
+    # the package says which CPU its .so is for (mpc-plugin.json "arch"; a package from before that field is armv7): Gen1 is 32-bit ARM, Gen2 is aarch64
+    PKG_ARCH=$(sed -n 's/.*"arch": *"\([a-z0-9]*\)".*/\1/p' mpc-plugin.json 2>/dev/null | head -n 1); [ -n "$PKG_ARCH" ] || PKG_ARCH=armv7
+    case "$PKG_ARCH:$(uname -m)" in
+        armv7:armv7*|aarch64:aarch64) ;;
+        armv7:aarch64) die "this build is for Gen1 (32-bit ARM) devices; this one is Gen2 (aarch64): download the -mpc-aarch64.zip" ;;
+        aarch64:*) die "this build is for Gen2 (aarch64) devices; this one is $(uname -m): download the -mpc-armv7.zip" ;;
+        *) die "this build is for $PKG_ARCH devices; this one is $(uname -m)" ;;
+    esac
     command -v systemctl >/dev/null || die "systemctl not found"
 fi
 SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"

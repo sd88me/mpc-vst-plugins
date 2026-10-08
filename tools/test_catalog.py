@@ -82,7 +82,7 @@ class Base(unittest.TestCase):
                                "--skin", skin, "--entry", os.path.join(t, "entry.xml"), "--version", version,
                                "--repo", "acme/test-synth", "--license", "MIT", "-o", out, *extra],
                               stdout=subprocess.DEVNULL)
-        return os.path.join(out, "Test-Synth-%s-mpc-armv7.zip" % version)
+        return os.path.join(out, "Test-Synth-%s-mpc-%s.zip" % (version, "aarch64" if machine == 183 else "armv7"))
 
     def tamper(self, zpath, member_suffix, fn):
         out = zpath + ".t.zip"
@@ -252,6 +252,28 @@ class CatalogTest(Base):
         self.assertTrue(any("armv7" in x for x in e) and any("not a 32-bit ARM library" in x for x in e), e)
         e, _, _ = catalog_check.check(self.build(glibc=b"GLIBC_2.38"))
         self.assertTrue(any("GLIBC" in x for x in e))
+
+    def test_aarch64_build_is_a_gen2_package(self):
+        z = self.build(machine=183, elf_class=2)
+        self.assertTrue(z.endswith("-mpc-aarch64.zip"), z)
+        e, _, rec = catalog_check.check(z)
+        self.assertEqual(e, [])
+        self.assertEqual(rec["manifest"]["arch"], "aarch64")
+        self.assertEqual(rec["manifest"]["os_compat"], ["3.x"])
+
+    def test_manifest_arch_must_match_the_library(self):
+        # a 32-bit ARM library in a package that says aarch64 (and the reverse) is refused
+        import json, shutil, tempfile, zipfile
+        z = self.build()
+        t = tempfile.mkdtemp()
+        out = os.path.join(t, "x-mpc-aarch64.zip")
+        with zipfile.ZipFile(z) as zi, zipfile.ZipFile(out, "w") as zo:
+            for n in zi.namelist():
+                d = zi.read(n)
+                zo.writestr(n, json.dumps(dict(json.loads(d), arch="aarch64")) if n.endswith("/mpc-plugin.json") else d)
+        e, _, _ = catalog_check.check(out)
+        self.assertTrue(any("not a 64-bit ARM library" in x for x in e), e)
+        shutil.rmtree(t)
 
     def test_glibc_above_2_32_is_listed_as_3x_only_up_to_2_36(self):
         import json

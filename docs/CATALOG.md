@@ -62,6 +62,10 @@ installer. What the catalog holds instead of a download:
 (bench verdict), `requires` (firmware/MockbaMod notes), `source_repo`, `license`, `param_compat` (the X in X.Y.Z:
 bumping it breaks saved projects), `sha256` of every file. `INSTALL.md` stays for humans.
 
+### Gen2 (aarch64)
+A version may also have a `*-mpc-aarch64.zip` on the same release (arch `aarch64`, same id/uid/version). It is listed under the same
+registry entry as `versions[].assets.aarch64` with `gen2: true`; `url`/`sha256` stay the armv7 asset. See [GEN2.md](GEN2.md).
+
 ### Generated `catalog.json`
 Per plugin (`distribution: release`): registry fields + `versions[]` (newest first, last N kept): `version`, `date`, `url`, `size`, `sha256`,
 `channel` (stable, or beta for GitHub prereleases), `notes` (release body), `param_compat`, `yanked`,
