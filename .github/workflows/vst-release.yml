@@ -100,10 +100,10 @@ jobs:
           ref: ${{ inputs.tools_ref }}
           path: mpc-vst-plugins
 
-      - name: Set up QEMU (plugins are built for armhf under emulation)
+      - name: Set up QEMU (plugins are built for armhf, and for aarch64 when the port asks, under emulation)
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: arm
+          platforms: arm,arm64
 
       - name: Set up zig
         if: ${{ inputs.zig != '' }}
@@ -158,13 +158,29 @@ jobs:
           for e in $EXTRA; do args+=(--extra "$e"); done
           for u in $USER_DATA; do args+=(--user-data "$u"); done
           python3 "$MPC_VST/tools/release.py" "${args[@]}"
+          # Gen2: a port whose vst.json lists the aarch64 target also has build/aarch64/<so>: package it the same way (docs/GEN2.md).
+          # The CPU result is a Gen1 measurement, so the Gen2 zip does not carry it.
+          so64="$B/aarch64/$(basename "$so")"
+          if [ -f "$so64" ]; then
+            file -b "$so64" | grep -q 'ELF 64-bit LSB.*aarch64' || { echo "::error::$so64 is not an aarch64 ELF: $(file -b "$so64")"; exit 1; }
+            args64=()
+            skip=0
+            for a in "${args[@]}"; do
+              if [ $skip = 1 ]; then skip=0; continue; fi
+              case "$a" in --bench) skip=1; continue ;; --so) args64+=(--so "$so64"); skip=1; continue ;; esac
+              args64+=("$a")
+            done
+            python3 "$MPC_VST/tools/release.py" "${args64[@]}"
+          fi
           mkdir -p "$GITHUB_WORKSPACE/previews"
           python3 "$MPC_VST/tools/studio.py" preview "$skin/Plugin Skins" -o "$GITHUB_WORKSPACE/previews/page_%d.png"
-          zip=$(ls "$GITHUB_WORKSPACE"/dist/*.zip)
+          zip=$(ls "$GITHUB_WORKSPACE"/dist/*-mpc-armv7.zip)
+          zips=$(ls "$GITHUB_WORKSPACE"/dist/*.zip | tr '\n' ' ')
           # catalog conformance (docs/CATALOG_SPEC.md): warnings are shown, errors fail the run
           if [ -n "$LICENSE_ID" ]; then flag=--catalog; else flag=""; echo "::warning::no license input: this release can't be listed in the catalog"; fi
-          python3 "$MPC_VST/tools/catalog_check.py" "$zip" $flag
+          for z in $zips; do python3 "$MPC_VST/tools/catalog_check.py" "$z" $flag; done
           echo "zip=$zip" >> "$GITHUB_OUTPUT"
+          echo "zips=$zips" >> "$GITHUB_OUTPUT"
           echo "name=$(sed -n 's/.* name="\([^"]*\)".*/\1/p' "$entry")" >> "$GITHUB_OUTPUT"
           echo "bench=$bench" >> "$GITHUB_OUTPUT"
 
@@ -181,6 +197,7 @@ jobs:
         if: ${{ !inputs.dry_run }}
         env:
           ZIP: ${{ steps.pkg.outputs.zip }}
+          ZIPS: ${{ steps.pkg.outputs.zips }}
           NAME: ${{ steps.pkg.outputs.name }}
           ABOUT: ${{ inputs.about }}
           TOOLS_REF: ${{ inputs.tools_ref }}
@@ -198,15 +215,15 @@ jobs:
           printf '\n---\nBuilt by GitHub Actions from %s@%s with mpc-vst-plugins@%s.\n' \
             "$GITHUB_REPOSITORY" "${GITHUB_SHA::7}" "${TOOLS_REF::7}" >> notes.md
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ZIP" --clobber
+            gh release upload "$TAG" $ZIPS --clobber
             gh release edit "$TAG" --draft --target "$GITHUB_SHA" --title "$NAME VST v$VERSION" --notes-file notes.md
           else
-            gh release create "$TAG" "$ZIP" --draft --target "$GITHUB_SHA" --title "$NAME VST v$VERSION" --notes-file notes.md
+            gh release create "$TAG" $ZIPS --draft --target "$GITHUB_SHA" --title "$NAME VST v$VERSION" --notes-file notes.md
           fi
 
       - name: Summary
         env:
-          ZIP: ${{ steps.pkg.outputs.zip }}
+          ZIPS: ${{ steps.pkg.outputs.zips }}
           BENCH: ${{ steps.pkg.outputs.bench }}
           DRY: ${{ inputs.dry_run }}
         run: |
@@ -217,7 +234,7 @@ jobs:
             else
               echo "Draft release updated: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases (drafts are only visible to maintainers)."
             fi
-            echo "- Zip: \`$(basename "$ZIP")\` ($(du -h "$ZIP" | cut -f1))"
+            for z in $ZIPS; do echo "- Zip: \`$(basename "$z")\` ($(du -h "$z" | cut -f1))"; done
             echo "- CPU: $BENCH"
             echo
             echo "Before publishing (docs/RELEASING.md):"

@@ -39,6 +39,8 @@ An addin (a library MPC preloads) is released with `tools/release_addin.py`, or 
 `.github/workflows/vst-release.yml` is a reusable workflow that does steps 1, 2, 3 (as images) and 6 in GitHub Actions
 and attaches the zip to a **draft** release in the port's repo. Steps 4 and 5 stay on a device, and they are what
 you do to the draft's zip before publishing it, so the zip you tested is the zip people get.
+If the port's build also leaves `build/aarch64/<so>` (vst.json `targets`), the workflow packages and attaches the `-mpc-aarch64.zip` (Gen2) too;
+the CPU result is Gen1's, so that zip has none. Offline only until run on a Gen2 device (docs/GEN2.md).
 
 A port calls it from its own repo with a `workflow_dispatch` workflow that takes the version. Pin this repo to one
 commit in both places:

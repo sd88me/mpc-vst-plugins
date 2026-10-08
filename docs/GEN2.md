@@ -37,8 +37,12 @@ Done (offline, 2026-10-09; checked with the `poc/inputprobe` port: armv7 and aar
   The wrapper's VST2 structs use `intptr_t` for the pointer-sized fields, and the x86_64 host test already ran them in a 64-bit layout.
 - Also fixed the Docker fallback of `test_port.sh` (a syntax error in its `bash -c`, and a duplicate mount for ports inside this repo).
 
+- The reusable `vst-release.yml` sets up arm64 QEMU, and when the build left `build/aarch64/<so>` it packages that too (no `--bench`: the
+  CPU result is Gen1's), runs `catalog_check.py` on every zip and attaches all of them to the one draft release. A port that only builds armv7
+  behaves as before. Not yet run in Actions (the YAML parses and the argument rewrite was tried in bash); a dry run on a real port is the check.
+
 Still to do:
-1. Port templates / each port's `build.sh` and `vst-release.yml` build and attach both zips (the reusable workflow needs an aarch64 job).
+1. A port template repo with both builds in its `build.sh`.
 2. `bench.c` for aarch64, once a Gen2 device is reachable.
 3. Site: Gen2 badge and filter from `gen2`; installer app asset choice; `tested.json` device field to tell "builds" from "verified on Gen2".
 4. Pilot with one real port. The glibc ceiling for aarch64 is 2.39 (MPC OS 3.x; Gen2 never runs 2.x); checked 2026-10-09 (offline, from `MPC-3.9.1-Gen2-update.img`'s main rootfs): `/usr/lib/libc.so.6` is aarch64 GNU libc 2.39, so the ceiling matches. libstdc++ was not inspected.
