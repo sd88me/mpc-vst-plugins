@@ -1,6 +1,8 @@
 # Releasing a plugin
 
-A release is **one zip** people can share around: `<Name>-<version>-mpc-armv7.zip`. It unpacks to a folder with
+A release is **one zip per CPU** people can share around: `<Name>-<version>-mpc-armv7.zip` (Gen1 MPC and Force) and, for a port that
+lists `"targets": ["armv7", "aarch64"]`, `<Name>-<version>-mpc-aarch64.zip` (Gen2, docs/GEN2.md). Run `release.py` once per `.so`
+(`build/x.so` and `build/aarch64/x.so`) with the same arguments and attach both zips to the same release. Each zip unpacks to a folder with
 the plugin as one folder (`portable/<skin>/`: the `.so`, the skin, its data and a `plugin-meta.xml`), `install.sh` /
 `uninstall.sh` and a generated `INSTALL.md` (scripted and manual steps, requirements, CPU result, checksums). The folder is
 the only layout: it can be dropped into any `Synths` folder by other installers too (`docs/CATALOG_SPEC.md`, "Plugin folder").
@@ -28,7 +30,7 @@ An addin (a library MPC preloads) is released with `tools/release_addin.py`, or 
    relative to the plugin folder, a leading `vst/` from older scripts is still accepted). `--user-data <folder>` marks a folder
    where the user adds files (ROMs, kits, banks); the installer keeps it.
 7. **Publish**: tag `<port>-vX.Y.Z` in the port's repo and attach the zip:
-   `gh release create maze-voice-vst-v1.2.0 dist/Maze-Voice-1.2.0-mpc-armv7.zip --notes-file ...`
+   `gh release create maze-voice-vst-v1.2.0 dist/Maze-Voice-1.2.0-mpc-armv7.zip [dist/Maze-Voice-1.2.0-mpc-aarch64.zip] --notes-file ...`
    Paste the zip's INSTALL.md "Requirements" and "Install" sections into the notes.
 
 **Catalog rule:** always pass `--repo` and `--license` (CI: `plugin_id`, `license`, `requires`) and run the `--catalog` check; see PORTING.md section 5.

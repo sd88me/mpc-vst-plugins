@@ -29,6 +29,9 @@ vst.json (paths are relative to the vst.json's folder):
                                                  #   refreshes the host; PARAM_TEXT_MAX: readout length, default 24 -- see wrapper/vst2_wrap.c)
       "build": {"root": "..", "sources": ["src/engine.c"], "cflags": ["-Isrc"], "libs": ["-lm"]}
                                                  #   "cflags_arm": [..] -- extra flags for the armhf device build only (not the x86 host test), e.g. ["-mfpu=neon"]
+                                                 #   "cflags_aarch64": [..] -- the same for the Gen2 (aarch64) build
+      "targets": ["armv7", "aarch64"],           # optional: device builds tools/build_port.sh makes (default ["armv7"] = Gen1 MPC / Force;
+                                                 #   aarch64 = Gen2, docs/GEN2.md). `build_port.sh vst.json aarch64` builds just one.
     }
 The sources provide mpc_engine() (wrapper/engine.h). An engine from another ecosystem names its own
 parameter source instead of "params" and gets its adapter linked in (adapters/<name>/README.md).
@@ -279,6 +282,8 @@ def main():
         for k, v in (("ROOT", root), ("PORT", os.path.relpath(here, root)), ("SO", cfg["so"]),
                      ("SOURCES", " ".join(b.get("sources", []))), ("CFLAGS", " ".join(b.get("cflags", []))),
                      ("CFLAGS_ARM", " ".join(b.get("cflags_arm", []))),
+                     ("CFLAGS_A64", " ".join(b.get("cflags_aarch64", []))),
+                     ("TARGETS", " ".join(cfg.get("targets", ["armv7"]))),
                      ("LIBS", " ".join(b.get("libs", ["-lm"]))),
                      ("LAYOUT", "1" if cfg.get("layout") else ""),
                      ("TITLE_FONT", cfg.get("title_font", "")),

@@ -28,9 +28,17 @@ until a plugin has loaded on real hardware (`tested.json` carries the device).
   zip to download instead. This guards a hand-downloaded wrong zip.
 - Still to do: the installer app / `mpc-store.sh` picks the asset for the device's `uname -m` automatically.
 
-## Developers (still to do)
-1. `vst.json` `targets: ["armv7", "aarch64"]` (default armv7) and `build.sh` / the Docker build looping over them (`arm64v8/gcc:12`).
-2. Audit `wrapper/` and `tools/gen_vst.py` for 32-bit assumptions (the hand-written `AEffect` layout, pointer-size casts, NEON/asm).
-3. `tools/test_port.sh` aarch64 pass (QEMU user-mode or an arm64 runner) beside the x86 ASan run; `bench.c` for aarch64.
-4. Site: Gen2 badge and filter from `gen2`; installer app asset choice; `tested.json` device field to tell "builds" from "verified on Gen2".
-5. Pilot with one simple plugin. The glibc ceiling for aarch64 is 2.39 (MPC OS 3.x; Gen2 never runs 2.x); checked 2026-10-09 (offline, from `MPC-3.9.1-Gen2-update.img`'s main rootfs): `/usr/lib/libc.so.6` is aarch64 GNU libc 2.39, so the ceiling matches. libstdc++ was not inspected.
+## Developers
+Done (offline, 2026-10-09; checked with the `poc/inputprobe` port: armv7 and aarch64 builds, both zips through `release.py` and
+`catalog_check.py --catalog`, `test_port.sh ... aarch64` PASSED in an arm64 container on an x86 host):
+- `vst.json` `targets: ["armv7", "aarch64"]` (default `["armv7"]`) and optional `cflags_aarch64`. `tools/build_port.sh vst.json [armv7|aarch64|all]`
+  builds armv7 into `build/<so>` as before and aarch64 into `build/aarch64/<so>` with `arm64v8/gcc:12-bookworm`.
+- `tools/test_port.sh vst.json aarch64`: the host test in an arm64 container (UBSan only; ASan's shadow memory does not map under QEMU).
+  The wrapper's VST2 structs use `intptr_t` for the pointer-sized fields, and the x86_64 host test already ran them in a 64-bit layout.
+- Also fixed the Docker fallback of `test_port.sh` (a syntax error in its `bash -c`, and a duplicate mount for ports inside this repo).
+
+Still to do:
+1. Port templates / each port's `build.sh` and `vst-release.yml` build and attach both zips (the reusable workflow needs an aarch64 job).
+2. `bench.c` for aarch64, once a Gen2 device is reachable.
+3. Site: Gen2 badge and filter from `gen2`; installer app asset choice; `tested.json` device field to tell "builds" from "verified on Gen2".
+4. Pilot with one real port. The glibc ceiling for aarch64 is 2.39 (MPC OS 3.x; Gen2 never runs 2.x); checked 2026-10-09 (offline, from `MPC-3.9.1-Gen2-update.img`'s main rootfs): `/usr/lib/libc.so.6` is aarch64 GNU libc 2.39, so the ceiling matches. libstdc++ was not inspected.
