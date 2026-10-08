@@ -21,6 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import skin_compat  # noqa: E402
 
+MAX_GLIBC_GEN2 = (2, 39)   # aarch64 (Gen2) runs MPC OS 3.x only, which has glibc 2.39, so there is no 2.x ceiling to respect
 MAX_GLIBC = (2, 36)   # the newest glibc a catalog plugin may need: MPC OS 3.x and the Force have 2.39, the catalog toolchain (arm32v7/gcc:12) is 2.36.
 # Above skin_compat.MAX_GLIBC_2X (2.32, MPC OS 2.x) it is listed as MPC OS 3.x only; it is not rejected.
 SEMVER = re.compile(r"\d+\.\d+\.\d+")
@@ -179,8 +180,9 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
         err("addins are armv7 only for now")
     if m.get("max_glibc"):
         need = tuple(int(x) for x in m["max_glibc"].split(".")[:2])
-        if need > MAX_GLIBC:
-            err("needs GLIBC %s, limit is %d.%d (MPC OS 3.x has 2.39)" % (m["max_glibc"], *MAX_GLIBC))
+        limit = MAX_GLIBC_GEN2 if m["arch"] == "aarch64" else MAX_GLIBC
+        if need > limit:
+            err("needs GLIBC %s, limit is %d.%d (MPC OS 3.x has 2.39)" % (m["max_glibc"], *limit))
         elif need > skin_compat.MAX_GLIBC_2X and m["arch"] == "armv7":
             warn("needs GLIBC %s: listed as MPC OS 3.x only (MPC OS 2.x has about 2.32; build with arm32v7/gcc:11-bullseye to reach it)" % m["max_glibc"])
     else:

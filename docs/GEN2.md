@@ -12,7 +12,7 @@ until a plugin has loaded on real hardware (`tested.json` carries the device).
 - `release.py` names the zip from the `.so`'s ELF machine: `<Name>-<ver>-mpc-armv7.zip` (Gen1, unchanged) or
   `<Name>-<ver>-mpc-aarch64.zip` (Gen2). Run it once per build. Both go on the **same** GitHub release / tag.
 - Same `id`, `uid`, `version` and `param_compat` in both: saved projects move between generations. The manifest's `arch` says which.
-- An aarch64 manifest has `os_compat: ["3.x"]` (Gen2 only ships MPC OS 3.x). The "3.x only" glibc warning is for armv7 only.
+- An aarch64 manifest has `os_compat: ["3.x"]` (Gen2 only ships MPC OS 3.x). The "3.x only" glibc warning is for armv7 only, and the glibc ceiling is 2.39 instead of 2.36.
 - Skin, presets and `plugin_list.awk` are architecture-independent; only the `.so` (and any bundled binaries) differ.
 
 ## Catalog
@@ -33,4 +33,4 @@ until a plugin has loaded on real hardware (`tested.json` carries the device).
 2. Audit `wrapper/` and `tools/gen_vst.py` for 32-bit assumptions (the hand-written `AEffect` layout, pointer-size casts, NEON/asm).
 3. `tools/test_port.sh` aarch64 pass (QEMU user-mode or an arm64 runner) beside the x86 ASan run; `bench.c` for aarch64.
 4. Site: Gen2 badge and filter from `gen2`; installer app asset choice; `tested.json` device field to tell "builds" from "verified on Gen2".
-5. Pilot with one simple plugin. Open question: the glibc of the Gen2 rootfs (limit is the same 2.36 for now).
+5. Pilot with one simple plugin. The glibc ceiling for aarch64 is 2.39 (MPC OS 3.x; Gen2 never runs 2.x); the Gen2 rootfs's own glibc is still unchecked.

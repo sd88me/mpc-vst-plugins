@@ -261,6 +261,10 @@ class CatalogTest(Base):
         self.assertEqual(rec["manifest"]["arch"], "aarch64")
         self.assertEqual(rec["manifest"]["os_compat"], ["3.x"])
 
+    def test_aarch64_may_use_glibc_up_to_2_39(self):
+        e, _, _ = catalog_check.check(self.build(machine=183, elf_class=2, glibc=b"GLIBC_2.38"))
+        self.assertFalse([x for x in e if "GLIBC" in x], e)
+
     def test_manifest_arch_must_match_the_library(self):
         # a 32-bit ARM library in a package that says aarch64 (and the reverse) is refused
         import json, shutil, tempfile, zipfile
