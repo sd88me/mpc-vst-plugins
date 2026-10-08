@@ -33,4 +33,4 @@ until a plugin has loaded on real hardware (`tested.json` carries the device).
 2. Audit `wrapper/` and `tools/gen_vst.py` for 32-bit assumptions (the hand-written `AEffect` layout, pointer-size casts, NEON/asm).
 3. `tools/test_port.sh` aarch64 pass (QEMU user-mode or an arm64 runner) beside the x86 ASan run; `bench.c` for aarch64.
 4. Site: Gen2 badge and filter from `gen2`; installer app asset choice; `tested.json` device field to tell "builds" from "verified on Gen2".
-5. Pilot with one simple plugin. The glibc ceiling for aarch64 is 2.39 (MPC OS 3.x; Gen2 never runs 2.x); the Gen2 rootfs's own glibc is still unchecked.
+5. Pilot with one simple plugin. The glibc ceiling for aarch64 is 2.39 (MPC OS 3.x; Gen2 never runs 2.x); checked 2026-10-09 (offline, from `MPC-3.9.1-Gen2-update.img`'s main rootfs): `/usr/lib/libc.so.6` is aarch64 GNU libc 2.39, so the ceiling matches. libstdc++ was not inspected.
