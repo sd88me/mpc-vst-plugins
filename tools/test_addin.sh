@@ -189,4 +189,14 @@ fresh; rm -rf "$T/card"; run a install.sh
 [ ! -e "$T/card" ] && ok "no MockbaMod: nothing extra is written" || bad "wrote files without MockbaMod"
 unset MOCKBA_PRELOAD_FILE MOCKBA_MMPATH MOCKBA_ROOTS
 
+# 13. ADDIN_NETWORK: a first interactive install asks about bind; -y and reinstalls leave it
+fresh; unit 'Restart=always'; ro a-w
+echo 'ADDIN_NETWORK=1' >> "$T/pkg-a/addin.manifest"; echo 'bind=127.0.0.1' > "$T/pkg-a/a.conf"
+printf 'y\ny\n' | ADDIN_INSTALL_TEST=1 SYSTEMD_ROOT="$T/root" ADDIN_TEST_LOG="$T/log" $SH "$T/pkg-a/install.sh" -t "$T/addins/a" > "$T/out" 2>&1
+grep -qx 'bind=0.0.0.0' "$T/addins/a/a.conf" && ok "ADDIN_NETWORK: a yes opens it" || bad "bind: $(cat "$T/addins/a/a.conf") $(cat "$T/out")"
+fresh; echo 'ADDIN_NETWORK=1' >> "$T/pkg-a/addin.manifest"; echo 'bind=127.0.0.1' > "$T/pkg-a/a.conf"
+printf 'y\nn\n' | ADDIN_INSTALL_TEST=1 SYSTEMD_ROOT="$T/root" ADDIN_TEST_LOG="$T/log" $SH "$T/pkg-a/install.sh" -t "$T/addins/a" > "$T/out" 2>&1
+run a install.sh
+grep -qx 'bind=127.0.0.1' "$T/addins/a/a.conf" && ok "ADDIN_NETWORK: a no, and -y, keep it local" || bad "bind: $(cat "$T/addins/a/a.conf")"
+
 [ $fails = 0 ] && echo "installer: all passed" || { echo "installer: $fails FAILED"; exit 1; }

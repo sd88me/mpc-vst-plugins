@@ -25,7 +25,7 @@ MAX_GLIBC = (2, 36)   # the newest glibc a catalog plugin may need: MPC OS 3.x a
 # Above skin_compat.MAX_GLIBC_2X (2.32, MPC OS 2.x) it is listed as MPC OS 3.x only; it is not rejected.
 SEMVER = re.compile(r"\d+\.\d+\.\d+")
 ID = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
-ADDIN_KEYS = ("ADDIN_ID", "ADDIN_NAME", "ADDIN_SO", "ADDIN_CONF", "ADDIN_FILES", "ADDIN_DONE", "ADDIN_VERSION")
+ADDIN_KEYS = ("ADDIN_ID", "ADDIN_NAME", "ADDIN_SO", "ADDIN_CONF", "ADDIN_FILES", "ADDIN_DONE", "ADDIN_NETWORK", "ADDIN_VERSION")
 ADDIN_SCRIPTS = ("install.sh", "uninstall.sh", "addin-lib.sh")
 ADDIN_FILE = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9._-]*")
 

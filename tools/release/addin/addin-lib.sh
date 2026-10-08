@@ -146,12 +146,13 @@ preload_remove() {   # service so: out of every writable file that lists it, the
 #   ADDIN_CONF    settings file: installed only when the folder has none, so the user's edits survive ("" none)
 #   ADDIN_FILES   other files, replaced on every install ("" none)
 #   ADDIN_DONE    a line printed after installing ("" none)
+#   ADDIN_NETWORK 1 if ADDIN_CONF has a bind= setting: a first interactive install asks whether to open it to the network ("" or 0 none)
 #   ADDIN_VERSION X.Y.Z, written by tools/release_addin.py ("" for a build that was not released)
 # Only plain assignments: tools/catalog_check.py refuses a manifest with anything else in it.
 SELF_FILES="addin.manifest addin-lib.sh uninstall.sh"   # copied into the folder too, so it can remove itself
 load_manifest() {
     [ -f addin.manifest ] || die "addin.manifest is missing next to install.sh"
-    ADDIN_ID=""; ADDIN_NAME=""; ADDIN_SO=""; ADDIN_CONF=""; ADDIN_FILES=""; ADDIN_DONE=""; ADDIN_VERSION=""
+    ADDIN_ID=""; ADDIN_NAME=""; ADDIN_SO=""; ADDIN_CONF=""; ADDIN_FILES=""; ADDIN_DONE=""; ADDIN_NETWORK=""; ADDIN_VERSION=""
     . ./addin.manifest
     case "$ADDIN_ID" in ""|*[!A-Za-z0-9_-]*) die "addin.manifest: bad ADDIN_ID '$ADDIN_ID'" ;; esac
     for f in "$ADDIN_SO" $ADDIN_CONF $ADDIN_FILES; do
@@ -161,6 +162,7 @@ load_manifest() {
     for f in $ADDIN_CONF $ADDIN_FILES; do
         case " $SELF_FILES " in *" $f "*) die "addin.manifest: $f is the installer's own file" ;; esac
     done
+    case "$ADDIN_NETWORK" in ""|0|1) ;; *) die "addin.manifest: ADDIN_NETWORK must be 1 or empty" ;; esac
     case "$ADDIN_VERSION" in ""|[0-9]*.[0-9]*.[0-9]*) ;; *) die "addin.manifest: bad ADDIN_VERSION '$ADDIN_VERSION'" ;; esac
     case "$ADDIN_VERSION" in *[!0-9.]*) die "addin.manifest: bad ADDIN_VERSION '$ADDIN_VERSION'" ;; esac
     [ -n "$ADDIN_NAME" ] || ADDIN_NAME="$ADDIN_ID"
@@ -236,4 +238,32 @@ HOOK
 mockba_hook_remove() {   # so
     a=$(mockba_addons); [ -n "$a" ] || return 0
     rm -f "$a/run_$ADDIN_ID.sh"; mockba_unarm "$1"
+}
+
+# After a restart: is the library in the environment of the MPC that came up? A mod's launcher can replace LD_PRELOAD
+# (see above), and then the addin is installed but silently not loaded. Waits for MPC for up to 40 s.
+check_loaded() {   # so
+    [ -z "$ADDIN_INSTALL_TEST" ] || return 0
+    i=0
+    while [ $i -lt 40 ]; do
+        pid=$(pidof MPC 2>/dev/null | awk '{print $1}')
+        if [ -n "$pid" ] && [ -r "/proc/$pid/environ" ]; then
+            tr '\0' '\n' < "/proc/$pid/environ" | grep -q '^LD_PRELOAD=' && break
+        fi
+        i=$((i + 1)); sleep 1
+    done
+    if [ -n "$pid" ] && tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | grep '^LD_PRELOAD=' | grep -qF "$1"; then
+        echo "  checked: MPC loaded $(basename "$1")"
+    else
+        echo "warning: MPC is running without $(basename "$1"): a launcher on this device replaces LD_PRELOAD. See docs/ADDINS.md (MockbaMod and other launchers)." >&2
+    fi
+}
+
+# A first install of an addin that listens on the network asks whether to open it (bind=0.0.0.0); -y leaves the safe default.
+ask_bind() {   # conf-file
+    [ "$ADDIN_NETWORK" = 1 ] && [ $YES = 0 ] && [ -f "$1" ] && grep -q '^bind=127.0.0.1' "$1" || return 0
+    echo "$ADDIN_NAME listens on this device only (reach it through an SSH tunnel). It has no login: opened to the network,"
+    printf "anyone who can reach the port gets what it offers (docs/ADDINS.md). Open it to the network? [y/N] "; read -r ok
+    case "$ok" in y|Y|yes) sed -i 's/^bind=.*/bind=0.0.0.0/' "$1"; echo "  bind=0.0.0.0" ;; esac
+    return 0
 }
