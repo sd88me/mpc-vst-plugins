@@ -53,6 +53,16 @@ the known case: whatever opens `/dev/dri/card*` first, while the card has no mas
 master, and MPC then fails with "Failed to initialise display". An addin (or a helper tool) that opens the card must
 call `DRM_IOCTL_DROP_MASTER` right after opening it (NOTES.md, 2026-10-03).
 
+### MockbaMod and other launchers that set LD_PRELOAD themselves
+
+MockbaMod's `boot.sh` starts MPC with `export LD_PRELOAD="$(cat /dev/shm/.LD_PRELOAD)"`, a list the `AddOns/run_*.sh`
+scripts fill in. The systemd line or drop-in above never reaches MPC there, so an addin installed only that way is
+silently not loaded. When a card with `MockbaMod/env.sh` and an `AddOns` folder is found (via `/dev/shm/.mmPath`, else
+`/media/*`), `install.sh` also writes `AddOns/run_<id>.sh` and adds the `.so` to that file straight away, so the restart
+that follows loads it; `uninstall.sh` removes both. The hook adds the `.so` only if it is missing, under the same
+`/dev/shm/.LD_PRELOAD.lock` the mod's own scripts use, does it before anything else (boot.sh starts every hook in the
+background and launches MPC a second later) and does nothing on `kill`. Tests: case 12 in `tools/test_addin.sh`.
+
 ## When an addin stops MPC from starting
 
 An addin runs inside MPC, so a broken one can crash MPC at every start. SSH stays up (it is a separate service), and

@@ -28,6 +28,7 @@ if [ $YES = 0 ]; then
     case "$ok" in y|Y|yes) ;; *) echo "cancelled"; exit 1 ;; esac
 fi
 preload_remove "$SVC" "$SO"
+mockba_hook_remove "$SO"
 svc daemon-reload
 if [ $RESTART = 1 ]; then svc restart "$SVC"; fi
 remove_files   # after the restart: MPC no longer has the .so mapped (with -n it stays mapped until MPC restarts)

@@ -190,3 +190,50 @@ check_so() {   # file
     [ "${17} ${18}" = "003 000" ] || die "$ADDIN_SO is not a shared library"
     [ "${19} ${20}" = "050 000" ] || die "$ADDIN_SO is not built for ARM"
 }
+
+# MockbaMod (and mods like it) launch MPC from their own boot script, which exports LD_PRELOAD from a file that the
+# AddOns/run_*.sh scripts fill in; the systemd drop-in above never reaches MPC there. So on such a device the installer
+# also writes AddOns/run_<id>.sh, which adds the .so to that file (idempotent, locked, nothing on "kill"), and adds it to
+# the file at once so the restart that follows already loads it. The hook arms first thing, before anything slow, since
+# boot.sh starts every hook in the background and launches MPC a second later.
+MOCKBA_PRELOAD_FILE="${MOCKBA_PRELOAD_FILE:-/dev/shm/.LD_PRELOAD}"   # env.sh's mmLD_PRELOAD_VAR
+MOCKBA_ROOTS="${MOCKBA_ROOTS:-/media/*}"   # cards to look on when /dev/shm/.mmPath is not there yet
+mockba_addons() {   # the AddOns folder of a MockbaMod card, if there is one
+    for d in "$(cat "${MOCKBA_MMPATH:-/dev/shm/.mmPath}" 2>/dev/null)" $MOCKBA_ROOTS; do
+        [ -n "$d" ] && [ -f "$d/MockbaMod/env.sh" ] && [ -d "$d/AddOns" ] && { echo "$d/AddOns"; return 0; }
+    done
+    return 0
+}
+mockba_arm() {   # so: add it to the preload file now, under the lock the mod's own scripts use
+    n=0; while ! mkdir $MOCKBA_PRELOAD_FILE.lock 2>/dev/null; do n=$((n + 1)); [ $n -ge 50 ] && break; sleep 0.1; done
+    grep -qF "$1" "$MOCKBA_PRELOAD_FILE" 2>/dev/null || echo "$(cat "$MOCKBA_PRELOAD_FILE" 2>/dev/null) $1" > "$MOCKBA_PRELOAD_FILE"
+    rmdir $MOCKBA_PRELOAD_FILE.lock 2>/dev/null || true
+}
+mockba_unarm() {   # so
+    [ -f "$MOCKBA_PRELOAD_FILE" ] && grep -qF "$1" "$MOCKBA_PRELOAD_FILE" || return 0
+    sed "s| *$1||" "$MOCKBA_PRELOAD_FILE" > "$MOCKBA_PRELOAD_FILE.new" && mv "$MOCKBA_PRELOAD_FILE.new" "$MOCKBA_PRELOAD_FILE"
+}
+mockba_hook_add() {   # so
+    a=$(mockba_addons); [ -n "$a" ] || return 0
+    h="$a/run_$ADDIN_ID.sh"
+    cat > "$h.new" <<HOOK
+#!/bin/sh
+# $ADDIN_NAME: MockbaMod autostart hook, written by the addin installer (removed by its uninstall.sh).
+# boot.sh replaces systemd's LD_PRELOAD with $MOCKBA_PRELOAD_FILE, so the addin has to be listed there.
+LIB=$1
+[ "\$1" = "kill" ] && exit 0
+[ -f "\$LIB" ] || exit 0
+F="$MOCKBA_PRELOAD_FILE"
+grep -qF "\$LIB" "\$F" 2>/dev/null && exit 0
+n=0; while ! mkdir $MOCKBA_PRELOAD_FILE.lock 2>/dev/null; do n=\$((n + 1)); [ \$n -ge 50 ] && break; sleep 0.1; done
+grep -qF "\$LIB" "\$F" 2>/dev/null || echo "\$(cat "\$F" 2>/dev/null) \$LIB" > "\$F"
+rmdir $MOCKBA_PRELOAD_FILE.lock 2>/dev/null
+HOOK
+    chmod 755 "$h.new" && mv "$h.new" "$h"
+    mockba_arm "$1"
+    echo "  MockbaMod found: $h loads it at boot"
+}
+mockba_hook_remove() {   # so
+    a=$(mockba_addons); [ -n "$a" ] || return 0
+    rm -f "$a/run_$ADDIN_ID.sh"; mockba_unarm "$1"
+}

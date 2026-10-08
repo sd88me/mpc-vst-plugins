@@ -170,4 +170,23 @@ sed -i '/^# lib:/d' "$DROP"
 run b install.sh
 grep -qx "# lib: 2" "$DROP" && grep -qx "Environment=LD_PRELOAD=$A:$B" "$DROP" && ok "a drop-in without a format line is read as format 2" || bad "old drop-in: $(cat "$DROP")"
 
+# 12. a MockbaMod card: boot.sh exports LD_PRELOAD from a file the AddOns/run_*.sh scripts fill in, so the installer
+# writes a hook (and arms the file now); the hook is idempotent; uninstall removes both
+fresh; unit 'Restart=always'; ro a-w
+export MOCKBA_PRELOAD_FILE="$T/shm-ld" MOCKBA_MMPATH="$T/shm-mm" MOCKBA_ROOTS="$T/none"
+mkdir -p "$T/card/MockbaMod" "$T/card/AddOns"; : > "$T/card/MockbaMod/env.sh"; echo "$T/card" > "$MOCKBA_MMPATH"
+echo "/m/mockbaMagic.so /m/anyctrl.so " > "$MOCKBA_PRELOAD_FILE"
+run a install.sh
+H="$T/card/AddOns/run_a.sh"
+[ -x "$H" ] && grep -qF "$A" "$MOCKBA_PRELOAD_FILE" && grep -qF "/m/mockbaMagic.so" "$MOCKBA_PRELOAD_FILE" \
+  && ok "MockbaMod: hook written and the preload file armed" || bad "mockba install: $(cat "$MOCKBA_PRELOAD_FILE" 2>&1)"
+sed -i "s| *$A||" "$MOCKBA_PRELOAD_FILE"; $SH "$H"; $SH "$H"
+[ "$(grep -o "$A" "$MOCKBA_PRELOAD_FILE" | wc -l)" = 1 ] && ok "MockbaMod: the hook arms once, however often it runs" || bad "hook: $(cat "$MOCKBA_PRELOAD_FILE")"
+cp "$MOCKBA_PRELOAD_FILE" "$T/ld.before"; $SH "$H" kill; cmp -s "$MOCKBA_PRELOAD_FILE" "$T/ld.before" && ok "MockbaMod: the hook leaves the file alone on kill" || bad "kill changed the file"
+run a uninstall.sh
+[ ! -e "$H" ] && ! grep -qF "$A" "$MOCKBA_PRELOAD_FILE" && grep -qF "/m/anyctrl.so" "$MOCKBA_PRELOAD_FILE" && ok "MockbaMod: uninstall removes the hook and only this addin" || bad "mockba uninstall: $(cat "$MOCKBA_PRELOAD_FILE") $(ls "$T/card/AddOns")"
+fresh; rm -rf "$T/card"; run a install.sh
+[ ! -e "$T/card" ] && ok "no MockbaMod: nothing extra is written" || bad "wrote files without MockbaMod"
+unset MOCKBA_PRELOAD_FILE MOCKBA_MMPATH MOCKBA_ROOTS
+
 [ $fails = 0 ] && echo "installer: all passed" || { echo "installer: $fails FAILED"; exit 1; }
