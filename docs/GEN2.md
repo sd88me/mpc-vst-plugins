@@ -26,6 +26,11 @@ until a plugin has loaded on real hardware (`tested.json` carries the device).
 ## Installer
 - `install.sh` reads `arch` from the package's `mpc-plugin.json` (absent = armv7) and refuses on a mismatch with `uname -m`, naming the
   zip to download instead. This guards a hand-downloaded wrong zip.
+- `install.sh`/`sync.sh` also use `arch` to pick which `MPC.settings` plugin-list key to register into: `pluginList-arm` for armv7,
+  `pluginList-arm-64bit` for aarch64 (`plugin_list.awk -v listkey=...`). The aarch64 key is from unverified third-party tester feedback
+  (2026-10-10, not reproduced by us; see `docs/NOTES.md`) — **confirm on real hardware** with the aarch64 pilot port (below) before
+  trusting it. The default Synths-folder scan (`sync.sh`) also looks at `/synths/Synths` when present (Gen2's analog of Gen1's internal
+  `/sdcard/Synths`; see `docs/NOTES.md` 2026-10-10 for why that mount is still unconfirmed on a live device).
 - `mpc-store.sh` (the command the site gives) takes the aarch64 zip on an `aarch64` device and the armv7 one otherwise (`catalog.tsv` columns
   17-19: size64, sha256_64, url64; `-` when there is none). On Gen2 a plugin with no Gen2 build is refused before anything is downloaded,
   and `list` marks it `[no Gen2 build]`. `MPC_STORE_ARCH` overrides `uname -m` (tests). Addins are armv7 only, so they are refused on Gen2.
