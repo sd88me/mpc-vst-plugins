@@ -26,4 +26,4 @@ echo "VST3 (juce::VST3PluginFormat): $(has 'VST3PluginFormat')   GetPluginFactor
 echo "LV2  (juce::LV2PluginFormat):  $(has 'LV2PluginFormat')"
 echo "settings key parts: $(grep -xE -- 'pluginList|-arm|-arm64|-aarch64' $S | sort -u | tr '\n' ' ')"
 rm -f $S
-ls /media/az01-internal/Settings/*/MPC.settings 2>/dev/null
+ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null

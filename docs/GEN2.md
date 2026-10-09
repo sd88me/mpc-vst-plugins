@@ -5,7 +5,7 @@ Gen2 MPC devices (MPC Live III and kin, RK3588) run a 64-bit userland: `/usr/bin
 (analysed 2026-10-06 from the 3.9.1 Gen2 update image, offline; see `docs/FIRMWARE_BUILDER.md`). A plugin needs a second, aarch64 build.
 
 **Status (2026-10-09, offline only):** the packaging, validation and catalog plumbing below exists and is unit-tested. Nothing has
-been built for or run on a Gen2 device: there is no known SSH/root route on Gen2 yet. Nothing may be called "Gen2 verified"
+been built for or run on a Gen2 device: there is no known SSH/root route on Gen2 yet. The first tester (2026-10-09) reached a Gen2 over SSH as root and found `MPC.settings` under `/data/Settings/MPC/`; the installers now look there too (see NOTES.md). Nothing may be called "Gen2 verified"
 until a plugin has loaded on real hardware (`tested.json` carries the device).
 
 ## One plugin, two zips
