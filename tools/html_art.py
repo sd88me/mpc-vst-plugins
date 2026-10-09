@@ -112,7 +112,30 @@ def knob_cap(cx, cy, r, a):
                   % (cx, cy - R * 0.25, cx, cy - R * 0.7, max(2, r / 10))))
 
 
-KNOB_LOOKS = {"moog": knob_moog, "chicken": knob_chicken, "metal": knob_metal, "cap": knob_cap}
+def knob_prophet(cx, cy, r, a):
+    """A ribbed black skirt, a silver ring and a black brushed top with a white pointer, seen from above (the Prophet '08 knob).
+    Drawn a little inside r so a value arc (class knob-arc, drawn by knob_frame) sits outside it."""
+    R = r - 0.5
+    n = 34
+    dash = 2 * math.pi * (R - 1.8) / n / 2
+    brush = "".join('<line x1="%g" y1="%g" x2="%g" y2="%g"/>' % (
+        cx + R * 0.1 * math.sin(k * math.pi / 14), cy - R * 0.1 * math.cos(k * math.pi / 14),
+        cx + R * 0.7 * math.sin(k * math.pi / 14), cy - R * 0.7 * math.cos(k * math.pi / 14)) for k in range(28))
+    return ('<circle class="look-pshadow" cx="%g" cy="%g" r="%g"/>' % (cx, cy + 1.5, R) +
+            '<circle class="look-pskirt" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R) +
+            _turn(a, cx, cy, '<circle class="look-prib" cx="%g" cy="%g" r="%g" style="stroke-width:3.6;stroke-dasharray:%.2f %.2f"/>'
+                  % (cx, cy, R - 1.8, dash, dash)) +
+            '<circle class="look-pring" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.86) +
+            '<circle class="look-pbevel" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.7) +
+            '<circle class="look-ptop" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.66) +
+            _turn(a, cx, cy, '<g class="look-pbrush">%s</g>' % brush) +
+            _turn(a, cx, cy, '<line class="look-pline" x1="%g" y1="%g" x2="%g" y2="%g" style="stroke-width:%g"/>'
+                  % (cx, cy - R * 0.1, cx, cy - R * 0.66, max(2.0, r / 10))) +
+            '<ellipse class="knob-sheen look-psheen" cx="%g" cy="%g" rx="%g" ry="%g"/>' % (cx - R * 0.18, cy - R * 0.3, R * 0.45, R * 0.28))
+
+
+KNOB_LOOKS = {"moog": knob_moog, "chicken": knob_chicken, "metal": knob_metal, "cap": knob_cap, "prophet": knob_prophet}
+ARC_LOOKS = ("prophet",)     # looks that keep the value arc round the knob (the theme's knob-track / knob-arc)
 
 
 def fader_track(x, y, w, h, vert, th):
@@ -213,7 +236,7 @@ class Art:
             o += self.text(x + 18, y + 20, title, "frame-title", "start")
         self.ops.append(o)
 
-    def knob_svg(self, cx, cy, r, pct):
+    def knob_arc(self, cx, cy, r, pct):
         R = r + 2.5
         a0, a1 = -135.0, -135.0 + 270.0 * pct / 100.0
         pt = lambda a, rad: (cx + rad * math.sin(math.radians(a)), cy - rad * math.cos(math.radians(a)))
@@ -225,6 +248,13 @@ class Art:
             vx, vy = pt(a1, R)
             o += '<path class="knob-arc" style="stroke-width:%g" d="M%.2f %.2f A%g %g 0 %d 1 %.2f %.2f"/>' % (
                 max(2, r / 10), sx, sy, R, R, 1 if a1 - a0 > 180 else 0, vx, vy)
+        return o
+
+    def knob_svg(self, cx, cy, r, pct):
+        R = r + 2.5
+        a0, a1 = -135.0, -135.0 + 270.0 * pct / 100.0
+        pt = lambda a, rad: (cx + rad * math.sin(math.radians(a)), cy - rad * math.cos(math.radians(a)))
+        o = self.knob_arc(cx, cy, r, pct)
         o += '<circle class="knob-face" cx="%g" cy="%g" r="%g"/>' % (cx, cy, r - 2)
         o += '<circle class="knob-sheen" cx="%g" cy="%g" r="%g"/>' % (cx, cy, r - 2)
         px0, py0 = pt(a1, r * 0.3)
@@ -293,6 +323,8 @@ class Art:
             if look.get("img"):
                 o += _turn(a, cx, cy, self.image(look["img"], *b))
             elif look.get("look") in KNOB_LOOKS:
+                if look["look"] in ARC_LOOKS:
+                    o += self.knob_arc(cx, cy, r, pct)
                 o += KNOB_LOOKS[look["look"]](cx, cy, r, a)
         return '<g class="knob look-%s">%s</g>' % (look.get("look", "image"), o)
 

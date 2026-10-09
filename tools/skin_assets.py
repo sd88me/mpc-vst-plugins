@@ -41,7 +41,7 @@ ATTRS = ("look", "img", "img_on", "base", "strip", "frames", "peak", "rms")
 FILE_ATTRS = ("img", "img_on", "base", "strip", "peak", "rms")
 GROUP = {"knob": "knob", "slider_v": "slider", "slider_h": "slider", "toggle": "toggle", "button": "button",
          "enum_h": "seg", "enum_v": "seg", "frame": "frame", "popup": "popup", "meter": "meter"}
-LOOKS = {"knob": ("moog", "chicken", "metal", "cap"), "slider": ("fader",), "toggle": ("led", "switch"),
+LOOKS = {"knob": ("moog", "chicken", "metal", "cap", "prophet"), "slider": ("fader",), "toggle": ("led", "switch"),
          "button": (), "seg": (), "frame": (), "popup": (),
          "meter": ("native",)}   # EXPERIMENTAL: a real Meter component instead of the filmstrip fake
 DEFAULT_RE = re.compile(r"(%s)_(%s)$" % ("|".join(LOOKS), "|".join(ATTRS)))
