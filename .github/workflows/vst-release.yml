@@ -38,6 +38,10 @@ on:
         description: Optional release.py --extra SRC:DEST specs, space-separated, SRC relative to the caller's repo root
         type: string
         default: ''
+      extra_aarch64:
+        description: The same as extra, for the Gen2 (aarch64) zip, when the build left build/aarch64/<so> (an engine bundle is built per CPU). Empty = use extra
+        type: string
+        default: ''
       user_data:
         description: Folders inside the plugin folder that hold the user's own files (ROMs, banks), space-separated; the installer keeps them and moves them in from the old layout
         type: string
@@ -132,6 +136,7 @@ jobs:
         working-directory: port
         env:
           EXTRA: ${{ inputs.extra }}
+          EXTRA_AARCH64: ${{ inputs.extra_aarch64 }}
           ABOUT: ${{ inputs.about }}
           PLUGIN_ID: ${{ inputs.plugin_id }}
           LICENSE_ID: ${{ inputs.license }}
@@ -167,9 +172,10 @@ jobs:
             skip=0
             for a in "${args[@]}"; do
               if [ $skip = 1 ]; then skip=0; continue; fi
-              case "$a" in --bench) skip=1; continue ;; --so) args64+=(--so "$so64"); skip=1; continue ;; esac
+              case "$a" in --bench|--extra) skip=1; continue ;; --so) args64+=(--so "$so64"); skip=1; continue ;; esac
               args64+=("$a")
             done
+            for e in ${EXTRA_AARCH64:-$EXTRA}; do args64+=(--extra "$e"); done
             python3 "$MPC_VST/tools/release.py" "${args64[@]}"
           fi
           mkdir -p "$GITHUB_WORKSPACE/previews"
