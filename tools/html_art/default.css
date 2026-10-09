@@ -97,6 +97,16 @@ text { font-family: var(--font); font-weight: 600; }
 .look-metal { fill: url(#metal-linear); stroke: #3b3b3a; stroke-width: 1.5; filter: var(--shadow); }
 .look-metal-top { fill: url(#metal-radial); }
 .look-notch { stroke: #1e1e1e; stroke-linecap: round; }
+/* knob look=prophet: ribbed black skirt, silver ring, brushed black top, white pointer */
+.look-pshadow { fill: rgba(0, 0, 0, 0.55); filter: blur(1.6px); }
+.look-pskirt { fill: #0b0b0c; }
+.look-prib { fill: none; stroke: #4a4b4f; }
+.look-pring { fill: url(#metal-linear); stroke: #8a8c90; stroke-width: 0.6; }
+.look-pbevel { fill: #55575b; }
+.look-ptop { fill: #1a1b1d; stroke: #08090a; stroke-width: 0.8; }
+.look-pbrush line { stroke: #34363a; stroke-width: 0.5; opacity: 0.8; }
+.look-pline { stroke: #f7f7f5; stroke-linecap: round; fill: none; }
+.look-psheen { opacity: 0.18; }
 /* knob look=cap: the theme's knob colours */
 .look-cap-ring { fill: var(--knob-ring); filter: var(--shadow); }
 .look-cap-top { fill: var(--knob-dot); }
