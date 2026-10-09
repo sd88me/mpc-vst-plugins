@@ -27,3 +27,10 @@ echo "LV2  (juce::LV2PluginFormat):  $(has 'LV2PluginFormat')"
 echo "settings key parts: $(grep -xE -- 'pluginList|-arm|-arm64|-aarch64' $S | sort -u | tr '\n' ' ')"
 rm -f $S
 ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null
+echo "== Synths locations (Gen2: offline analysis of a real device's rootfs/data dumps found /synths/Synths and"
+echo "   /synths/Expansions listed in MPC.settings SynthContentLocations, but /synths itself is a plain rootfs"
+echo "   folder with no systemd .mount unit on that unit; it may only become writable once something mounts a"
+echo "   filesystem there. The following checks whether that's true on THIS device.)"
+mount | grep -E 'sdcard|synths|data|media|storage'
+ls -ld /sdcard /synths /synths/Synths /content /storage 2>/dev/null
+systemctl cat acvs-user-partition 2>&1 | head -20
