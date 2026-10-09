@@ -50,6 +50,7 @@
     <label>License<select id="f-lic"></select></label>
     <label>Distribution<select id="f-dist"></select></label>
     <label>MPC OS<select id="f-os"></select></label>
+    <label>Device<select id="f-gen"></select></label>
     <label>Sort by<select id="sort"></select></label>
   </div>
   <div class="status">
@@ -97,7 +98,7 @@
 <script>
 var CAT = JSON.parse(document.getElementById("data").textContent);
 var P = CAT.plugins;
-var state = { q: "", kind: "", style: "", dev: "", lic: "", dist: "", os: "", sort: "updated", rev: false, beta: false, sel: [] };
+var state = { q: "", kind: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", sort: "updated", rev: false, beta: false, sel: [] };
 var STORE = JSON.parse(document.getElementById("store").textContent);
 var BY_WARNING = "The result contains firmware-derived data: build it yourself, install it on your own devices only, never share it.";
 var ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -122,6 +123,7 @@ var allKinds = {}; P.forEach(function (p) { kindsOf(p).forEach(function (k) { al
 fillSelect("f-kind", "All kinds", Object.keys(allKinds).sort(), function (v) { return KINDS[v] || v; });
 fillSelect("f-dist", "Any distribution", ["release", "build-yourself"], function (v) { return v === "release" ? "Download a release zip" : "Build it yourself"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
+fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 / Force only"; });
 fillSelect("f-style", "All styles", uniq(function (p) { return p.style; }), title);
 fillSelect("f-dev", "All developers", uniq(function (p) { return p.author; }));
 fillSelect("f-lic", "Any license", ["open", "source-available"], function (v) { return v === "open" ? "Open source" : "Source-available (restricted use)"; });
@@ -148,6 +150,16 @@ function osTag(v) {
   if (g.indexOf("2.x") >= 0) return '<span class="tag ok" title="' + esc("Skin and library checked against MPC OS 2.15.1's own skins and glibc. " + (tested2x(v) ? "Tested on a 2.x unit." : "Not yet tested on a 2.x unit.")) + '">MPC OS 2.x + 3.x' + (tested2x(v) ? " &middot; tested" : "") + '</span>';
   return '<span class="tag warn" title="' + esc("Not compatible with MPC OS 2.x" + (osWhy(v) ? ": " + osWhy(v) : "") + ((v.os_compat_why || []).length ? " (" + v.os_compat_why.join("; ") + ")" : "")) + '">MPC OS 3.x only</span>';
 }
+/* Gen2 (aarch64, MPC OS 3.x): the version also has an -mpc-aarch64.zip that passed the same checks (docs/GEN2.md). "Tested" needs a tested.json
+   entry whose device says Gen2; a passing build alone is not a device run. */
+function tested2(v) { return !!(v && (v.tested || []).some(function (t) { return /gen\s*2/i.test(t.device || ""); })); }
+function genTag(v) {
+  if (!v || !v.gen2) return "";
+  return '<span class="tag gen" title="' + esc("Also built for Gen2 (aarch64) MPC devices. " + (tested2(v) ? "Tested on a Gen2 unit." : "Not yet tested on a Gen2 unit.")) + '">Gen2' + (tested2(v) ? " &middot; tested" : " build") + '</span>';
+}
+function genRow(v) {
+  return v && v.gen2 ? '<dt>Gen2</dt><dd>aarch64 build available (' + (tested2(v) ? "tested on a Gen2 unit" : "not yet tested on a Gen2 unit") + ')</dd>' : "";
+}
 function osRow(v) {
   var g = osGens(v); if (!g) return "";
   if (g.indexOf("2.x") >= 0) return '<dt>MPC OS</dt><dd>2.x and 3.x (' + (tested2x(v) ? "tested on a 2.x unit" : "checked against 2.15.1's own skins, not yet tested on a 2.x unit") + ')</dd>';
@@ -163,6 +175,7 @@ function match(p) {
   if (s.dev && p.author !== s.dev) return false;
   if (s.lic === "open" && p.source_available) return false;
   if (s.lic === "source-available" && !p.source_available) return false;
+  if (s.gen) { var sv = shown(p); if (!sv || !!sv.gen2 !== (s.gen === "gen2")) return false; }
   if (s.os) { var g = osGens(shown(p)); if (!g || (s.os === "2x") !== (g.indexOf("2.x") >= 0)) return false; }
   return true;
 }
@@ -180,6 +193,7 @@ function card(p) {
   tags.push('<span class="tag">' + esc(p.license) + '</span>');
   if (p.source_available) tags.push('<span class="tag warn" title="Source is public but the license limits how it may be used">Restricted use</span>');
   if (!by && p.kind !== "addin" && osTag(v)) tags.push(osTag(v));
+  if (!by && p.kind !== "addin" && genTag(v)) tags.push(genTag(v));
   (p.tags || []).forEach(function (t) { if (!(by && t === "firmware-derived")) tags.push('<span class="tag">' + esc(t) + '</span>'); });
   var hist = p.versions.length ? '<details class="vers"><summary>Versions (' + p.versions.length + ')</summary><table>' + p.versions.map(function (x) {
     var cols = by ? '<td><a href="' + esc(safeUrl(x.source_url)) + '">tag ' + esc(x.tag) + '</a></td>' : '<td>' + size(x.size) + '</td><td title="sha256 ' + esc(x.sha256) + '">' + esc(x.sha256.slice(0, 10)) + '</td>';
@@ -208,9 +222,10 @@ function card(p) {
       '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a></div>' + hist + '</article>';
   }
   return head +
-    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + (p.kind !== "addin" ? osRow(v) : "") +
+    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + (p.kind !== "addin" ? osRow(v) + genRow(v) : "") +
     (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
-    '<div class="actions">' + (v ? '<a class="btn-l primary" href="' + esc(v.url) + '">Download</a>' : '') +
+    '<div class="actions">' + (v ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1 / Force)' : '') + '</a>' : '') +
+    (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="Gen2 MPC devices (aarch64, MPC OS 3.x)">Download (Gen2)</a>' : '') +
     '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a>' +
     (v && ID_RE.test(p.id) ? '<label class="pick"><input type="checkbox" data-pick="' + esc(p.id) + '"' + (state.sel.indexOf(p.id) >= 0 ? " checked" : "") + '> Add to install list</label>' : '') +
     '</div>' + hist + '</article>';
@@ -227,7 +242,7 @@ function render() {
   save();
 }
 function save() {
-  var d = { q: state.q, kind: state.kind, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, sort: state.sort === "updated" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(",") }, q = [];
+  var d = { q: state.q, kind: state.kind, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, gen: state.gen, sort: state.sort === "updated" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(",") }, q = [];
   Object.keys(d).forEach(function (k) { if (d[k]) q.push(k + "=" + encodeURIComponent(d[k])); });
   try { history.replaceState(null, "", q.length ? "#" + q.join("&") : location.pathname + location.search); } catch (e) {}
 }
@@ -241,11 +256,11 @@ function load() {
   });
   if (!SORTS[state.sort]) state.sort = "updated";
 }
-var map = { "q": "q", "f-kind": "kind", "f-style": "style", "f-dev": "dev", "f-lic": "lic", "f-dist": "dist", "f-os": "os", "sort": "sort" };
+var map = { "q": "q", "f-kind": "kind", "f-style": "style", "f-dev": "dev", "f-lic": "lic", "f-dist": "dist", "f-os": "os", "f-gen": "gen", "sort": "sort" };
 Object.keys(map).forEach(function (id) { $(id).addEventListener(id === "q" ? "input" : "change", function () { state[map[id]] = $(id).value; if (id === "sort") state.rev = false; render(); }); });
 $("beta").addEventListener("change", function () { state.beta = $("beta").checked; render(); });
 $("dir").addEventListener("click", function () { state.rev = !state.rev; render(); });
-$("clear").addEventListener("click", function () { state = { q: "", kind: "", style: "", dev: "", lic: "", dist: "", os: "", sort: "updated", rev: false, beta: false, sel: state.sel }; sync(); render(); });
+$("clear").addEventListener("click", function () { state = { q: "", kind: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", sort: "updated", rev: false, beta: false, sel: state.sel }; sync(); render(); });
 function sync() { Object.keys(map).forEach(function (id) { $(id).value = state[map[id]]; }); $("beta").checked = state.beta; }
 load(); sync(); render();
 

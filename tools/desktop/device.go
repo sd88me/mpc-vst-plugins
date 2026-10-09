@@ -413,8 +413,8 @@ func (i DeviceInfo) problems() []string {
 	if i.UID != "0" {
 		p = append(p, "you are not logged in as root")
 	}
-	if !strings.HasPrefix(i.Arch, "armv7") {
-		p = append(p, "this is "+i.Arch+", not a 32-bit ARM MPC OS device")
+	if !strings.HasPrefix(i.Arch, "armv7") && i.Arch != "aarch64" {
+		p = append(p, "this is "+i.Arch+", not a 32-bit ARM (Gen1) or aarch64 (Gen2) MPC OS device")
 	}
 	if !i.Tar {
 		p = append(p, "the device has no tar")

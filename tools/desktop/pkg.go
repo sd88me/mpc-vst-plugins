@@ -176,8 +176,8 @@ func OpenPackage(zipPath, source string) (*Package, error) {
 			return &m, nil
 		case m.Layout != "portable":
 			return nil, errors.New("this zip uses the old /sdcard/vst layout: get a newer release")
-		case m.Arch != "armv7":
-			return nil, fmt.Errorf("built for %s: MPC OS standalone devices need armv7", m.Arch)
+		case m.Arch != "armv7" && m.Arch != "aarch64":
+			return nil, fmt.Errorf("built for %s: MPC OS standalone devices need armv7 (Gen1) or aarch64 (Gen2)", m.Arch)
 		case !idRe.MatchString(m.ID) || m.Name == "" || m.Version == "" || !skinRe.MatchString(m.Skin):
 			return nil, errors.New("mpc-plugin.json is missing its id, name, version or folder")
 		}
@@ -319,4 +319,30 @@ func (p *Package) WriteTar(w io.Writer) error {
 		}
 	}
 	return tw.Close()
+}
+
+// archFits reports whether a library built for pkgArch ("armv7" or "aarch64", as mpc-plugin.json says; empty = armv7) loads on a device whose
+// `uname -m` is devArch: Gen1 and Force are armv7l, Gen2 is aarch64.
+func archFits(pkgArch, devArch string) bool {
+	if pkgArch == "" {
+		pkgArch = "armv7"
+	}
+	if pkgArch == "aarch64" {
+		return devArch == "aarch64"
+	}
+	return strings.HasPrefix(devArch, "armv7")
+}
+
+func genName(devArch string) string {
+	if devArch == "aarch64" {
+		return "Gen2"
+	}
+	return "Gen1 or Force"
+}
+
+func otherZip(devArch string) string {
+	if devArch == "aarch64" {
+		return "-mpc-aarch64.zip"
+	}
+	return "-mpc-armv7.zip"
 }
