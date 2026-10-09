@@ -161,40 +161,6 @@ def knob_prophet(cx, cy, r, a):
             '<ellipse class="knob-sheen look-psheen" cx="%g" cy="%g" rx="%g" ry="%g"/>' % (cx - R * 0.18, cy - R * 0.3, R * 0.45, R * 0.28))
 
 
-def knob_prophet3d(cx, cy, r, a):
-    """The same knob seen from a little above: a ribbed side wall that turns with it, a silver ring, a brushed black top with a
-    white pointer, and a shadow. The top is a squashed circle, so what turns is drawn squashed too."""
-    R = r - 0.5
-    ky = 0.84                      # the top's squash (tilt)
-    h = R * 0.26                   # the visible height of the side wall
-    ct = cy - h * 0.55             # the top's centre
-    ry = R * ky
-    tilt = lambda body: '<g transform="translate(%g %g) scale(1 %g)">%s</g>' % (cx, ct, ky, body)
-    turn_tilt = lambda body: '<g transform="translate(%g %g) scale(1 %g) rotate(%.2f)">%s</g>' % (cx, ct, ky, a, body)
-    n = 34
-    ribs = ""
-    for k in range(n):
-        th = 2 * math.pi * k / n + math.radians(a)
-        c = math.cos(th)
-        if c <= 0.05:
-            continue
-        x, y = cx + R * math.sin(th), ct + ry * c
-        ribs += '<line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f" style="stroke-width:%.2f;opacity:%.2f"/>' % (x, y - 0.5, x, y + h, 0.5 + 1.5 * c, 0.2 + 0.55 * c)
-    wall = 'M%g,%g A%g,%g 0 0 0 %g,%g L%g,%g A%g,%g 0 0 1 %g,%g Z' % (cx - R, ct, R, ry, cx + R, ct, cx + R, ct + h, R, ry, cx - R, ct + h)
-    brush = "".join('<line x1="%g" y1="%g" x2="%g" y2="%g"/>' % (
-        R * 0.1 * math.sin(k * math.pi / 14), -R * 0.1 * math.cos(k * math.pi / 14),
-        R * 0.62 * math.sin(k * math.pi / 14), -R * 0.62 * math.cos(k * math.pi / 14)) for k in range(28))
-    return ('<ellipse class="look-pshadow" cx="%g" cy="%g" rx="%g" ry="%g"/>' % (cx, ct + h + 2, R, ry) +
-            '<path class="look-pwall" d="%s"/>' % wall +
-            '<g class="look-pribs">%s</g>' % ribs +
-            tilt('<circle class="look-pring" cx="0" cy="0" r="%g"/>' % R) +
-            tilt('<circle class="look-pbevel" cx="0" cy="0" r="%g"/>' % (R * 0.9)) +
-            tilt('<circle class="look-ptop" cx="0" cy="0" r="%g"/>' % (R * 0.86)) +
-            turn_tilt('<g class="look-pbrush">%s</g>' % brush +
-                      '<line class="look-pline" x1="0" y1="%g" x2="0" y2="%g" style="stroke-width:%g"/>' % (-R * 0.08, -R * 0.74, max(2.0, r / 10))) +
-            '<ellipse class="knob-sheen look-psheen" cx="%g" cy="%g" rx="%g" ry="%g"/>' % (cx - R * 0.2, ct - ry * 0.3, R * 0.5, ry * 0.3))
-
-
 def _rim_dashes(cx, cy, R, n, a, cls, sw):
     dash = 2 * math.pi * R / n / 2
     return _turn(a, cx, cy, '<circle class="%s" cx="%g" cy="%g" r="%g" style="stroke-width:%g;stroke-dasharray:%.2f %.2f"/>' % (cls, cx, cy, R, sw, dash, dash))
@@ -292,9 +258,9 @@ def knob_ledring(cx, cy, r, a):
 
 
 KNOB_LOOKS = {"moog": knob_moog, "chicken": knob_chicken, "metal": knob_metal, "cap": knob_cap, "prophet": knob_prophet,
-              "prophet3d": knob_prophet3d, "hardware": knob_hardware, "chrome": knob_chrome,
+              "hardware": knob_hardware, "chrome": knob_chrome,
               "bakelite": knob_bakelite, "davies": knob_davies, "rubber": knob_rubber, "ledring": knob_ledring}
-ARC_LOOKS = ("prophet", "prophet3d")     # looks that keep the value arc round the knob (the theme's knob-track / knob-arc)
+ARC_LOOKS = ("prophet",)     # looks that keep the value arc round the knob (the theme's knob-track / knob-arc)
 
 
 def fader_track(x, y, w, h, vert, th):

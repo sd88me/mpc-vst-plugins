@@ -107,8 +107,6 @@ text { font-family: var(--font); font-weight: 600; }
 .look-pbrush line { stroke: #34363a; stroke-width: 0.5; opacity: 0.8; }
 .look-pline { stroke: #f7f7f5; stroke-linecap: round; fill: none; }
 .look-psheen { opacity: 0.18; }
-.look-pwall { fill: #0d0d0f; }
-.look-pribs line { stroke: #6a6b70; }
 /* knob look=hardware: glossy black dome, scale ticks, specular highlight, contact shadow */
 .look-hticks line { stroke: var(--tick, #14110a); stroke-width: 1.6; stroke-linecap: round; opacity: 0.9; }
 .look-hshadow { fill: rgba(0, 0, 0, 0.6); filter: blur(2.4px); }
