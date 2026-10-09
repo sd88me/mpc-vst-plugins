@@ -104,7 +104,7 @@ the build in Docker with only that folder (and this repo) mounted. Images: `.png
 
 | Asset | Layout | Notes |
 |---|---|---|
-| Knob, built-in | `knob ... look=moog` | `moog`, `chicken`, `metal`, `cap` (the theme's knob colours), `prophet` (ribbed skirt, silver ring, brushed black top, white pointer; keeps the theme's value arc) |
+| Knob, built-in | `knob ... look=moog` | `moog`, `chicken`, `metal`, `cap` (the theme's knob colours), `prophet` (ribbed skirt, silver ring, brushed black top, white pointer; keeps the theme's value arc), `prophet3d` (the same seen from a little above, with a ribbed side wall that turns) |
 | Knob image | `knob ... img=knob.png [base=scale.png]` | turned through 270°; draw it pointing up (= the middle of the travel); `base` stays still under it |
 | Knob filmstrip | `knob ... strip=knob_strip.png [frames=N]` | frames stacked down (or across), minimum first; resampled to MPC's 128 |
 | Slider | `slider_v ... look=fader`, or `img=thumb.png [base=track.png]`, or `strip=` | the thumb is as wide as a vertical slider; the track is stretched to it |
