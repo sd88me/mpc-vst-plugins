@@ -1267,3 +1267,10 @@ A Force user saw `No drive under /media is mounted noexec` on the first `status`
 - Fix (offline, host-tested only): every installer (`install.sh`, `uninstall.sh`, `sync.sh`, `mpc-store.sh`, `probe_device.sh`) and the desktop app's default settings glob now also look in `/data/Settings/*/MPC.settings`. Not yet re-run on a Gen2.
 - The tester then hit "files damaged (SHA256SUMS mismatch)": expected after hand-editing `install.sh` (it is in SHA256SUMS). Not a bug; no key is involved. The fix above removes the reason to edit.
 - Still unknown on Gen2: Synths dir location (`/sdcard/Synths` may not exist), the service name for the stop/start, whether `/sdcard` is the same mount. Ask for `probe_device.sh` output.
+
+### 2026-10-09: Gen2 (MPC Live III) partition dumps read offline (`tools/gen2_image_facts.sh`, tester's `dd` images)
+Eleven `mmcblk0pN` dumps, read read-only with `debugfs`. Layout: p1-p6 raw/boot data (not ext4), p7 `factory` (empty ext4), p8/p9 `kernel.fit` (A/B), p10 rootfs (4.1G ext4), p11 `data` (11G ext4, label `data`).
+- Confirmed: `MPC.settings` is `Settings/MPC/MPC.settings` at the root of the `data` partition, i.e. `/data/Settings/MPC/MPC.settings` (matches the tester's shell). It holds 5 `<Location>` entries and one `pluginList-arm` line, as on Gen1.
+- Confirmed: rootfs has `/usr/lib/ld-linux-aarch64.so.1` and `libstdc++.so.6.0.32` (GCC 13), consistent with glibc 2.39.
+- Confirmed: the MPC service is `acvs.service` (plus `acvs-user-partition.service`); there is no `inmusic-mpc` unit on stock Gen2, so the installers' acvs default is right.
+- Not yet known: the rootfs `/etc/fstab` does not mount `/sdcard`, so where the internal drive and Synths folders live comes from `acvs-user-partition.service` (see the next run of the script). The rootfs has top-level `/sdcard`, `/synths`, `/content`, `/storage`, `/nvme`, `/data`.

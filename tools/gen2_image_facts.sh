@@ -27,6 +27,18 @@ for IMG in "$@"; do
   for d in /usr/lib /lib /usr/lib/aarch64-linux-gnu; do
     dfs "ls -p $d" | awk -F/ '$6 ~ /^(libc-[0-9.]+\.so|libstdc\+\+\.so\.6\.[0-9.]+)$/ {print "  " "'"$d"'/" $6}'
   done
+  # where the user-visible folders point (symlink targets) and what the partition service mounts
+  for p in /sdcard /synths /content /storage /nvme /data /media /secure-media; do
+    t=$(dfs "stat $p" | sed -n 's/^Fast link dest: *//p' | tr -d '"')
+    [ -n "$t" ] && echo "  $p -> $t"
+  done
+  for u in /usr/lib/systemd/system/acvs-user-partition.service /usr/lib/systemd/system/acvs.service; do
+    if has "$u"; then
+      echo "  $u (Exec/After/Requires lines):"
+      cat_ "$u" | grep -E '^(Exec|After|Requires|Wants|What|Where|Environment)' | sed 's/^/    /'
+    fi
+  done
+  dfs "ls -p /usr/lib/systemd/system" | awk -F/ '$6 ~ /\.mount$/ {print "  mount unit: " $6}'
   # service names and mounts
   for d in /usr/lib/systemd/system /lib/systemd/system /etc/systemd/system; do
     dfs "ls -p $d" | awk -F/ '$6 ~ /^(acvs|inmusic-mpc|mpc)[^ ]*\.service$/ {print "  unit " "'"$d"'/" $6}'
@@ -39,7 +51,7 @@ for IMG in "$@"; do
     if has "$f"; then
       cat_ "$f" > "$T/s.xml"
       echo "  $f: $(wc -c < "$T/s.xml") bytes, locations:"
-      grep -o '<Location[^>]*>' "$T/s.xml" | sed 's/^/    /' | head -20
+      grep -A3 '<Location' "$T/s.xml" | sed 's/^/    /' | head -40
       grep -c 'pluginList-arm' "$T/s.xml" | sed 's/^/    pluginList-arm lines: /'
     fi
   done
