@@ -104,7 +104,7 @@ the build in Docker with only that folder (and this repo) mounted. Images: `.png
 
 | Asset | Layout | Notes |
 |---|---|---|
-| Knob, built-in | `knob ... look=moog` | `moog`, `chicken`, `metal`, `cap` (the theme's knob colours), `prophet` (ribbed skirt, silver ring, brushed black top, white pointer; keeps the theme's value arc), `prophet3d` (the same seen from a little above, with a ribbed side wall that turns) |
+| Knob, built-in | `knob ... look=moog` | `moog`, `chicken`, `metal`, `cap` (the theme's knob colours), `prophet` (ribbed skirt, silver ring, brushed black top, white pointer; keeps the theme's value arc), `prophet3d` (the same seen from a little above, with a ribbed side wall that turns), plus the 303-style hardware set: `hardware` (glossy black dome, engraved ticks, `--tick` colour), `chrome` (mirror dome), `bakelite` (brown, cream pointer), `davies` (stepped cap, pointer to the rim), `rubber` (matte, dot in the theme's `knob_dot`), `ledring` (LED ring that lights to the value; theme `accent_hi`) |
 | Knob image | `knob ... img=knob.png [base=scale.png]` | turned through 270°; draw it pointing up (= the middle of the travel); `base` stays still under it |
 | Knob filmstrip | `knob ... strip=knob_strip.png [frames=N]` | frames stacked down (or across), minimum first; resampled to MPC's 128 |
 | Slider | `slider_v ... look=fader`, or `img=thumb.png [base=track.png]`, or `strip=` | the thumb is as wide as a vertical slider; the track is stretched to it |
@@ -166,7 +166,7 @@ The layout says where everything goes; a renderer draws it. Two do, from the sam
   Restyle it with a stylesheet: a top-level `art_css=skin.css` line in the layout, loaded after
   `tools/html_art/default.css` (its header lists the classes and variables). Any font (`@font-face` with a
   file next to the CSS), knob look, gradient or shadow; `theme_*` lines still set the colours. Only colours,
-  shapes and effects change: sizes and positions stay the layout's, because MPC puts its live controls there.
+  shapes and effects change (a shared `filter: url(#grain)` gives a plate a painted-metal grain and wear): sizes and positions stay the layout's, because MPC puts its live controls there.
 
 A port with its own build script runs `gen_vst.py` inside `mpc-vst-html-art` instead of `python:3.11-slim`
 (see `tools/build_port.sh`).
