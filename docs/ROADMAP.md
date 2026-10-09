@@ -79,7 +79,7 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
       (2026-10-05, offline only, real-mount tests). The button remap (`tools/mpc_patch/hwremap`, from akai_standalone_remap) is built and listed
       the same day, offline first; on 2026-10-10 its Force install and rules were run on a Force (NOTES 2026-10-10), the MPC Live map and `uninstall` on a device are not.
       **Still to do:** a Force run of the drive exec patch (install, reboot, a plugin loads, uninstall), a device run of the button-remap uninstall and its MPC Live map, and
-      Apply and Undo from the app (then a Force test).
+      a Force test of Apply and Undo from the app (built 2026-10-10, offline only: `POST /api/patch/run`, typed `APPLY`/`UNDO`, default settings, no per-patch options yet).
 
 ## Verification
 - [ ] **Stock, unmodded MPC and other models:** the ALSA MIDI-out port (`poc/midiport.c`) without MockbaMod,

@@ -160,10 +160,12 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="s7" class="off">
 <details id="d7" class="collapse">
   <summary><h2><span class="n">7</span>Advanced: device patches</h2><span class="hint">Show</span></summary>
-  <p class="sub"><b>Not for most people.</b> A patch changes the device itself (for example Akai's own MPC program), not a plugin. This list only <b>looks</b>: it asks the device which patches are applied and changes nothing. Applying or undoing a patch from this app is not available yet. To use one now, follow its guide and run its script yourself over SSH.</p>
+  <p class="sub"><b>Not for most people.</b> A patch changes the device itself (for example Akai's own MPC program), not a plugin. Checking only <b>looks</b>: it asks the device which patches are applied and changes nothing. <b>Apply</b> and <b>Undo</b> run the patch's own script on the device, with its default settings, and only after you type a confirmation word. Read the patch's guide first; one patch at a time; never as part of a plugin install. For options (such as which buttons to remap), run the script yourself over SSH as its guide says.</p>
   <div class="row"><button id="patchcheck" type="button" disabled>Check the device</button></div>
   <p class="small" id="patchinfo">Connect, then open this step to check.</p>
   <ul class="list" id="patchlist"></ul>
+  <div class="msg" id="patchres"></div>
+  <pre class="log" id="patchlog" hidden></pre>
 </details>
 </section>
 
@@ -372,9 +374,43 @@ function drawPatches() {
     var ch = "Changes " + p.modifies.join(", ") + (p.restarts_mpc ? "; MPC restarts" : "") + (p.backup ? "; a backup goes to " + p.backup : "") + ". Works on " + p.supports.os + ". By " + p.author + ".";
     li.appendChild(el("div", "small", ch));
     if (p.detail) li.appendChild(el("div", "small", p.detail));
+    var can = p.state === "stock" || p.state === "old-patch" ? "install" : "", back = p.state === "patched" || p.state === "old-patch" || p.state === "partial" || (p.state === "unsupported" && p.hasBackup);
+    if ((can && p.supported) || (back && p.reversible)) {
+      var bar = el("div", "row");
+      if (can && p.supported) bar.appendChild(patchButton(p, "install"));
+      if (back && p.reversible) bar.appendChild(patchButton(p, "uninstall"));
+      li.appendChild(bar);
+    }
     if (p.docs) { var a = el("a", null, "Guide"); a.href = "https://github.com/sd88me/mpc-vst-plugins/blob/main/" + p.docs.replace(/^\/+/, ""); a.target = "_blank"; a.rel = "noopener"; a.style.color = "var(--accent)"; li.appendChild(a); }
     ul.appendChild(li);
   });
+}
+function patchButton(p, action) {
+  var b = el("button", "pbtn", action === "install" ? "Apply…" : "Undo…"); b.type = "button"; b.disabled = S.running;
+  b.addEventListener("click", function () { patchConfirm(p, action, b.parentNode.parentNode); });
+  return b;
+}
+// The warning, what it changes and a typed word; nothing runs until the word matches. The server checks the word again.
+function patchConfirm(p, action, li) {
+  var old = li.querySelector(".pconfirm"); if (old) old.remove();
+  var word = action === "install" ? "APPLY" : "UNDO", box = el("div", "pconfirm");
+  box.style.cssText = "margin-top:8px;padding:10px;border:1px solid var(--accent);border-radius:6px";
+  box.appendChild(el("div", null, (action === "install" ? "Apply" : "Undo") + ": " + p.title));
+  box.appendChild(el("div", "small", "This changes " + p.modifies.join(", ") + "." + (p.restarts_mpc ? " MPC may stop and start again, so anything unsaved on the device is lost." : "") +
+    (p.backup ? " A backup goes to " + p.backup + "." : "") + (action === "install" ? " You can undo it from here afterwards." : " The script restores what it saved.")));
+  var lab = el("label", "small", "Type " + word + " to continue "), inp = document.createElement("input"); inp.type = "text"; inp.autocomplete = "off"; inp.spellcheck = false; inp.setAttribute("aria-label", "Type " + word);
+  lab.appendChild(inp); box.appendChild(lab);
+  var go = el("button", "primary", action === "install" ? "Apply patch" : "Undo patch"), no = el("button", null, "Cancel"); go.type = no.type = "button"; go.disabled = true;
+  inp.addEventListener("input", function () { go.disabled = inp.value !== word || S.running; });
+  no.addEventListener("click", function () { box.remove(); });
+  go.addEventListener("click", function () {
+    box.remove(); S.running = true; refresh(); var log = $("patchlog"); log.hidden = false; log.textContent = ""; msg($("patchres"), "Working…");
+    api("/api/patch/run", { id: p.id, action: action, confirm: word })
+      .then(function () { poll(0, log, $("patchres"), action === "install" ? "Applied. The row shows what the device now reports." : "Undone. The row shows what the device now reports."); })
+      .catch(function (e) { S.running = false; refresh(); msg($("patchres"), e.message, "err"); });
+  });
+  var row = el("div", "row"); row.appendChild(go); row.appendChild(no); box.appendChild(row);
+  li.appendChild(box); inp.focus();
 }
 function loadBackups() {
   return api("/api/backups").then(function (j) { S.bk = j.backups; drawBk(); refresh(); }).catch(function (e) { S.bk = null; text($("bkinfo"), e.message); refresh(); });
@@ -408,6 +444,7 @@ function refresh() {
   var s = selection(), n = s.catalog.length + s.uploads.length;
   text($("summary"), !S.connected ? "Connect to your device first." : n === 0 ? "Nothing selected yet." : n + " plugin" + (n === 1 ? "" : "s") + " selected.");
   $("go").disabled = !S.connected || n === 0 || S.running || S.problems.length > 0;
+  Array.prototype.forEach.call(document.querySelectorAll(".pbtn"), function (b) { b.disabled = S.running; });
   var kn = keepN(); $("prune").disabled = !S.connected || S.running || !S.bk || kn === 0 || S.bk.count <= kn;
   $("rm").disabled = !S.connected || S.running || S.problems.length > 0 || !S.dev.some(function (p) { return S.pickDev[devKey(p)] && p.known; });
   $("reg").disabled = !S.connected || S.running || S.problems.length > 0 || !S.unreg || (S.unreg.add.length + S.unreg.remove.length) === 0;
@@ -521,6 +558,7 @@ function poll(since, log, resultEl, doneText) {
     if (j.lines.length) { log.textContent += j.lines.join("\n") + "\n"; log.scrollTop = log.scrollHeight; }
     if (j.state === "running") { setTimeout(function () { poll(j.next, log, resultEl, doneText); }, 600); return; }
     S.running = false; msg(resultEl, j.state === "done" ? doneText : j.result, j.state === "done" ? "ok" : "err");
+    if (resultEl === $("patchres") && S.connected) loadPatches();
     api("/api/state").then(function (st) { if (st.device) { S.problems = st.problems || []; S.pickDev = {}; loadCatalog(); loadDevice(); loadUnreg(); loadBackups(); } });
     refresh();
   }).catch(function (e) { setTimeout(function () { poll(since, log, resultEl, doneText); }, 1500); });
