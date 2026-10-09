@@ -31,6 +31,8 @@ from the Force and may differ on MPC Live/One/X/Key (e.g. `Force Documents` vs `
 - Component library: `AKAI Components/AKAI Generic Components.json` (knobBlack/Blue/Green/Grip/
   Point/Red/Silver/Witch/Yellow). Bassline defines its own `btnBypass`, `comboBox`, `slider` locally;
   that's where to copy switch/button/menu definitions from.
+- Gen2 (offline, 2026-10-09, from the MPC OS 3.9.1 Gen2 update image's main rootfs, not a device): userland is aarch64 only, `/usr/lib/libc.so.6` is
+  GNU libc 2.39, so a Gen2 plugin is a separate aarch64 build with a 2.39 glibc ceiling. See `docs/GEN2.md`.
 
 ## Open issues (reviewed 2026-09-25)
 

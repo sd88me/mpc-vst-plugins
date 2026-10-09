@@ -50,6 +50,8 @@ Building on parameter-driven visibility (`IndexedEnabling`, NOTES "Conditional v
 - [ ] **Catalog: MPC OS 2.x / 3.x compatibility field.** Derived by the release and catalog checks (glibc 2.32 or less, and the skin only uses
       versions 2.15.1's own skins use); badge and filter on the site, badge and warning in the installer app; developers opt in with the
       2.x skin shape. Plan and phases: [docs/OS2_SKINS.md](OS2_SKINS.md) ("Proposed direction").
+- [ ] **Gen2 (aarch64) builds.** Done offline: site badge/filter/buttons, `mpc-store.sh` and desktop app pick the zip by device arch, zip naming, checker, catalog `assets`/`gen2`, installer arch guard, `targets` build option,
+      aarch64 host test. Open: a dry run of the reusable release workflow, a pilot port, any device run. [docs/GEN2.md](GEN2.md).
 - [ ] **Q-Link feel on option lists and whole numbers.** A Q-Link event is one step on a Force (docs/NOTES.md "Stepping of option lists
       and whole numbers"), which is quick on a short range; the data wheel is right. Three prototypes of slowing it failed (NOTES). First
       thing to try: how the stock plugins (AIR, Akai) respond to the same Q-Link on a stepped param, by logging what MPC sends them

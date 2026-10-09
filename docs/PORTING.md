@@ -70,6 +70,9 @@ for the pattern). This applies to every future port, not just ones that hit the 
 - [ ] State saved via chunks (`effGetChunk`/`effSetChunk`).
 - [ ] Offline x86 test: `tools/test_port.sh <port>/vst.json` prints PASSED (instances, parameter round-trip,
       options, popups, MIDI → audio, chunk restore, under ASan).
+- [ ] Gen2 (optional): `"targets": ["armv7", "aarch64"]` in vst.json, `tools/build_port.sh <port>/vst.json aarch64` builds `build/aarch64/<so>`
+      (`arm64v8/gcc:12-bookworm`), `tools/test_port.sh <port>/vst.json aarch64` must print PASSED (UBSan, arm64 container), and the release
+      carries both zips (docs/RELEASING.md, docs/GEN2.md). Say "offline only" until it has loaded on a Gen2 device.
 
 ## 2. Parameters
 - [ ] Stable order (the VST index is what skins and projects bind to). Append only; never reorder a shipped plugin.

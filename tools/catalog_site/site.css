@@ -129,6 +129,7 @@ footer { margin-top: 36px; color: var(--muted); font-size: 12px; border-top: 1px
 .pagelist span { color: var(--muted); font-size: 13px; }
 
 .tag.build { color: var(--accent); border-color: var(--accent); }
+.tag.gen { color: var(--accent); border-color: var(--accent); }   /* a Gen2 (aarch64) build exists */
 .card.by { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
 .need { background: var(--panel-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; }
 .need h3 { font: 700 13px/1.2 var(--display); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin: 8px 0 4px; }

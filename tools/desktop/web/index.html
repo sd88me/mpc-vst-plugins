@@ -197,7 +197,7 @@ function mb(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.m
 function el(tag, cls, t) { var e = document.createElement(tag); if (cls) e.className = cls; if (t != null) e.textContent = t; return e; }
 
 function setConnected(c, info, problems) {
-  S.connected = c; S.problems = problems || []; S.libc = c && info ? (info.libc || "") : "";
+  S.connected = c; S.problems = problems || []; S.libc = c && info ? (info.libc || "") : ""; S.arch = c && info ? (info.arch || "") : "";
   $("s2").classList.toggle("off", !c); $("s3").classList.toggle("off", !c); $("s4").classList.toggle("off", !c); $("s5").classList.toggle("off", !c); $("s6").classList.toggle("off", !c); $("s7").classList.toggle("off", !c);
   S.patches = null; drawPatches();
   if (c) {
@@ -263,6 +263,7 @@ function osTagFor(p) {
   var w = el("span", "tag warn", "MPC OS 3.x only"); w.title = "Not compatible with MPC OS 2.x" + ((p.os_compat_why || []).length ? " (" + p.os_compat_why.join("; ") + ")" : ""); return w;
 }
 function osNote(p) {   /* {level, text} when this plugin will not work as expected on the connected device, else null */
+  if (S.arch === "aarch64" && !p.gen2) return { level: "err", text: p.name + " has no Gen2 (aarch64) build yet, so it cannot be installed on this device." };
   if (!S.libc) return null;
   if (p.max_glibc && vgt(p.max_glibc, S.libc)) return { level: "err", text: p.name + " needs glibc " + p.max_glibc + " but this device has " + S.libc + ": MPC will list it but it will not load." };
   var g = p.os_compat || [];
@@ -280,6 +281,7 @@ function drawCat() {
     if (p.update) b.appendChild(el("span", "tag up", "update: v" + p.installedVersion + " → v" + p.version));
     if (p.defer === false) { var dt = el("span", "tag", "restarts MPC itself"); dt.title = "This release has an older installer that restarts MPC on its own, so it adds a restart to the batch."; b.appendChild(dt); }
     var ot = p.kind === "addin" ? null : osTagFor(p); if (ot) b.appendChild(ot);
+    if (p.gen2) { var gt = el("span", "tag", "Gen2"); gt.title = "Also built for Gen2 (aarch64) MPC devices; the app installs the right zip for the connected device."; b.appendChild(gt); }
     t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " by " + p.author + " · " + mb(p.size) + " · " + p.summary));
     var on = osNote(p); if (on) t.appendChild(el("span", "d osn " + on.level, on.text));
     var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);

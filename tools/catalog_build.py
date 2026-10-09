@@ -354,6 +354,29 @@ def build(entries, src, cache, yanked, keep=10, now=None):
             if any(v["version"] == rec["version"] for v in versions):
                 failed.append(({"id": e["id"], "tag": tag, "error": "duplicate version %s" % rec["version"]}, pub))
                 continue
+            # Gen2: an optional sibling asset (armv7 -> aarch64 in the pattern) built from the same tag. It must pass the same checks
+            # and agree with the armv7 zip on id, uid and version; a bad one is reported but never hides the Gen1 release.
+            rec["assets"] = {"armv7": {k: rec[k] for k in ("sha256", "size") if k in rec} | {"url": asset["browser_download_url"]}}
+            pat64 = e.get("asset_pattern", "*-mpc-armv7.zip").replace("armv7", "aarch64")
+            a64 = [x for x in rel.get("assets", []) if fnmatch.fnmatch(x["name"], pat64)]
+            if len(a64) == 1:
+                z64 = os.path.join(cache, "%s-%s.zip" % (e["id"], a64[0]["id"]))
+                try:
+                    if not os.path.exists(z64):
+                        src.download(a64[0], z64)
+                    err64, warn64, rec64 = catalog_check.check(z64, catalog=True, expect_id=e["id"], expect_repo=e["repo"])
+                    if not err64 and (rec64["manifest"]["arch"] != "aarch64" or rec64["version"] != rec["version"]
+                                      or rec64["manifest"]["uid"] != rec["manifest"]["uid"]):
+                        err64 = ["aarch64 zip is not arch aarch64 with the same version and uid as the armv7 zip"]
+                except Exception as ex:
+                    err64 = ["download/validate failed: %s" % ex]
+                if err64:
+                    failed.append(({"id": e["id"], "tag": tag, "error": "aarch64 asset: " + "; ".join(err64)}, pub))
+                else:
+                    rec["assets"]["aarch64"] = {k: rec64[k] for k in ("sha256", "size") if k in rec64} | {"url": a64[0]["browser_download_url"]}
+                    rec["gen2"] = True
+            elif len(a64) > 1:
+                failed.append(({"id": e["id"], "tag": tag, "error": "expected one asset matching %s, found %d" % (pat64, len(a64))}, pub))
             rec.update({
                 "url": asset["browser_download_url"],
                 "date": (rel.get("published_at") or "")[:10],
