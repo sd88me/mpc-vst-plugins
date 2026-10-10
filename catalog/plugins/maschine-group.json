@@ -1,7 +1,7 @@
 {
   "id": "maschine-group",
   "name": "Maschine Group",
-  "author": "misha",
+  "author": "mmiroshnikov",
   "repo": "sd88me/mpc-vst-plugins",
   "kind": "instrument",
   "style": "sampler",
