@@ -38,7 +38,7 @@
     {
       "id": "button-remap",
       "title": "Button remap: open screens from hardware buttons",
-      "summary": "Remap hardware buttons on a standalone MPC or Force (an LD_PRELOAD shim: a button can become other buttons, a pad or a screen tap). Pick which remaps you want at install (Force: Mixer, Edit, Clip, Menu and Knobs options; the Mode Menu must be at its default layout for the ones that tap an icon). The author's hwremap was tried on an MPC Live (Hakai, MPC 3.9.1) and a Force (stock 3.9.0); this installer and its Force rules were run on one Force (MPC OS 3.x) on 2026-10-10. Not tried yet: uninstall and the MPC Live map on a device. It does not work on a Force running MockbaMod's input path.",
+      "summary": "Remap hardware buttons on a standalone MPC or Force (an LD_PRELOAD shim: a button can become other buttons, a pad or a screen tap). Pick which remaps you want at install (Force: Mixer, Edit, Clip, Menu and Knobs options; the Mode Menu must be at its default layout for the ones that tap an icon). The author's hwremap was tried on an MPC Live (Hakai, MPC 3.9.1) and a Force (stock 3.9.0); this installer and its Force rules were run on one Force (MPC OS 3.x) on 2026-10-10. Not tried yet: uninstall and the MPC Live map on a device. It does not work together with MidiLoop / MockbaMod's input path.",
       "author": "mmiroshnikov",
       "license": "MIT",
       "docs": "tools/mpc_patch/hwremap/README.md",
