@@ -67,6 +67,19 @@ matching release:
 [ { "version": "1.2.0", "device": "MPC Live II", "firmware": "3.6.0", "date": "2026-09-29" } ]
 ```
 
+## Trust tiers
+Every plugin shows one tier, worked out by the nightly build (nobody sets it by hand):
+- **Verified**: the newest stable release has a `tested.json` entry (above). Say on what, and tell the truth: an entry is a claim
+  a maintainer may ask you to back up.
+- **Listed**: the release passed the catalog checks, but no hardware test is recorded for the newest release. This is where a
+  plugin stays until you add a `tested.json` entry, and where it returns when you release a new version without testing it.
+- **Experimental**: no stable release yet (a beta alone counts), or a maintainer capped the entry with `"tier": "experimental"`
+  (for example a bulk port nobody has run). Hidden from the default catalog view, shown by the Tier filter.
+
+The default sort ("Recommended") lists featured plugins, then Verified, then Listed, then by name. `"featured": true` in the
+registry entry is a maintainer's pick and is ignored for Experimental plugins. A listing can be capped, never raised, by the
+registry: `"tier"` accepts only `"experimental"`.
+
 ## Feed
 The site publishes `feed.xml` (Atom, newest 50 non-yanked releases).
 

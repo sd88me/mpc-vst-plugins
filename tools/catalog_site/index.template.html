@@ -61,6 +61,7 @@
     <label>Distribution<select id="f-dist"></select></label>
     <label>MPC OS<select id="f-os"></select></label>
     <label>Device<select id="f-gen"></select></label>
+    <label>Tier<select id="f-tier"></select></label>
     <label>Sort by<select id="sort"></select></label>
   </div>
   <div class="status">
@@ -74,6 +75,7 @@
 
   <div class="grid" id="grid"></div>
   <p class="empty" id="empty" hidden>No plugins match these filters.</p>
+  <p class="line" id="exp" hidden><span id="exp-n"></span> experimental plugins are hidden. <button class="linkbtn" type="button" id="show-exp">Show them</button></p>
 
   <details class="install" id="inst" hidden>
     <summary><span id="inst-count"></span><span class="hint">Get the install command</span></summary>
@@ -125,13 +127,20 @@
 <script>
 var CAT = JSON.parse(document.getElementById("data").textContent);
 var P = CAT.plugins;
-var state = { tab: "instrument", q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", sort: "updated", rev: false, beta: false, sel: [] };
+var state = { tab: "instrument", q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: [] };
 var STORE = JSON.parse(document.getElementById("store").textContent);
 var BY_WARNING = "The result contains firmware-derived data: build it yourself, install it on your own devices only, never share it.";
 var ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 function isBY(p) { return p.distribution === "build-yourself"; }
 function kindsOf(p) { var k = [p.kind]; (p.components || []).forEach(function (c) { if (k.indexOf(c.kind) < 0) k.push(c.kind); }); return k; }
+/* Trust tiers (tools/catalog_build.py tier_of, docs/CATALOG.md): verified = tested on a device, listed = passed the release checks,
+   experimental = new, beta-only or capped by a maintainer. The default view hides experimental; the Tier filter shows it. */
+var TIERS = { verified: { rank: 0, label: "Verified", tip: "The newest release has a recorded hardware test (see Tested on)." },
+              listed: { rank: 1, label: "Listed", tip: "Passed the catalog's release checks; no hardware test recorded for the newest release yet." },
+              experimental: { rank: 2, label: "Experimental", tip: "New, beta-only or unproven: it may not load, draw its skin or run well. Test it before relying on it." } };
+function tierOf(p) { return TIERS[p.tier] ? p.tier : "listed"; }
 var SORTS = {
+  recommended: { label: "Recommended",     cmp: function (a, b) { return (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || TIERS[tierOf(a)].rank - TIERS[tierOf(b)].rank || a.name.localeCompare(b.name); }, desc: false },
   name:      { label: "Name",              cmp: function (a, b) { return a.name.localeCompare(b.name); }, desc: false },
   updated:   { label: "Recently updated",  cmp: function (a, b) { return a.updated.localeCompare(b.updated); }, desc: true },
   downloads: { label: "Downloads",         cmp: function (a, b) { return a.downloads - b.downloads; }, desc: true },
@@ -150,6 +159,7 @@ var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin:
 function inTabKind(p, k) { if (k === "all") return true; return kindsOf(p).some(function (c) { return (c === "instrument" && p.role === "midi" && c === p.kind ? "midi" : c) === k; }); }
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
 fillSelect("f-dist", "Any distribution", ["release", "build-yourself"], function (v) { return v === "release" ? "Download a release zip" : "Build it yourself"; });
+fillSelect("f-tier", "Verified and Listed", ["verified", "listed", "experimental", "all"], function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "listed" ? "Listed only" : "Experimental only"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
 fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 / Force only"; });
 fillSelect("f-style", "All styles", uniq(function (p) { return p.style; }), title);
@@ -197,6 +207,7 @@ function match(p) {
   var s = state, hay = [p.name, p.author, p.style || "", (p.tags || []).join(" "), p.summary].join(" ").toLowerCase();
   if (s.q && hay.indexOf(s.q.toLowerCase()) < 0) return false;
   if (PLUGIN_TABS.indexOf(s.tab) >= 0 && !inTabKind(p, s.tab)) return false;
+  if (s.tier === "all") {} else if (s.tier) { if (tierOf(p) !== s.tier) return false; } else if (tierOf(p) === "experimental") return false;
   if (s.dist === "build-yourself" && !isBY(p)) return false;
   if (s.dist === "release" && isBY(p)) return false;
   if (s.style && p.style !== s.style) return false;
@@ -216,6 +227,7 @@ function safeUrl(u) { return /^https:\/\//.test(u) ? u : "#"; }
 function card(p) {
   var by = isBY(p), v = shown(p), tags = [];
   if (by) tags.push('<span class="tag build" title="No download: you build it from your own files">Build it yourself</span>');
+  tags.push('<span class="tag tier-' + tierOf(p) + '" title="' + esc(TIERS[tierOf(p)].tip) + '">' + TIERS[tierOf(p)].label + '</span>');
   tags.push(p.kind === "addin" ? '<span class="tag" title="Loaded into MPC when it starts (LD_PRELOAD), not a plugin on a track">addin</span>' : '<span class="tag">' + esc(p.kind) + '</span>');
   if (p.style) tags.push('<span class="tag">' + esc(title(p.style)) + '</span>');
   tags.push('<span class="tag">' + esc(p.license) + '</span>');
@@ -263,6 +275,8 @@ function render() {
   out.sort(function (a, b) { var r = so.cmp(a, b); return (so.desc ? -r : r) * (state.rev ? -1 : 1); });
   $("grid").innerHTML = out.map(card).join("");
   $("empty").hidden = out.length > 0;
+  var hid = !state.tier ? P.filter(function (p) { return tierOf(p) === "experimental" && (PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab)); }).length : 0;
+  $("exp").hidden = !hid; $("exp-n").textContent = hid;
   PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return inTabKind(p, k); }).length; });
   var inTab = P.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); }).length;
   $("count").textContent = out.length + " of " + inTab + " " + (state.tab === "midi" ? "MIDI plugins" : state.tab === "all" ? "plugins" : (KINDS[state.tab] || "plugins").toLowerCase());
@@ -272,7 +286,7 @@ function render() {
   save();
 }
 function save() {
-  var d = { tab: state.tab === "instrument" ? "" : state.tab, q: state.q, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, gen: state.gen, sort: state.sort === "updated" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(",") }, q = [];
+  var d = { tab: state.tab === "instrument" ? "" : state.tab, q: state.q, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, gen: state.gen, tier: state.tier, sort: state.sort === "recommended" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(",") }, q = [];
   Object.keys(d).forEach(function (k) { if (d[k]) q.push(k + "=" + encodeURIComponent(d[k])); });
   try { history.replaceState(null, "", q.length ? "#" + q.join("&") : location.pathname + location.search); } catch (e) {}
 }
@@ -284,7 +298,8 @@ function load() {
     else if (k === "sel") state.sel = v.split(",").filter(function (id) { return ID_RE.test(id) && P.some(function (p) { return p.id === id && !isBY(p); }); });
     else if (k in state) state[k] = v;
   });
-  if (!SORTS[state.sort]) state.sort = "updated";
+  if (!SORTS[state.sort]) state.sort = "recommended";
+  if (state.tier && state.tier !== "all" && !TIERS[state.tier]) state.tier = "";
   if (state.tab === "plugins") state.tab = "instrument";   // links from before the split
   if (TABS.indexOf(state.tab) < 0) state.tab = "instrument";
 }
@@ -319,11 +334,12 @@ function filterApps() {
   $("a-empty").hidden = n > 0;
 }
 $("a-q").addEventListener("input", filterApps); $("a-plat").addEventListener("change", filterApps);
-var map = { "q": "q", "f-style": "style", "f-dev": "dev", "f-lic": "lic", "f-dist": "dist", "f-os": "os", "f-gen": "gen", "sort": "sort" };
+var map = { "q": "q", "f-style": "style", "f-dev": "dev", "f-lic": "lic", "f-dist": "dist", "f-os": "os", "f-gen": "gen", "f-tier": "tier", "sort": "sort" };
 Object.keys(map).forEach(function (id) { $(id).addEventListener(id === "q" ? "input" : "change", function () { state[map[id]] = $(id).value; if (id === "sort") state.rev = false; render(); }); });
+$("show-exp").addEventListener("click", function () { state.tier = "all"; sync(); render(); });
 $("beta").addEventListener("change", function () { state.beta = $("beta").checked; render(); });
 $("dir").addEventListener("click", function () { state.rev = !state.rev; render(); });
-$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", sort: "updated", rev: false, beta: false, sel: state.sel }; sync(); render(); });
+$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: state.sel }; sync(); render(); });
 function sync() { Object.keys(map).forEach(function (id) { $(id).value = state[map[id]]; }); $("beta").checked = state.beta; }
 load(); sync(); render(); showTab(state.tab); filterApps();
 

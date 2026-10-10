@@ -656,6 +656,25 @@ class BuildTest(Base):
         self.assertEqual(cat["plugins"][0]["versions"][0]["tested"],
                          [{"device": "MPC Live II", "firmware": "3.6", "date": "2026-09-01"}])
 
+    def test_tiers(self):
+        def tier(entry, tested):
+            gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1)]}, {1: self.build("1.0.0")})
+            gh.tested = lambda repo: tested
+            return catalog_build.build([entry], gh, os.path.join(self.tmp, "c%d" % len(os.listdir(self.tmp))), set())[0]["plugins"][0]
+        t = [{"version": "1.0.0", "device": "Force", "firmware": "3.6", "date": "2026-10-01"}]
+        self.assertEqual(tier(self.ENTRY, [])["tier"], "listed")
+        self.assertEqual(tier(self.ENTRY, t)["tier"], "verified")
+        capped = tier({**self.ENTRY, "tier": "experimental", "featured": True}, t)
+        self.assertEqual((capped["tier"], capped["featured"]), ("experimental", False))
+        self.assertTrue(tier({**self.ENTRY, "featured": True}, t)["featured"])
+        # a test of an older version does not verify the newest one
+        self.assertEqual(tier(self.ENTRY, [{**t[0], "version": "0.9.0"}])["tier"], "listed")
+        # nothing valid yet, or a beta alone: experimental
+        none = catalog_build.build([self.ENTRY], FakeGitHub({"acme/test-synth": []}, {}), os.path.join(self.tmp, "n"), set())[0]
+        self.assertEqual(none["plugins"][0]["tier"], "experimental")
+        gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1, pre=True)]}, {1: self.build("1.0.0")})
+        self.assertEqual(catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "b"), set())[0]["plugins"][0]["tier"], "experimental")
+
     def test_unreadable_repo_is_reported_not_fatal(self):
         cat, problems = catalog_build.build([self.ENTRY], FakeGitHub({}, {}), os.path.join(self.tmp, "c"), set())
         self.assertEqual(cat["plugins"][0]["versions"], [])
@@ -668,6 +687,9 @@ class BuildTest(Base):
         self.assertTrue(catalog_build.check_entry({**self.ENTRY, "license": "Proprietary"}))
         self.assertTrue(catalog_build.check_entry(self.ENTRY, "x/other.json"))
         self.assertTrue(catalog_build.check_entry({**self.ENTRY, "repo": "nope"}))
+        self.assertEqual(catalog_build.check_entry({**self.ENTRY, "tier": "experimental", "featured": True}, "x/test-synth.json"), [])
+        self.assertTrue(catalog_build.check_entry({**self.ENTRY, "tier": "verified"}))
+        self.assertTrue(catalog_build.check_entry({**self.ENTRY, "featured": "yes"}))
 
 
 import catalog_issues  # noqa: E402

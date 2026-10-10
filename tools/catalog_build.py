@@ -71,6 +71,10 @@ def check_entry(e, fname=None):
         p.append("style must be a lowercase slug, e.g. sampler, synth, reverb")
     if "role" in e and not (e["role"] == "midi" and e.get("kind") == "instrument"):
         p.append("role must be \"midi\" and only on an instrument (a plugin that sends MIDI to other tracks instead of making sound)")
+    if "tier" in e and e["tier"] != "experimental":
+        p.append("tier can only be \"experimental\" (a cap; Verified and Listed are worked out from the releases), see docs/CATALOG.md")
+    if "featured" in e and not isinstance(e["featured"], bool):
+        p.append("featured must be true or false")
     if "tags" in e and not (isinstance(e["tags"], list) and all(isinstance(t, str) and ID.fullmatch(t) for t in e["tags"])):
         p.append("tags must be a list of lowercase slugs")
     dist = e.get("distribution", "release")
@@ -85,6 +89,16 @@ def check_entry(e, fname=None):
     else:
         p += check_build_yourself(e)
     return p
+
+
+def tier_of(entry, versions):
+    """Trust tier of a plugin. experimental: the registry caps it ("tier": "experimental") or it has no stable, unyanked
+    release (a beta alone, or nothing valid yet). verified: the newest stable, unyanked version has a tested.json entry.
+    listed: everything else that passed the release checks."""
+    live = [v for v in versions if v["channel"] == "stable" and not v["yanked"]]
+    if entry.get("tier") == "experimental" or not live:
+        return "experimental"
+    return "verified" if live[0].get("tested") else "listed"
 
 
 def _nonempty_str(v):
@@ -416,6 +430,8 @@ def build(entries, src, cache, yanked, keep=10, now=None):
                     item[k] = json.loads(json.dumps(e[k]))   # a copy: the registry entry stays untouched
             item["build"].setdefault("needs", [])
         item["versions"] = versions
+        item["tier"] = tier_of(e, versions)
+        item["featured"] = bool(e.get("featured")) and item["tier"] != "experimental"
         item["latest"] = next((v["version"] for v in versions if v["channel"] == "stable" and not v["yanked"]), None)
         item["latest_beta"] = next((v["version"] for v in versions if v["channel"] == "beta" and not v["yanked"]), None)
         item["downloads"] = all_time

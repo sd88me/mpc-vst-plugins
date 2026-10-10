@@ -115,7 +115,8 @@
    "latest": "1.1.0",
    "latest_beta": null,
    "downloads": 6,
-   "updated": "2026-09-29"
+   "updated": "2026-09-29",
+   "tier": "listed"
   },
   {
    "id": "three-only",
@@ -234,7 +235,8 @@
    "latest": "1.1.0",
    "latest_beta": null,
    "downloads": 6,
-   "updated": "2026-09-29"
+   "updated": "2026-09-29",
+   "tier": "experimental"
   },
   {
    "id": "old-catalog",
@@ -466,7 +468,9 @@
    "latest": "1.1.0",
    "latest_beta": null,
    "downloads": 6,
-   "updated": "2026-09-29"
+   "updated": "2026-09-29",
+   "tier": "verified",
+   "featured": true
   }
  ]
 }

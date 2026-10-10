@@ -22,7 +22,7 @@ with sync_playwright() as p:
     pg.goto(URL)
     check("panel hidden at first", pg.locator("#inst").is_hidden())
     picks = pg.locator("[data-pick]")
-    n = picks.count(); check("downloadable cards have a checkbox", n >= 4, str(n))
+    n = picks.count(); check("downloadable cards have a checkbox", n >= 3, str(n))   # the fixture has 4 downloadable cards, one experimental and so hidden by default
     ids = [picks.nth(i).get_attribute("data-pick") for i in range(n)]
     check("build-yourself cards have none", "monomodule" not in ids and "machinedrum-module" not in ids, str(ids))
     picks.nth(0).check()
@@ -86,6 +86,20 @@ with sync_playwright() as p:
                 check("a Gen2 card has both download buttons",
                       cards.first.locator("a.btn-l:has-text('Gen1')").count() == 1 and cards.first.locator("a.btn-l:has-text('Gen2')").count() == 1)
     pg.select_option("#f-gen", index=0)
+    # Trust tiers: experimental is hidden by default, shown by the Tier filter or "Show them"; Recommended puts featured, then Verified, first.
+    pg.goto(URL); pg.reload()
+    pg.select_option("#f-tier", "all")
+    names = pg.locator("#grid article.card h2").all_inner_texts()
+    tiers = pg.locator("#grid article.card .tag[class*=tier-]").evaluate_all("e => e.map(x => x.className.replace('tag tier-', ''))")
+    rank = {"verified": 0, "listed": 1, "experimental": 2}
+    check("every card shows a tier", len(tiers) == len(names) and len(names) > 0, str(tiers))
+    check("Recommended sorts by tier", [rank[t] for t in tiers] == sorted(rank[t] for t in tiers), str(tiers))
+    pg.select_option("#f-tier", index=0)
+    check("experimental plugins are hidden by default", pg.locator(".tag.tier-experimental").count() == 0)
+    check("the hidden-experimental note offers them", pg.locator("#exp").is_visible())
+    pg.click("#show-exp")
+    check("Show them reveals experimental plugins", pg.locator(".tag.tier-experimental").count() >= 1)
+    pg.select_option("#f-tier", index=0)
     check("no script errors", not errors, str(errors))
     m = b.new_page(viewport={"width": 390, "height": 800}, device_scale_factor=2)
     m.goto(URL + "#sel=" + ids[0]); m.reload()
