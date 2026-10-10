@@ -375,7 +375,7 @@ class Contract(Rig):
         self.assertEqual(r.returncode, 0, r.stderr)
         names = [l.split()[0] for l in r.stdout.splitlines()[1:]]
         self.assertEqual(names, ["mixer-master", "mixer-tabs", "edit-editor", "clip-arrange", "menu-main-mode",
-                                 "skipback", "knobs-short", "knobs-long", "knobs-double"])
+                                 "knobs-short", "knobs-long", "knobs-double"])
         self.assertRegex(r.stdout, r"knobs-short\s+off")
         self.assertRegex(r.stdout, r"mixer-tabs\s+on")
         self.assertIn("has no options", self.patch("options", "--layout", "mpc-live").stdout)
@@ -425,13 +425,6 @@ class Contract(Rig):
         self.assertIn("dbl 1 h1", got)
         self.assertIn("tap 1 b1", got)
         self.assertFalse([l for l in got if l.startswith("combo")])
-
-    def test_skipback_is_off_unless_asked_for(self):
-        self.assertNotIn("dbl 93 b127", rules(self.install("--layout", "force")))
-        self.fresh()
-        got = rules(self.install("--layout", "force", "--with", "skipback"))
-        self.assertIn("dbl 93 b127", got)
-        self.assertIn("dbl 11 b5", got)
 
     def test_an_unknown_option_changes_nothing(self):
         r = self.patch("install", "--confirmed", "--layout", "force", "--options", "mixer-master,nope")

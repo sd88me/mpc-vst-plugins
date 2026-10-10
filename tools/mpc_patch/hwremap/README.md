@@ -24,7 +24,6 @@ The Force map is a set of options. Install asks which to turn on (a checklist on
 | `edit-editor` | on | Edit twice: the plugin / track editor (the stock Shift + Clip shortcut) |
 | `clip-arrange` | on | Clip + Left: Menu, then Arrange |
 | `menu-main-mode` | on | Menu twice: tap the Main Mode icon |
-| `skipback` | off | Rec Arm twice: taps note 127, the trigger for a skipback-save addin. A placeholder: nothing listens for it yet, and the first press still arms as usual |
 | `knobs-short` | off | Knobs, short press: Shift + Knobs (Shift + Knobs is then a plain Knobs press) |
 | `knobs-long` | off | Knobs, long press: a plain Knobs tap |
 | `knobs-double` | off | Knobs, double press: the original long press (Knobs held while you hold the button, at least `holdms`) |

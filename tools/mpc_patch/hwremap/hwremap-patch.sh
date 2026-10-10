@@ -598,9 +598,6 @@ combo 9 114 b2 t280,487
 #@option menu-main-mode on Menu twice: tap the Main Mode icon (needs the default Mode Menu layout; the first press opens the menu as usual)
 dbl 2 t331,655
 
-#@option skipback off Rec Arm twice: the skipback-save trigger (taps note 127, a placeholder for the skipback addin; nothing listens yet, and the first press still arms as usual)
-dbl 93 b127
-
 #@option knobs-short off Knobs, short press: Shift + Knobs (a held press is then a plain Knobs press)
 tap 1 d49 b1 u49
 # Shift + Knobs is a plain Knobs press
