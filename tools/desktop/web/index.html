@@ -49,6 +49,11 @@ dialog .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:1
 .tools .wide { grid-column:1 / -1; }
 .tools select { font:400 14px var(--text); color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 12px; width:100%; }
 .tools label.f { min-width:0; }
+.ktabs { display:flex; gap:4px; background:#c9c6bd; border-radius:6px 6px 0 0; padding:6px 6px 0; margin:8px 0 0; overflow-x:auto; }
+.ktabs button { font:700 14px/1 var(--display); letter-spacing:.08em; text-transform:uppercase; color:#4a4c52; background:transparent; border:0; border-radius:5px 5px 0 0; padding:10px 14px; cursor:pointer; white-space:nowrap; }
+.ktabs button:hover { color:var(--fg); background:#d6d3cb; }
+.ktabs button[aria-selected=true] { color:var(--fg); background:var(--panel); box-shadow:inset 0 3px 0 var(--accent); }
+.ktabs .n { font:500 12px var(--text, inherit); letter-spacing:0; background:#b7b4aa; color:var(--fg); border-radius:10px; padding:1px 7px; margin-left:4px; }
 .catbar { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:space-between; align-items:center; margin:2px 0 8px; font-size:13px; color:var(--muted); }
 .linkbtn { font:600 12px/1 var(--display); letter-spacing:.1em; text-transform:uppercase; color:var(--accent); background:none; border:0; padding:6px 0; cursor:pointer; }
 .tag.up { color:#8a5a00; border-color:#c58b00; }
@@ -101,9 +106,9 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="s2" class="off">
   <h2><span class="n">2</span>Choose plugins</h2>
   <p class="sub">Tick what you want from the catalog, and/or drop plugin zips you downloaded or built yourself.</p>
+  <div class="ktabs" id="ktabs" role="tablist" aria-label="Plugin kind" hidden></div>
   <div class="tools" id="tools" hidden>
     <label class="f wide">Search<input id="q" type="search" placeholder="Name, developer or what it does" autocomplete="off"></label>
-    <label class="f">Kind<select id="f-kind"></select></label>
     <label class="f">Developer<select id="f-dev"></select></label>
     <label class="f">Show<select id="f-show"></select></label>
     <label class="f">Sort by<select id="f-sort"></select></label>
@@ -185,7 +190,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 "use strict";
 var T = new URLSearchParams(location.search).get("t") || "";
 try { history.replaceState(null, "", location.pathname); } catch (e) {}
-var S = { connected: false, problems: [], cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], root: "", unreg: null, mode: "install", f: { q: "", kind: "", dev: "", show: "", sort: "name" } };
+var S = { connected: false, problems: [], cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], root: "", unreg: null, mode: "install", f: { q: "", kind: "instrument", dev: "", show: "", sort: "name" } };
 function $(id) { return document.getElementById(id); }
 function text(el, s) { el.textContent = s; }
 function api(path, body, raw) {
@@ -226,19 +231,40 @@ function fill(id, opts, val) {
   sel.value = val;
 }
 function buildTools() {
-  var kinds = {}, devs = {};
-  S.cat.forEach(function (p) { kinds[p.kind] = 1; devs[p.author] = 1; });
-  fill("f-kind", [["", "All kinds"]].concat(Object.keys(kinds).sort().map(function (k) { return [k, KINDS[k] || k]; })), S.f.kind);
+  var devs = {};
+  S.cat.forEach(function (p) { devs[p.author] = 1; });
+  if (S.cat.length && !S.cat.some(function (p) { return p.kind === S.f.kind; })) {   // nothing of the open kind: open the first kind there is
+    var first = KIND_TABS.filter(function (k) { return S.cat.some(function (p) { return p.kind === k; }); })[0]; if (first) S.f.kind = first;
+  }
   fill("f-dev", [["", "All developers"]].concat(Object.keys(devs).sort().map(function (d) { return [d, d]; })), S.f.dev);
   fill("f-show", Object.keys(SHOWS).map(function (k) { return [k, SHOWS[k]]; }), S.f.show);
   fill("f-sort", Object.keys(SORTS).map(function (k) { return [k, SORTS[k]]; }), S.f.sort);
   $("tools").hidden = S.cat.length === 0;
+  drawKindTabs();
 }
-function shownCat() {
+/* Instruments, Effects, Addins, as on the catalog page. Counts follow the other filters, so a search shows which tab holds the matches.
+   Ticks are kept across tabs (the bar at the bottom counts them all). */
+var KIND_TABS = ["instrument", "effect", "addin"];
+function kindCounts() { var c = {}; shownCat(true).forEach(function (p) { c[p.kind] = (c[p.kind] || 0) + 1; }); return c; }
+function drawKindTabs() {
+  var box = $("ktabs"); box.hidden = S.cat.length === 0; box.textContent = "";
+  var c = kindCounts();
+  KIND_TABS.forEach(function (k) {
+    var b = el("button", null, KINDS[k]); b.type = "button"; b.setAttribute("role", "tab"); b.id = "kt-" + k; b.setAttribute("aria-selected", S.f.kind === k ? "true" : "false");
+    b.tabIndex = S.f.kind === k ? 0 : -1; b.appendChild(el("span", "n", String(c[k] || 0)));
+    b.addEventListener("click", function () { S.f.kind = k; drawKindTabs(); drawCat(); });
+    b.addEventListener("keydown", function (e) {
+      var i = KIND_TABS.indexOf(S.f.kind), d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (!d) return;
+      e.preventDefault(); S.f.kind = KIND_TABS[(i + d + KIND_TABS.length) % KIND_TABS.length]; drawKindTabs(); drawCat(); $("kt-" + S.f.kind).focus();
+    });
+    box.appendChild(b);
+  });
+}
+function shownCat(anyKind) {
   var f = S.f, q = f.q.trim().toLowerCase();
   var out = S.cat.filter(function (p) {
     if (q && [p.name, p.author, p.summary, p.id].join(" ").toLowerCase().indexOf(q) < 0) return false;
-    if (f.kind && p.kind !== f.kind) return false;
+    if (!anyKind && p.kind !== f.kind) return false;
     if (f.dev && p.author !== f.dev) return false;
     if (f.show === "new" && p.installed) return false;
     if (f.show === "on" && !p.installed) return false;
@@ -274,7 +300,8 @@ function osNote(p) {   /* {level, text} when this plugin will not work as expect
 }
 function drawCat() {
   var ul = $("cat"); ul.textContent = "";
-  var rows = shownCat(), f = S.f, filtered = !!(f.q || f.kind || f.dev || f.show);
+  var rows = shownCat(), f = S.f, filtered = !!(f.q || f.dev || f.show);
+  var inTab = S.cat.filter(function (p) { return p.kind === f.kind; }).length;
   rows.forEach(function (p) {
     var li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "c_" + p.id; cb.checked = !!S.pickCat[p.id];
     cb.addEventListener("change", function () { S.pickCat[p.id] = cb.checked; refresh(); if (S.f.show === "sel") drawCat(); });
@@ -290,9 +317,9 @@ function drawCat() {
     li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
   });
   if (!S.cat.length) ul.appendChild(el("li", "small", "The catalog has no downloadable plugins right now."));
-  else if (!rows.length) ul.appendChild(el("li", "small", "No plugins match. Try clearing the filters."));
+  else if (!rows.length) ul.appendChild(el("li", "small", inTab ? "No " + (KINDS[f.kind] || "plugins").toLowerCase() + " match. Try clearing the filters, or look in the other tabs." : "The catalog has no " + (KINDS[f.kind] || "plugins").toLowerCase() + " right now."));
   var n = Object.keys(S.pickCat).filter(function (k) { return S.pickCat[k]; }).length;
-  text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + S.cat.length + " plugin" + (S.cat.length === 1 ? "" : "s") + (n ? " · " + n + " ticked from the catalog" : "") : "");
+  text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + inTab + " " + (KINDS[f.kind] || "plugins").toLowerCase() + (n ? " · " + n + " ticked from the catalog" : "") : "");
   $("resetf").hidden = !filtered;
 }
 function rootNote(r) {
@@ -496,11 +523,11 @@ $("go2").addEventListener("click", startInstall);
 $("selclear").addEventListener("click", function () {
   S.pickCat = {}; S.ups.forEach(function (p) { S.pickUp[p.handle] = false; }); drawCat(); drawUps(); refresh();
 });
-[["q", "q", "input"], ["f-kind", "kind", "change"], ["f-dev", "dev", "change"], ["f-show", "show", "change"], ["f-sort", "sort", "change"]].forEach(function (m) {
-  $(m[0]).addEventListener(m[2], function () { S.f[m[1]] = $(m[0]).value; drawCat(); });
+[["q", "q", "input"], ["f-dev", "dev", "change"], ["f-show", "show", "change"], ["f-sort", "sort", "change"]].forEach(function (m) {
+  $(m[0]).addEventListener(m[2], function () { S.f[m[1]] = $(m[0]).value; drawKindTabs(); drawCat(); });
 });
 $("resetf").addEventListener("click", function () {
-  S.f = { q: "", kind: "", dev: "", show: "", sort: S.f.sort }; $("q").value = ""; buildTools(); drawCat();
+  S.f = { q: "", kind: S.f.kind, dev: "", show: "", sort: S.f.sort }; $("q").value = ""; buildTools(); drawCat();
 });
 $("no").addEventListener("click", function () { $("dlg").close(); });
 function chosenDev() { return S.dev.filter(function (p) { return S.pickDev[devKey(p)] && p.known; }); }
