@@ -50,6 +50,8 @@ Building on parameter-driven visibility (`IndexedEnabling`, NOTES "Conditional v
 - [ ] **Catalog: MPC OS 2.x / 3.x compatibility field.** Derived by the release and catalog checks (glibc 2.32 or less, and the skin only uses
       versions 2.15.1's own skins use); badge and filter on the site, badge and warning in the installer app; developers opt in with the
       2.x skin shape. Plan and phases: [docs/OS2_SKINS.md](OS2_SKINS.md) ("Proposed direction").
+- [ ] **Gen2 (aarch64) builds.** Done offline: site badge/filter/buttons, `mpc-store.sh` and desktop app pick the zip by device arch, zip naming, checker, catalog `assets`/`gen2`, installer arch guard, `targets` build option,
+      aarch64 host test. Open: a dry run of the reusable release workflow, a pilot port, any device run. [docs/GEN2.md](GEN2.md).
 - [ ] **Q-Link feel on option lists and whole numbers.** A Q-Link event is one step on a Force (docs/NOTES.md "Stepping of option lists
       and whole numbers"), which is quick on a short range; the data wheel is right. Three prototypes of slowing it failed (NOTES). First
       thing to try: how the stock plugins (AIR, Akai) respond to the same Q-Link on a stepped param, by logging what MPC sends them
@@ -63,6 +65,7 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
 - [ ] **A port template repo** (`vst.json`, `build.sh`, release workflow, `tested.json` stub, README) so a new plugin is
       catalog-ready from its first commit.
 - [ ] **Update notices honour `param_compat`** (a major bump warns that saved projects will change).
+- [ ] **Catalog quality plan** (trust tiers, a visible bar, new entries start Experimental, trusted verifiers): steps in `docs/CATALOG_QUALITY.md`.
 - [ ] **Announce to the community** and collect what people ask for before building more.
 
 ## Companion apps (catalog)
@@ -75,9 +78,9 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
       verified stock backup), `catalog/patches.json`, and a read-only step 7 in the app. Seen on a Force 2026-10-04: the app's row, the
       restore and the reinstall (NOTES 2026-10-04). The drive exec patch from #150 (run plugins from a `noexec` drive) is built and listed
       (2026-10-05, offline only, real-mount tests). The button remap (`tools/mpc_patch/hwremap`, from akai_standalone_remap) is built and listed
-      the same day, also offline only: the shim's author had already tried it on an MPC Live (Hakai) and a Force; this installer has not been run on a device.
-      **Still to do:** a Force run of the drive exec patch (install, reboot, a plugin loads, uninstall), a device run of the button-remap installer, and
-      Apply and Undo from the app (then a Force test).
+      the same day, offline first; on 2026-10-10 its Force install and rules were run on a Force (NOTES 2026-10-10), the MPC Live map and `uninstall` on a device are not.
+      **Still to do:** a Force run of the drive exec patch (install, reboot, a plugin loads, uninstall), a device run of the button-remap uninstall and its MPC Live map, and
+      a Force test of Apply and Undo from the app (built 2026-10-10, offline only: `POST /api/patch/run`, typed `APPLY`/`UNDO`, default settings, no per-patch options yet).
 
 ## Verification
 - [ ] **Stock, unmodded MPC and other models:** the ALSA MIDI-out port (`poc/midiport.c`) without MockbaMod,

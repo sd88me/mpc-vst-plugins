@@ -1,0 +1,18 @@
+{
+  "id": "warps",
+  "name": "Warps",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-warps",
+  "kind": "effect",
+  "style": "modulation",
+  "tags": [
+    "mutable-instruments",
+    "ring-mod",
+    "vocoder",
+    "frequency-shifter",
+    "eurorack"
+  ],
+  "license": "MIT",
+  "summary": "Mutable Instruments Warps as an insert effect: ring mod, folding, XOR, vocoder and frequency shifting; 12 presets.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-warps/v1.0.0/screenshots/page_0.png"
+}

@@ -76,7 +76,10 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 	var pkgs []*Package
 	for _, it := range items {
 		if it.Catalog != nil {
-			c := *it.Catalog
+			c, err := it.Catalog.ForArch(dev.Info.Arch)
+			if err != nil {
+				return err
+			}
 			dest := filepath.Join(workDir, c.ID+"-"+c.Version+".zip")
 			j.log("Downloading %s %s (%d KB)", c.Name, c.Version, c.Size/1024)
 			next := int64(0)
@@ -100,6 +103,13 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 	}
 	if len(pkgs) == 0 {
 		return errors.New("nothing selected")
+	}
+	for _, p := range pkgs { // a zip dropped in by hand may be for the other generation
+		for _, m := range p.Plugins {
+			if !archFits(m.Arch, dev.Info.Arch) {
+				return fmt.Errorf("%s is built for %s, but this device is %s (%s): get the %s zip", p.Title, m.Arch, dev.Info.Arch, genName(dev.Info.Arch), otherZip(dev.Info.Arch))
+			}
+		}
 	}
 	if root.NoExec {
 		return fmt.Errorf("%s (%s) is mounted noexec, so MPC cannot load plugins from it: they would be listed but only show \"Load Plugin\". Install on the internal drive or an SD card instead", root.Label, root.Path)

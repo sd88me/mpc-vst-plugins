@@ -32,10 +32,14 @@ if [ -z "$MPC_INSTALL_TEST" ]; then
     [ "$(id -u)" = 0 ] || die "run as root"
     command -v systemctl >/dev/null || die "systemctl not found"
 fi
-SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
+SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
 [ -n "$SETTINGS" ] && [ -f "$SETTINGS" ] || die "MPC.settings not found (not an MPC OS device?)"
 if [ -z "$ROOTS" ]; then
     ROOTS="/sdcard/Synths"
+    # Gen2: MPC.settings lists /synths/Synths as a content location (see docs/NOTES.md, 2026-10-10); scan it
+    # too when present. Harmless on Gen1/Force, where /synths doesn't exist.
+    [ -d /synths/Synths ] && ROOTS="$ROOTS
+/synths/Synths"
     for r in /media/*/Synths; do [ -d "$r" ] && ROOTS="$ROOTS
 $r"; done
 fi
@@ -122,7 +126,10 @@ done < "$W/drop"
 while IFS=$TAB read -r uid file meta; do   # added or replaced: same uid or same file goes first
     root=$(dirname "$(dirname "$meta")")
     sed "s|%payload-path%|$root|g" "$meta" | tr '\n' ' ' | grep -o '<PLUGIN [^>]*>' | head -n 1 > "$W/entry"
-    awk -v mode=add -v file="$file" -v uid="$uid" -v entryfile="$W/entry" -f plugin_list.awk "$W/cur" > "$W/next" && mv "$W/next" "$W/cur"
+    # same key choice as install.sh (see plugin_list.awk): the installed folder carries its own mpc-plugin.json
+    pkgarch=$(sed -n 's/.*"arch": *"\([a-z0-9]*\)".*/\1/p' "$(dirname "$meta")/mpc-plugin.json" 2>/dev/null | head -n 1)
+    case "$pkgarch" in aarch64) listkey=pluginList-arm-64bit ;; *) listkey=pluginList-arm ;; esac
+    awk -v mode=add -v file="$file" -v uid="$uid" -v entryfile="$W/entry" -v listkey="$listkey" -f plugin_list.awk "$W/cur" > "$W/next" && mv "$W/next" "$W/cur"
 done < "$W/add"
 # check: every planned uid is there exactly once, the root element is intact, valid XML when python3 exists
 while IFS=$TAB read -r uid file meta; do

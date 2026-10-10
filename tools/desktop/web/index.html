@@ -49,6 +49,11 @@ dialog .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:1
 .tools .wide { grid-column:1 / -1; }
 .tools select { font:400 14px var(--text); color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 12px; width:100%; }
 .tools label.f { min-width:0; }
+.ktabs { display:flex; gap:4px; background:#c9c6bd; border-radius:6px 6px 0 0; padding:6px 6px 0; margin:8px 0 0; overflow-x:auto; }
+.ktabs button { font:700 14px/1 var(--display); letter-spacing:.08em; text-transform:uppercase; color:#4a4c52; background:transparent; border:0; border-radius:5px 5px 0 0; padding:10px 14px; cursor:pointer; white-space:nowrap; }
+.ktabs button:hover { color:var(--fg); background:#d6d3cb; }
+.ktabs button[aria-selected=true] { color:var(--fg); background:var(--panel); box-shadow:inset 0 3px 0 var(--accent); }
+.ktabs .n { font:500 12px var(--text, inherit); letter-spacing:0; background:#b7b4aa; color:var(--fg); border-radius:10px; padding:1px 7px; margin-left:4px; }
 .catbar { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:space-between; align-items:center; margin:2px 0 8px; font-size:13px; color:var(--muted); }
 .linkbtn { font:600 12px/1 var(--display); letter-spacing:.1em; text-transform:uppercase; color:var(--accent); background:none; border:0; padding:6px 0; cursor:pointer; }
 .tag.up { color:#8a5a00; border-color:#c58b00; }
@@ -101,9 +106,9 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="s2" class="off">
   <h2><span class="n">2</span>Choose plugins</h2>
   <p class="sub">Tick what you want from the catalog, and/or drop plugin zips you downloaded or built yourself.</p>
+  <div class="ktabs" id="ktabs" role="tablist" aria-label="Plugin kind" hidden></div>
   <div class="tools" id="tools" hidden>
     <label class="f wide">Search<input id="q" type="search" placeholder="Name, developer or what it does" autocomplete="off"></label>
-    <label class="f">Kind<select id="f-kind"></select></label>
     <label class="f">Developer<select id="f-dev"></select></label>
     <label class="f">Show<select id="f-show"></select></label>
     <label class="f">Sort by<select id="f-sort"></select></label>
@@ -160,10 +165,12 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="s7" class="off">
 <details id="d7" class="collapse">
   <summary><h2><span class="n">7</span>Advanced: device patches</h2><span class="hint">Show</span></summary>
-  <p class="sub"><b>Not for most people.</b> A patch changes the device itself (for example Akai's own MPC program), not a plugin. This list only <b>looks</b>: it asks the device which patches are applied and changes nothing. Applying or undoing a patch from this app is not available yet. To use one now, follow its guide and run its script yourself over SSH.</p>
+  <p class="sub"><b>Not for most people.</b> A patch changes the device itself (for example Akai's own MPC program), not a plugin. Checking only <b>looks</b>: it asks the device which patches are applied and changes nothing. <b>Apply</b> and <b>Undo</b> run the patch's own script on the device, with its default settings, and only after you type a confirmation word. Read the patch's guide first; one patch at a time; never as part of a plugin install. For options (such as which buttons to remap), run the script yourself over SSH as its guide says.</p>
   <div class="row"><button id="patchcheck" type="button" disabled>Check the device</button></div>
   <p class="small" id="patchinfo">Connect, then open this step to check.</p>
   <ul class="list" id="patchlist"></ul>
+  <div class="msg" id="patchres"></div>
+  <pre class="log" id="patchlog" hidden></pre>
 </details>
 </section>
 
@@ -183,7 +190,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 "use strict";
 var T = new URLSearchParams(location.search).get("t") || "";
 try { history.replaceState(null, "", location.pathname); } catch (e) {}
-var S = { connected: false, problems: [], cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], root: "", unreg: null, mode: "install", f: { q: "", kind: "", dev: "", show: "", sort: "name" } };
+var S = { connected: false, problems: [], cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], root: "", unreg: null, mode: "install", f: { q: "", kind: "instrument", dev: "", show: "", sort: "name" } };
 function $(id) { return document.getElementById(id); }
 function text(el, s) { el.textContent = s; }
 function api(path, body, raw) {
@@ -197,7 +204,7 @@ function mb(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.m
 function el(tag, cls, t) { var e = document.createElement(tag); if (cls) e.className = cls; if (t != null) e.textContent = t; return e; }
 
 function setConnected(c, info, problems) {
-  S.connected = c; S.problems = problems || []; S.libc = c && info ? (info.libc || "") : "";
+  S.connected = c; S.problems = problems || []; S.libc = c && info ? (info.libc || "") : ""; S.arch = c && info ? (info.arch || "") : "";
   $("s2").classList.toggle("off", !c); $("s3").classList.toggle("off", !c); $("s4").classList.toggle("off", !c); $("s5").classList.toggle("off", !c); $("s6").classList.toggle("off", !c); $("s7").classList.toggle("off", !c);
   S.patches = null; drawPatches();
   if (c) {
@@ -217,26 +224,49 @@ function loadCatalog() {
 }
 var SHOWS = { "": "All plugins", "new": "Not on the device yet", "on": "Already on the device", "upd": "Updates available", "sel": "Only the ones I ticked" };
 var SORTS = { name: "Name", dev: "Developer", kind: "Kind", size: "Smallest download" };
-var KINDS = { instrument: "Instruments", effect: "Effects", addin: "Addins" };
+var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin: "Addins", all: "All" };
+function kindWord(k) { return k === "midi" ? "MIDI plugins" : k === "all" ? "plugins" : (KINDS[k] || "plugins").toLowerCase(); }
+function tabOf(p) { return p.role === "midi" && p.kind === "instrument" ? "midi" : p.kind; }   // MIDI generators and sequencers have their own tab
 function fill(id, opts, val) {
   var sel = $(id); sel.textContent = "";
   opts.forEach(function (o) { var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op); });
   sel.value = val;
 }
 function buildTools() {
-  var kinds = {}, devs = {};
-  S.cat.forEach(function (p) { kinds[p.kind] = 1; devs[p.author] = 1; });
-  fill("f-kind", [["", "All kinds"]].concat(Object.keys(kinds).sort().map(function (k) { return [k, KINDS[k] || k]; })), S.f.kind);
+  var devs = {};
+  S.cat.forEach(function (p) { devs[p.author] = 1; });
+  if (S.cat.length && !S.cat.some(function (p) { return tabOf(p) === S.f.kind; })) {   // nothing of the open kind: open the first kind there is
+    var first = KIND_TABS.filter(function (k) { return S.cat.some(function (p) { return tabOf(p) === k; }); })[0]; if (first) S.f.kind = first;
+  }
   fill("f-dev", [["", "All developers"]].concat(Object.keys(devs).sort().map(function (d) { return [d, d]; })), S.f.dev);
   fill("f-show", Object.keys(SHOWS).map(function (k) { return [k, SHOWS[k]]; }), S.f.show);
   fill("f-sort", Object.keys(SORTS).map(function (k) { return [k, SORTS[k]]; }), S.f.sort);
   $("tools").hidden = S.cat.length === 0;
+  drawKindTabs();
 }
-function shownCat() {
+/* Instruments, Effects, Addins, as on the catalog page. Counts follow the other filters, so a search shows which tab holds the matches.
+   Ticks are kept across tabs (the bar at the bottom counts them all). */
+var KIND_TABS = ["instrument", "midi", "effect", "addin", "all"];
+function kindCounts() { var c = {}; shownCat(true).forEach(function (p) { c[tabOf(p)] = (c[tabOf(p)] || 0) + 1; c.all = (c.all || 0) + 1; }); return c; }
+function drawKindTabs() {
+  var box = $("ktabs"); box.hidden = S.cat.length === 0; box.textContent = "";
+  var c = kindCounts();
+  KIND_TABS.forEach(function (k) {
+    var b = el("button", null, KINDS[k]); b.type = "button"; b.setAttribute("role", "tab"); b.id = "kt-" + k; b.setAttribute("aria-selected", S.f.kind === k ? "true" : "false");
+    b.tabIndex = S.f.kind === k ? 0 : -1; b.appendChild(el("span", "n", String(c[k] || 0)));
+    b.addEventListener("click", function () { S.f.kind = k; drawKindTabs(); drawCat(); });
+    b.addEventListener("keydown", function (e) {
+      var i = KIND_TABS.indexOf(S.f.kind), d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (!d) return;
+      e.preventDefault(); S.f.kind = KIND_TABS[(i + d + KIND_TABS.length) % KIND_TABS.length]; drawKindTabs(); drawCat(); $("kt-" + S.f.kind).focus();
+    });
+    box.appendChild(b);
+  });
+}
+function shownCat(anyKind) {
   var f = S.f, q = f.q.trim().toLowerCase();
   var out = S.cat.filter(function (p) {
     if (q && [p.name, p.author, p.summary, p.id].join(" ").toLowerCase().indexOf(q) < 0) return false;
-    if (f.kind && p.kind !== f.kind) return false;
+    if (!anyKind && f.kind !== "all" && tabOf(p) !== f.kind) return false;
     if (f.dev && p.author !== f.dev) return false;
     if (f.show === "new" && p.installed) return false;
     if (f.show === "on" && !p.installed) return false;
@@ -263,6 +293,7 @@ function osTagFor(p) {
   var w = el("span", "tag warn", "MPC OS 3.x only"); w.title = "Not compatible with MPC OS 2.x" + ((p.os_compat_why || []).length ? " (" + p.os_compat_why.join("; ") + ")" : ""); return w;
 }
 function osNote(p) {   /* {level, text} when this plugin will not work as expected on the connected device, else null */
+  if (S.arch === "aarch64" && !p.gen2) return { level: "err", text: p.name + " has no Gen2 (aarch64) build yet, so it cannot be installed on this device." };
   if (!S.libc) return null;
   if (p.max_glibc && vgt(p.max_glibc, S.libc)) return { level: "err", text: p.name + " needs glibc " + p.max_glibc + " but this device has " + S.libc + ": MPC will list it but it will not load." };
   var g = p.os_compat || [];
@@ -271,7 +302,8 @@ function osNote(p) {   /* {level, text} when this plugin will not work as expect
 }
 function drawCat() {
   var ul = $("cat"); ul.textContent = "";
-  var rows = shownCat(), f = S.f, filtered = !!(f.q || f.kind || f.dev || f.show);
+  var rows = shownCat(), f = S.f, filtered = !!(f.q || f.dev || f.show);
+  var inTab = S.cat.filter(function (p) { return f.kind === "all" || tabOf(p) === f.kind; }).length;
   rows.forEach(function (p) {
     var li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "c_" + p.id; cb.checked = !!S.pickCat[p.id];
     cb.addEventListener("change", function () { S.pickCat[p.id] = cb.checked; refresh(); if (S.f.show === "sel") drawCat(); });
@@ -280,15 +312,16 @@ function drawCat() {
     if (p.update) b.appendChild(el("span", "tag up", "update: v" + p.installedVersion + " → v" + p.version));
     if (p.defer === false) { var dt = el("span", "tag", "restarts MPC itself"); dt.title = "This release has an older installer that restarts MPC on its own, so it adds a restart to the batch."; b.appendChild(dt); }
     var ot = p.kind === "addin" ? null : osTagFor(p); if (ot) b.appendChild(ot);
+    if (p.gen2) { var gt = el("span", "tag", "Gen2"); gt.title = "Also built for Gen2 (aarch64) MPC devices; the app installs the right zip for the connected device."; b.appendChild(gt); }
     t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " by " + p.author + " · " + mb(p.size) + " · " + p.summary));
     var on = osNote(p); if (on) t.appendChild(el("span", "d osn " + on.level, on.text));
     var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);
     li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
   });
   if (!S.cat.length) ul.appendChild(el("li", "small", "The catalog has no downloadable plugins right now."));
-  else if (!rows.length) ul.appendChild(el("li", "small", "No plugins match. Try clearing the filters."));
+  else if (!rows.length) ul.appendChild(el("li", "small", inTab ? "No " + kindWord(f.kind) + " match. Try clearing the filters, or look in the other tabs." : "The catalog has no " + kindWord(f.kind) + " right now."));
   var n = Object.keys(S.pickCat).filter(function (k) { return S.pickCat[k]; }).length;
-  text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + S.cat.length + " plugin" + (S.cat.length === 1 ? "" : "s") + (n ? " · " + n + " ticked from the catalog" : "") : "");
+  text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + inTab + " " + kindWord(f.kind) + (n ? " · " + n + " ticked from the catalog" : "") : "");
   $("resetf").hidden = !filtered;
 }
 function rootNote(r) {
@@ -370,9 +403,43 @@ function drawPatches() {
     var ch = "Changes " + p.modifies.join(", ") + (p.restarts_mpc ? "; MPC restarts" : "") + (p.backup ? "; a backup goes to " + p.backup : "") + ". Works on " + p.supports.os + ". By " + p.author + ".";
     li.appendChild(el("div", "small", ch));
     if (p.detail) li.appendChild(el("div", "small", p.detail));
+    var can = p.state === "stock" || p.state === "old-patch" ? "install" : "", back = p.state === "patched" || p.state === "old-patch" || p.state === "partial" || (p.state === "unsupported" && p.hasBackup);
+    if ((can && p.supported) || (back && p.reversible)) {
+      var bar = el("div", "row");
+      if (can && p.supported) bar.appendChild(patchButton(p, "install"));
+      if (back && p.reversible) bar.appendChild(patchButton(p, "uninstall"));
+      li.appendChild(bar);
+    }
     if (p.docs) { var a = el("a", null, "Guide"); a.href = "https://github.com/sd88me/mpc-vst-plugins/blob/main/" + p.docs.replace(/^\/+/, ""); a.target = "_blank"; a.rel = "noopener"; a.style.color = "var(--accent)"; li.appendChild(a); }
     ul.appendChild(li);
   });
+}
+function patchButton(p, action) {
+  var b = el("button", "pbtn", action === "install" ? "Apply…" : "Undo…"); b.type = "button"; b.disabled = S.running;
+  b.addEventListener("click", function () { patchConfirm(p, action, b.parentNode.parentNode); });
+  return b;
+}
+// The warning, what it changes and a typed word; nothing runs until the word matches. The server checks the word again.
+function patchConfirm(p, action, li) {
+  var old = li.querySelector(".pconfirm"); if (old) old.remove();
+  var word = action === "install" ? "APPLY" : "UNDO", box = el("div", "pconfirm");
+  box.style.cssText = "margin-top:8px;padding:10px;border:1px solid var(--accent);border-radius:6px";
+  box.appendChild(el("div", null, (action === "install" ? "Apply" : "Undo") + ": " + p.title));
+  box.appendChild(el("div", "small", "This changes " + p.modifies.join(", ") + "." + (p.restarts_mpc ? " MPC may stop and start again, so anything unsaved on the device is lost." : "") +
+    (p.backup ? " A backup goes to " + p.backup + "." : "") + (action === "install" ? " You can undo it from here afterwards." : " The script restores what it saved.")));
+  var lab = el("label", "small", "Type " + word + " to continue "), inp = document.createElement("input"); inp.type = "text"; inp.autocomplete = "off"; inp.spellcheck = false; inp.setAttribute("aria-label", "Type " + word);
+  lab.appendChild(inp); box.appendChild(lab);
+  var go = el("button", "primary", action === "install" ? "Apply patch" : "Undo patch"), no = el("button", null, "Cancel"); go.type = no.type = "button"; go.disabled = true;
+  inp.addEventListener("input", function () { go.disabled = inp.value !== word || S.running; });
+  no.addEventListener("click", function () { box.remove(); });
+  go.addEventListener("click", function () {
+    box.remove(); S.running = true; refresh(); var log = $("patchlog"); log.hidden = false; log.textContent = ""; msg($("patchres"), "Working…");
+    api("/api/patch/run", { id: p.id, action: action, confirm: word })
+      .then(function () { poll(0, log, $("patchres"), action === "install" ? "Applied. The row shows what the device now reports." : "Undone. The row shows what the device now reports."); })
+      .catch(function (e) { S.running = false; refresh(); msg($("patchres"), e.message, "err"); });
+  });
+  var row = el("div", "row"); row.appendChild(go); row.appendChild(no); box.appendChild(row);
+  li.appendChild(box); inp.focus();
 }
 function loadBackups() {
   return api("/api/backups").then(function (j) { S.bk = j.backups; drawBk(); refresh(); }).catch(function (e) { S.bk = null; text($("bkinfo"), e.message); refresh(); });
@@ -406,6 +473,7 @@ function refresh() {
   var s = selection(), n = s.catalog.length + s.uploads.length;
   text($("summary"), !S.connected ? "Connect to your device first." : n === 0 ? "Nothing selected yet." : n + " plugin" + (n === 1 ? "" : "s") + " selected.");
   $("go").disabled = !S.connected || n === 0 || S.running || S.problems.length > 0;
+  Array.prototype.forEach.call(document.querySelectorAll(".pbtn"), function (b) { b.disabled = S.running; });
   var kn = keepN(); $("prune").disabled = !S.connected || S.running || !S.bk || kn === 0 || S.bk.count <= kn;
   $("rm").disabled = !S.connected || S.running || S.problems.length > 0 || !S.dev.some(function (p) { return S.pickDev[devKey(p)] && p.known; });
   $("reg").disabled = !S.connected || S.running || S.problems.length > 0 || !S.unreg || (S.unreg.add.length + S.unreg.remove.length) === 0;
@@ -457,11 +525,11 @@ $("go2").addEventListener("click", startInstall);
 $("selclear").addEventListener("click", function () {
   S.pickCat = {}; S.ups.forEach(function (p) { S.pickUp[p.handle] = false; }); drawCat(); drawUps(); refresh();
 });
-[["q", "q", "input"], ["f-kind", "kind", "change"], ["f-dev", "dev", "change"], ["f-show", "show", "change"], ["f-sort", "sort", "change"]].forEach(function (m) {
-  $(m[0]).addEventListener(m[2], function () { S.f[m[1]] = $(m[0]).value; drawCat(); });
+[["q", "q", "input"], ["f-dev", "dev", "change"], ["f-show", "show", "change"], ["f-sort", "sort", "change"]].forEach(function (m) {
+  $(m[0]).addEventListener(m[2], function () { S.f[m[1]] = $(m[0]).value; drawKindTabs(); drawCat(); });
 });
 $("resetf").addEventListener("click", function () {
-  S.f = { q: "", kind: "", dev: "", show: "", sort: S.f.sort }; $("q").value = ""; buildTools(); drawCat();
+  S.f = { q: "", kind: S.f.kind, dev: "", show: "", sort: S.f.sort }; $("q").value = ""; buildTools(); drawCat();
 });
 $("no").addEventListener("click", function () { $("dlg").close(); });
 function chosenDev() { return S.dev.filter(function (p) { return S.pickDev[devKey(p)] && p.known; }); }
@@ -519,6 +587,7 @@ function poll(since, log, resultEl, doneText) {
     if (j.lines.length) { log.textContent += j.lines.join("\n") + "\n"; log.scrollTop = log.scrollHeight; }
     if (j.state === "running") { setTimeout(function () { poll(j.next, log, resultEl, doneText); }, 600); return; }
     S.running = false; msg(resultEl, j.state === "done" ? doneText : j.result, j.state === "done" ? "ok" : "err");
+    if (resultEl === $("patchres") && S.connected) loadPatches();
     api("/api/state").then(function (st) { if (st.device) { S.problems = st.problems || []; S.pickDev = {}; loadCatalog(); loadDevice(); loadUnreg(); loadBackups(); } });
     refresh();
   }).catch(function (e) { setTimeout(function () { poll(since, log, resultEl, doneText); }, 1500); });

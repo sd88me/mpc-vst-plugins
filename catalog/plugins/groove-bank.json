@@ -1,0 +1,18 @@
+{
+  "id": "groove-bank",
+  "name": "Groove Bank",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-groovebank",
+  "kind": "instrument",
+  "role": "midi",
+  "style": "sequencer",
+  "tags": [
+    "midi",
+    "chords",
+    "rhythm",
+    "grooves"
+  ],
+  "license": "MIT",
+  "summary": "Replays the chord you hold in genre grooves from its library, with swing, strum and latch, through its own MIDI port.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-groovebank/v1.0.0/screenshots/page_0.png"
+}

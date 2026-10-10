@@ -1,0 +1,20 @@
+{
+  "id": "liminal-amp",
+  "name": "Liminal Amp",
+  "author": "gmorb",
+  "repo": "gmorb/mpc-vst-liminal-amp",
+  "kind": "effect",
+  "style": "amp-sim",
+  "license": "MIT",
+  "tags": [
+    "nam",
+    "guitar",
+    "amp",
+    "cab-ir",
+    "lightweight"
+  ],
+  "summary": "Lightweight, official-sound Neural Amp Modeler: A2 captures with cab IR, gate and tone stack, resampled like the official plugin; browses models/ and irs/ folders on any drive.",
+  "homepage": "https://github.com/gmorb/mpc-vst-liminal-amp",
+  "asset_pattern": "Liminal-Amp-*-mpc-armv7.zip",
+  "screenshot": "https://raw.githubusercontent.com/gmorb/mpc-vst-liminal-amp/v1.0.0/docs/images/page.png"
+}

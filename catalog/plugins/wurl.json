@@ -1,0 +1,17 @@
+{
+  "id": "wurl",
+  "name": "Wurl",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-wurl",
+  "kind": "instrument",
+  "style": "electric-piano",
+  "tags": [
+    "wurlitzer",
+    "physical-modelling",
+    "keys",
+    "tremolo"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "A physically modelled Wurlitzer 200A electric piano (OpenWurli) that barks with velocity, with tremolo and 10 presets.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-wurl/v1.0.0/screenshots/page_0.png"
+}

@@ -11,6 +11,7 @@ base = {"id": "drum-pad-layout", "title": "16-pad drum layout for selected plugi
         "docs": "tools/mpc_patch/README.md", "supports": {"os": "MPC OS 3.9.1.2", "arch": "armv7l"}, "modifies": ["/usr/bin/MPC"], "backup": "/sdcard/MPC-backup", "restarts_mpc": True, "reversible": True}
 mode = {"v": "stock"}
 calls = []
+runs = []
 def handle(route):
     req = route.request; p = req.url.split("/api/")[1].split("?")[0]; calls.append(p)
     def ok(o, code=200): route.fulfill(status=code, content_type="application/json", body=json.dumps(o))
@@ -20,6 +21,11 @@ def handle(route):
     elif p == "device": ok({"plugins": [], "roots": dev["roots"]})
     elif p == "unregistered": ok({"add": [], "remove": [], "skipped": []})
     elif p == "backups": ok({"backups": {"count": 0, "totalKB": 0}, "keepDefault": 10, "keepMin": 1, "keepMax": 1000})
+    elif p == "patch/run":
+        body = json.loads(req.post_data); runs.append(body)
+        if body["confirm"] not in ("APPLY", "UNDO"): ok({"error": "type the word"}, 400)
+        else: mode["v"] = "patched" if body["action"] == "install" else "stock"; ok({"job": "j1"})
+    elif p == "job": ok({"state": "done", "lines": ["Applying: x", "  done"], "next": 2, "result": "Done."})
     elif p == "patches":
         m = mode["v"]
         if m == "none": ok({"patches": [], "note": "No device patches are published yet.", "connected": True})
@@ -49,7 +55,21 @@ try:
             t = pg.locator("#patchlist").inner_text(); tl = t.lower()
             check("state %s: the backup folder is shown as a path, never as true" % st, "a backup goes to /sdcard/MPC-backup" in t)
             check("state %s shows %r" % (st, label), label.lower() in tl and "16-pad drum layout" in t and "/usr/bin/MPC" in t and "MPC restarts" in t)
-        check("no apply or undo button in the list", pg.locator("#patchlist button").count() == 0)
+        for st, want in [("stock", ["Apply…"]), ("patched", ["Undo…"]), ("old-patch", ["Apply…", "Undo…"]), ("unsupported", []), ("error", [])]:
+            mode["v"] = st; pg.click("#patchcheck"); time.sleep(0.5)
+            got = [b.text_content() for b in pg.locator("#patchlist button").all()]
+            check("state %s offers %s" % (st, want), got == want)
+        mode["v"] = "stock"; pg.click("#patchcheck"); time.sleep(0.5)
+        pg.click("#patchlist button:has-text('Apply')")
+        check("a confirmation with the warning appears; nothing ran", pg.locator(".pconfirm").is_visible() and "/usr/bin/MPC" in pg.locator(".pconfirm").inner_text() and not runs)
+        check("the button waits for the word", pg.locator(".pconfirm .primary").is_disabled())
+        pg.fill(".pconfirm input", "apply"); check("a wrong word keeps it disabled", pg.locator(".pconfirm .primary").is_disabled())
+        pg.click(".pconfirm button:has-text('Cancel')"); check("cancel removes it, nothing ran", pg.locator(".pconfirm").count() == 0 and not runs)
+        pg.click("#patchlist button:has-text('Apply')"); pg.fill(".pconfirm input", "APPLY"); pg.click(".pconfirm .primary"); pg.wait_for_timeout(1500)
+        check("apply sent with the word", runs == [{"id": "drum-pad-layout", "action": "install", "confirm": "APPLY"}])
+        check("the log and result show, and the row is re-read as applied", "Applying" in pg.locator("#patchlog").text_content() and "Applied" in pg.locator("#patchres").text_content() and "Applied" in pg.locator("#patchlist .tag").text_content())
+        pg.click("#patchlist button:has-text('Undo')"); pg.fill(".pconfirm input", "UNDO"); pg.click(".pconfirm .primary"); pg.wait_for_timeout(1500)
+        check("undo sent and the row is back to not applied", runs[-1]["action"] == "uninstall" and "Not applied" in pg.locator("#patchlist .tag").text_content())
         check("guide link goes to the repo", (pg.locator("#patchlist a").get_attribute("href") or "").endswith("/blob/main/tools/mpc_patch/README.md"))
         mode["v"] = "none"; pg.click("#patchcheck"); time.sleep(0.5)
         check("nothing published", "No device patches are published yet" in pg.locator("#patchinfo").inner_text() and pg.locator("#patchlist li").count() == 0)

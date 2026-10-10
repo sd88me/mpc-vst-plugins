@@ -61,11 +61,12 @@ jobs:
       VERSION: ${{ inputs.version }}
       PACKAGE_DIR: ${{ inputs.package_dir }}
       MPC_VST: ${{ github.workspace }}/mpc-vst-plugins
-      GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
     steps:
       - name: Refuse to touch a published release
         if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           state=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
                     --jq ".[] | select(.tag_name == \"$TAG\") | if .draft then \"draft\" else \"published\" end" | head -1)
@@ -77,11 +78,13 @@ jobs:
       - name: Check out the addin
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           path: addin
 
       - name: Check out mpc-vst-plugins (tools)
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           repository: sd88me/mpc-vst-plugins
           ref: ${{ inputs.tools_ref }}
           path: mpc-vst-plugins
@@ -139,6 +142,7 @@ jobs:
       - name: Create or update the draft release
         if: ${{ !inputs.dry_run }}
         env:
+          GH_TOKEN: ${{ github.token }}
           ZIP: ${{ steps.pkg.outputs.zip }}
           NAME: ${{ steps.pkg.outputs.name }}
           ABOUT: ${{ inputs.about }}

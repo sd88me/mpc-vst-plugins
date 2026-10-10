@@ -97,6 +97,12 @@ static char grid[16][MODE_NAME_MAX];
 static time_t settings_mtime = -1;
 static long settings_mtime_ns = -1;
 static int hold_note = -1;
+#define MAX_COMBO 32
+static struct {
+    int hold, src;
+    struct action a;
+} combo[MAX_COMBO];
+static int ncombo;
 static int log_on;
 static time_t conf_mtime = -1;
 static long conf_mtime_ns = -1;
@@ -195,6 +201,7 @@ static void reset_conf(void)
     long_ms = 400;
     hold_ms = 800;
     hold_note = -1;
+    ncombo = 0;
     log_on = 0;
     dbl_ms = 350;
     touch_ms = 150;
@@ -256,6 +263,25 @@ static void load_conf(void)
         if (!strcmp(w, "holdms")) {
             char *v = strtok_r(NULL, " \t\r\n", &save);
             hold_ms = v ? atoi(v) : 800;
+            continue;
+        }
+        if (!strcmp(w, "combo")) {
+            // combo HOLD SRC tokens: while button HOLD is held, pressing SRC runs the tokens
+            char *h = strtok_r(NULL, " \t\r\n", &save);
+            char *n = strtok_r(NULL, " \t\r\n", &save);
+            long hb = h ? strtol(h, NULL, 0) : -1, sb = n ? strtol(n, NULL, 0) : -1;
+            if (hb < 0 || hb > 127 || sb < 0 || sb > 127 || ncombo >= MAX_COMBO)
+                continue;
+            memset(&combo[ncombo], 0, sizeof combo[ncombo]);
+            combo[ncombo].hold = (int)hb;
+            combo[ncombo].src = (int)sb;
+            for (char *t = strtok_r(NULL, " \t\r\n", &save); t; t = strtok_r(NULL, " \t\r\n", &save)) {
+                if (add_tok(&combo[ncombo].a, t) != 0) {
+                    logf_("bad token '%s' for combo %ld %ld\n", t, hb, sb);
+                    break;
+                }
+            }
+            ncombo++;
             continue;
         }
         struct action *table = single;
@@ -529,6 +555,18 @@ static void handle_msg(void)
             long_active[note] = 0;
             push_btn(note, 0);
             return;
+        }
+        if (press) {
+            int hit = 0;
+            for (int i = 0; i < ncombo && !hit; i++)
+                if (combo[i].src == note && held[combo[i].hold] && mapped(&combo[i].a)) {
+                    run_action(&combo[i].a);
+                    swallow_release[note] = 1;
+                    logf_("remap %d (combo with %d)\n", note, combo[i].hold);
+                    hit = 1;
+                }
+            if (hit)
+                return;
         }
         if (press && !holding && mapped(&tapped[note])) {
             if (tap_wait[note]) {

@@ -1,0 +1,18 @@
+{
+  "id": "super-arp",
+  "name": "Super Arp",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-superarp",
+  "kind": "instrument",
+  "role": "midi",
+  "style": "sequencer",
+  "tags": [
+    "arpeggiator",
+    "midi",
+    "patterns",
+    "rhythm"
+  ],
+  "license": "MIT",
+  "summary": "Arpeggiator that splits note order from rhythm: 40 patterns, 40 rhythms and seeded random modifiers.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-superarp/v1.0.0/screenshots/page_0.png"
+}

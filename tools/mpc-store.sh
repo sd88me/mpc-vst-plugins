@@ -33,16 +33,17 @@ while [ $# -gt 0 ]; do
         *) break ;;
     esac
 done
+ARCH="${MPC_STORE_ARCH:-$(uname -m)}"   # Gen1 and Force: armv7l; Gen2: aarch64, which takes the catalog's aarch64 zip (columns 17-19)
 CMD="${1:-}"; [ -n "$CMD" ] || die "usage: sh mpc-store.sh [-y] [-t <synths-dir>] [--url <url>] [--dry-run] list|install|update|remove|prune|sync [ids]"
 shift
 case "$SYNTHS" in /*) ;; *) die "-t must be an absolute path" ;; esac
 case "$SYNTHS" in *"&"*|*"|"*|*"\\"*) die "the Synths path may not contain & | or backslash" ;; esac
 if [ -z "$MPC_INSTALL_TEST" ] && [ "$CMD" != list ] && [ $DRY = 0 ]; then
     [ "$(id -u)" = 0 ] || die "run as root"
-    case "$(uname -m)" in armv7*) ;; *) die "this is for 32-bit ARM MPC OS devices (Gen1); this one is $(uname -m)" ;; esac
+    case "$ARCH" in armv7*|aarch64) ;; *) die "this is for MPC OS devices (Gen1 32-bit ARM or Gen2 aarch64); this one is $ARCH" ;; esac
     command -v systemctl >/dev/null || die "systemctl not found"
 fi
-SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
+SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
 W="${MPC_STORE_TMP:-/tmp}/mpc-store.$$"; mkdir -p "$W" || die "cannot create $W"
 trap 'rm -rf "$W"' EXIT
 STATE="$SYNTHS/.mpc-store"
@@ -133,7 +134,7 @@ vgt() {   # vgt 2.34 2.33 succeeds when the first version is newer than the seco
 # os_warnings <todo file>: say what will not work on this device; never stops the install (the catalog's os_compat and max_glibc columns)
 os_warnings() {
     libc=$(libc_version); [ -n "$libc" ] || return 0
-    while IFS=$TAB read -r kind id ver latest k name skin uid compat size sha url ud defer os mg; do
+    while IFS=$TAB read -r kind id ver latest k name skin uid compat size sha url ud defer os mg _rest; do
         [ "$k" != addin ] || continue
         if [ -n "${mg:-}" ] && [ "$mg" != "-" ] && vgt "$mg" "$libc"; then
             echo "WARNING: $name $ver needs glibc $mg but this device has $libc: MPC will list it but it will not load."
@@ -145,13 +146,14 @@ os_warnings() {
 
 do_list() {
     printf '%-18s %-9s %-10s %s\n' "ID" "LATEST" "INSTALLED" "NAME"
-    awk -F'\t' '$1 == "plugin" && $4 == 1 { print $2 "\t" $3 "\t" $6 "\t" $7 "\t" $5 "\t" $15 }' "$W/catalog.tsv" | while IFS=$TAB read -r id ver name skin kind os; do
+    awk -F'\t' '$1 == "plugin" && $4 == 1 { print $2 "\t" $3 "\t" $6 "\t" $7 "\t" $5 "\t" $15 "\t" $19 }' "$W/catalog.tsv" | while IFS=$TAB read -r id ver name skin kind os url64; do
         inst=$(installed_version "$id" || true)
         where="$SYNTHS/$skin"; [ "$kind" != addin ] || where="$ADDINS/$id"
         if [ -z "$inst" ]; then if [ -d "$where" ]; then inst="manual"; else inst="-"; fi; fi
         [ "$kind" != addin ] || name="$name (addin)"
         mark=""; if [ "$inst" != "-" ] && [ "$inst" != "manual" ] && [ "$inst" != "$ver" ]; then mark="  (update available)"; fi
         if [ "$os" = "3.x" ]; then mark="$mark  [MPC OS 3.x only]"; fi
+        if [ "$ARCH" = aarch64 ] && [ "$kind" != addin ] && { [ -z "$url64" ] || [ "$url64" = "-" ]; }; then mark="$mark  [no Gen2 build]"; fi
         printf '%-18s %-9s %-10s %s%s\n' "$id" "$ver" "$inst" "$name" "$mark"
     done
 }
@@ -161,6 +163,10 @@ do_install_rows() {
     n=0; : > "$W/todo"
     for r in "$@"; do
         id=$(col "$r" 2); ver=$(col "$r" 3); size=$(col "$r" 10); sha=$(col "$r" 11); url=$(col "$r" 12)
+        if [ "$ARCH" = aarch64 ]; then   # a Gen2 device takes the aarch64 zip; the armv7 one would not load
+            url=$(col "$r" 19); [ -n "$url" ] && [ "$url" != "-" ] || die "$id $ver has no Gen2 (aarch64) build: nothing was installed"
+            size=$(col "$r" 17); sha=$(col "$r" 18)
+        fi
         echo "Downloading $id $ver ($((size / 1024)) KB)"
         fetch "$url" "$W/$id.zip" || die "cannot download $url"
         [ "$(sha_of "$W/$id.zip")" = "$sha" ] || die "$id $ver does not match its sha256 in the catalog: nothing was installed"

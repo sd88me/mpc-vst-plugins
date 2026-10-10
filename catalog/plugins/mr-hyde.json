@@ -1,0 +1,17 @@
+{
+  "id": "mr-hyde",
+  "name": "Mr Hyde",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-mrhyde",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "microfreak",
+    "macro-oscillator",
+    "mod-matrix",
+    "low-pass-gate"
+  ],
+  "license": "MIT",
+  "summary": "MicroFreak-style voice on Plaits' 17 models, with a low-pass gate, filter, cycling envelope and a 6x6 mod matrix; 19 presets.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-mrhyde/v1.0.0/screenshots/page_0.png"
+}

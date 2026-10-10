@@ -1,0 +1,17 @@
+{
+  "id": "rings-fx",
+  "name": "Rings FX",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-ringsfx",
+  "kind": "effect",
+  "style": "resonator",
+  "tags": [
+    "mutable-instruments",
+    "rings",
+    "resonator",
+    "eurorack"
+  ],
+  "license": "MIT",
+  "summary": "Rings as an insert effect: the track's audio strums the resonator, turning drums and loops into tuned strings; 12 presets.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-ringsfx/v1.0.0/screenshots/page_0.png"
+}

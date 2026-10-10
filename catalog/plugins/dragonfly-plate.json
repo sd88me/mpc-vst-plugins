@@ -5,8 +5,13 @@
   "repo": "gmorb/mpc-vst-dragonfly-plate",
   "kind": "effect",
   "style": "reverb",
-  "tags": ["reverb", "plate", "dragonfly"],
+  "tags": [
+    "reverb",
+    "plate",
+    "dragonfly"
+  ],
   "license": "GPL-3.0-only",
   "summary": "Dragonfly Plate reverb as a native insert effect, with a touchscreen skin and Q-Links.",
-  "asset_pattern": "Plate-*-mpc-armv7.zip"
+  "asset_pattern": "Plate-*-mpc-armv7.zip",
+  "image": "https://raw.githubusercontent.com/gmorb/mpc-vst-dragonfly-plate/main/docs/banners/plate.png"
 }

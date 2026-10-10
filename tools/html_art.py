@@ -78,6 +78,12 @@ DEFS = """<defs>
 <radialGradient id="bake-radial" cx="0.38" cy="0.32" r="0.8">
  <stop offset="0" stop-color="#7a4a2e"/><stop offset="0.4" stop-color="#3a1e10"/><stop offset="1" stop-color="#140803"/>
 </radialGradient>
+<radialGradient id="wside-radial" cx="0.38" cy="0.32" r="0.85">
+ <stop offset="0" stop-color="#fff" stop-opacity="0.22"/><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.55"/>
+</radialGradient>
+<radialGradient id="winset-radial" cx="0.4" cy="0.33" r="0.8">
+ <stop offset="0" stop-color="#fff" stop-opacity="0.38"/><stop offset="1" stop-color="#000" stop-opacity="0.28"/>
+</radialGradient>
 <radialGradient id="dome-radial" cx="0.38" cy="0.32" r="0.8">
  <stop offset="0" stop-color="#6a6c70"/><stop offset="0.35" stop-color="#2c2d30"/><stop offset="1" stop-color="#050506"/>
 </radialGradient>
@@ -257,10 +263,27 @@ def knob_ledring(cx, cy, r, a):
             _spec(cx, cy, R, -0.25, -0.4, 0.3, 0.12, False))
 
 
+def knob_taper(cx, cy, r, a):
+    """A tapered, waisted-stem knob seen from straight above: a wide stem base in shade, a bevel ring, a flat top with a lighter
+    inset disc, a soft highlight and a small turning notch. Drawn inside r so a value arc sits outside it. Recolour per size with
+    the data-r attribute (e.g. .look-wside[data-r="27"] for a red key knob)."""
+    R = r * 0.92
+    return ('<ellipse class="look-hshadow" cx="%g" cy="%g" rx="%g" ry="%g"/>' % (cx + R * 0.06, cy + R * 0.14, R * 1.02, R) +
+            '<circle class="look-wside" data-r="%d" cx="%g" cy="%g" r="%g"/>' % (round(r), cx, cy, R) +
+            '<circle class="look-wshade" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R) +
+            '<circle class="look-wtop" data-r="%d" cx="%g" cy="%g" r="%g"/>' % (round(r), cx, cy, R * 0.78) +
+            '<circle class="look-wbevel" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.66) +
+            '<circle class="look-winset" data-r="%d" cx="%g" cy="%g" r="%g"/>' % (round(r), cx, cy, R * 0.6) +
+            _turn(a, cx, cy, '<line class="look-wnotch" x1="%g" y1="%g" x2="%g" y2="%g" style="stroke-width:%g"/>'
+                  % (cx, cy - R * 0.22, cx, cy - R * 0.5, max(2.0, r / 10))) +
+            '<ellipse class="look-hspec" cx="%g" cy="%g" rx="%g" ry="%g" transform="rotate(-35 %g %g)"/>' % (
+                cx - R * 0.22, cy - R * 0.3, R * 0.26, R * 0.1, cx - R * 0.22, cy - R * 0.3))
+
+
 KNOB_LOOKS = {"moog": knob_moog, "chicken": knob_chicken, "metal": knob_metal, "cap": knob_cap, "prophet": knob_prophet,
               "hardware": knob_hardware, "chrome": knob_chrome,
-              "bakelite": knob_bakelite, "davies": knob_davies, "rubber": knob_rubber, "ledring": knob_ledring}
-ARC_LOOKS = ("prophet",)     # looks that keep the value arc round the knob (the theme's knob-track / knob-arc)
+              "bakelite": knob_bakelite, "davies": knob_davies, "rubber": knob_rubber, "ledring": knob_ledring, "taper": knob_taper}
+ARC_LOOKS = ("prophet", "taper")     # looks that keep the value arc round the knob (the theme's knob-track / knob-arc)
 
 
 def fader_track(x, y, w, h, vert, th):

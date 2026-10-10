@@ -141,6 +141,13 @@ text { font-family: var(--font); font-weight: 600; }
 .look-led-off { fill: #3a3a38; }
 .look-lbody { fill: #1d1e20; stroke: #070708; stroke-width: 1; }
 .look-lline { stroke: #f4f4f1; stroke-linecap: round; }
+/* knob look=taper: seen from above: shaded stem base, bevel ring, charcoal top, pale inset, notch; per-size colours via [data-r] */
+.look-wside { fill: #34343a; }
+.look-wshade { fill: url(#wside-radial); }
+.look-wtop { fill: #2a2a2e; stroke: #141416; stroke-width: 0.8; }
+.look-wbevel { fill: none; stroke: #5a5a60; stroke-width: 1.4; opacity: 0.8; }
+.look-winset { fill: #86868b; stroke: #444448; stroke-width: 0.8; }
+.look-wnotch { stroke: #1f1f23; stroke-linecap: round; }
 /* knob look=cap: the theme's knob colours */
 .look-cap-ring { fill: var(--knob-ring); filter: var(--shadow); }
 .look-cap-top { fill: var(--knob-dot); }

@@ -74,6 +74,17 @@ def read(path):
         return f.read()
 
 
+RULE = __import__("re").compile(
+    r"^(log|hold|longms|holdms|dblms|touchms)\s+\d+$"
+    r"|^(dbl|held|tap|long)?\s*\d+\s+([dubphxt]?[0-9a-fA-Fx]+(,\d+)?|m\w+)(\s+[dubphxt]?[0-9a-fA-Fx]+(,\d+)?)*$"
+    r"|^combo\s+\d+\s+\d+(\s+\S+)+$")
+
+
+def rules(text):
+    """The active rule lines of a config (comments and blanks dropped)."""
+    return [l.strip() for l in text.splitlines() if l.strip() and not l.strip().startswith("#")]
+
+
 class Rig(unittest.TestCase):
     def setUp(self):
         self.work = tempfile.mkdtemp(prefix="hwremap-")
@@ -141,7 +152,7 @@ class Contract(Rig):
                 self.assertEqual(blob, f.read())
         self.assertTrue(os.stat(os.path.join(self.root, "usr/lib", "hwremap.so")).st_mode & stat.S_IXUSR)
         self.assertEqual(read(os.path.join(self.root, "sdcard", "hwremap.conf")), read(LIVE))
-        self.assertEqual(read(os.path.join(self.root, "data", "hwremap", "VERSION")).strip(), "0.1.0")
+        self.assertEqual(read(os.path.join(self.root, "data", "hwremap", "VERSION")).strip(), "0.2.0")
         self.assertEqual(read(os.path.join(self.root, "data", "hwremap", "STYLE")).strip(), "launcher")
         log = read(self.log)
         self.assertEqual(log.count("stop acvs\n"), 1)
@@ -178,12 +189,13 @@ class Contract(Rig):
         r = self.patch("install", "--layout", "force", "--confirmed")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         conf = os.path.join(self.root, "sdcard", "hwremap.conf")
-        self.assertEqual(read(conf), read(FORCE))
+        default = read(conf)
+        self.assertIn("combo 9 114 b2 t280,487", default)
         with open(conf, "a") as f:
             f.write("# mine\n")
         r = self.patch("uninstall", "--confirmed")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(read(conf), read(FORCE) + "# mine\n")
+        self.assertEqual(read(conf), default + "# mine\n")
         self.assertIn("Left", r.stdout)
 
     def test_existing_config_is_not_overwritten(self):
@@ -290,7 +302,7 @@ class Contract(Rig):
         self.assertEqual(body, '[Service]\nEnvironment="LD_PRELOAD=/usr/lib/libforce_cursor.so /data/hwremap/hwremap.so"\n')
         self.assertTrue(os.path.isfile(os.path.join(self.root, "data", "hwremap", "hwremap.so")))
         self.assertFalse(os.path.exists(os.path.join(self.root, "usr", "lib", "hwremap.so")))
-        self.assertEqual(read(os.path.join(self.root, "sdcard", "hwremap.conf")), read(FORCE))
+        self.assertIn("dbl 37 d49 b9 u49", read(os.path.join(self.root, "sdcard", "hwremap.conf")))
         self.assertIn("daemon-reload", read(self.log))
         maps = os.path.join(self.work, "maps")
         write(maps, "/data/hwremap/hwremap.so\n")
@@ -301,6 +313,23 @@ class Contract(Rig):
         self.assertFalse(os.path.exists(drop))
         self.assertFalse(os.path.exists(os.path.join(self.root, "data", "hwremap")))
         self.assertIn("daemon-reload", read(self.log))
+
+    def test_a_launcher_without_ld_preload_takes_the_dropin(self):
+        # a Force: /usr/bin/az01-launch-MPC exists (the service runs it) but sets no LD_PRELOAD
+        self.launcher("#!/bin/sh\nexec setarch -R -- /usr/bin/MPC \"$@\"\n")
+        r = self.patch("install", "--confirmed")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("style:   dropin", r.stdout)
+        self.assertEqual(read(os.path.join(self.root, "usr", "bin", "az01-launch-MPC")),
+                         "#!/bin/sh\nexec setarch -R -- /usr/bin/MPC \"$@\"\n")
+        self.assertTrue(os.path.isfile(os.path.join(self.root, "data", "hwremap", "hwremap.so")))
+
+    def test_the_terminal_is_only_opened_after_a_subshell_check(self):
+        # BusyBox ends the shell when "read < /dev/tty" cannot open it (no tty over ssh), even with 2>/dev/null
+        # and || after it; dash does not, so run the check on the text
+        for n, line in enumerate(read(SCRIPT).splitlines(), 1):
+            if "/dev/tty" in line and not line.startswith("tty_ok()"):
+                self.assertIn("tty_ok", line, "line %d opens /dev/tty without tty_ok: %s" % (n, line))
 
     def test_inmusic_service_and_a_hostile_preload(self):
         r = self.patch("install", "--confirmed", HW_NO_ACVS="1", HW_INMUSIC="1")
@@ -325,6 +354,124 @@ class Contract(Rig):
     def test_help_and_a_bad_flag(self):
         self.assertEqual(self.patch("help").returncode, 0)
         self.assertNotEqual(self.patch("install", "--nope").returncode, 0)
+
+    # --- options (the Force map is made of option blocks)
+    def conf(self):
+        return read(os.path.join(self.root, "sdcard", "hwremap.conf"))
+
+    def fresh(self):
+        """Uninstall and clear what a second install in the same second would trip over."""
+        self.assertEqual(self.patch("uninstall", "--confirmed").returncode, 0)
+        shutil.rmtree(os.path.join(self.root, "sdcard"), True)
+        shutil.rmtree(os.path.join(self.root, "data", "mpc-vst-plugins"), True)
+
+    def install(self, *args, **kw):
+        r = self.patch("install", "--confirmed", *args, **kw)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return self.conf()
+
+    def test_options_lists_the_force_map_and_the_live_map_has_none(self):
+        r = self.patch("options", "--layout", "force")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        names = [l.split()[0] for l in r.stdout.splitlines()[1:]]
+        self.assertEqual(names, ["mixer-master", "mixer-tabs", "edit-editor", "clip-arrange", "menu-main-mode",
+                                 "knobs-short", "knobs-long", "knobs-double"])
+        self.assertRegex(r.stdout, r"knobs-short\s+off")
+        self.assertRegex(r.stdout, r"mixer-tabs\s+on")
+        self.assertIn("has no options", self.patch("options", "--layout", "mpc-live").stdout)
+
+    def test_default_force_install_has_the_non_knobs_options_and_no_markers(self):
+        text = self.install("--layout", "force")
+        self.assertNotIn("#@", text)
+        self.assertNotIn("this whole file is also a valid config", text)
+        got = rules(text)
+        for line in ("dbl 11 b5", "dbl 37 d49 b9 u49", "combo 9 114 b2 t280,487", "dbl 2 t331,655",
+                     "combo 11 112 t1232,540", "combo 11 115 t1232,421", "hold 49"):
+            self.assertIn(line, got)
+        for line in got:
+            self.assertTrue(RULE.match(line), line)
+        self.assertFalse([l for l in got if l.startswith(("tap 1", "long 1", "held 1", "dbl 1 "))])
+        self.assertEqual(read(os.path.join(self.root, "data", "hwremap", "OPTIONS")).split(),
+                         ["mixer-master", "mixer-tabs", "edit-editor", "clip-arrange", "menu-main-mode"])
+
+    def test_the_whole_force_file_is_valid_and_all_knobs_options_compose(self):
+        for line in rules(read(FORCE)):
+            self.assertTrue(RULE.match(line), line)
+        got = rules(self.install("--layout", "force", "--options", "all"))
+        for line in ("tap 1 d49 b1 u49", "held 1 u49 b1 d49", "long 1 b1", "dbl 1 h1"):
+            self.assertIn(line, got)
+        self.assertNotIn("tap 1 b1", got)
+
+    def test_none_writes_only_the_always_block(self):
+        got = rules(self.install("--layout", "force", "--options", "none"))
+        self.assertEqual(got, ["log 0", "hold 49", "longms 400", "holdms 800", "dblms 350", "touchms 300"])
+
+    def test_each_knobs_option_alone(self):
+        for opt, want, absent in (
+            ("knobs-short", ["tap 1 d49 b1 u49", "held 1 u49 b1 d49"], ["tap 1 b1", "long 1 b1", "dbl 1 h1"]),
+            ("knobs-long", ["tap 1 b1", "long 1 b1"], ["held 1 u49 b1 d49", "dbl 1 h1", "tap 1 d49 b1 u49"]),
+            ("knobs-double", ["tap 1 b1", "dbl 1 h1"], ["held 1 u49 b1 d49", "long 1 b1", "tap 1 d49 b1 u49"]),
+        ):
+            with self.subTest(opt):
+                self.fresh()
+                got = rules(self.install("--layout", "force", "--options", opt))
+                for line in want:
+                    self.assertIn(line, got)
+                for line in absent:
+                    self.assertNotIn(line, got)
+
+    def test_with_and_without(self):
+        got = rules(self.install("--layout", "force", "--with", "knobs-double", "--without", "mixer-tabs,clip-arrange"))
+        self.assertIn("dbl 1 h1", got)
+        self.assertIn("tap 1 b1", got)
+        self.assertFalse([l for l in got if l.startswith("combo")])
+
+    def test_an_unknown_option_changes_nothing(self):
+        r = self.patch("install", "--confirmed", "--layout", "force", "--options", "mixer-master,nope")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("unknown option 'nope'", r.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.root, "data", "hwremap")))
+        self.assertFalse(os.path.exists(os.path.join(self.root, "sdcard", "hwremap.conf")))
+        r = self.patch("install", "--confirmed", "--layout", "mpc-live", "--with", "mixer-master")
+        self.assertIn("has no options", r.stderr)
+
+    def test_option_flags_are_ignored_when_a_config_exists(self):
+        write(os.path.join(self.root, "sdcard", "hwremap.conf"), "log 1\n")
+        r = self.patch("install", "--confirmed", "--layout", "force", "--options", "all")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("option flags are ignored", r.stdout)
+        self.assertEqual(self.conf(), "log 1\n")
+
+    def test_the_checklist_on_a_terminal(self):
+        # 1 switches mixer-master off, x is rejected, 99 does not exist, Enter continues, then the typed word
+        r = self.patch("install", "--layout", "force", stdin="1\nx\n99\n\nPATCH\n", HW_ASK="1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("[x] Mixer twice", r.stdout)
+        self.assertIn("[ ] Mixer twice", r.stdout)
+        self.assertIn("Not a number", r.stdout)
+        self.assertIn("No option 99", r.stdout)
+        got = rules(self.conf())
+        self.assertNotIn("dbl 11 b5", got)
+        self.assertIn("dbl 37 d49 b9 u49", got)
+        st = self.patch("status")
+        self.assertIn("Options chosen at install: mixer-tabs edit-editor clip-arrange menu-main-mode.", st.stdout)
+        self.fresh()
+        self.assertFalse(os.path.exists(os.path.join(self.root, "data", "hwremap", "OPTIONS")))
+        r = self.patch("install", "--layout", "force", stdin="a\n\nPATCH\n", HW_ASK="1")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("dbl 1 h1", rules(self.conf()))
+        self.fresh()
+        r = self.patch("install", "--layout", "force", stdin="n\n\nPATCH\n", HW_ASK="1")
+        self.assertEqual(rules(self.conf()), ["log 0", "hold 49", "longms 400", "holdms 800", "dblms 350", "touchms 300"])
+
+    def test_without_a_terminal_the_defaults_are_used_and_confirmed_never_asks(self):
+        r = self.patch("install", "--layout", "force", stdin="PATCH\n")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("No terminal to ask on", r.stdout)
+        self.assertNotIn("Number to switch", r.stdout)
+        self.fresh()
+        r = self.patch("install", "--confirmed", "--layout", "force", HW_ASK="1")
+        self.assertNotIn("Number to switch", r.stdout)
 
     def test_regenerating_the_script_matches(self):
         if not os.path.isfile(SO):

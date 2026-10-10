@@ -17,7 +17,12 @@ Layout file:
                                                         starts at cx, "right" ends at cx)
     knob    cx= cy= r= label="..." key=<param> [ink=<hex>] [ink_dim=<hex>]   (ink / ink_dim: this knob's name and value text colours)
     toggle  cx= cy= label="..." key=<param>
-    button  cx= cy= label="..." key=<param>          (trigger)
+    button  cx= cy= label="..." key=<param> [w= h=] [label_on="..."] [tsize= get=<param>]
+                                                        (trigger; w=/h= draw that size, label_on= is the text while on.
+                                                        Pressed fill is theme_accent (or theme_btn_on=). tsize= with
+                                                        get= draws that parameter's text in Titillium on the button.
+                                                        A transparent hit plate sits on top of that caption so the
+                                                        tap fires the trigger, not the text parameter.)
     enum_h  cx= cy= label="..." key=<param> [options="A,B,.."] [sw=<px>] [rows=<n>]
     enum_v  cx= cy= label="..." key=<param> [options="A,B,.."] [sw=<px>]   (options default to the param's)
     slider_v cx= cy= w= h= label="..." key=<param>     (vertical slider; value text below)
@@ -34,7 +39,11 @@ Layout file:
                                                         label_align=center needs "art": "html")
     list    x= y= w= h= cols= rows= th= gap= key=<p>   (rows = params <p>_1..<p>_N: text + tap;
                                                         order=pads numbers the rows from the bottom, like a pad bank;
-                                                        order=cols numbers down each column first, so it reads top to bottom)
+                                                        order=cols numbers down each column first, so it reads top to bottom;
+                                                        tap=no draws the rows without toggling; mark=1 fills a lit row
+                                                        with the accent instead of the selection border; mark=vel draws
+                                                        a small rounded bar whose opacity follows the row's value 0..4;
+                                                        tint=1 colors each row from tint_<n> (0..5), a gel washed over black)
     art     file="drawing.svg" [x= y= w= h=] [fit=]    (an SVG drawing, e.g. from studio.py from-svg, or a .png/.jpg/.webp
                                                         image, drawn into the page background: the whole plugin area, or
                                                         the box; fit=contain|cover|stretch; browser renderer only)
@@ -90,7 +99,7 @@ import skin_assets  # noqa: E402
 W, H, Y_OFF = 1280, 628, 86
 PLATE, INK, INK_DIM, ACCENT, ACCENT_HI = "131211", "efe9d8", "8f8878", "c1552f", "e2793f"
 SEG_ON, SEG_OFF, SEG_ON_TX = "f2f1ee", "050403", "1c1a17"
-LCD, LINE, BTN_BG, BTN_TEXT, BOX = "1a120d", "2a2823", "", "fdf3ea", "1f1f1f"
+LCD, LINE, BTN_BG, BTN_ON, BTN_TEXT, BOX = "1a120d", "2a2823", "", "", "fdf3ea", "1f1f1f"
 TILE_ON = ""             # theme_tile_on: fill of a selected/sounding list tile ("" = the LCD fill, border only)
 DISPLAY_INK = "cdeb63"   # theme_display_ink: live-text colour over a dotreadout/dotstepper (see readout/stepper below)
 TD3 = False   # style=td3: frames are filled boxes, so widget crops sit on BOX, not the page bg
@@ -119,7 +128,7 @@ OPEN_SUFFIX = "__open"     # popup: hidden wrapper-only param, 1 while the optio
 POP_ROW, POP_GAP, POP_PAD = 40, 2, 6
 THEME_KEYS = {"bg": "PLATE", "ink": "INK", "ink_dim": "INK_DIM", "accent": "ACCENT", "accent_hi": "ACCENT_HI",
               "seg_active": "SEG_ON", "seg_inactive": "SEG_OFF", "seg_active_tx": "SEG_ON_TX",
-              "lcd": "LCD", "line": "LINE", "btn_bg": "BTN_BG", "btn_text": "BTN_TEXT", "box": "BOX",
+              "lcd": "LCD", "line": "LINE", "btn_bg": "BTN_BG", "btn_on": "BTN_ON", "btn_text": "BTN_TEXT", "box": "BOX",
               "display_ink": "DISPLAY_INK", "tile_on": "TILE_ON"}
 
 
@@ -298,6 +307,42 @@ def under():
 
 def slug(t):
     return "".join(c if c.isalnum() else "_" for c in t).strip("_") or "x"
+
+
+# tint=1: index 0 is the fallback yellow, then kick, snare, hat/shaker, percussion, tom.
+PAD_TINTS = ((0xe6, 0xc8, 0x4a), (0xe2, 0x3a, 0x32), (0xf0, 0x78, 0x20),
+             (0xc4, 0x8e, 0xe0), (0x3e, 0xc4, 0xd4), (0x3c, 0xba, 0x6a))
+
+
+def pad_gel(w, h, rgb, hot):
+    """A pad washed with a translucent colour: darker at the rim, a little lighter in the middle."""
+    from PIL import Image
+    page, dark = (5, 4, 3), (14, 13, 12)
+    rad = max(6, min(w, h) // 14)
+    im = Image.new("RGB", (w, h), page)
+    px = im.load()
+    strength = 0.62 if hot else 0.46
+    for y in range(h):
+        for x in range(w):
+            dx = 0.0 if rad <= x < w - rad else (rad - x if x < rad else x - (w - rad - 1))
+            dy = 0.0 if rad <= y < h - rad else (rad - y if y < rad else y - (h - rad - 1))
+            d = (dx * dx + dy * dy) ** 0.5
+            if d >= rad + 0.5:
+                continue
+            cov = 1.0 if d <= rad - 0.5 else rad + 0.5 - d
+            nx, ny = (x + 0.5) / w - 0.5, (y + 0.5) / h - 0.5
+            fall = min(1.0, (nx * nx + ny * ny) ** 0.5 * 2.1)
+            a = strength * (0.92 + 0.08 * fall)
+            light = (1.0 - fall) * (0.42 if hot else 0.28)
+            cr = min(255, rgb[0] + (255 - rgb[0]) * light)
+            cg = min(255, rgb[1] + (255 - rgb[1]) * light)
+            cb = min(255, rgb[2] + (255 - rgb[2]) * light)
+            r = dark[0] * (1 - a) + cr * a
+            g = dark[1] * (1 - a) + cg * a
+            b = dark[2] * (1 - a) + cb * a
+            px[x, y] = (int(page[0] * (1 - cov) + r * cov), int(page[1] * (1 - cov) + g * cov),
+                        int(page[2] * (1 - cov) + b * cov))
+    return im
 
 
 def shade(hexcol, f):
@@ -483,10 +528,12 @@ def label_cmds(w, title_font=None):
 
 def button_rect(w, base_dir="."):
     lk = look_of(w, base_dir)
+    if "w" in w and "h" in w and not lk:
+        return (w["cx"] - w["w"] // 2, w["cy"] - w["h"] // 2, w["w"], w["h"])
     if lk:
         bw, bh = skin_assets.button_size(w, lk, text_width(w.get("label", "")) + 36)
         return (w["cx"] - bw // 2, w["cy"] - bh // 2, bw, bh)
-    bw, bh = text_width(w["label"]) + 36, 39
+    bw, bh = text_width(w.get("label", "")) + 36, 39
     if TD3:   # widget_button(): +24 wide, 48 tall, plus a 2 px outline ring
         bw, bh = bw + 24 + 4, 48 + 4
     return (w["cx"] - bw // 2, w["cy"] - bh // 2, bw, bh)
@@ -525,7 +572,7 @@ def baked_cmds(w, title_font=None, base_dir="."):
     elif w["kind"] == "list":
         for (x, y, tw, th) in list_tiles(w):
             cmds.append(card_art(w["img"], x, y, tw, th, base_dir) if w.get("img")
-                        else "tile|%d|%d|%d|%d|%s|%s|0" % (x, y, tw, th, LCD, LINE))
+                        else "tile|%d|%d|%d|%d|%s|%s|0" % (x, y, tw, th, w.get("color") or LCD, LINE))
     elif w["kind"] == "text":
         size = float(w.get("size", 1.5))
         color = w.get("color", INK)
@@ -647,6 +694,17 @@ def _button(on_img, off_img, bid, n, w, h, x=0, y=0):
                 _bounds(x, y, w, h), "Button")
 
 
+def write_hit_png(skin_dir, w, h):
+    """Near-invisible plate so a live caption on top of a button still receives the tap.
+    Alpha 0 is skipped by some hosts; 1 is enough for a hit and does not show."""
+    name = "sh_btn_hit_%dx%d.png" % (w, h)
+    path = os.path.join(skin_dir, name)
+    if not os.path.exists(path):
+        from PIL import Image
+        Image.new("RGBA", (w, h), (0, 0, 0, 1)).save(path)
+    return name
+
+
 def _placed(ctype, name, index, x, y, w, h, focus="Yes", extra=None):
     """extra: {handle_name: param_index} for sub-widgets bound to a DIFFERENT parameter than the
     main "Data" handle -- e.g. a stepper's Q-Link/inc-dec target vs. the text it displays (that
@@ -668,6 +726,7 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
     work = os.path.join(skin_dir, ".art")
     os.makedirs(work, exist_ok=True)
     script, defs, pages, qmap, ppms = [], {}, [], [], []
+    tint_sizes = set()
     # SHADOW_TITLE_FONT: a real TrueType font (.ttf/.otf) to draw frame titles with instead of
     # shadow_art.c's baked 9x9 bitmap font, which -- even Title-Cased and tightened (see
     # docs/NOTES.md's font-spacing entries) -- is blocky pixel art, not a real typeface. Optional
@@ -930,23 +989,49 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
                 kids.append(_placed(key, name, i, w["cx"] - cw // 2, w["cy"] - 18, cw, th_))
             elif kind == "button":
                 x, y, bw, bh = button_rect(w, base_dir)
-                img = "sh_btn_%s_%s%s" % (w["key"], slug(w.get("label", "")), sfx)
+                lab_off = w.get("label", "")
+                lab_on = w.get("label_on") or lab_off
+                img = "sh_btn_%s_%s%s" % (w["key"], slug(lab_off + ("_" + lab_on if lab_on != lab_off else "")), sfx)
                 base = w.get("color") or BTN_BG or ACCENT
                 # shadow_art's "button" command has no '-' -> empty convention (unlike frame/
                 # readout/stepper) and strtok() would collapse a genuinely empty field anyway,
                 # so a single space is the baked placeholder when the real label is drawn later.
-                baked_label = " " if TITLE_FONT else w.get("label", "")
-                for state, col in (("off", base), ("on", shade(base, 1.35))):
-                    draw = ("lbtn|%d|%d|%d|%d|%d|%s|%s" % (x, y, bw, bh, state == "on", baked_label, skin_assets.encode(lk))
-                            if lk else "button|%d|%d|%s|%s" % (w["cx"], w["cy"], col, baked_label))
+                sized = "w" in w and "h" in w and not lk
+                longer = lab_on if len(lab_on) > len(lab_off) else lab_off
+                scale = 1.15
+                if sized and longer:
+                    scale = min((bw - 24) / (max(len(longer), 1) * 10.0), (bh - 12) / 14.0)
+                    if scale < 1.15:
+                        scale = 1.15
+                live_cap = bool(w.get("tsize") and w.get("get") in index)
+                on_fill = BTN_ON or ACCENT
+                for state, col, lab in (("off", base, lab_off), ("on", on_fill, lab_on)):
+                    baked_label = " " if TITLE_FONT or live_cap else lab
+                    if sized:
+                        draw = "boxbtn|%d|%d|%d|%d|%s|%s|%g" % (x, y, bw, bh, col, baked_label, scale)
+                    elif lk:
+                        draw = "lbtn|%d|%d|%d|%d|%d|%s|%s" % (x, y, bw, bh, state == "on", baked_label, skin_assets.encode(lk))
+                    else:
+                        draw = "button|%d|%d|%s|%s" % (w["cx"], w["cy"], col, baked_label)
                     ppm = art("%s_%s" % (img, state))
                     script += ["clear|" + under(), draw, "crop|%s|%d|%d|%d|%d" % (ppm, x, y, bw, bh)]
-                    if TITLE_FONT and w.get("label"):
-                        label_overlays.append((ppms[-1][1], bw, bh, w["label"], "fdf3ea"))
+                    if TITLE_FONT and lab:
+                        label_overlays.append((ppms[-1][1], bw, bh, lab, "fdf3ea"))
                 key = "shTrig_%s_%s%s" % (w["key"], slug(w.get("label", "")), sfx)
-                defs[key] = _local(key, [_action("Mouse Down", "Q-Link"), _action("Enter Pressed", "Toggle Switch")],
-                                   [_focus(bw, bh), _button(img + "_on.png", img + "_off.png", 1, 1, bw, bh)])
-                kids.append(_placed(key, name, i, x, y, bw, bh))
+                parts = [_focus(bw, bh), _button(img + "_on.png", img + "_off.png", 1, 1, bw, bh)]
+                extra = None
+                if live_cap:
+                    size, colour, just, style, font, sig = live_text(w, 46.0, INK, "horizontallyCentred verticallyCentred")
+                    left = 12
+                    parts.append(_value_label(left, 0, bw - left - 12, bh, size, colour, just,
+                                              handle="Text", style=style, font=font))
+                    extra = {"Text": index[w["get"]]}
+                    hit = write_hit_png(skin_dir, bw, bh)
+                    parts.append(_button(hit, hit, 1, 1, bw, bh))
+                    key += sig
+                defs[key] = _local(key, [_action("Mouse Down", "Toggle Switch"),
+                                         _action("Enter Pressed", "Toggle Switch")], parts)
+                kids.append(_placed(key, name, i, x, y, bw, bh, extra=extra))
             elif kind in ("slider_v", "slider_h"):
                 sw_, sh_ = w["w"], w["h"]
                 vert = kind == "slider_v"
@@ -1091,12 +1176,14 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
                 # see docs/NOTES.md's "shows 0" entry. Bound to its own "Text" handle so it's
                 # independent of "Data" (the stepper's own Q-Link/inc-dec target).
                 gi = index.get(w.get("get"), i) if w.get("get") else i
-                key = "shStepText_%s%dx%d" % ("dot_" if dot else "", w["w"] - 2 * h - 6, h)
+                size, colour, just, style, font, sig = live_text(w, 26.0, DISPLAY_INK if dot else ACCENT,
+                                                                 "left verticallyCentred")
+                key = "shStepText_%s%dx%d%s" % ("dot_" if dot else "", w["w"] - 2 * h - 6, h, sig)
                 defs.setdefault(key, _local(key, [_action("Mouse Down", "Q-Link"),
                                                   _action("Double Click", "Show Overlay", "knob overlay")],
                                             [_focus(w["w"] - 2 * h - 6, h),
-                                             _value_label(8, 0, w["w"] - 2 * h - 22, h, 26.0, DISPLAY_INK if dot else ACCENT,
-                                                          handle="Text")]))
+                                             _value_label(8, 0, w["w"] - 2 * h - 22, h, size, colour, just,
+                                                          handle="Text", style=style, font=font)]))
                 kids.append(_placed(key, name, i, x0 + h + 3, y0, w["w"] - 2 * h - 6, h, extra={"Text": gi}))
                 for side, (ax, ay, aw, ah) in zip(("prev", "next"), stepper_arrows(w)):
                     aimg = "sh_arrow_%d_%s_%s.png" % (t, w["key"], side)
@@ -1106,25 +1193,85 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
                     side_key = w.get(side, w["key"] + "_" + side)
                     kids.append(_placed(akey, "%s %s" % (name, side), index[side_key], ax, ay, aw, ah, focus="No"))
             elif kind == "list":
-                for slot, ((x, y, tw, th), sk) in enumerate(zip(list_tiles(w), list_keys(w))):
+                tiles = list(zip(list_tiles(w), list_keys(w)))
+                vel = w.get("mark") == "vel"
+                if vel and tiles:
+                    tw, th = tiles[0][0][2], tiles[0][0][3]
+                    img = "sh_cell_%dx%d" % (tw, th)
+                    script += ["clear|" + under(), "nmark|%d|%d|%s|%s|2|0" % (tw, th, LCD, ACCENT),
+                               "crop|%s|0|0|%d|%d" % (art(img + "_off"), tw, th)]
+                    for level, alpha in ((1, 90), (2, 150), (3, 205), (4, 255)):
+                        script += ["clear|" + under(),
+                                   "nmark|%d|%d|%s|%s|2|%d" % (tw, th, LCD, ACCENT, alpha),
+                                   "crop|%s|0|0|%d|%d" % (art("sh_note_%dx%d_%d" % (tw, th, level)), tw, th)]
+                tint = w.get("tint") in ("1", "yes", "on")
+                for slot, ((x, y, tw, th), sk) in enumerate(tiles):
+                    if tint:
+                        tint_sizes.add((tw, th))
+                        n = int(sk.rsplit("_", 1)[-1])
+                        tk = "tint_%d" % n
+                        if tk not in index:
+                            raise SystemExit("layout: tint=1 on %s needs a parameter %s" % (sk, tk))
+                        size, colour, just, style, font, sig = live_text(w, 24.0, INK, "horizontallyCentred verticallyCentred")
+                        lx, ly = int(w.get("tx", 12)), int(w.get("ty", 0))
+                        lw, lh = int(w.get("ttw", tw - lx - 12)), int(w.get("tth", th - ly))
+                        acts = [_action("Mouse Down", "Toggle Switch"), _action("Enter Pressed", "Toggle Switch")]
+                        for ci in range(len(PAD_TINTS)):
+                            img = "sh_padtint_%dx%d_%d" % (tw, th, ci)
+                            key = "shPadTint_%dx%d_%d%s" % (tw, th, ci, sig)
+                            defs.setdefault(key, _local(key, acts, [
+                                _focus(tw, th), _button(img + "_on.png", img + "_off.png", 1, 1, tw, th),
+                                _value_label(lx, ly, lw, lh, size, colour, just, style=style, font=font)]))
+                            c = _placed(key, "%s %d" % (name, slot + 1), index[sk], x, y, tw, th,
+                                        focus="Yes" if slot == 0 and ci == 0 else "No")
+                            c["bounds"]["additionalInvalidatingHandles"] = [
+                                "IndexedEnabling/%d/%d/Parameter %d" % (ci, len(PAD_TINTS), index[tk])]
+                            c["bounds"]["showWhenDataModelInvalid"] = "Hide"
+                            kids.append(c)
+                        continue
                     own = w.get("img")   # img=/img_on=: the port's own card pictures (off, selected)
+                    mark = w.get("mark") in ("1", "yes", "on")
+                    tile_fill = w.get("color") or LCD
                     img = "sh_tile_%dx%d" % (tw, th) if not own else "sh_card_%s_%dx%d" % (slug(w["key"]), tw, th)
-                    for state, border in (("on", 3), ("off", 0)):
-                        drawn = card_art(w.get("img_on", own) if border else own, x, y, tw, th, base_dir) if own else \
-                            "tile|%d|%d|%d|%d|%s|%s|%d" % (x, y, tw, th, (TILE_ON or LCD) if border else LCD, SEG_ON if border else LINE, border)
-                        script += ["clear|" + under(), drawn,
-                                   "crop|%s|%d|%d|%d|%d" % (art("%s_%s" % (img, state)), x, y, tw, th)]
+                    if w.get("color") and not own:
+                        img = "sh_tile_%dx%d_%s" % (tw, th, tile_fill)
+                    if mark:
+                        img = "sh_mark_%dx%d" % (tw, th)
+                    if vel:
+                        img = "sh_cell_%dx%d" % (tw, th)
+                    else:
+                        for state, border in (("on", 3), ("off", 0)):
+                            if own:
+                                drawn = card_art(w.get("img_on", own) if border else own, x, y, tw, th, base_dir)
+                            elif mark:
+                                drawn = "tile|%d|%d|%d|%d|%s|%s|0" % (x, y, tw, th, ACCENT if border else tile_fill, LINE)
+                            else:
+                                drawn = "tile|%d|%d|%d|%d|%s|%s|%d" % (x, y, tw, th, (TILE_ON or tile_fill) if border else tile_fill, SEG_ON if border else LINE, border)
+                            script += ["clear|" + under(), drawn,
+                                       "crop|%s|%d|%d|%d|%d" % (art("%s_%s" % (img, state)), x, y, tw, th)]
                     size, colour, just, style, font, sig = live_text(w, 24.0, ACCENT, ROW_JUST)
                     # tx=/ty=/ttw=/tth= place the row's text inside the card (default: the whole row, 12 px in)
                     lx, ly = int(w.get("tx", 12)), int(w.get("ty", 0))
                     lw, lh = int(w.get("ttw", tw - lx - 12)), int(w.get("tth", th - ly))
                     key = "shRow_%dx%d%s" % (tw, th, sig + ("_%d_%d_%d_%d" % (lx, ly, lw, lh) if (lx, ly, lw, lh) != (12, 0, tw - 24, th) else "")
+                                            + ("_mark" if mark else "")
+                                            + ("_vel" if vel else "")
                                             + ("_" + slug(w["key"]) if own else ""))
                     # the Value label lies over the button and takes the touch, so the row itself toggles on touch
-                    defs.setdefault(key, _local(key, [_action("Mouse Down", "Toggle Switch"), _action("Enter Pressed", "Toggle Switch")],
-                                                [_focus(tw, th), _button(img + "_on.png", img + "_off.png", 1, 1, tw, th),
+                    acts = [] if w.get("tap") == "no" or vel else [_action("Mouse Down", "Toggle Switch"), _action("Enter Pressed", "Toggle Switch")]
+                    on_img = img + "_off.png" if vel else img + "_on.png"
+                    defs.setdefault(key, _local(key, acts,
+                                                [_focus(tw, th), _button(on_img, img + "_off.png", 1, 1, tw, th),
                                                  _value_label(lx, ly, lw, lh, size, colour, just, style=style, font=font)]))
                     kids.append(_placed(key, "%s %d" % (name, slot + 1), index[sk], x, y, tw, th, focus="Yes" if slot == 0 else "No"))
+                    if vel and sk in index:
+                        for level in (1, 2, 3, 4):
+                            note = "sh_note_%dx%d_%d.png" % (tw, th, level)
+                            c = _sub("Image", {"version": 2, "imageType": "Regular", "colour": "0", "image": note},
+                                     _bounds(x, y - Y_OFF, tw, th, focus="No", show="Hide"), "Note")
+                            c["bounds"]["additionalInvalidatingHandles"] = [
+                                "IndexedEnabling/%d/5/Parameter %d" % (level, index[sk])]
+                            kids.append(c)
             else:  # enum_h / enum_v: radio group, one image button per option
                 n = len(w["options"])
                 for o, (x, y, sw, sh) in enumerate(seg_rects(w)):
@@ -1189,6 +1336,10 @@ def build(layout_path, params, skin_dir, art_bin, png_from_ppm):
     subprocess.run([art_bin], input="\n".join(script) + "\n", text=True, check=True)
     for ppm, png in ppms:
         png_from_ppm(ppm, png)
+    for tw, th in sorted(tint_sizes):
+        for ci, rgb in enumerate(PAD_TINTS):
+            for state, hot in (("off", False), ("on", True)):
+                pad_gel(tw, th, rgb, hot).save(os.path.join(skin_dir, "sh_padtint_%dx%d_%d_%s.png" % (tw, th, ci, state)))
     for img, ox, oy, ws in decor:
         titles = [w for w in ws if TITLE_FONT and w["kind"] == "frame" and w.get("title")]
         pops = [w for w in ws if w["kind"] == "popup"]

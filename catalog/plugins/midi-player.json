@@ -1,0 +1,18 @@
+{
+  "id": "midi-player",
+  "name": "MIDI Player",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-midiplayer",
+  "kind": "instrument",
+  "role": "midi",
+  "style": "sequencer",
+  "tags": [
+    "midi",
+    "midi-file",
+    "player",
+    "transport-sync"
+  ],
+  "license": "MIT",
+  "summary": "Plays Standard MIDI Files in time with MPC's tempo and transport, one track or all, through its own MIDI port.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-midiplayer/v1.0.0/screenshots/page_0.png"
+}

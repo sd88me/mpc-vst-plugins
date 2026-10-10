@@ -1,0 +1,4 @@
+{ "id": "plateauxxl", "name": "PlateauXXL", "author": "L'Cronx", "repo": "sunskiefer/PlateauXXL",
+  "kind": "effect", "style": "reverb", "tags": ["reverb", "plate", "dattorro", "valley", "vcv", "freeze", "lfo", "modulation", "sequencer"],
+  "license": "GPL-3.0-or-later", "screenshot": "https://raw.githubusercontent.com/sunskiefer/PlateauXXL/v0.4.1/docs/img/plateau.png",
+  "summary": "Valley Audio's Plateau reverb from VCV Rack, patched: every CV input on a built-in source (four Bogaudio LFOs, Tidal Modulator 2, Random Sampler, step and gate sequencers) synced to the MPC tempo, a brickwall limiter, Panic and 16 presets, each page drawn like its module." }

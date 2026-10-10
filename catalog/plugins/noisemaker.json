@@ -1,0 +1,17 @@
+{
+  "id": "noisemaker",
+  "name": "Noisemaker",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-noisemaker",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "tal",
+    "virtual-analog",
+    "polyphonic",
+    "subtractive"
+  ],
+  "license": "GPL-2.0-only",
+  "summary": "TAL-NoiseMaker: a virtual-analog polysynth with 12 filter types, three envelopes and effects; all 256 factory presets built in, and folders of .noisemakerpreset files load as banks (the README links a free collection of 442).",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-noisemaker/v1.0.0/screenshots/page_0.png"
+}

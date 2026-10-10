@@ -43,20 +43,25 @@
   <div class="pagelist">/*GUIDES*/</div>
 
   <div class="tabs" role="tablist" aria-label="Catalog sections">
-    <button type="button" role="tab" id="tab-plugins" aria-controls="panel-plugins" aria-selected="true" data-tab="plugins">Plugins <span class="n" id="n-plugins"></span></button>
+    <button type="button" role="tab" id="tab-instrument" aria-controls="panel-plugins" aria-selected="true" data-tab="instrument">Instruments <span class="n" id="n-instrument"></span></button>
+    <button type="button" role="tab" id="tab-midi" aria-controls="panel-plugins" aria-selected="false" data-tab="midi" tabindex="-1">MIDI <span class="n" id="n-midi"></span></button>
+    <button type="button" role="tab" id="tab-effect" aria-controls="panel-plugins" aria-selected="false" data-tab="effect" tabindex="-1">Effects <span class="n" id="n-effect"></span></button>
+    <button type="button" role="tab" id="tab-addin" aria-controls="panel-plugins" aria-selected="false" data-tab="addin" tabindex="-1">Addins <span class="n" id="n-addin"></span></button>
+    <button type="button" role="tab" id="tab-all" aria-controls="panel-plugins" aria-selected="false" data-tab="all" tabindex="-1">All <span class="n" id="n-all"></span></button>
     <button type="button" role="tab" id="tab-patches" aria-controls="panel-patches" aria-selected="false" data-tab="patches" tabindex="-1">Device patches <span class="n">/*N_PATCHES*/</span></button>
     <button type="button" role="tab" id="tab-apps" aria-controls="panel-apps" aria-selected="false" data-tab="apps" tabindex="-1">Companion apps <span class="n">/*N_APPS*/</span></button>
   </div>
 
-  <div role="tabpanel" id="panel-plugins" aria-labelledby="tab-plugins">
+  <div role="tabpanel" id="panel-plugins" aria-labelledby="tab-instrument">
   <div class="tools">
     <label class="search">Search<input id="q" type="search" placeholder="Name, developer, style or tag"></label>
-    <label>Kind<select id="f-kind"></select></label>
     <label>Style<select id="f-style"></select></label>
     <label>Developer<select id="f-dev"></select></label>
     <label>License<select id="f-lic"></select></label>
     <label>Distribution<select id="f-dist"></select></label>
     <label>MPC OS<select id="f-os"></select></label>
+    <label>Device<select id="f-gen"></select></label>
+    <label>Tier<select id="f-tier"></select></label>
     <label>Sort by<select id="sort"></select></label>
   </div>
   <div class="status">
@@ -70,6 +75,7 @@
 
   <div class="grid" id="grid"></div>
   <p class="empty" id="empty" hidden>No plugins match these filters.</p>
+  <p class="line" id="exp" hidden><span id="exp-n"></span> experimental plugins are hidden. <button class="linkbtn" type="button" id="show-exp">Show them</button></p>
 
   <details class="install" id="inst" hidden>
     <summary><span id="inst-count"></span><span class="hint">Get the install command</span></summary>
@@ -121,13 +127,20 @@
 <script>
 var CAT = JSON.parse(document.getElementById("data").textContent);
 var P = CAT.plugins;
-var state = { tab: "plugins", q: "", kind: "", style: "", dev: "", lic: "", dist: "", os: "", sort: "updated", rev: false, beta: false, sel: [] };
+var state = { tab: "instrument", q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: [] };
 var STORE = JSON.parse(document.getElementById("store").textContent);
 var BY_WARNING = "The result contains firmware-derived data: build it yourself, install it on your own devices only, never share it.";
 var ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 function isBY(p) { return p.distribution === "build-yourself"; }
 function kindsOf(p) { var k = [p.kind]; (p.components || []).forEach(function (c) { if (k.indexOf(c.kind) < 0) k.push(c.kind); }); return k; }
+/* Trust tiers (tools/catalog_build.py tier_of, docs/CATALOG.md): verified = tested on a device, listed = passed the release checks,
+   experimental = new, beta-only or capped by a maintainer. The default view hides experimental; the Tier filter shows it. */
+var TIERS = { verified: { rank: 0, label: "Verified", tip: "The newest release has a recorded hardware test (see Tested on)." },
+              listed: { rank: 1, label: "Listed", tip: "Passed the catalog's release checks; no hardware test recorded for the newest release yet." },
+              experimental: { rank: 2, label: "Experimental", tip: "New, beta-only or unproven: it may not load, draw its skin or run well. Test it before relying on it." } };
+function tierOf(p) { return TIERS[p.tier] ? p.tier : "listed"; }
 var SORTS = {
+  recommended: { label: "Recommended",     cmp: function (a, b) { return (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || TIERS[tierOf(a)].rank - TIERS[tierOf(b)].rank || a.name.localeCompare(b.name); }, desc: false },
   name:      { label: "Name",              cmp: function (a, b) { return a.name.localeCompare(b.name); }, desc: false },
   updated:   { label: "Recently updated",  cmp: function (a, b) { return a.updated.localeCompare(b.updated); }, desc: true },
   downloads: { label: "Downloads",         cmp: function (a, b) { return a.downloads - b.downloads; }, desc: true },
@@ -140,12 +153,15 @@ function uniq(f) { var o = {}; P.forEach(function (p) { var v = f(p); if (v) o[v
 function fillSelect(id, all, values, label) {
   $(id).innerHTML = '<option value="">' + all + '</option>' + values.map(function (v) { return '<option value="' + esc(v) + '">' + esc(label ? label(v) : v) + '</option>'; }).join("");
 }
-var KINDS = { instrument: "Instruments", effect: "Effects", addin: "Addins" };
+var PLUGIN_TABS = ["instrument", "midi", "effect", "addin", "all"];
+var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin: "Addins", all: "Plugins" };
+/* a plugin with role "midi" is listed under the MIDI tab, not Instruments */
+function inTabKind(p, k) { if (k === "all") return true; return kindsOf(p).some(function (c) { return (c === "instrument" && p.role === "midi" && c === p.kind ? "midi" : c) === k; }); }
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
-var allKinds = {}; P.forEach(function (p) { kindsOf(p).forEach(function (k) { allKinds[k] = 1; }); });
-fillSelect("f-kind", "All kinds", Object.keys(allKinds).sort(), function (v) { return KINDS[v] || v; });
 fillSelect("f-dist", "Any distribution", ["release", "build-yourself"], function (v) { return v === "release" ? "Download a release zip" : "Build it yourself"; });
+fillSelect("f-tier", "Verified and Listed", ["verified", "listed", "experimental", "all"], function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "listed" ? "Listed only" : "Experimental only"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
+fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 / Force only"; });
 fillSelect("f-style", "All styles", uniq(function (p) { return p.style; }), title);
 fillSelect("f-dev", "All developers", uniq(function (p) { return p.author; }));
 fillSelect("f-lic", "Any license", ["open", "source-available"], function (v) { return v === "open" ? "Open source" : "Source-available (restricted use)"; });
@@ -172,6 +188,16 @@ function osTag(v) {
   if (g.indexOf("2.x") >= 0) return '<span class="tag ok" title="' + esc("Skin and library checked against MPC OS 2.15.1's own skins and glibc. " + (tested2x(v) ? "Tested on a 2.x unit." : "Not yet tested on a 2.x unit.")) + '">MPC OS 2.x + 3.x' + (tested2x(v) ? " &middot; tested" : "") + '</span>';
   return '<span class="tag warn" title="' + esc("Not compatible with MPC OS 2.x" + (osWhy(v) ? ": " + osWhy(v) : "") + ((v.os_compat_why || []).length ? " (" + v.os_compat_why.join("; ") + ")" : "")) + '">MPC OS 3.x only</span>';
 }
+/* Gen2 (aarch64, MPC OS 3.x): the version also has an -mpc-aarch64.zip that passed the same checks (docs/GEN2.md). "Tested" needs a tested.json
+   entry whose device says Gen2; a passing build alone is not a device run. */
+function tested2(v) { return !!(v && (v.tested || []).some(function (t) { return /gen\s*2/i.test(t.device || ""); })); }
+function genTag(v) {
+  if (!v || !v.gen2) return "";
+  return '<span class="tag gen" title="' + esc("Also built for Gen2 (aarch64) MPC devices. " + (tested2(v) ? "Tested on a Gen2 unit." : "Not yet tested on a Gen2 unit.")) + '">Gen2' + (tested2(v) ? " &middot; tested" : " build") + '</span>';
+}
+function genRow(v) {
+  return v && v.gen2 ? '<dt>Gen2</dt><dd>aarch64 build available (' + (tested2(v) ? "tested on a Gen2 unit" : "not yet tested on a Gen2 unit") + ')</dd>' : "";
+}
 function osRow(v) {
   var g = osGens(v); if (!g) return "";
   if (g.indexOf("2.x") >= 0) return '<dt>MPC OS</dt><dd>2.x and 3.x (' + (tested2x(v) ? "tested on a 2.x unit" : "checked against 2.15.1's own skins, not yet tested on a 2.x unit") + ')</dd>';
@@ -180,13 +206,15 @@ function osRow(v) {
 function match(p) {
   var s = state, hay = [p.name, p.author, p.style || "", (p.tags || []).join(" "), p.summary].join(" ").toLowerCase();
   if (s.q && hay.indexOf(s.q.toLowerCase()) < 0) return false;
-  if (s.kind && kindsOf(p).indexOf(s.kind) < 0) return false;
+  if (PLUGIN_TABS.indexOf(s.tab) >= 0 && !inTabKind(p, s.tab)) return false;
+  if (s.tier === "all") {} else if (s.tier) { if (tierOf(p) !== s.tier) return false; } else if (tierOf(p) === "experimental") return false;
   if (s.dist === "build-yourself" && !isBY(p)) return false;
   if (s.dist === "release" && isBY(p)) return false;
   if (s.style && p.style !== s.style) return false;
   if (s.dev && p.author !== s.dev) return false;
   if (s.lic === "open" && p.source_available) return false;
   if (s.lic === "source-available" && !p.source_available) return false;
+  if (s.gen) { var sv = shown(p); if (!sv || !!sv.gen2 !== (s.gen === "gen2")) return false; }
   if (s.os) { var g = osGens(shown(p)); if (!g || (s.os === "2x") !== (g.indexOf("2.x") >= 0)) return false; }
   return true;
 }
@@ -196,14 +224,22 @@ function testedRow(v) {
   return '<dt>Tested on</dt><dd>' + (v.tested && v.tested.length ? v.tested.map(function (t) { return esc(t.device + (t.firmware ? " " + t.firmware : "") + (t.date ? " (" + t.date + ")" : "")); }).join(", ") : "Not reported") + '</dd>';
 }
 function safeUrl(u) { return /^https:\/\//.test(u) ? u : "#"; }
+/* "To improve": the quality-bar items a plugin does not meet yet (catalog_build.py BAR). Informational: it never hides or demotes anything. */
+function barLine(p) {
+  var m = (p.bar_missing || []).filter(function (k) { return CAT.bar && CAT.bar[k]; });
+  if (!m.length) return "";
+  return '<details class="how"><summary>To improve this listing (' + m.length + ')</summary><ul>' + m.map(function (k) { return '<li>' + esc(CAT.bar[k]) + '</li>'; }).join("") + '</ul></details>';
+}
 function card(p) {
   var by = isBY(p), v = shown(p), tags = [];
   if (by) tags.push('<span class="tag build" title="No download: you build it from your own files">Build it yourself</span>');
+  tags.push('<span class="tag tier-' + tierOf(p) + '" title="' + esc(TIERS[tierOf(p)].tip) + '">' + TIERS[tierOf(p)].label + '</span>');
   tags.push(p.kind === "addin" ? '<span class="tag" title="Loaded into MPC when it starts (LD_PRELOAD), not a plugin on a track">addin</span>' : '<span class="tag">' + esc(p.kind) + '</span>');
   if (p.style) tags.push('<span class="tag">' + esc(title(p.style)) + '</span>');
   tags.push('<span class="tag">' + esc(p.license) + '</span>');
   if (p.source_available) tags.push('<span class="tag warn" title="Source is public but the license limits how it may be used">Restricted use</span>');
   if (!by && p.kind !== "addin" && osTag(v)) tags.push(osTag(v));
+  if (!by && p.kind !== "addin" && genTag(v)) tags.push(genTag(v));
   (p.tags || []).forEach(function (t) { if (!(by && t === "firmware-derived")) tags.push('<span class="tag">' + esc(t) + '</span>'); });
   var hist = p.versions.length ? '<details class="vers"><summary>Versions (' + p.versions.length + ')</summary><table>' + p.versions.map(function (x) {
     var cols = by ? '<td><a href="' + esc(safeUrl(x.source_url)) + '">tag ' + esc(x.tag) + '</a></td>' : '<td>' + size(x.size) + '</td><td title="sha256 ' + esc(x.sha256) + '">' + esc(x.sha256.slice(0, 10)) + '</td>';
@@ -212,7 +248,7 @@ function card(p) {
   var shot = p.screenshot && safeUrl(p.screenshot) !== "#" ? '<a class="shot" href="' + esc(p.screenshot) + '"><img src="' + esc(p.screenshot) + '" alt="' + esc(p.name) + ' screenshot" loading="lazy"></a>' : "";
   var head = '<article class="card' + (by ? " by" : "") + '">' + shot + '<header><div><h2>' + esc(p.name) + '</h2><div class="by">by ' + esc(p.author) + '</div></div>' +
     (v ? '<span class="ver" title="Latest ' + (by ? "tag" : esc(v.channel) + " release") + '">v' + esc(v.version) + (v.channel === "beta" ? " beta" : "") + '</span>' : '<span class="ver">' + (by ? "no tag" : "no release") + '</span>') + '</header>' +
-    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>';
+    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>' + barLine(p);
   if (by) {
     var b = p.build, docs = safeUrl(b.docs_url.replace("{tag}", v ? v.tag : "HEAD"));
     var names = p.requires_user_files.map(function (f) { return esc(f.name); }).join("; ");
@@ -232,9 +268,10 @@ function card(p) {
       '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a></div>' + hist + '</article>';
   }
   return head +
-    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + (p.kind !== "addin" ? osRow(v) : "") +
+    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + (p.kind !== "addin" ? osRow(v) + genRow(v) : "") +
     (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
-    '<div class="actions">' + (v ? '<a class="btn-l primary" href="' + esc(v.url) + '">Download</a>' : '') +
+    '<div class="actions">' + (v ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1 / Force)' : '') + '</a>' : '') +
+    (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="Gen2 MPC devices (aarch64, MPC OS 3.x)">Download (Gen2)</a>' : '') +
     '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a>' +
     (v && ID_RE.test(p.id) ? '<label class="pick"><input type="checkbox" data-pick="' + esc(p.id) + '"' + (state.sel.indexOf(p.id) >= 0 ? " checked" : "") + '> Add to install list</label>' : '') +
     '</div>' + hist + '</article>';
@@ -244,15 +281,18 @@ function render() {
   out.sort(function (a, b) { var r = so.cmp(a, b); return (so.desc ? -r : r) * (state.rev ? -1 : 1); });
   $("grid").innerHTML = out.map(card).join("");
   $("empty").hidden = out.length > 0;
-  $("n-plugins").textContent = P.length;
-  $("count").textContent = out.length + " of " + P.length + " plugin" + (P.length === 1 ? "" : "s");
+  var hid = !state.tier ? P.filter(function (p) { return tierOf(p) === "experimental" && (PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab)); }).length : 0;
+  $("exp").hidden = !hid; $("exp-n").textContent = hid;
+  PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return inTabKind(p, k); }).length; });
+  var inTab = P.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); }).length;
+  $("count").textContent = out.length + " of " + inTab + " " + (state.tab === "midi" ? "MIDI plugins" : state.tab === "all" ? "plugins" : (KINDS[state.tab] || "plugins").toLowerCase());
   var down = so.desc !== state.rev;
   $("dir").textContent = down ? "Z-A / high-low" : "A-Z / low-high";
   $("dir").title = "Sorted " + (down ? "descending" : "ascending");
   save();
 }
 function save() {
-  var d = { tab: state.tab === "plugins" ? "" : state.tab, q: state.q, kind: state.kind, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, sort: state.sort === "updated" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(",") }, q = [];
+  var d = { tab: state.tab === "instrument" ? "" : state.tab, q: state.q, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, gen: state.gen, tier: state.tier, sort: state.sort === "recommended" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(",") }, q = [];
   Object.keys(d).forEach(function (k) { if (d[k]) q.push(k + "=" + encodeURIComponent(d[k])); });
   try { history.replaceState(null, "", q.length ? "#" + q.join("&") : location.pathname + location.search); } catch (e) {}
 }
@@ -264,20 +304,24 @@ function load() {
     else if (k === "sel") state.sel = v.split(",").filter(function (id) { return ID_RE.test(id) && P.some(function (p) { return p.id === id && !isBY(p); }); });
     else if (k in state) state[k] = v;
   });
-  if (!SORTS[state.sort]) state.sort = "updated";
-  if (["plugins", "patches", "apps"].indexOf(state.tab) < 0) state.tab = "plugins";
+  if (!SORTS[state.sort]) state.sort = "recommended";
+  if (state.tier && state.tier !== "all" && !TIERS[state.tier]) state.tier = "";
+  if (state.tab === "plugins") state.tab = "instrument";   // links from before the split
+  if (TABS.indexOf(state.tab) < 0) state.tab = "instrument";
 }
-/* Tabs: Plugins keeps all the filters above; Device patches and Companion apps are their own panels. The tab is part of the URL hash. */
-var TABS = ["plugins", "patches", "apps"];
+/* Tabs: Instruments, Effects and Addins share the filter bar and grid (the tab is the kind); Device patches and Companion apps are their own panels. The tab is part of the URL hash. */
+var TABS = ["instrument", "midi", "effect", "addin", "all", "patches", "apps"];
 function showTab(t, focus) {
   state.tab = t;
   TABS.forEach(function (n) {
     var on = n === t;
     $("tab-" + n).setAttribute("aria-selected", on ? "true" : "false"); $("tab-" + n).tabIndex = on ? 0 : -1;
-    $("panel-" + n).hidden = !on;
+    if (n === "patches" || n === "apps") $("panel-" + n).hidden = !on;
     if (on && focus) $("tab-" + n).focus();
   });
-  save();
+  $("panel-plugins").hidden = PLUGIN_TABS.indexOf(t) < 0;
+  $("panel-plugins").setAttribute("aria-labelledby", "tab-" + (PLUGIN_TABS.indexOf(t) < 0 ? "instrument" : t));
+  render();
 }
 document.querySelector(".tabs").addEventListener("click", function (e) { var b = e.target.closest("[data-tab]"); if (b) showTab(b.getAttribute("data-tab")); });
 document.querySelector(".tabs").addEventListener("keydown", function (e) {
@@ -296,11 +340,12 @@ function filterApps() {
   $("a-empty").hidden = n > 0;
 }
 $("a-q").addEventListener("input", filterApps); $("a-plat").addEventListener("change", filterApps);
-var map = { "q": "q", "f-kind": "kind", "f-style": "style", "f-dev": "dev", "f-lic": "lic", "f-dist": "dist", "f-os": "os", "sort": "sort" };
+var map = { "q": "q", "f-style": "style", "f-dev": "dev", "f-lic": "lic", "f-dist": "dist", "f-os": "os", "f-gen": "gen", "f-tier": "tier", "sort": "sort" };
 Object.keys(map).forEach(function (id) { $(id).addEventListener(id === "q" ? "input" : "change", function () { state[map[id]] = $(id).value; if (id === "sort") state.rev = false; render(); }); });
+$("show-exp").addEventListener("click", function () { state.tier = "all"; sync(); render(); });
 $("beta").addEventListener("change", function () { state.beta = $("beta").checked; render(); });
 $("dir").addEventListener("click", function () { state.rev = !state.rev; render(); });
-$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", kind: "", style: "", dev: "", lic: "", dist: "", os: "", sort: "updated", rev: false, beta: false, sel: state.sel }; sync(); render(); });
+$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: state.sel }; sync(); render(); });
 function sync() { Object.keys(map).forEach(function (id) { $(id).value = state[map[id]]; }); $("beta").checked = state.beta; }
 load(); sync(); render(); showTab(state.tab); filterApps();
 

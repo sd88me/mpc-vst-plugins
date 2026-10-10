@@ -1,0 +1,17 @@
+{
+  "id": "aphex",
+  "name": "Aphex",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-aphex",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "ms-20",
+    "monophonic",
+    "patch-bay",
+    "analog-modelling"
+  ],
+  "license": "MIT",
+  "summary": "Korg MS-10/MS-20 style mono synth with a patch bay, an ESP section and both MS filters.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-aphex/v1.0.0/screenshots/page_0.png"
+}

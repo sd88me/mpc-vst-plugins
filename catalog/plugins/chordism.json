@@ -1,0 +1,17 @@
+{
+  "id": "chordism",
+  "name": "Chordism",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-chordism",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "chords",
+    "arpeggiator",
+    "fm",
+    "lo-fi"
+  ],
+  "license": "MIT",
+  "summary": "One key in, a four-voice chord out: morphing oscillators, FM, filter, lo-fi, delay, reverb and an arpeggiator.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-chordism/v1.0.0/screenshots/page_0.png"
+}

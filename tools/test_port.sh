@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # Offline x86 test of a port, before anything goes to a device:
-#   tools/test_port.sh path/to/vst.json
+#   tools/test_port.sh path/to/vst.json [aarch64]
 # Generates the port's params.h, builds tools/host_test.c with the wrapper, the port's sources and its
 # adapter under ASan/UBSan, and runs it (exit status = the test's). Uses the host gcc/g++ when present,
-# else the gcc:12 Docker image. Ports with their own hand-written wrapper have their own host test.
+# else the gcc:12 Docker image. With `aarch64` the same test runs in an arm64 container (the Gen2 CPU architecture; QEMU on an x86
+# host, so UBSan only: ASan's shadow memory does not map under emulation). Ports with their own hand-written wrapper have their own host test.
 set -euo pipefail
 MV="$(cd "$(dirname "$0")/.." && pwd)"
 CFG="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 eval "$(python3 "$MV/tools/gen_vst.py" "$CFG" --shell)"
+# libdl is libc on macOS; the device build (glibc 2.31) still needs -ldl for dlopen.
+if [ "$(uname -s)" = Darwin ]; then
+  LIBS=${LIBS//-ldl/}
+fi
 python3 "$MV/tools/gen_vst.py" "$CFG" --params-h
 ADAPTER_SRC=""
 [ -n "$ADAPTER" ] && ADAPTER_SRC="$MV/adapters/$ADAPTER/${ADAPTER}_engine.c"
@@ -34,10 +39,15 @@ build='
 '
 export SOURCES CFLAGS PORT LIBS SAN MV ADAPTER_SRC OUT
 cd "$ROOT"
-if command -v gcc >/dev/null && command -v g++ >/dev/null; then
+MVMOUNT="-v $MV:$MV:ro"; [ "$ROOT" = "$MV" ] && MVMOUNT=""   # a port inside this repo is already mounted through ROOT
+if [ "${2:-}" = aarch64 ]; then
+  OUT="$OUT.aarch64"; SAN="-fsanitize=undefined -fno-omit-frame-pointer -g -O1"
+  docker run --rm --platform linux/arm64 -u "$(id -u):$(id -g)" -v "$ROOT":"$ROOT" $MVMOUNT -w "$ROOT" \
+    -e SOURCES -e CFLAGS -e PORT -e LIBS -e SAN -e MV -e ADAPTER_SRC -e OUT arm64v8/gcc:12-bookworm bash -c "$build"$'\n"$OUT"'
+elif command -v gcc >/dev/null && command -v g++ >/dev/null; then
   bash -c "$build"
   "$OUT"
 else
-  docker run --rm -u "$(id -u):$(id -g)" -v "$ROOT":"$ROOT" -v "$MV":"$MV":ro -w "$ROOT" \
-    -e SOURCES -e CFLAGS -e PORT -e LIBS -e SAN -e MV -e ADAPTER_SRC -e OUT gcc:12 bash -c "$build && \"\$OUT\""
+  docker run --rm -u "$(id -u):$(id -g)" -v "$ROOT":"$ROOT" $MVMOUNT -w "$ROOT" \
+    -e SOURCES -e CFLAGS -e PORT -e LIBS -e SAN -e MV -e ADAPTER_SRC -e OUT gcc:12 bash -c "$build"$'\n"$OUT"'
 fi

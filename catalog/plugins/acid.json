@@ -1,4 +1,4 @@
 { "id": "acid", "name": "Acid", "author": "sd88me", "repo": "sd88me/mpc-vst-acid",
-  "kind": "instrument", "style": "sequencer", "tags": ["303", "acid", "midi", "bassline"], "license": "GPL-3.0-only",
+  "kind": "instrument", "role": "midi", "style": "sequencer", "tags": ["303", "acid", "midi", "bassline"], "license": "GPL-3.0-only",
   "summary": "TB-303-style acid bassline sequencer: two blendable lines with generate/mutate, driving a synth track over MIDI, with a touchscreen skin and Q-Links.",
   "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-acid/master/docs/img/acid.png" }

@@ -1,0 +1,18 @@
+{
+  "id": "verglas",
+  "name": "Verglas",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-verglas",
+  "kind": "effect",
+  "style": "granular",
+  "tags": [
+    "mutable-instruments",
+    "clouds",
+    "granular",
+    "texture",
+    "eurorack"
+  ],
+  "license": "MIT",
+  "summary": "Mutable Instruments Clouds as an insert effect: granular, stretch, looper and spectral modes, freeze; 12 presets.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-verglas/v1.0.0/screenshots/page_0.png"
+}

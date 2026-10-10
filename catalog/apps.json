@@ -8,8 +8,8 @@
       "author": "Padbangers",
       "license": "MIT",
       "repo": "FullPace/mpc-link",
-      "release": "https://github.com/FullPace/mpc-link/releases/tag/v0.4.0",
-      "version": "0.4.0",
+      "release": "https://github.com/FullPace/mpc-link/releases/tag/v1.0.1",
+      "version": "1.0.1",
       "platforms": [
         "macos",
         "windows"
@@ -25,20 +25,20 @@
         {
           "platform": "macos",
           "label": "macOS (zip)",
-          "url": "https://github.com/FullPace/mpc-link/releases/download/v0.4.0/MPC-Link-0.4.0-macOS.zip",
-          "sha256": "ce92fc85710269f95078a9bbd619aa1c194459e3ab54ef528cc2ee2b4d943322"
+          "url": "https://github.com/FullPace/mpc-link/releases/download/v1.0.1/MPC-Link-1.0.1-macOS.zip",
+          "sha256": "784787a0d54d4e67e5743e749eb9757beb1342a2a1b4ff84aa4b2126b4cc12e8"
         },
         {
           "platform": "windows",
           "label": "Windows (x64)",
-          "url": "https://github.com/FullPace/mpc-link/releases/download/v0.4.0/MPC-Link-0.4.0-windows-amd64.exe",
-          "sha256": "6a89f1351109eb59159ecbdf610fe78ee47af6774d33d21176e67db43fc4e9c2"
+          "url": "https://github.com/FullPace/mpc-link/releases/download/v1.0.1/MPC-Link-1.0.1-windows-amd64.exe",
+          "sha256": "96e693e40c648f4ba054b0049e7b8ab30b7e5942be4489ba75e03be06766eedb"
         },
         {
           "platform": "windows",
           "label": "Windows (ARM64)",
-          "url": "https://github.com/FullPace/mpc-link/releases/download/v0.4.0/MPC-Link-0.4.0-windows-arm64.exe",
-          "sha256": "3fe9f4035822f0906a72d372137170520d2b28ed3ff18d5a4c2d68611ce90e5b"
+          "url": "https://github.com/FullPace/mpc-link/releases/download/v1.0.1/MPC-Link-1.0.1-windows-arm64.exe",
+          "sha256": "238fd6c6ede74663355761c57996e24cd11cf5e6caf0c457a72ca30838d88b69"
         }
       ],
       "assets": [

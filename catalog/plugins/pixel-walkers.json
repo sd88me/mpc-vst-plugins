@@ -1,0 +1,18 @@
+{
+  "id": "pixel-walkers",
+  "name": "Pixel Walkers",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-pixelwalkers",
+  "kind": "instrument",
+  "role": "midi",
+  "style": "sequencer",
+  "tags": [
+    "generative",
+    "midi",
+    "physics",
+    "bouncing"
+  ],
+  "license": "MIT",
+  "summary": "Generative gravity sequencer: each note you play becomes a walker that bounces and retriggers its note as it lands.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-pixelwalkers/v1.0.0/screenshots/page_0.png"
+}
