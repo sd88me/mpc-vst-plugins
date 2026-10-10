@@ -266,6 +266,52 @@ static void program_tests(AEffect *a) {
 #endif
 }
 
+/* MPC's plugin host (JUCE) sets parameter 0 to the far end of its range and straight back whenever it gets ready to play
+ * (on insert and on every STOP, for plugins without an editor; Live II trace 2026-10-10). That must leave the plugin as
+ * it was: with a preset as parameter 0 it loaded the preset twice and every knob moved since went back to it. The
+ * wrapper holds a host set of parameter 0 until the next block and drops a pair that ends where it started. */
+static int toggle_skip(int i) {
+    const param_t *p = &PARAMS[i];
+    if (p->momentary || p->step_target >= 0 || p->popup_of >= 0 || p->string_display) return 1;
+#ifdef PLUG_LIVE_COUNT
+    for (int k = 0; k < PLUG_LIVE_COUNT; k++) if (PLUG_LIVE[k] == i) return 1;
+#endif
+    return 0;
+}
+#if defined(PARAM_TEXT_MAX) && PARAM_TEXT_MAX > 64   /* a port that shows longer text (vst.json "defines") */
+#define TOGGLE_TEXT PARAM_TEXT_MAX
+#else
+#define TOGGLE_TEXT 64
+#endif
+static void param0_toggle_check(void) {
+    if (NPARAMS < 2) return;
+    AEffect *c = VSTPluginMain(host);
+    static char before[NPARAMS][TOGGLE_TEXT];
+    char d[TOGGLE_TEXT];
+    int moved = 0;
+    for (int i = 1; i < NPARAMS; i++) {   /* every knob moved, so a preset loaded under them shows */
+        const param_t *p = &PARAMS[i];
+        if (toggle_skip(i) || p->nopts || p->max <= p->min) continue;
+        c->setP(c, i, c->getP(c, i) < 0.5f ? 0.73f : 0.21f);
+        moved++;
+    }
+    run(c, 2);
+    for (int i = 0; i < NPARAMS; i++) { before[i][0] = 0; c->d(c, 7, i, 0, before[i], 0); }
+    float old = c->getP(c, 0);
+    c->setP(c, 0, old < 0.5f ? 1.0f : 0.0f);   /* what JUCE's prepareToPlay does */
+    c->setP(c, 0, old);
+    run(c, 2);
+    int changed = 0;
+    for (int i = 0; i < NPARAMS; i++) {
+        if (toggle_skip(i)) continue;
+        d[0] = 0; c->d(c, 7, i, 0, d, 0);
+        if (strcmp(d, before[i]) && changed++ < 5) printf("     %s: \"%s\" -> \"%s\"\n", PARAMS[i].key, before[i], d);
+    }
+    CHECK(!changed, "MPC's STOP toggle of parameter 0 (%s to the far end and back) changes nothing, %d knobs moved (%d changed)",
+          PARAMS[0].key, moved, changed);
+    c->d(c, 1, 0, 0, 0, 0);
+}
+
 int main(void) {
     AEffect *a = VSTPluginMain(host), *b = VSTPluginMain(host);
     CHECK(a && b && a != b, "two instances");
@@ -417,6 +463,7 @@ int main(void) {
 #if defined(HAS_TRANSPORT) && HAS_TRANSPORT
     transport_tests();
 #endif
+    param0_toggle_check();
     step_of_option_tests(a);
     void *ch = 0; intptr_t n = a->d(a, 23, 0, 0, &ch, 0);
     if (n > 0) {
