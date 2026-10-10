@@ -1,0 +1,19 @@
+{
+  "id": "pulytek",
+  "name": "PulyTek",
+  "author": "Alberto Barrera (ABSounds); Force/MPC port by MagicStino",
+  "repo": "MagicStino/pulytek",
+  "kind": "effect",
+  "license": "GPL-3.0-only",
+  "summary": "Pultec-style WDF EQ with tube warmth, AIR, stereo VU meters and four-band side EQ.",
+  "style": "eq",
+  "tags": [
+    "eq",
+    "pultec",
+    "wdf",
+    "tube",
+    "stereo"
+  ],
+  "screenshot": "https://raw.githubusercontent.com/MagicStino/pulytek/v1.0.0/docs/preview_0.png",
+  "asset_pattern": "PulyTek-*-mpc-armv7.zip"
+}
