@@ -224,6 +224,12 @@ function testedRow(v) {
   return '<dt>Tested on</dt><dd>' + (v.tested && v.tested.length ? v.tested.map(function (t) { return esc(t.device + (t.firmware ? " " + t.firmware : "") + (t.date ? " (" + t.date + ")" : "")); }).join(", ") : "Not reported") + '</dd>';
 }
 function safeUrl(u) { return /^https:\/\//.test(u) ? u : "#"; }
+/* "To improve": the quality-bar items a plugin does not meet yet (catalog_build.py BAR). Informational: it never hides or demotes anything. */
+function barLine(p) {
+  var m = (p.bar_missing || []).filter(function (k) { return CAT.bar && CAT.bar[k]; });
+  if (!m.length) return "";
+  return '<details class="how"><summary>To improve this listing (' + m.length + ')</summary><ul>' + m.map(function (k) { return '<li>' + esc(CAT.bar[k]) + '</li>'; }).join("") + '</ul></details>';
+}
 function card(p) {
   var by = isBY(p), v = shown(p), tags = [];
   if (by) tags.push('<span class="tag build" title="No download: you build it from your own files">Build it yourself</span>');
@@ -242,7 +248,7 @@ function card(p) {
   var shot = p.screenshot && safeUrl(p.screenshot) !== "#" ? '<a class="shot" href="' + esc(p.screenshot) + '"><img src="' + esc(p.screenshot) + '" alt="' + esc(p.name) + ' screenshot" loading="lazy"></a>' : "";
   var head = '<article class="card' + (by ? " by" : "") + '">' + shot + '<header><div><h2>' + esc(p.name) + '</h2><div class="by">by ' + esc(p.author) + '</div></div>' +
     (v ? '<span class="ver" title="Latest ' + (by ? "tag" : esc(v.channel) + " release") + '">v' + esc(v.version) + (v.channel === "beta" ? " beta" : "") + '</span>' : '<span class="ver">' + (by ? "no tag" : "no release") + '</span>') + '</header>' +
-    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>';
+    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>' + barLine(p);
   if (by) {
     var b = p.build, docs = safeUrl(b.docs_url.replace("{tag}", v ? v.tag : "HEAD"));
     var names = p.requires_user_files.map(function (f) { return esc(f.name); }).join("; ");

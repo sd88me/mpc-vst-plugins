@@ -80,6 +80,15 @@ The default sort ("Recommended") lists featured plugins, then Verified, then Lis
 registry entry is a maintainer's pick and is ignored for Experimental plugins. A listing can be capped, never raised, by the
 registry: `"tier"` accepts only `"experimental"`.
 
+## Improve your listing
+Each card has a collapsed "To improve this listing" list of what your plugin does not meet yet. It is advice, never a block: nothing
+is hidden or demoted because of it. The items:
+- publish a **stable** release (a beta alone makes the plugin Experimental)
+- add a **screenshot** (the `screenshot` link in your registry entry)
+- ship a native **skin** (instruments and effects)
+- run the **CPU bench** (`docs/BENCH.md`; `release.py` records the figure), and bring the CPU down if the verdict is FAIL
+- add a **`tested.json`** entry for your newest release (this is what makes a plugin Verified)
+
 ## Feed
 The site publishes `feed.xml` (Atom, newest 50 non-yanked releases).
 

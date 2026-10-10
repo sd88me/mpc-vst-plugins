@@ -116,7 +116,11 @@
    "latest_beta": null,
    "downloads": 6,
    "updated": "2026-09-29",
-   "tier": "listed"
+   "tier": "listed",
+   "bar_missing": [
+    "screenshot",
+    "tested"
+   ]
   },
   {
    "id": "three-only",
@@ -236,7 +240,8 @@
    "latest_beta": null,
    "downloads": 6,
    "updated": "2026-09-29",
-   "tier": "experimental"
+   "tier": "experimental",
+   "bar_missing": []
   },
   {
    "id": "old-catalog",
@@ -341,7 +346,8 @@
    "latest": "1.1.0",
    "latest_beta": null,
    "downloads": 6,
-   "updated": "2026-09-29"
+   "updated": "2026-09-29",
+   "bar_missing": []
   },
   {
    "id": "tested-two",
@@ -470,7 +476,12 @@
    "downloads": 6,
    "updated": "2026-09-29",
    "tier": "verified",
-   "featured": true
+   "featured": true,
+   "bar_missing": []
   }
- ]
+ ],
+ "bar": {
+  "screenshot": "add a screenshot of the plugin screen to the registry entry",
+  "tested": "add a tested.json entry for the newest release (device and MPC OS version)"
+ }
 }

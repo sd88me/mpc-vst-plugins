@@ -101,6 +101,37 @@ def tier_of(entry, versions):
     return "verified" if live[0].get("tested") else "listed"
 
 
+BAR = {   # id -> what the author sees. Informational: it never hides or demotes a plugin (docs/CATALOG_QUALITY.md, step 1).
+    "stable-release": "publish a stable (non-beta) release",
+    "screenshot": "add a screenshot of the plugin screen to the registry entry",
+    "skin": "ship a native MPC skin",
+    "cpu-fail": "bring the CPU use down (the bench verdict is FAIL)",
+    "cpu-bench": "run the CPU bench (docs/BENCH.md) so the release records a figure",
+    "tested": "add a tested.json entry for the newest release (device and MPC OS version)",
+}
+
+
+def bar_of(entry, versions, tier):
+    """Ids of the BAR items a plugin does not meet yet, in display order."""
+    live = [v for v in versions if v["channel"] == "stable" and not v["yanked"]]
+    m = (live[0].get("manifest") or {}) if live else {}
+    out = []
+    if not live:
+        out.append("stable-release")
+    if not entry.get("screenshot"):
+        out.append("screenshot")
+    if live and entry["kind"] != "addin" and entry.get("distribution", "release") == "release" and not m.get("skin"):
+        out.append("skin")
+    cpu = live[0].get("cpu") if live else None
+    if cpu and cpu.get("verdict") == "FAIL":
+        out.append("cpu-fail")
+    elif live and entry["kind"] != "addin" and entry.get("distribution", "release") == "release" and not cpu:
+        out.append("cpu-bench")
+    if tier != "verified" and live:
+        out.append("tested")
+    return out
+
+
 def _nonempty_str(v):
     return isinstance(v, str) and bool(v.strip())
 
@@ -431,6 +462,7 @@ def build(entries, src, cache, yanked, keep=10, now=None):
             item["build"].setdefault("needs", [])
         item["versions"] = versions
         item["tier"] = tier_of(e, versions)
+        item["bar_missing"] = bar_of(e, versions, item["tier"])
         item["featured"] = bool(e.get("featured")) and item["tier"] != "experimental"
         item["latest"] = next((v["version"] for v in versions if v["channel"] == "stable" and not v["yanked"]), None)
         item["latest_beta"] = next((v["version"] for v in versions if v["channel"] == "beta" and not v["yanked"]), None)
@@ -439,7 +471,7 @@ def build(entries, src, cache, yanked, keep=10, now=None):
         plugins.append(item)
     plugins.sort(key=lambda p: p["name"].lower())
     catalog = {"schema": 1, "generated": (now or datetime.datetime.now(datetime.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-               "plugins": plugins}
+               "bar": BAR, "plugins": plugins}
     return catalog, problems
 
 
@@ -465,6 +497,11 @@ def main():
     json.dump(problems, open(os.path.join(a.out, "problems.json"), "w"), indent=1)
     for p in problems:
         print("problem: %(id)s %(tag)s: %(error)s" % p, file=sys.stderr)
+    miss = {}
+    for pl in catalog["plugins"]:
+        for k in pl["bar_missing"]:
+            miss[k] = miss.get(k, 0) + 1
+    print("quality bar, plugins still missing: " + (", ".join("%s %d" % kv for kv in sorted(miss.items())) or "none"))
     print("%d plugins, %d versions, %d problems" % (len(catalog["plugins"]), sum(len(p["versions"]) for p in catalog["plugins"]), len(problems)))
     sys.exit(1 if reg_problems else 0)
 

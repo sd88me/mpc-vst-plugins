@@ -675,6 +675,22 @@ class BuildTest(Base):
         gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1, pre=True)]}, {1: self.build("1.0.0")})
         self.assertEqual(catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "b"), set())[0]["plugins"][0]["tier"], "experimental")
 
+    def test_quality_bar(self):
+        gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1)]}, {1: self.build("1.0.0")})
+        cat, _ = catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "bar"), set())
+        p = cat["plugins"][0]
+        self.assertIn("screenshot", p["bar_missing"])
+        self.assertIn("tested", p["bar_missing"])
+        self.assertTrue(set(p["bar_missing"]) <= set(cat["bar"]))
+        gh.tested = lambda repo: [{"version": "1.0.0", "device": "Force"}]
+        cat, _ = catalog_build.build([{**self.ENTRY, "screenshot": "https://x/s.png"}], gh, os.path.join(self.tmp, "bar2"), set())
+        self.assertNotIn("screenshot", cat["plugins"][0]["bar_missing"])
+        self.assertNotIn("tested", cat["plugins"][0]["bar_missing"])
+        # nothing valid released yet
+        cat, _ = catalog_build.build([self.ENTRY], FakeGitHub({"acme/test-synth": []}, {}), os.path.join(self.tmp, "bar3"), set())
+        self.assertEqual(cat["plugins"][0]["bar_missing"][0], "stable-release")
+        self.assertNotIn("tested", cat["plugins"][0]["bar_missing"])
+
     def test_unreadable_repo_is_reported_not_fatal(self):
         cat, problems = catalog_build.build([self.ENTRY], FakeGitHub({}, {}), os.path.join(self.tmp, "c"), set())
         self.assertEqual(cat["plugins"][0]["versions"], [])

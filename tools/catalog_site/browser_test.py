@@ -100,6 +100,7 @@ with sync_playwright() as p:
     pg.click("#show-exp")
     check("Show them reveals experimental plugins", pg.locator(".tag.tier-experimental").count() >= 1)
     pg.select_option("#f-tier", index=0)
+    check("only a plugin missing something shows 'To improve'", pg.locator("#grid details.how:has-text('To improve')").count() == 1)
     check("no script errors", not errors, str(errors))
     m = b.new_page(viewport={"width": 390, "height": 800}, device_scale_factor=2)
     m.goto(URL + "#sel=" + ids[0]); m.reload()
