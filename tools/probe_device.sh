@@ -33,4 +33,4 @@ echo "   folder with no systemd .mount unit on that unit; it may only become wri
 echo "   filesystem there. The following checks whether that's true on THIS device.)"
 mount | grep -E 'sdcard|synths|data|media|storage'
 ls -ld /sdcard /synths /synths/Synths /content /storage 2>/dev/null
-systemctl cat acvs-user-partition 2>&1 | head -20
+systemctl cat acvs-user-partition 2>&1 | head -n 20
