@@ -1364,3 +1364,17 @@ that ends where it started (`setParameter`, `flush_pend0`); the host's toggle re
 `tools/host_test.c` replays the toggle with every knob moved (`param0_toggle_check`: Hera, a preset at parameter 0,
 failed it with 20 of 22 knobs changed before the fix). The toggle is from the device trace; the fix is checked offline
 only so far (2026-10-10).
+
+### 2026-10-11: first Gen2 (MPC Live III) plugin load, Crate Digger 1.1.9 aarch64 (device)
+Installed with `install.sh -t "/media/<label>/Synths"` (a removable drive; `/synths/Synths` was read-only on this unit, see the
+2026-10-10 entry above). It registered, **showed up in MPC's plugin browser, opened and its skin rendered correctly.** This
+confirms `pluginList-arm-64bit` (not `pluginList-arm`) is the right key for an aarch64 package on Gen2, settling the previously
+unverified third-party tester report (`plugin_list.awk`/`install.sh`/`sync.sh` need no further change). First "Gen2 verified" load
+for any plugin from this catalog (`mpc-vst-cratedigger`'s `tested.json`).
+- **Not working yet:** the plugin's Discogs search returned an error on-device. Not diagnosed remotely; candidates are network/DNS,
+  TLS/certificate store differences in the bundled Python, or something aarch64-specific in the bundled yt-dlp. Needs device-side
+  diagnostics (e.g. the daemon's own log, or a manual run of the bundled `python3`/`yt-dlp` with verbose output) before it's fixed.
+- The `SHA256SUMS mismatch` installer error hit along the way (1.1.8) was **not** an Akai signing/key issue — see the 2026-10-10
+  terminfo entry in `mpc-vst-cratedigger`'s history: the bundled Python's terminfo database has ~25 case-only duplicate filenames
+  that collide on the tester's case-insensitive exFAT drive. Fixed by stripping `share/terminfo` at build time (unused, no
+  curses/readline UI); worth checking any other plugin that bundles a full interpreter/runtime for the same risk.
