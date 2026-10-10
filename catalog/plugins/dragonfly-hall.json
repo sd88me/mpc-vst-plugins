@@ -5,8 +5,13 @@
   "repo": "gmorb/mpc-vst-dragonfly-hall",
   "kind": "effect",
   "style": "reverb",
-  "tags": ["reverb", "hall", "dragonfly"],
+  "tags": [
+    "reverb",
+    "hall",
+    "dragonfly"
+  ],
   "license": "GPL-3.0-only",
   "summary": "Dragonfly Hall reverb as a native insert effect, with a touchscreen skin and Q-Links.",
-  "asset_pattern": "Hall-*-mpc-armv7.zip"
+  "asset_pattern": "Hall-*-mpc-armv7.zip",
+  "screenshot": "https://raw.githubusercontent.com/gmorb/mpc-vst-dragonfly-hall/440ec7b3b3db2fec34b9f80cf4890102ca14d1c3/docs/banners/hall.png"
 }
