@@ -4,13 +4,18 @@ Gen2 MPC devices (MPC Live III and kin, RK3588) run a 64-bit userland: `/usr/bin
 `/usr/lib/ld-linux-aarch64.so.1` and there are no 32-bit libraries, so Gen1's armv7 `.so` files cannot load
 (analysed 2026-10-06 from the 3.9.1 Gen2 update image, offline; see `docs/FIRMWARE_BUILDER.md`). A plugin needs a second, aarch64 build.
 
-**Status (2026-10-10):** the packaging, validation and catalog plumbing below exists and is unit-tested. A Gen2 test release of
-Crate Digger (aarch64 + armv7 zips) has been published, but **nothing has been installed on a Gen2 device yet** — pending a tester's
-install attempt. There is no SSH/root route on Gen2 *that this project built*; the one Gen2 tester so far reached root via unofficial
-third-party boot methods unrelated to this repo. `probe_device.sh` output from that device (see NOTES.md, 2026-10-10) shows: `/synths`
-is mounted but **read-only** on that unit, `/storage`/`/content` are not mounted at all, and the only writable Synths locations are
-removable media (`/media/*/Synths`) — same as Gen1/Force. Nothing may be called "Gen2 verified" until a plugin has loaded on real
-hardware (`tested.json` carries the device).
+**Status (2026-10-11): first Gen2 device confirmation.** Crate Digger 1.1.9's aarch64 build was installed on a real MPC Live III
+(MPC OS 5.0.18), registered, showed up in MPC's plugin browser, opened and its skin rendered (`mpc-vst-cratedigger`'s `tested.json`).
+This settles two open questions:
+- **`pluginList-arm-64bit` is confirmed correct** for registering an aarch64 package (the earlier third-party tester report was
+  right; `plugin_list.awk -v listkey=...` and `install.sh`/`sync.sh`'s arch-based choice need no further change).
+- Install target: on this device `-t` had to point at a removable Synths folder (`/media/<label>/Synths`); `/sdcard` wasn't mounted
+  and `/synths/Synths` was mounted read-only (see NOTES.md 2026-10-10). No Gen2-specific install default was needed.
+
+Not yet working: the plugin's Discogs search returned an error on-device (not yet diagnosed; could be network, DNS, TLS/cert, or
+something arch-specific in the bundled yt-dlp/Python). Not claiming full functional parity until that's resolved. There is still no
+SSH/root route on Gen2 *that this project built* — the Gen2 tester reached root via unofficial third-party boot methods unrelated to
+this repo.
 
 ## One plugin, two zips
 - `release.py` names the zip from the `.so`'s ELF machine: `<Name>-<ver>-mpc-armv7.zip` (Gen1, unchanged) or
