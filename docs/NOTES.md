@@ -1351,3 +1351,16 @@ GROUP and SETUP screenshots in `ports/maschine/docs/` (`tools/screenshot.sh --pl
 
 ### 2026-10-10: installer app Apply / Undo on the Force (device, user-reported; PR #260)
 The Force (MPC 3.9.1.2, drum-pad layout patch already applied, stock backup present, `status` read over SSH before the test) was driven through the 0.0.0-applytest build of the desktop app, step 7. The user reported that it "works well". What was and was not checked by us: before the test, `status` printed `STATE state=patched supported=1 backup=1 checksum=7cf96599ec61b1079688f253f3b65b9f` over SSH (read only); the click-through itself (Undo then Apply, typed `UNDO` / `APPLY`) was done by the user, and the checksums after each step were not read back by us. Only the drum-pad patch was tried; the drive exec and button remap patches have no Apply/Undo run yet, and the app offers default settings only (no per-patch options).
+
+## MPC's host toggles parameter 0 on insert and on every STOP (Live II, 2026-10-10)
+A trace on an MPC Live II (MPC OS 3.9.1) showed, on inserting a plugin and on every press of STOP: `effMainsChanged`,
+`effSetSampleRate`, `effSetBlockSize`, `effMainsChanged`, then `setParameter(0, 1.0)` and `setParameter(0, <old>)`
+(or 0.0 then old, when old >= 0.5). That is JUCE's `prepareToPlay` in its VST2 host ("a dodgy hack to force some
+plugins to initialise the sample rate", for plugins without an editor), which MPC runs again on STOP. Harmless for a
+knob, but where parameter 0 is a preset (Hera, Fizzik, NuSaw, Percolator's kit ...) each set loaded one, so every knob
+moved since went back to the preset when STOP was pressed. The wrapper now holds a host set of parameter 0 until the
+next block (or until a read of it, its display text, a preset, the state or another parameter comes) and drops a pair
+that ends where it started (`setParameter`, `flush_pend0`); the host's toggle reads nothing in between.
+`tools/host_test.c` replays the toggle with every knob moved (`param0_toggle_check`: Hera, a preset at parameter 0,
+failed it with 20 of 22 knobs changed before the fix). The toggle is from the device trace; the fix is checked offline
+only so far (2026-10-10).

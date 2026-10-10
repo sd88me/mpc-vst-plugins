@@ -134,6 +134,8 @@ typedef struct {
     int playing;             /* HAS_TRANSPORT: last transport state sent */
     double ppq;              /* HAS_TRANSPORT: song position at the last block, to spot a jump back */
     volatile char need_update_display;  /* deferred audioMasterUpdateDisplay -- see setParameter() */
+    float pend0, pend0_from;  /* a host set of parameter 0 not applied yet, and where parameter 0 was before it */
+    int has_pend0;            /* (see setParameter) */
     char last_rev[16];       /* HAS_DISPLAY_REV: the "display_rev" last seen */
     float last_norm[NPARAMS];   /* HAS_DISPLAY_REV: value last reported per param (-1 = never) */
     float open[NPARAMS];     /* popup "open" flags (popup.h): kept here, never sent to the DSP or saved */
@@ -201,6 +203,7 @@ static float str_to_norm(const param_t *p, const char *s) {
 static float get_norm(wrap_t *w, int i) {
     char buf[64];
     if (i < 0 || i >= NPARAMS) return 0;
+    if (i == 0 && __atomic_load_n(&w->has_pend0, __ATOMIC_ACQUIRE)) return w->pend0;   /* set, not applied yet */
     if (popup_is(i)) return w->open[i];
     if (PARAMS[i].string_display) {
         /* a text param's value is not its text: a DSP may expose "<key>_on" (list-tile selection) */
@@ -225,7 +228,7 @@ static float settle(float pos, float cur, float last) {
     return dir > 0 ? ceilf(pos - 0.001f) : floorf(pos + 0.001f);
 }
 
-static void setParameter(AEffect *e, int32_t i, float n) {
+static void set_param_now(AEffect *e, int32_t i, float n) {
     wrap_t *w = e->object;
     TRACE(0, i, n);
     char buf[64];
@@ -343,7 +346,32 @@ static void setParameter(AEffect *e, int32_t i, float n) {
     w->need_update_display = 1;   /* deferred to processReplacing(), see the step_target branch above */
 }
 
+/* MPC's plugin host (JUCE) sets parameter 0 to the far end of its range and straight back whenever it gets ready to play:
+ * on insert and on every STOP ("a dodgy hack to force some plugins to initialise the sample rate", for plugins without an
+ * editor; seen in a Live II trace, 2026-10-10). Applied as they come, the two sets load a preset twice when parameter 0
+ * is a preset, and every knob moved since goes back to it. So a host set of parameter 0 waits for the next block (or for
+ * a read of it, its display text, a preset, the state, another parameter) and only the last one counts; a pair that ends
+ * where it started is dropped. The host's own toggle reads nothing in between. */
+static void flush_pend0(AEffect *e) {
+    wrap_t *w = e->object;
+    if (!__atomic_exchange_n(&w->has_pend0, 0, __ATOMIC_ACQ_REL)) return;
+    if (fabsf(w->pend0 - w->pend0_from) > 1e-6f) set_param_now(e, 0, w->pend0);
+}
+
+static void setParameter(AEffect *e, int32_t i, float n) {
+    wrap_t *w = e->object;
+    if (i == 0 && NPARAMS > 0) {
+        if (!__atomic_load_n(&w->has_pend0, __ATOMIC_ACQUIRE)) w->pend0_from = get_norm(w, 0);
+        w->pend0 = n;
+        __atomic_store_n(&w->has_pend0, 1, __ATOMIC_RELEASE);
+        return;
+    }
+    flush_pend0(e);
+    set_param_now(e, i, n);
+}
+
 static float getParameter(AEffect *e, int32_t i) {
+    if (i == 0) flush_pend0(e);   /* a read applies a held parameter 0: the host reads back what the engine took */
     float v = get_norm(e->object, i);
     TRACE(1, i, v);
     return v;
@@ -507,6 +535,7 @@ static int16_t f2s(float f) { f *= 32768.0f; return f >= 32767.0f ? 32767 : f <=
  * any other block size is collected and processed one block late. */
 static void run_block(AEffect *e, float **in, float **out, int32_t n, int accumulate) {
     wrap_t *w = e->object;
+    flush_pend0(e);   /* parameter 0, set since the last block (setParameter) */
     housekeeping(e, n);
     /* A conforming host passes real input to an effect, but a plugin scanner (and the device's own load
      * probe) may call processReplacing with in == NULL; treat a missing input channel as silence. */
@@ -537,6 +566,7 @@ static void process(AEffect *e, float **in, float **out, int32_t n) { run_block(
 #else
 static void run_block(AEffect *e, float **out, int32_t n, int accumulate) {
     wrap_t *w = e->object;
+    flush_pend0(e);   /* parameter 0, set since the last block (setParameter) */
     housekeeping(e, n);
 #if SAMPLE_ACCURATE
     render_events(w, out, n, accumulate);
@@ -680,6 +710,7 @@ static intptr_t dispatcher(AEffect *e, int32_t op, int32_t idx, intptr_t v, void
     case effGetParamDisplay: {
         char buf[PARAM_TEXT_MAX > 64 ? PARAM_TEXT_MAX : 64];
         if (idx < 0 || idx >= NPARAMS) return 0;
+        if (idx == 0) flush_pend0(e);
         const param_t *pp = &PARAMS[idx];
         char k2[96];
         snprintf(k2, sizeof k2, "%s_display", pp->key);
@@ -712,7 +743,7 @@ static intptr_t dispatcher(AEffect *e, int32_t op, int32_t idx, intptr_t v, void
             }
         return 1;
     }
-    case effSetProgram: set_program(w, (int)v); return 1;
+    case effSetProgram: flush_pend0(e); set_program(w, (int)v); return 1;
     case effGetProgram: return NUM_PROGRAMS ? get_program(w) : 0;
     case effGetProgramName: program_name(w, NUM_PROGRAMS ? get_program(w) : -1, p); return 1;
     case effGetProgramNameIndexed: program_name(w, idx, p); return idx >= 0 && idx < NUM_PROGRAMS;
@@ -720,6 +751,7 @@ static intptr_t dispatcher(AEffect *e, int32_t op, int32_t idx, intptr_t v, void
         return (!strcmp(p, "receiveVstEvents") || !strcmp(p, "receiveVstMidiEvent") ||
                 !strcmp(p, "receiveVstTimeInfo")) ? 1 : -1;
     case effGetChunk: {
+        flush_pend0(e);
         int len = eng_get(w, "state", w->chunk, sizeof w->chunk);
         if (len <= 0) return 0;
         *(void **)p = w->chunk;
@@ -729,6 +761,7 @@ static intptr_t dispatcher(AEffect *e, int32_t op, int32_t idx, intptr_t v, void
         if (v <= 0 || (size_t)v > sizeof w->chunk) return 0;
         memcpy(w->chunk, p, v);
         w->chunk[v - 1] = 0;
+        __atomic_store_n(&w->has_pend0, 0, __ATOMIC_RELEASE);   /* a restore sets parameter 0 too */
         eng_set(w, "state", w->chunk);
         return 1;
     }
