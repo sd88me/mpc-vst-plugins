@@ -65,6 +65,7 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
 - [ ] **A port template repo** (`vst.json`, `build.sh`, release workflow, `tested.json` stub, README) so a new plugin is
       catalog-ready from its first commit.
 - [ ] **Update notices honour `param_compat`** (a major bump warns that saved projects will change).
+- [ ] **Catalog quality plan** (trust tiers, a visible bar, new entries start Experimental, trusted verifiers): steps in `docs/CATALOG_QUALITY.md`.
 - [ ] **Announce to the community** and collect what people ask for before building more.
 
 ## Companion apps (catalog)
