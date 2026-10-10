@@ -70,9 +70,12 @@ for the pattern). This applies to every future port, not just ones that hit the 
 - [ ] State saved via chunks (`effGetChunk`/`effSetChunk`).
 - [ ] Offline x86 test: `tools/test_port.sh <port>/vst.json` prints PASSED (instances, parameter round-trip,
       options, popups, MIDI → audio, chunk restore, under ASan).
-- [ ] Gen2 (optional): `"targets": ["armv7", "aarch64"]` in vst.json, `tools/build_port.sh <port>/vst.json aarch64` builds `build/aarch64/<so>`
-      (`arm64v8/gcc:12-bookworm`), `tools/test_port.sh <port>/vst.json aarch64` must print PASSED (UBSan, arm64 container), and the release
-      carries both zips (docs/RELEASING.md, docs/GEN2.md). Say "offline only" until it has loaded on a Gen2 device.
+- [ ] Gen2 (optional, proven on two ports as of 2026-10-11 — Crate Digger, Profit-08, both loaded on a real MPC Live III): `"targets":
+      ["armv7", "aarch64"]` in vst.json, `tools/build_port.sh <port>/vst.json aarch64` builds `build/aarch64/<so>` (`arm64v8/gcc:12-bookworm`),
+      `tools/test_port.sh <port>/vst.json aarch64` must print PASSED (UBSan, arm64 container), and the release carries both zips
+      (docs/RELEASING.md, docs/GEN2.md). Still say "offline only" (or name the device once it's run there) until it has loaded on a Gen2
+      device of your own, and remember there is no SSH/root route on Gen2 this project provides — only testers who already have root
+      some other way can try it.
 
 ## 2. Parameters
 - [ ] Stable order (the VST index is what skins and projects bind to). Append only; never reorder a shipped plugin.
