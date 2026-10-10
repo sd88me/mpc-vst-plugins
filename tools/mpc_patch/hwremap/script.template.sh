@@ -6,10 +6,15 @@
 # ADVANCED AND OPT-IN. It changes how the device starts MPC. Read the warnings. Not part of any plugin.
 #
 #   sh hwremap-patch.sh status
-#   sh hwremap-patch.sh install [--layout mpc-live|force] [--confirmed]
+#   sh hwremap-patch.sh options [--layout mpc-live|force]
+#   sh hwremap-patch.sh install [--layout mpc-live|force] [--options LIST] [--with LIST] [--without LIST] [--confirmed]
 #   sh hwremap-patch.sh uninstall [--confirmed]
 #   sh hwremap-patch.sh help
 # Run it ON the device as root, after copying this one file there.
+# The Force map is made of options (which button does what). On a terminal install asks which to
+# turn on; --options (an exact list, or all / none), --with and --without choose without asking, and
+# options lists them. Only a config that does not exist yet is written, so the choice applies to a
+# first install; edit /sdcard/hwremap.conf afterwards.
 #
 # Two install styles, picked from the device:
 #   Hakai (a launcher /usr/bin/az01-launch-MPC): the library goes to /usr/lib/hwremap.so and that
@@ -35,9 +40,9 @@
 #    is left in place; an untouched default config is removed.
 #  - Not affiliated with Akai Professional / inMusic.
 #
-# Version 0.1.0. Source: tools/mpc_patch/hwremap of the repository this came from.
+# Version 0.2.0. Source: tools/mpc_patch/hwremap of the repository this came from.
 set -u
-VERSION=0.1.0
+VERSION=0.2.0
 P=${HW_PREFIX:-}                 # tests only: a folder that stands for /
 MARK=$P/data/hwremap
 CONF=$P/sdcard/hwremap.conf
@@ -52,8 +57,12 @@ WROTE_CONF=0
 SVC=
 STYLE=
 LAYOUT=
+OPT_SET=
+OPT_WITH=
+OPT_WITHOUT=
+OPTS=
 die() { echo "ERROR: $*" >&2; exit 1; }
-usage() { sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 
 # --- unpack the library and the two default configs (generated; do not edit the markers)
 write_so() { # $1 destination
@@ -72,16 +81,108 @@ HW_SO_HEX
     mv "$tmp" "$dest" || die "cannot install the library"
     chmod 755 "$dest" || die "cannot mark the library executable"
 }
-write_default_conf() { # $1 path, $2 mpc-live|force
-    case "$2" in
-        mpc-live) cat > "$1" <<'HW_CONF_LIVE'
+conf_raw() { # $1 mpc-live|force: the embedded map, option markers included
+    case "$1" in
+        mpc-live) cat <<'HW_CONF_LIVE'
 @@CONF_LIVE@@HW_CONF_LIVE
             ;;
-        force) cat > "$1" <<'HW_CONF_FORCE'
+        force) cat <<'HW_CONF_FORCE'
 @@CONF_FORCE@@HW_CONF_FORCE
             ;;
-        *) die "unknown layout: $2" ;;
+        *) die "unknown layout: $1" ;;
     esac
+}
+conf_options() { # $1 layout: one "name<TAB>on|off<TAB>description" line per option
+    conf_raw "$1" | awk '/^#@option[ \t]/ { n = $2; d = $3; $1 = ""; $2 = ""; $3 = ""; sub(/^[ \t]+/, ""); printf "%s\t%s\t%s\n", n, d, $0 }'
+}
+render_conf() { # $1 layout, $2 chosen options (space separated): the map with only those blocks
+    conf_raw "$1" | awk -v sel=" $2 " '
+        function chosen(n) { return index(sel, " " n " ") > 0 }
+        function holds(expr,    alts, na, i, terms, nt, j, t, ok) {
+            na = split(expr, alts, "|")
+            for (i = 1; i <= na; i++) {
+                nt = split(alts[i], terms, "&")
+                ok = 1
+                for (j = 1; j <= nt; j++) {
+                    t = terms[j]
+                    if (substr(t, 1, 1) == "!") { if (chosen(substr(t, 2))) ok = 0 }
+                    else if (!chosen(t)) ok = 0
+                }
+                if (ok) return 1
+            }
+            return 0
+        }
+        BEGIN { inc = 1 }
+        /^#@always/ { inc = 1; next }
+        /^#@option[ \t]/ {
+            n = $2; $1 = ""; $2 = ""; $3 = ""; sub(/^[ \t]+/, "")
+            inc = chosen(n)
+            if (inc) print "# " $0
+            next
+        }
+        /^#@if[ \t]/ { inc = holds($2); next }
+        /^#@end/ { inc = 1; next }
+        /^#@hide/ { inc = 0; next }
+        /^#@show/ { inc = 1; next }
+        /^#@/ { print "ERROR: unknown marker " $1 > "/dev/stderr"; exit 2 }
+        inc { print }
+    '
+}
+write_default_conf() { # $1 path, $2 mpc-live|force, $3 chosen options
+    render_conf "$2" "$3" > "$1"
+}
+tty_ok() { ( : < /dev/tty ) 2>/dev/null; } # a failed redirect on a builtin ends a BusyBox shell, so try it in a subshell
+list_has() { case " $1 " in *" $2 "*) return 0 ;; esac; return 1; }
+list_add() { if list_has "$1" "$2"; then echo "$1"; else echo "${1:+$1 }$2"; fi; }
+list_del() { out=; for x in $1; do [ "$x" = "$2" ] || out="${out:+$out }$x"; done; echo "$out"; }
+choose_options() { # sets OPTS from the layout's defaults and the --options / --with / --without flags
+    names=$(conf_options "$LAYOUT" | cut -f1 | tr '\n' ' ')
+    names=${names% }
+    if [ -z "$names" ]; then
+        [ -z "$OPT_SET$OPT_WITH$OPT_WITHOUT" ] || die "the $LAYOUT map has no options"
+        OPTS=; return
+    fi
+    case "$OPT_SET" in
+        "") OPTS=$(conf_options "$LAYOUT" | awk -F'\t' '$2 == "on" { printf "%s ", $1 }'); OPTS=${OPTS% } ;;
+        all) OPTS=$names ;;
+        none) OPTS= ;;
+        *) OPTS=$(printf '%s' "$OPT_SET" | tr ',' ' ') ;;
+    esac
+    for n in $(printf '%s' "$OPT_WITH" | tr ',' ' '); do OPTS=$(list_add "$OPTS" "$n"); done
+    for n in $(printf '%s' "$OPT_WITHOUT" | tr ',' ' '); do OPTS=$(list_del "$OPTS" "$n"); done
+    for n in $OPTS $(printf '%s %s' "$OPT_WITH" "$OPT_WITHOUT" | tr ',' ' '); do
+        list_has "$names" "$n" || die "unknown option '$n' (known: $names)"
+    done
+}
+ask_options() { # a checklist on the terminal; changes OPTS
+    names=$(conf_options "$LAYOUT" | cut -f1 | tr '\n' ' ')
+    while :; do
+        echo
+        echo "Which button remaps do you want? (the default is marked)"
+        i=0
+        conf_options "$LAYOUT" | while IFS='	' read -r n d t; do
+            i=$((i + 1))
+            if list_has "$OPTS" "$n"; then m=x; else m=' '; fi
+            printf '  %2d [%s] %s\n' "$i" "$m" "$t"
+        done
+        printf 'Number to switch on/off, a = all, n = none, Enter = continue: '
+        if on_device && tty_ok; then read -r a < /dev/tty; else read -r a; fi
+        case "$a" in
+            "") return ;;
+            a) OPTS=${names% } ;;
+            n) OPTS= ;;
+            *[!0-9]*) echo "Not a number." ;;
+            *)
+                n=$(printf '%s' "$names" | awk -v k="$a" '{ print $k }')
+                if [ -z "$n" ]; then echo "No option $a."
+                elif list_has "$OPTS" "$n"; then OPTS=$(list_del "$OPTS" "$n")
+                else OPTS=$(list_add "$OPTS" "$n"); fi
+                ;;
+        esac
+    done
+}
+can_ask() { # a terminal to ask on (tests: HW_ASK=1 reads stdin)
+    if on_device; then tty_ok; else [ "${HW_ASK:-}" = 1 ]; fi
 }
 
 mpc_service() {
@@ -90,7 +191,8 @@ mpc_service() {
     else echo ""; fi
 }
 detect_style() {
-    if [ -f "$LAUNCHER" ]; then echo launcher
+    # a Force has the launcher file too (the script its service runs) but it sets no LD_PRELOAD: that one takes the drop-in
+    if [ -f "$LAUNCHER" ] && grep -q 'LD_PRELOAD=' "$LAUNCHER"; then echo launcher
     elif [ -n "$(mpc_service)" ]; then echo dropin
     else echo ""; fi
 }
@@ -238,7 +340,7 @@ rollback() {
         systemctl daemon-reload >/dev/null 2>&1 || true
     fi
     if [ "$WROTE_CONF" = 1 ]; then rm -f "$CONF"; fi
-    rm -f "$MARK/VERSION" "$MARK/STYLE" "$MARK/SERVICE" "$MARK/config.default"
+    rm -f "$MARK/VERSION" "$MARK/STYLE" "$MARK/SERVICE" "$MARK/config.default" "$MARK/OPTIONS"
     rmdir "$MARK" 2>/dev/null || true
     root_ro
     if [ "$STOPPED" = 1 ] && [ -n "$SVC" ]; then
@@ -255,7 +357,7 @@ on_exit() {
 confirm() { # $1 word
     [ "$CONFIRMED" = 1 ] && return 0
     printf 'Type %s to continue: ' "$1"
-    if on_device; then read -r a < /dev/tty 2>/dev/null || read -r a; else read -r a; fi
+    if on_device && tty_ok; then read -r a < /dev/tty; else read -r a; fi
     [ "$a" = "$1" ] || die "cancelled; nothing was changed"
 }
 
@@ -279,6 +381,7 @@ cmd_status() {
         fi
         st=$(cat "$MARK/STYLE" 2>/dev/null || echo "?")
         echo "Installed (version $VERSION, style $st)."
+        [ ! -f "$MARK/OPTIONS" ] || echo "Options chosen at install: $(cat "$MARK/OPTIONS" | sed 's/^$/none/')."
         if [ ! -f "$(so_file "$st")" ]; then echo "The library file is missing."; state_line partial 1 incomplete; return; fi
         if maps_have_it; then echo "MPC has loaded it."; state_line patched 1; return; fi
         if mpc_running; then echo "MPC is running but has not loaded it. Restart MPC."; state_line partial 1 not-loaded; return; fi
@@ -304,6 +407,17 @@ prepare() { # shared checks for install and uninstall; sets SVC
     [ -n "$SVC" ] || die "cannot find the MPC service (looked for acvs and inmusic-mpc)"
 }
 
+cmd_options() { # list the options of a layout and which are on by default
+    [ -n "$LAYOUT" ] || LAYOUT=force
+    case "$LAYOUT" in mpc-live|force) ;; *) die "--layout must be mpc-live or force" ;; esac
+    if [ -z "$(conf_options "$LAYOUT")" ]; then echo "The $LAYOUT map has no options."; return; fi
+    echo "Options of the $LAYOUT map (default: on = marked):"
+    conf_options "$LAYOUT" | while IFS='	' read -r n d t; do
+        if [ "$d" = on ]; then m=on; else m=off; fi
+        printf '  %-18s %-3s %s\n' "$n" "$m" "$t"
+    done
+}
+
 cmd_install() {
     prepare
     v=$(installed_version) && die "this patch is already installed (version $v). Uninstall it first (sh $0 uninstall)."
@@ -314,6 +428,15 @@ cmd_install() {
         case "$STYLE" in launcher) LAYOUT=mpc-live ;; dropin) LAYOUT=force ;; esac
     fi
     case "$LAYOUT" in mpc-live|force) ;; *) die "--layout must be mpc-live or force" ;; esac
+    OPTS=
+    if [ ! -f "$CONF" ]; then
+        choose_options
+        if [ -z "$OPT_SET$OPT_WITH$OPT_WITHOUT" ] && [ "$CONFIRMED" = 0 ] && [ -n "$(conf_options "$LAYOUT")" ]; then
+            if can_ask; then ask_options; else echo "No terminal to ask on: using the default options (see: sh $0 options)."; fi
+        fi
+    elif [ -n "$OPT_SET$OPT_WITH$OPT_WITHOUT" ]; then
+        echo "Note: $CONF already exists and is left as it is, so the option flags are ignored."
+    fi
     case "$STYLE" in
         launcher) where="$SO_LAUNCHER (and $LAUNCHER)"; need_rw="The root filesystem is remounted writable, then read-only again." ;;
         dropin) where="$SO_DROPIN (and a systemd drop-in for $SVC)"; need_rw="The root filesystem is not remounted." ;;
@@ -323,7 +446,10 @@ cmd_install() {
     echo "  library: $where"
     echo "  $need_rw"
     if [ -f "$CONF" ]; then echo "  config:  $CONF already exists and will be left as it is."
-    else echo "  config:  $CONF will be created from the $LAYOUT map (edit it to change what the buttons do)."; fi
+    else
+        echo "  config:  $CONF will be created from the $LAYOUT map (edit it to change what the buttons do)."
+        [ -z "$(conf_options "$LAYOUT")" ] || echo "  options: ${OPTS:-none}"
+    fi
     echo "  MPC ($SVC) will be stopped and started. Save your project first."
     confirm PATCH
     [ "${HW_FAIL:-}" = before-write ] && die "test failure before any change"
@@ -363,7 +489,8 @@ cmd_install() {
             ;;
     esac
     if [ ! -f "$CONF" ]; then
-        write_default_conf "$CONF" "$LAYOUT" || die "cannot write the config"
+        write_default_conf "$CONF" "$LAYOUT" "$OPTS" || die "cannot write the config"
+        printf '%s\n' "$OPTS" > "$MARK/OPTIONS"
         cp "$CONF" "$MARK/config.default" || die "cannot save the default config"
         WROTE_CONF=1
     fi
@@ -397,7 +524,7 @@ cmd_uninstall() {
         rm -f "$CONF"
     fi
     restore_hook
-    rm -f "$MARK/VERSION" "$MARK/STYLE" "$MARK/SERVICE" "$MARK/config.default" "$MARK/az01-launch-MPC.orig"
+    rm -f "$MARK/VERSION" "$MARK/STYLE" "$MARK/SERVICE" "$MARK/config.default" "$MARK/OPTIONS" "$MARK/az01-launch-MPC.orig"
     rmdir "$MARK" 2>/dev/null || true
     start_mpc
     trap - EXIT
@@ -411,6 +538,9 @@ CONFIRMED=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --layout) [ -n "${2:-}" ] || die "--layout needs mpc-live or force"; LAYOUT=$2; shift 2 ;;
+        --options) [ -n "${2:-}" ] || die "--options needs a comma list, all or none"; OPT_SET=$2; shift 2 ;;
+        --with) [ -n "${2:-}" ] || die "--with needs a comma list"; OPT_WITH=$2; shift 2 ;;
+        --without) [ -n "${2:-}" ] || die "--without needs a comma list"; OPT_WITHOUT=$2; shift 2 ;;
         --confirmed) CONFIRMED=1; shift ;;
         *) usage 1 ;;
     esac
@@ -418,6 +548,7 @@ done
 
 case "$CMD" in
     status) cmd_status ;;
+    options) cmd_options ;;
     install) cmd_install ;;
     uninstall) cmd_uninstall ;;
     help|-h|--help) usage 0 ;;

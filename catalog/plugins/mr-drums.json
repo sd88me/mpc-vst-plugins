@@ -1,0 +1,16 @@
+{
+  "id": "mr-drums",
+  "name": "Mr Drums",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-mrdrums",
+  "kind": "instrument",
+  "style": "sampler",
+  "tags": [
+    "drums",
+    "kits",
+    "pads"
+  ],
+  "license": "MIT",
+  "summary": "A 16-pad drum sampler: kits of samples on pads 36-51.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-mrdrums/v1.0.0/screenshots/page_0.png"
+}

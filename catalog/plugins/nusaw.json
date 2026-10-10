@@ -1,0 +1,17 @@
+{
+  "id": "nusaw",
+  "name": "NuSaw",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-nusaw",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "supersaw",
+    "trance",
+    "polyphonic",
+    "pads"
+  ],
+  "license": "MIT",
+  "summary": "Detuned supersaw polysynth with a sub, resonant filter, chorus and delay; 27 presets for pads, stabs and leads.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-nusaw/v1.0.0/screenshots/page_0.png"
+}

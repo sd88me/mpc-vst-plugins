@@ -1,0 +1,16 @@
+{
+  "id": "monksynth",
+  "name": "MonkSynth",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-monksynth",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "formant",
+    "voice",
+    "choir"
+  ],
+  "license": "MIT",
+  "summary": "A formant (FOF) singing voice with 12 characters and a choir.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-monksynth/v1.0.0/screenshots/page_0.png"
+}

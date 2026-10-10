@@ -43,15 +43,16 @@
   <div class="pagelist">/*GUIDES*/</div>
 
   <div class="tabs" role="tablist" aria-label="Catalog sections">
-    <button type="button" role="tab" id="tab-plugins" aria-controls="panel-plugins" aria-selected="true" data-tab="plugins">Plugins <span class="n" id="n-plugins"></span></button>
+    <button type="button" role="tab" id="tab-instrument" aria-controls="panel-plugins" aria-selected="true" data-tab="instrument">Instruments <span class="n" id="n-instrument"></span></button>
+    <button type="button" role="tab" id="tab-effect" aria-controls="panel-plugins" aria-selected="false" data-tab="effect" tabindex="-1">Effects <span class="n" id="n-effect"></span></button>
+    <button type="button" role="tab" id="tab-addin" aria-controls="panel-plugins" aria-selected="false" data-tab="addin" tabindex="-1">Addins <span class="n" id="n-addin"></span></button>
     <button type="button" role="tab" id="tab-patches" aria-controls="panel-patches" aria-selected="false" data-tab="patches" tabindex="-1">Device patches <span class="n">/*N_PATCHES*/</span></button>
     <button type="button" role="tab" id="tab-apps" aria-controls="panel-apps" aria-selected="false" data-tab="apps" tabindex="-1">Companion apps <span class="n">/*N_APPS*/</span></button>
   </div>
 
-  <div role="tabpanel" id="panel-plugins" aria-labelledby="tab-plugins">
+  <div role="tabpanel" id="panel-plugins" aria-labelledby="tab-instrument">
   <div class="tools">
     <label class="search">Search<input id="q" type="search" placeholder="Name, developer, style or tag"></label>
-    <label>Kind<select id="f-kind"></select></label>
     <label>Style<select id="f-style"></select></label>
     <label>Developer<select id="f-dev"></select></label>
     <label>License<select id="f-lic"></select></label>
@@ -122,7 +123,7 @@
 <script>
 var CAT = JSON.parse(document.getElementById("data").textContent);
 var P = CAT.plugins;
-var state = { tab: "plugins", q: "", kind: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", sort: "updated", rev: false, beta: false, sel: [] };
+var state = { tab: "instrument", q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", sort: "updated", rev: false, beta: false, sel: [] };
 var STORE = JSON.parse(document.getElementById("store").textContent);
 var BY_WARNING = "The result contains firmware-derived data: build it yourself, install it on your own devices only, never share it.";
 var ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -141,10 +142,9 @@ function uniq(f) { var o = {}; P.forEach(function (p) { var v = f(p); if (v) o[v
 function fillSelect(id, all, values, label) {
   $(id).innerHTML = '<option value="">' + all + '</option>' + values.map(function (v) { return '<option value="' + esc(v) + '">' + esc(label ? label(v) : v) + '</option>'; }).join("");
 }
+var PLUGIN_TABS = ["instrument", "effect", "addin"];
 var KINDS = { instrument: "Instruments", effect: "Effects", addin: "Addins" };
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
-var allKinds = {}; P.forEach(function (p) { kindsOf(p).forEach(function (k) { allKinds[k] = 1; }); });
-fillSelect("f-kind", "All kinds", Object.keys(allKinds).sort(), function (v) { return KINDS[v] || v; });
 fillSelect("f-dist", "Any distribution", ["release", "build-yourself"], function (v) { return v === "release" ? "Download a release zip" : "Build it yourself"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
 fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 / Force only"; });
@@ -192,7 +192,7 @@ function osRow(v) {
 function match(p) {
   var s = state, hay = [p.name, p.author, p.style || "", (p.tags || []).join(" "), p.summary].join(" ").toLowerCase();
   if (s.q && hay.indexOf(s.q.toLowerCase()) < 0) return false;
-  if (s.kind && kindsOf(p).indexOf(s.kind) < 0) return false;
+  if (PLUGIN_TABS.indexOf(s.tab) >= 0 && kindsOf(p).indexOf(s.tab) < 0) return false;
   if (s.dist === "build-yourself" && !isBY(p)) return false;
   if (s.dist === "release" && isBY(p)) return false;
   if (s.style && p.style !== s.style) return false;
@@ -259,15 +259,16 @@ function render() {
   out.sort(function (a, b) { var r = so.cmp(a, b); return (so.desc ? -r : r) * (state.rev ? -1 : 1); });
   $("grid").innerHTML = out.map(card).join("");
   $("empty").hidden = out.length > 0;
-  $("n-plugins").textContent = P.length;
-  $("count").textContent = out.length + " of " + P.length + " plugin" + (P.length === 1 ? "" : "s");
+  PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return kindsOf(p).indexOf(k) >= 0; }).length; });
+  var inTab = P.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || kindsOf(p).indexOf(state.tab) >= 0; }).length;
+  $("count").textContent = out.length + " of " + inTab + " " + (KINDS[state.tab] || "plugins").toLowerCase();
   var down = so.desc !== state.rev;
   $("dir").textContent = down ? "Z-A / high-low" : "A-Z / low-high";
   $("dir").title = "Sorted " + (down ? "descending" : "ascending");
   save();
 }
 function save() {
-  var d = { tab: state.tab === "plugins" ? "" : state.tab, q: state.q, kind: state.kind, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, gen: state.gen, sort: state.sort === "updated" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(",") }, q = [];
+  var d = { tab: state.tab === "instrument" ? "" : state.tab, q: state.q, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, gen: state.gen, sort: state.sort === "updated" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(",") }, q = [];
   Object.keys(d).forEach(function (k) { if (d[k]) q.push(k + "=" + encodeURIComponent(d[k])); });
   try { history.replaceState(null, "", q.length ? "#" + q.join("&") : location.pathname + location.search); } catch (e) {}
 }
@@ -280,19 +281,22 @@ function load() {
     else if (k in state) state[k] = v;
   });
   if (!SORTS[state.sort]) state.sort = "updated";
-  if (["plugins", "patches", "apps"].indexOf(state.tab) < 0) state.tab = "plugins";
+  if (state.tab === "plugins") state.tab = "instrument";   // links from before the split
+  if (TABS.indexOf(state.tab) < 0) state.tab = "instrument";
 }
-/* Tabs: Plugins keeps all the filters above; Device patches and Companion apps are their own panels. The tab is part of the URL hash. */
-var TABS = ["plugins", "patches", "apps"];
+/* Tabs: Instruments, Effects and Addins share the filter bar and grid (the tab is the kind); Device patches and Companion apps are their own panels. The tab is part of the URL hash. */
+var TABS = ["instrument", "effect", "addin", "patches", "apps"];
 function showTab(t, focus) {
   state.tab = t;
   TABS.forEach(function (n) {
     var on = n === t;
     $("tab-" + n).setAttribute("aria-selected", on ? "true" : "false"); $("tab-" + n).tabIndex = on ? 0 : -1;
-    $("panel-" + n).hidden = !on;
+    if (n === "patches" || n === "apps") $("panel-" + n).hidden = !on;
     if (on && focus) $("tab-" + n).focus();
   });
-  save();
+  $("panel-plugins").hidden = PLUGIN_TABS.indexOf(t) < 0;
+  $("panel-plugins").setAttribute("aria-labelledby", "tab-" + (PLUGIN_TABS.indexOf(t) < 0 ? "instrument" : t));
+  render();
 }
 document.querySelector(".tabs").addEventListener("click", function (e) { var b = e.target.closest("[data-tab]"); if (b) showTab(b.getAttribute("data-tab")); });
 document.querySelector(".tabs").addEventListener("keydown", function (e) {
@@ -311,11 +315,11 @@ function filterApps() {
   $("a-empty").hidden = n > 0;
 }
 $("a-q").addEventListener("input", filterApps); $("a-plat").addEventListener("change", filterApps);
-var map = { "q": "q", "f-kind": "kind", "f-style": "style", "f-dev": "dev", "f-lic": "lic", "f-dist": "dist", "f-os": "os", "f-gen": "gen", "sort": "sort" };
+var map = { "q": "q", "f-style": "style", "f-dev": "dev", "f-lic": "lic", "f-dist": "dist", "f-os": "os", "f-gen": "gen", "sort": "sort" };
 Object.keys(map).forEach(function (id) { $(id).addEventListener(id === "q" ? "input" : "change", function () { state[map[id]] = $(id).value; if (id === "sort") state.rev = false; render(); }); });
 $("beta").addEventListener("change", function () { state.beta = $("beta").checked; render(); });
 $("dir").addEventListener("click", function () { state.rev = !state.rev; render(); });
-$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", kind: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", sort: "updated", rev: false, beta: false, sel: state.sel }; sync(); render(); });
+$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", sort: "updated", rev: false, beta: false, sel: state.sel }; sync(); render(); });
 function sync() { Object.keys(map).forEach(function (id) { $(id).value = state[map[id]]; }); $("beta").checked = state.beta; }
 load(); sync(); render(); showTab(state.tab); filterApps();
 

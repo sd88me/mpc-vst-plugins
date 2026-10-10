@@ -77,8 +77,8 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
       verified stock backup), `catalog/patches.json`, and a read-only step 7 in the app. Seen on a Force 2026-10-04: the app's row, the
       restore and the reinstall (NOTES 2026-10-04). The drive exec patch from #150 (run plugins from a `noexec` drive) is built and listed
       (2026-10-05, offline only, real-mount tests). The button remap (`tools/mpc_patch/hwremap`, from akai_standalone_remap) is built and listed
-      the same day, also offline only: the shim's author had already tried it on an MPC Live (Hakai) and a Force; this installer has not been run on a device.
-      **Still to do:** a Force run of the drive exec patch (install, reboot, a plugin loads, uninstall), a device run of the button-remap installer, and
+      the same day, offline first; on 2026-10-10 its Force install and rules were run on a Force (NOTES 2026-10-10), the MPC Live map and `uninstall` on a device are not.
+      **Still to do:** a Force run of the drive exec patch (install, reboot, a plugin loads, uninstall), a device run of the button-remap uninstall and its MPC Live map, and
       Apply and Undo from the app (then a Force test).
 
 ## Verification

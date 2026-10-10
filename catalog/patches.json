@@ -38,13 +38,13 @@
     {
       "id": "button-remap",
       "title": "Button remap: open screens from hardware buttons",
-      "summary": "Remap hardware buttons on a standalone MPC or Force (an LD_PRELOAD shim: a button can become other buttons, a pad or a screen tap). The author's hwremap was tried on an MPC Live (Hakai, MPC 3.9.1) and a Force (stock 3.9.0). This installer is untested on a device.",
+      "summary": "Remap hardware buttons on a standalone MPC or Force (an LD_PRELOAD shim: a button can become other buttons, a pad or a screen tap). Pick which remaps you want at install (Force: Mixer, Edit, Clip, Menu and Knobs options; the Mode Menu must be at its default layout for the ones that tap an icon). The author's hwremap was tried on an MPC Live (Hakai, MPC 3.9.1) and a Force (stock 3.9.0); this installer and its Force rules were run on one Force (MPC OS 3.x) on 2026-10-10. Not tried yet: uninstall and the MPC Live map on a device. It does not work on a Force running MockbaMod's input path.",
       "author": "mmiroshnikov",
       "license": "MIT",
       "docs": "tools/mpc_patch/hwremap/README.md",
       "script": {
-        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/916fabfdf90316e1dd1fd232c6d93b1944f86181/tools/mpc_patch/hwremap/hwremap-patch.sh",
-        "sha256": "a989fac3000190a3c31911795fc0ed457ec6709a210bc6c170234549ab198cf9"
+        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/e8b62107a8ae2127c6ba23cb8cba2b9bf9d4a111/tools/mpc_patch/hwremap/hwremap-patch.sh",
+        "sha256": "dcc6864f5558753941fad90e3a4479e538134d6c0de0418a6397f01158f2a91a"
       },
       "supports": {"os": "MPC OS 3.9 (MPC Live with Hakai, and Force stock 3.9.0, as tried by the remap's author)", "arch": "armv7l"},
       "modifies": ["/usr/bin/az01-launch-MPC", "/usr/lib/hwremap.so", "/data/hwremap/hwremap.so", "/etc/systemd/system/acvs.service.d/hwremap.conf", "/etc/systemd/system/inmusic-mpc.service.d/hwremap.conf", "/sdcard/hwremap.conf"],

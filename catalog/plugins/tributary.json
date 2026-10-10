@@ -1,0 +1,3 @@
+{ "id": "tributary", "name": "Tributary", "author": "johnny", "repo": "stampman3000-jpg/mpc-tributary",
+  "kind": "instrument", "style": "utility", "tags": ["utility"], "license": "GPL-3.0-only",
+  "summary": "Multitrack audio from an Elektron Digitone II over USB, one stereo output per track. Based on Overwitch." }

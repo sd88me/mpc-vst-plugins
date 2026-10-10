@@ -1,0 +1,4 @@
+{ "id": "interzonexxl", "name": "InterzoneXXL", "author": "L'Cronx", "repo": "sunskiefer/InterzoneXXL",
+  "kind": "instrument", "style": "synth", "tags": ["synth", "monosynth", "polysynth", "analog", "valley", "vcv", "subtractive", "lfo", "modulation", "sequencer"],
+  "license": "GPL-3.0-or-later", "screenshot": "https://raw.githubusercontent.com/sunskiefer/InterzoneXXL/v0.1.0/docs/img/vco.png",
+  "summary": "Valley Audio's Interzone synth voice from VCV Rack, played from MIDI in mono or up to 16-voice poly, on the module's own panel with its sliders, knobs and switches, every input jack patched to a built-in source (four Bogaudio LFOs, Tidal Modulator 2, Random Sampler, step and gate sequencers, an extra oscillator) on the MPC tempo, a brickwall limiter, Panic and 16 presets." }
