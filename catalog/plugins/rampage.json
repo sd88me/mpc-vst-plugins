@@ -4,6 +4,7 @@
   "author": "saustin2010",
   "repo": "saustin2010/mpc-vst-rampage",
   "kind": "instrument",
+  "role": "midi",
   "style": "modulation",
   "tags": [
     "befaco",

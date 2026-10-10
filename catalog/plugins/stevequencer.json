@@ -4,6 +4,7 @@
   "author": "Steve A",
   "repo": "saustin2010/mpc-vst-stevequencer",
   "kind": "instrument",
+  "role": "midi",
   "style": "sequencer",
   "tags": [
     "step-sequencer",

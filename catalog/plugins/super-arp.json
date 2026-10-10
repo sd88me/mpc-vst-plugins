@@ -4,6 +4,7 @@
   "author": "saustin2010",
   "repo": "saustin2010/mpc-vst-superarp",
   "kind": "instrument",
+  "role": "midi",
   "style": "sequencer",
   "tags": [
     "arpeggiator",

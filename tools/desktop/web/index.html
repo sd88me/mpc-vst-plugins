@@ -224,7 +224,9 @@ function loadCatalog() {
 }
 var SHOWS = { "": "All plugins", "new": "Not on the device yet", "on": "Already on the device", "upd": "Updates available", "sel": "Only the ones I ticked" };
 var SORTS = { name: "Name", dev: "Developer", kind: "Kind", size: "Smallest download" };
-var KINDS = { instrument: "Instruments", effect: "Effects", addin: "Addins" };
+var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin: "Addins" };
+function kindWord(k) { return k === "midi" ? "MIDI plugins" : (KINDS[k] || "plugins").toLowerCase(); }
+function tabOf(p) { return p.role === "midi" && p.kind === "instrument" ? "midi" : p.kind; }   // MIDI generators and sequencers have their own tab
 function fill(id, opts, val) {
   var sel = $(id); sel.textContent = "";
   opts.forEach(function (o) { var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op); });
@@ -233,8 +235,8 @@ function fill(id, opts, val) {
 function buildTools() {
   var devs = {};
   S.cat.forEach(function (p) { devs[p.author] = 1; });
-  if (S.cat.length && !S.cat.some(function (p) { return p.kind === S.f.kind; })) {   // nothing of the open kind: open the first kind there is
-    var first = KIND_TABS.filter(function (k) { return S.cat.some(function (p) { return p.kind === k; }); })[0]; if (first) S.f.kind = first;
+  if (S.cat.length && !S.cat.some(function (p) { return tabOf(p) === S.f.kind; })) {   // nothing of the open kind: open the first kind there is
+    var first = KIND_TABS.filter(function (k) { return S.cat.some(function (p) { return tabOf(p) === k; }); })[0]; if (first) S.f.kind = first;
   }
   fill("f-dev", [["", "All developers"]].concat(Object.keys(devs).sort().map(function (d) { return [d, d]; })), S.f.dev);
   fill("f-show", Object.keys(SHOWS).map(function (k) { return [k, SHOWS[k]]; }), S.f.show);
@@ -244,8 +246,8 @@ function buildTools() {
 }
 /* Instruments, Effects, Addins, as on the catalog page. Counts follow the other filters, so a search shows which tab holds the matches.
    Ticks are kept across tabs (the bar at the bottom counts them all). */
-var KIND_TABS = ["instrument", "effect", "addin"];
-function kindCounts() { var c = {}; shownCat(true).forEach(function (p) { c[p.kind] = (c[p.kind] || 0) + 1; }); return c; }
+var KIND_TABS = ["instrument", "midi", "effect", "addin"];
+function kindCounts() { var c = {}; shownCat(true).forEach(function (p) { c[tabOf(p)] = (c[tabOf(p)] || 0) + 1; }); return c; }
 function drawKindTabs() {
   var box = $("ktabs"); box.hidden = S.cat.length === 0; box.textContent = "";
   var c = kindCounts();
@@ -264,7 +266,7 @@ function shownCat(anyKind) {
   var f = S.f, q = f.q.trim().toLowerCase();
   var out = S.cat.filter(function (p) {
     if (q && [p.name, p.author, p.summary, p.id].join(" ").toLowerCase().indexOf(q) < 0) return false;
-    if (!anyKind && p.kind !== f.kind) return false;
+    if (!anyKind && tabOf(p) !== f.kind) return false;
     if (f.dev && p.author !== f.dev) return false;
     if (f.show === "new" && p.installed) return false;
     if (f.show === "on" && !p.installed) return false;
@@ -301,7 +303,7 @@ function osNote(p) {   /* {level, text} when this plugin will not work as expect
 function drawCat() {
   var ul = $("cat"); ul.textContent = "";
   var rows = shownCat(), f = S.f, filtered = !!(f.q || f.dev || f.show);
-  var inTab = S.cat.filter(function (p) { return p.kind === f.kind; }).length;
+  var inTab = S.cat.filter(function (p) { return tabOf(p) === f.kind; }).length;
   rows.forEach(function (p) {
     var li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "c_" + p.id; cb.checked = !!S.pickCat[p.id];
     cb.addEventListener("change", function () { S.pickCat[p.id] = cb.checked; refresh(); if (S.f.show === "sel") drawCat(); });
@@ -317,9 +319,9 @@ function drawCat() {
     li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
   });
   if (!S.cat.length) ul.appendChild(el("li", "small", "The catalog has no downloadable plugins right now."));
-  else if (!rows.length) ul.appendChild(el("li", "small", inTab ? "No " + (KINDS[f.kind] || "plugins").toLowerCase() + " match. Try clearing the filters, or look in the other tabs." : "The catalog has no " + (KINDS[f.kind] || "plugins").toLowerCase() + " right now."));
+  else if (!rows.length) ul.appendChild(el("li", "small", inTab ? "No " + kindWord(f.kind) + " match. Try clearing the filters, or look in the other tabs." : "The catalog has no " + kindWord(f.kind) + " right now."));
   var n = Object.keys(S.pickCat).filter(function (k) { return S.pickCat[k]; }).length;
-  text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + inTab + " " + (KINDS[f.kind] || "plugins").toLowerCase() + (n ? " · " + n + " ticked from the catalog" : "") : "");
+  text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + inTab + " " + kindWord(f.kind) + (n ? " · " + n + " ticked from the catalog" : "") : "");
   $("resetf").hidden = !filtered;
 }
 function rootNote(r) {

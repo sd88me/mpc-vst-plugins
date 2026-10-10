@@ -1,4 +1,4 @@
 { "id": "maze-sequencer", "name": "Maze Sequencer", "author": "sd88me", "repo": "sd88me/mpc-vst-maze",
-  "kind": "instrument", "style": "sequencer", "tags": ["generative", "midi", "moog", "labyrinth"], "license": "MIT", "asset_pattern": "Maze-Sequencer-*-mpc-armv7.zip",
+  "kind": "instrument", "role": "midi", "style": "sequencer", "tags": ["generative", "midi", "moog", "labyrinth"], "license": "MIT", "asset_pattern": "Maze-Sequencer-*-mpc-armv7.zip",
   "summary": "Dual 8-step generative sequencer (Moog Labyrinth style) with corrupt, scale quantising, two LFOs and per-line MIDI channels, driving other tracks over MIDI.",
   "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-maze/main/docs/img/maze-sequencer.png" }

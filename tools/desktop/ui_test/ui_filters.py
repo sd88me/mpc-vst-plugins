@@ -13,6 +13,10 @@ for i in range(40):
 plugins.append({"id": "acid", "name": "Acid", "author": "sd88me", "kind": "instrument", "summary": "TB-303-style acid bassline sequencer", "distribution": "release",
     "latest": "1.2.0", "versions": [{"version": "1.2.0", "size": 2000000, "sha256": "%064x" % 999, "url": "https://example.com/acid.zip", "channel": "stable",
     "yanked": False, "defer": False, "param_compat": 1, "manifest": {"skin": "sd88me - VST - Acid"}}]})
+for n in ("Eucl", "Arp"):
+    plugins.append({"id": "midi-" + n.lower(), "name": "Midi " + n, "author": "midi dev", "kind": "instrument", "role": "midi", "summary": "A midi sequencer " + n, "distribution": "release", "latest": "1.0.0",
+        "versions": [{"version": "1.0.0", "size": 50000, "sha256": "%064x" % (1000 + len(n)), "url": "https://example.com/%s.zip" % n, "channel": "stable", "yanked": False, "defer": True, "param_compat": 1,
+                      "manifest": {"skin": "midi dev - VST - Midi " + n}}]})
 os.makedirs("/tmp/bigcat", exist_ok=True)
 json.dump({"schema": 1, "plugins": plugins}, open("/tmp/bigcat/catalog.json", "w"))
 web = subprocess.Popen(["python3", "-m", "http.server", "8800", "--bind", "127.0.0.1", "--directory", "/tmp/bigcat"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -36,7 +40,7 @@ try:
         rows = lambda: pg.locator("#cat li").count()
         count = lambda: pg.locator("#catcount").text_content()
         check("opens on Instruments: 27 listed", rows() == 27, rows())
-        check("tabs with counts", pg.locator("#ktabs button").all_text_contents() == ["Instruments27", "Effects14", "Addins0"], pg.locator("#ktabs button").all_text_contents())
+        check("tabs with counts", pg.locator("#ktabs button").all_text_contents() == ["Instruments27", "MIDI2", "Effects14", "Addins0"], pg.locator("#ktabs button").all_text_contents())
         seltext = lambda i: pg.eval_on_selector(i, "e => e.options[e.selectedIndex] ? e.options[e.selectedIndex].text : '(nothing selected)'")
         check("dropdowns start on their 'all' choice", [seltext("#f-dev"), seltext("#f-show")] == ["All developers", "All plugins"], [seltext("#f-dev"), seltext("#f-show")])
         check("count line", count().startswith("Showing 27 of 27 instruments"), count())
@@ -50,6 +54,8 @@ try:
         pg.click("#kt-effect")
         texts = pg.locator("#cat li").all_text_contents()
         check("effects tab", len(texts) == 14 and all("effect" in t.lower() for t in texts) and pg.locator("#kt-effect").get_attribute("aria-selected") == "true", len(texts))
+        pg.click("#kt-midi"); mt = pg.locator("#cat li").all_text_contents()
+        check("midi tab holds only role=midi plugins, listed once", len(mt) == 2 and all("midi sequencer" in x for x in mt) and "2 of 2 MIDI plugins" in count(), (len(mt), count()))
         pg.click("#kt-addin"); check("empty addins tab says so", "no addins" in pg.locator("#cat").text_content().lower())
         pg.click("#kt-instrument")
         pg.select_option("#f-dev", "zeta audio")

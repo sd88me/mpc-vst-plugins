@@ -4,6 +4,7 @@
   "author": "saustin2010",
   "repo": "saustin2010/mpc-vst-grids",
   "kind": "instrument",
+  "role": "midi",
   "style": "sequencer",
   "tags": [
     "mutable-instruments",

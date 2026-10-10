@@ -69,6 +69,8 @@ def check_entry(e, fname=None):
         p.append("source_available must be true or false")
     if "style" in e and not (isinstance(e["style"], str) and ID.fullmatch(e["style"])):
         p.append("style must be a lowercase slug, e.g. sampler, synth, reverb")
+    if "role" in e and not (e["role"] == "midi" and e.get("kind") == "instrument"):
+        p.append("role must be \"midi\" and only on an instrument (a plugin that sends MIDI to other tracks instead of making sound)")
     if "tags" in e and not (isinstance(e["tags"], list) and all(isinstance(t, str) and ID.fullmatch(t) for t in e["tags"])):
         p.append("tags must be a list of lowercase slugs")
     dist = e.get("distribution", "release")
@@ -402,7 +404,7 @@ def build(entries, src, cache, yanked, keep=10, now=None):
         versions.sort(key=vkey, reverse=True)
         versions = versions[:keep]
         item = {k: e[k] for k in ("id", "name", "author", "repo", "kind", "license", "summary") }
-        for k in ("screenshot", "homepage", "style"):
+        for k in ("screenshot", "homepage", "style", "role"):
             if e.get(k):
                 item[k] = e[k]
         item["tags"] = e.get("tags", [])

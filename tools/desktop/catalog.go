@@ -30,6 +30,7 @@ type CatPlugin struct {
 	Name        string   `json:"name"`
 	Author      string   `json:"author"`
 	Kind        string   `json:"kind"`
+	Role        string   `json:"role,omitempty"` // "midi": a MIDI generator or sequencer (listed under its own tab)
 	Summary     string   `json:"summary"`
 	Version     string   `json:"version"`
 	Size        int64    `json:"size"`
@@ -67,6 +68,7 @@ type rawCatalog struct {
 		Name         string `json:"name"`
 		Author       string `json:"author"`
 		Kind         string `json:"kind"`
+		Role         string `json:"role"`
 		Summary      string `json:"summary"`
 		Distribution string `json:"distribution"`
 		Latest       string `json:"latest"`
@@ -113,7 +115,7 @@ func parseCatalog(data []byte) ([]CatPlugin, error) {
 			if a, ok := v.Assets["aarch64"]; ok && isHTTPS(a.URL) && len(a.SHA256) == 64 {
 				a64 = &a
 			}
-			out = append(out, CatPlugin{ID: p.ID, Name: p.Name, Author: p.Author, Kind: p.Kind, Summary: p.Summary, Version: v.Version,
+			out = append(out, CatPlugin{ID: p.ID, Name: p.Name, Author: p.Author, Kind: p.Kind, Role: p.Role, Summary: p.Summary, Version: v.Version,
 				Size: v.Size, SHA256: v.SHA256, URL: v.URL, Skin: v.Manifest.Skin, ParamCompat: v.ParamCompat, UID: v.Manifest.UID, UserData: v.Manifest.UserData, Defer: v.Defer,
 				OSCompat: v.OSCompat, OSWhy: v.OSWhy, MaxGlibc: v.MaxGlibc, Gen2: a64 != nil, Aarch64: a64})
 			break

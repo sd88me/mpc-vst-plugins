@@ -44,6 +44,7 @@
 
   <div class="tabs" role="tablist" aria-label="Catalog sections">
     <button type="button" role="tab" id="tab-instrument" aria-controls="panel-plugins" aria-selected="true" data-tab="instrument">Instruments <span class="n" id="n-instrument"></span></button>
+    <button type="button" role="tab" id="tab-midi" aria-controls="panel-plugins" aria-selected="false" data-tab="midi" tabindex="-1">MIDI <span class="n" id="n-midi"></span></button>
     <button type="button" role="tab" id="tab-effect" aria-controls="panel-plugins" aria-selected="false" data-tab="effect" tabindex="-1">Effects <span class="n" id="n-effect"></span></button>
     <button type="button" role="tab" id="tab-addin" aria-controls="panel-plugins" aria-selected="false" data-tab="addin" tabindex="-1">Addins <span class="n" id="n-addin"></span></button>
     <button type="button" role="tab" id="tab-patches" aria-controls="panel-patches" aria-selected="false" data-tab="patches" tabindex="-1">Device patches <span class="n">/*N_PATCHES*/</span></button>
@@ -142,8 +143,10 @@ function uniq(f) { var o = {}; P.forEach(function (p) { var v = f(p); if (v) o[v
 function fillSelect(id, all, values, label) {
   $(id).innerHTML = '<option value="">' + all + '</option>' + values.map(function (v) { return '<option value="' + esc(v) + '">' + esc(label ? label(v) : v) + '</option>'; }).join("");
 }
-var PLUGIN_TABS = ["instrument", "effect", "addin"];
-var KINDS = { instrument: "Instruments", effect: "Effects", addin: "Addins" };
+var PLUGIN_TABS = ["instrument", "midi", "effect", "addin"];
+var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin: "Addins" };
+/* a plugin with role "midi" is listed under the MIDI tab, not Instruments */
+function inTabKind(p, k) { return kindsOf(p).some(function (c) { return (c === "instrument" && p.role === "midi" && c === p.kind ? "midi" : c) === k; }); }
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
 fillSelect("f-dist", "Any distribution", ["release", "build-yourself"], function (v) { return v === "release" ? "Download a release zip" : "Build it yourself"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
@@ -192,7 +195,7 @@ function osRow(v) {
 function match(p) {
   var s = state, hay = [p.name, p.author, p.style || "", (p.tags || []).join(" "), p.summary].join(" ").toLowerCase();
   if (s.q && hay.indexOf(s.q.toLowerCase()) < 0) return false;
-  if (PLUGIN_TABS.indexOf(s.tab) >= 0 && kindsOf(p).indexOf(s.tab) < 0) return false;
+  if (PLUGIN_TABS.indexOf(s.tab) >= 0 && !inTabKind(p, s.tab)) return false;
   if (s.dist === "build-yourself" && !isBY(p)) return false;
   if (s.dist === "release" && isBY(p)) return false;
   if (s.style && p.style !== s.style) return false;
@@ -259,9 +262,9 @@ function render() {
   out.sort(function (a, b) { var r = so.cmp(a, b); return (so.desc ? -r : r) * (state.rev ? -1 : 1); });
   $("grid").innerHTML = out.map(card).join("");
   $("empty").hidden = out.length > 0;
-  PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return kindsOf(p).indexOf(k) >= 0; }).length; });
-  var inTab = P.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || kindsOf(p).indexOf(state.tab) >= 0; }).length;
-  $("count").textContent = out.length + " of " + inTab + " " + (KINDS[state.tab] || "plugins").toLowerCase();
+  PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return inTabKind(p, k); }).length; });
+  var inTab = P.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); }).length;
+  $("count").textContent = out.length + " of " + inTab + " " + (state.tab === "midi" ? "MIDI plugins" : (KINDS[state.tab] || "plugins").toLowerCase());
   var down = so.desc !== state.rev;
   $("dir").textContent = down ? "Z-A / high-low" : "A-Z / low-high";
   $("dir").title = "Sorted " + (down ? "descending" : "ascending");
@@ -285,7 +288,7 @@ function load() {
   if (TABS.indexOf(state.tab) < 0) state.tab = "instrument";
 }
 /* Tabs: Instruments, Effects and Addins share the filter bar and grid (the tab is the kind); Device patches and Companion apps are their own panels. The tab is part of the URL hash. */
-var TABS = ["instrument", "effect", "addin", "patches", "apps"];
+var TABS = ["instrument", "midi", "effect", "addin", "patches", "apps"];
 function showTab(t, focus) {
   state.tab = t;
   TABS.forEach(function (n) {

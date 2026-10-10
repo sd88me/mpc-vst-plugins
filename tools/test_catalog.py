@@ -740,6 +740,12 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(catalog_build.check_entry(dict(e, source_available=True, style="rompler", tags=["jv-880"])), [])
         self.assertTrue(catalog_build.check_entry(dict(BuildTest.ENTRY, style="Bad Style")))
 
+    def test_registry_role_midi_only_on_an_instrument(self):
+        ok = dict(BuildTest.ENTRY, kind="instrument", role="midi")
+        self.assertEqual(catalog_build.check_entry(ok), [])
+        self.assertTrue(catalog_build.check_entry(dict(ok, role="synth")))
+        self.assertTrue(catalog_build.check_entry(dict(ok, kind="effect")))
+
 
 import catalog_md  # noqa: E402
 
