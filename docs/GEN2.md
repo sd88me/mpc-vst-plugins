@@ -4,18 +4,21 @@ Gen2 MPC devices (MPC Live III and kin, RK3588) run a 64-bit userland: `/usr/bin
 `/usr/lib/ld-linux-aarch64.so.1` and there are no 32-bit libraries, so Gen1's armv7 `.so` files cannot load
 (analysed 2026-10-06 from the 3.9.1 Gen2 update image, offline; see `docs/FIRMWARE_BUILDER.md`). A plugin needs a second, aarch64 build.
 
-**Status (2026-10-11): first Gen2 device confirmation.** Crate Digger 1.1.9's aarch64 build was installed on a real MPC Live III
-(MPC OS 5.0.18), registered, showed up in MPC's plugin browser, opened and its skin rendered (`mpc-vst-cratedigger`'s `tested.json`).
-This settles two open questions:
+**Status (2026-10-11): two Gen2 device confirmations, pilot phase done.** Crate Digger 1.1.9 and Profit-08 0.1.1's aarch64 builds
+both installed on a real MPC Live III (MPC OS 5.0.18), registered, showed up in MPC's plugin browser and ran (Crate Digger's skin
+and open/close were checked in detail; Profit-08 was reported "working well" by the same tester, not yet broken down feature by
+feature on our side). Both plugins' `tested.json` carry the device. This settles the open questions from the first pilot:
 - **`pluginList-arm-64bit` is confirmed correct** for registering an aarch64 package (the earlier third-party tester report was
   right; `plugin_list.awk -v listkey=...` and `install.sh`/`sync.sh`'s arch-based choice need no further change).
 - Install target: on this device `-t` had to point at a removable Synths folder (`/media/<label>/Synths`); `/sdcard` wasn't mounted
   and `/synths/Synths` was mounted read-only (see NOTES.md 2026-10-10). No Gen2-specific install default was needed.
+- `vst.json` `targets: ["armv7", "aarch64"]` + `tools/build_port.sh ... all` is now proven end to end on a second, ordinary port
+  (Profit-08: no custom build script, just the generic path) — any future port can follow the same checklist (docs/PORTING.md).
 
-Not yet working: the plugin's Discogs search returned an error on-device (not yet diagnosed; could be network, DNS, TLS/cert, or
-something arch-specific in the bundled yt-dlp/Python). Not claiming full functional parity until that's resolved. There is still no
-SSH/root route on Gen2 *that this project built* — the Gen2 tester reached root via unofficial third-party boot methods unrelated to
-this repo.
+Not yet working: Crate Digger's Discogs search returned an error on-device (not yet diagnosed; could be network, DNS, TLS/cert, or
+something arch-specific in the bundled yt-dlp/Python). Not claiming full functional parity for it until that's resolved. There is
+still no SSH/root route on Gen2 *that this project provides or documents* — the Gen2 tester reached root via unofficial third-party
+boot methods unrelated to this repo, so Gen2 plugin support remains usable only by people who already have root some other way.
 
 ## One plugin, two zips
 - `release.py` names the zip from the `.so`'s ELF machine: `<Name>-<ver>-mpc-armv7.zip` (Gen1, unchanged) or

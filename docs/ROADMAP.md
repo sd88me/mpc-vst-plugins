@@ -50,8 +50,13 @@ Building on parameter-driven visibility (`IndexedEnabling`, NOTES "Conditional v
 - [ ] **Catalog: MPC OS 2.x / 3.x compatibility field.** Derived by the release and catalog checks (glibc 2.32 or less, and the skin only uses
       versions 2.15.1's own skins use); badge and filter on the site, badge and warning in the installer app; developers opt in with the
       2.x skin shape. Plan and phases: [docs/OS2_SKINS.md](OS2_SKINS.md) ("Proposed direction").
-- [ ] **Gen2 (aarch64) builds.** Done offline: site badge/filter/buttons, `mpc-store.sh` and desktop app pick the zip by device arch, zip naming, checker, catalog `assets`/`gen2`, installer arch guard, `targets` build option,
-      aarch64 host test. Open: a dry run of the reusable release workflow, a pilot port, any device run. [docs/GEN2.md](GEN2.md).
+- [x] **Gen2 (aarch64) builds — pilot proven on real hardware (2026-10-11).** Site badge/filter/buttons, `mpc-store.sh` and desktop app
+      pick the zip by device arch, zip naming, checker, catalog `assets`/`gen2`, installer arch guard, `targets` build option, aarch64 host
+      test, the reusable release workflow (real CI run, not a dry run) all done. Two ports (Crate Digger, Profit-08) loaded, registered
+      and rendered their skin on a real MPC Live III. `pluginList-arm-64bit` confirmed as the correct Gen2 plugin-list key. Open: a
+      Gen1-style Synths-folder default for Gen2 isn't needed (removable media works the same way), `bench.c` for aarch64, a port template
+      repo, Crate Digger's Discogs search erroring on-device (not diagnosed), and there is still no SSH/root route on Gen2 that this
+      project provides or documents — every Gen2 tester so far reached root through unofficial third-party means. [docs/GEN2.md](GEN2.md).
 - [ ] **Q-Link feel on option lists and whole numbers.** A Q-Link event is one step on a Force (docs/NOTES.md "Stepping of option lists
       and whole numbers"), which is quick on a short range; the data wheel is right. Three prototypes of slowing it failed (NOTES). First
       thing to try: how the stock plugins (AIR, Akai) respond to the same Q-Link on a stepped param, by logging what MPC sends them
