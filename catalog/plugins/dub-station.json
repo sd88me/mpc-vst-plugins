@@ -1,0 +1,20 @@
+{
+  "id": "dub-station",
+  "name": "Dub Station",
+  "author": "nachtaktiv303",
+  "repo": "nachtaktiv303/mpc-vst-dub-station",
+  "kind": "effect",
+  "style": "delay",
+  "tags": [
+    "dub",
+    "delay",
+    "tape",
+    "reverb",
+    "space-echo",
+    "multi-effect"
+  ],
+  "license": "MIT",
+  "summary": "Dub-techno multi-effect: two independent tape delays, a huge modulated reverb, tape grit, a noise/crackle ambience bed, phaser, ducking and a panic kill.",
+  "screenshot": "https://raw.githubusercontent.com/nachtaktiv303/mpc-vst-dub-station/dub-station-vst-v0.9.0/preview_0.png",
+  "asset_pattern": "Dub-Station-*-mpc-armv7.zip"
+}
