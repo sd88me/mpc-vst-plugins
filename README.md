@@ -19,7 +19,7 @@ plugins for MPC OS, with each plugin's current version, license, source link and
 [![The Open MPC - Plugin Catalog home page](docs/img/catalog-home.png)](https://sd88me.github.io/mpc-vst-plugins/)
 
 - **Find a plugin.** Search, filter by kind, style, developer, license or distribution, and sort by recently updated or
-  most downloaded. Every version shows its date and SHA-256, and what it was tested on. There is an Atom feed
+  most downloaded. Every version shows its date and SHA-256, and what it was tested on. Each plugin is **Verified** (the newest release was tested on real hardware and the test is recorded), **Listed** (it passed the catalog's automatic release checks, but no hardware test is recorded) or **Experimental** (new or unproven, hidden unless you ask for it). None of these is a security review: nobody reads each plugin's code, so stick to developers you trust. There is an Atom feed
   (`feed.xml`) of new releases.
 - **Install with the installer app.** The [MPC plugin installer](https://github.com/sd88me/mpc-vst-plugins/releases/latest) is a
   small Windows, Mac and Linux app: connect to your device, tick plugins from the catalog (or drop in zips, including
