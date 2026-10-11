@@ -269,6 +269,8 @@ for f in %s; do   # glibc 2.34 and later print their version when the library is
   if [ -n "$v" ]; then libc=$v; break; fi
 done
 echo "libc=$libc"
+P=${S%%/*}   # the internal drive may have no Synths folder yet (an MPC One whose official plugins went to the card): make it
+[ -d "$S" ] || { [ -d "$P" ] && [ -w "$P" ] && mkdir "$S" 2>/dev/null; }
 for r in %s; do
   [ -d "$r" ] && [ -w "$r" ] || continue
   rid=$(stat -L -c '%%d:%%i' "$r" 2>/dev/null)
