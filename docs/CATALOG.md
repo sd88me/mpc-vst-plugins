@@ -239,6 +239,8 @@ Locrian's installer uses a drop-in folder in `Synths` (`docs/CATALOG_SPEC.md`, "
 ## Risks and open questions
 - **Root install of third-party binaries.** Mitigated by open-source-only, canonical installer check, visible
   checksums and yanking. State clearly on the site that everything is community-provided.
+  Done (2026-10-11): the catalog footer and the installer app's connect step say community-provided, root, at your own risk,
+  no warranty, back up first, not affiliated with Akai, and that Verified is a hardware test, not a security review.
 - **Non-GitHub hosting.** Start GitHub-only; the registry's `repo` field can grow a `releases_url` later.
 - **Authors not using `release.py`.** Support them by documenting the manifest; the validator is the contract.
 - **Rate limits / token.** One nightly run with the Actions token is far below limits for hundreds of plugins.

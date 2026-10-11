@@ -117,7 +117,7 @@
     <p class="empty" id="a-empty" hidden>No companion apps match.</p>
   </div>
 
-  <footer>Community-provided software. Installing runs a script as root on your device: check the source and the checksum first. Not affiliated with or endorsed by Akai Professional.<br>
+  <footer>Community-provided software. Installing runs a script as root on your device: check the source and the checksum first. Not affiliated with or endorsed by Akai Professional. Use at your own risk, with no warranty: a plugin or patch can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Back up first. Verified means someone recorded a test on real hardware, not a security review.<br>
     Questions, testing and release news: <a href="https://discord.gg/sRRysZSgu3">Open MPC on Discord</a>.<br>
     Catalog generated <span id="gen"></span>. <a href="catalog.json">catalog.json</a></footer>
 </main>
@@ -135,7 +135,7 @@ function isBY(p) { return p.distribution === "build-yourself"; }
 function kindsOf(p) { var k = [p.kind]; (p.components || []).forEach(function (c) { if (k.indexOf(c.kind) < 0) k.push(c.kind); }); return k; }
 /* Trust tiers (tools/catalog_build.py tier_of, docs/CATALOG.md): verified = tested on a device, listed = passed the release checks,
    experimental = new, beta-only or capped by a maintainer. The default view hides experimental; the Tier filter shows it. */
-var TIERS = { verified: { rank: 0, label: "Verified", tip: "The newest release has a recorded hardware test (see Tested on)." },
+var TIERS = { verified: { rank: 0, label: "Verified", tip: "The newest release has a recorded hardware test (see Tested on). Not a security review." },
               listed: { rank: 1, label: "Listed", tip: "Passed the catalog's release checks; no hardware test recorded for the newest release yet." },
               experimental: { rank: 2, label: "Experimental", tip: "New, beta-only or unproven: it may not load, draw its skin or run well. Test it before relying on it." } };
 function tierOf(p) { return TIERS[p.tier] ? p.tier : "listed"; }

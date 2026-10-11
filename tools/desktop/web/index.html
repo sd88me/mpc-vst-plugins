@@ -95,6 +95,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="s1">
   <h2><span class="n">1</span>Connect to your device</h2>
   <p class="sub">Your device needs SSH access as <b>root</b> (a modded unit). Use the IP address shown on the device or in your router.</p>
+  <p class="sub">Plugins and patches are community-provided and run as root on your device. Use them at your own risk, with no warranty: they can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Save your project and back up first. Not affiliated with or endorsed by Akai Professional.</p>
   <form id="conn" class="row" autocomplete="off">
     <label class="f">IP address<input id="host" type="text" inputmode="decimal" placeholder="e.g. 192.168.1.20" spellcheck="false" required></label>
     <label class="f">Password (if it has one)<input id="pw" type="password" placeholder="only used for this connection"></label>
@@ -165,7 +166,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="s7" class="off">
 <details id="d7" class="collapse">
   <summary><h2><span class="n">7</span>Advanced: device patches</h2><span class="hint">Show</span></summary>
-  <p class="sub"><b>Not for most people.</b> A patch changes the device itself (for example Akai's own MPC program), not a plugin. Checking only <b>looks</b>: it asks the device which patches are applied and changes nothing. <b>Apply</b> and <b>Undo</b> run the patch's own script on the device, with its default settings, and only after you type a confirmation word. Read the patch's guide first; one patch at a time; never as part of a plugin install. For options (such as which buttons to remap), run the script yourself over SSH as its guide says.</p>
+  <p class="sub"><b>Not for most people.</b> A patch changes the device itself (for example Akai's own MPC program), not a plugin. If it goes wrong, MPC may not start until you Undo it or reinstall the OS. Checking only <b>looks</b>: it asks the device which patches are applied and changes nothing. <b>Apply</b> and <b>Undo</b> run the patch's own script on the device, with its default settings, and only after you type a confirmation word. Read the patch's guide first; one patch at a time; never as part of a plugin install. For options (such as which buttons to remap), run the script yourself over SSH as its guide says.</p>
   <div class="row"><button id="patchcheck" type="button" disabled>Check the device</button></div>
   <p class="small" id="patchinfo">Connect, then open this step to check.</p>
   <ul class="list" id="patchlist"></ul>
