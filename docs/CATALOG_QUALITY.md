@@ -54,6 +54,10 @@ Each step stands alone. Stop after any of them.
 ### Step 5: only if people ask
 - Abandonment and delisting policy: entries are pointers to the author's repo; broken or abandoned ones are noticed and
   then moved down or removed.
+- Losing Verified (decided 2026-10-11, not built): a confirmed "doesn't work" report on the newest stable version (an issue
+  or Discussion, reproduced by the maintainer or a listed verifier) drops the plugin to Listed until a fixed release, or a
+  new `tested.json` entry, wins it back. No time-based expiry: an unchanged plugin does not get worse with age. (A new
+  release without a `tested.json` entry already drops to Listed today.)
 - A within-tier tiebreaker (reactions or "N people use this"), never a way into a higher tier.
 - A hand-picked Featured row (`"featured": true`, already supported).
 
