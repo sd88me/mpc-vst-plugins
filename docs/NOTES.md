@@ -1393,3 +1393,17 @@ for any plugin from this catalog (`mpc-vst-cratedigger`'s `tested.json`).
 - **Installer:** the addin install landed in `hwremap.conf`'s quoted `LD_PRELOAD` (the last drop-in systemd reads) and kept the file's other entries; it also noticed an old MockbaMod `run_skipback.sh` on the USB stick and said so. Buffer: about 48 MB of RAM over the first couple of minutes whatever `window_sec` is.
 - **Catalog:** listed as Experimental (`catalog/plugins/skipback.json`; the releases are GitHub prereleases, so the build shows a beta channel and no stable version). A local `catalog_build.py` run on the entry alone: 1 plugin, 2 versions, 0 problems, no risky-call flags.
 
+## 2026-10-11: addins missing after a reboot: `/etc` is mounted after systemd reads its units (Key 37, MPC OS 3.9.1; device)
+Reported on a stock Key 37 3.9.1.2 (mpc-addin-usb-audio #2) and a Live II on custom firmware (#1): after a reboot the addin
+was not loaded, `systemctl show acvs -p DropInPaths` was empty although `90-mpc-addins.conf` existed, and
+`systemctl daemon-reload` plus a restart fixed it. Cause, read on a Key 37 (az01 base 5.0.17): `/etc` is an overlay
+(`upperdir=/data/system/etc/overlay`) mounted by systemd's own `etc.mount` (6.6 s into boot), after PID 1 read its units
+from the read-only lower `/etc`, so the drop-in in the upper layer is not seen until a reload. That boot started MPC at 8 s
+without addins. Nothing stock runs from writable storage after `/etc` is mounted (every unit's `ExecStart`, the launcher
+`az01-launch-MPC` and `az01-script-runner` checked), so the fix needs the root filesystem. Not caused by #238: the drop-in
+path dates from 2026-10-02. Fix: the addin installer's `mpc-addins-reload.service` (ADDINS.md, "After a reboot").
+**Device test (Key 37, 2026-10-11):** USB Audio 1.0.2 reinstalled with the new installer files wrote the unit and the
+`acvs.service.wants` link, `/` back read-only. After a reboot: `etc.mount` at 6.6 s, the reload unit 8.8-9.7 s (reload
+776 ms), MPC started at 10.2 s with every addin in its `LD_PRELOAD`, `NRestarts=0`, and USB Audio tapping from that first
+process. About 1 s is added to boot. Not tested: the uninstall path on a device, MPC OS 2.x (no overlay, so no unit) and
+a firmware update.

@@ -28,6 +28,7 @@ if [ $YES = 0 ]; then
     case "$ok" in y|Y|yes) ;; *) echo "cancelled"; exit 1 ;; esac
 fi
 preload_remove "$SVC" "$SO"
+boot_reload_remove "$SVC"
 mockba_hook_remove "$SO"
 svc daemon-reload
 if [ $RESTART = 1 ]; then svc restart "$SVC"; fi
