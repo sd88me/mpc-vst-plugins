@@ -2,7 +2,7 @@
 
 An addin is a library that MPC OS standalone devices (MPC Live/One/X/Key, Force) load into the MPC process through
 `LD_PRELOAD` when MPC starts, rather than a plugin that MPC's host loads on a track. Examples: a remote-control web
-server, the MPC as a USB audio interface. Addins are listed in the catalog next to plugins (kind `addin`), released as
+server, the MPC as a USB audio interface, a rolling recorder that saves the last seconds on a double press. Addins are listed in the catalog next to plugins (kind `addin`), released as
 one zip each, and installed by the same tools: the zip's own `install.sh`, `tools/mpc-store.sh` on the device, or the
 desktop app (`tools/desktop`).
 
