@@ -1,0 +1,5 @@
+{ "id": "lxrxxl", "name": "LXRXXL", "author": "L'Cronx", "repo": "sunskiefer/LXR02XXL",
+  "kind": "instrument", "style": "drum-machine", "tags": ["drums", "drum-machine", "lxr", "lxr-02", "sonic-potions", "erica-synths", "sequencer", "randomizer"],
+  "license": "LicenseRef-LXR02-Open", "source_available": true,
+  "screenshot": "https://raw.githubusercontent.com/sunskiefer/LXR02XXL/main/docs/img/page.png",
+  "summary": "The Sonic Potions + Erica Synths LXR-02 drum machine, modded: its whole front panel on one page (L'Cronx's artwork), the LXR's own voices from LXR02Open with the LXR-02's PWM and FX unit, the 64-step sequencer with songs, rolls and the euclidean generator, Force pads and MPC's step sequencer playing the voices in order, voice and step randomizers, a RESET key and the Hrtl LXR-02 DLC presets. Non-commercial license." }
