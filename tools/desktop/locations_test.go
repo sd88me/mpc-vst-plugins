@@ -397,3 +397,21 @@ func TestNoexecMountWithSpacesInItsNameIsFlaggedAndRefused(t *testing.T) {
 		t.Error("MPC must not be touched when the install is refused")
 	}
 }
+
+func TestMissingInternalSynthsFolderIsCreated(t *testing.T) {
+	fd := newFakeDevice(t)
+	card := fd.addCard("CARD1")
+	internal := fd.cfg().SynthsDir
+	os.RemoveAll(internal) // an MPC One whose official plugins went to the card has no Synths folder on the internal drive
+	d, err := Dial("127.0.0.1", "secret", fd.cfg())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	if st, err := os.Stat(internal); err != nil || !st.IsDir() {
+		t.Fatalf("the internal Synths folder was not made: %v", err)
+	}
+	if len(d.Info.Roots) != 2 || d.Info.Roots[0].Path != internal || !d.Info.Roots[0].Primary || d.Info.Roots[1].Path != card {
+		t.Fatalf("the internal drive must be offered first: %+v", d.Info.Roots)
+	}
+}
