@@ -57,6 +57,39 @@ DEFS = """<defs>
 <linearGradient id="metal-linear" x1="0" y1="0" x2="1" y2="1">
  <stop offset="0" stop-color="#e8e8e6"/><stop offset="0.5" stop-color="#8e8e8b"/><stop offset="1" stop-color="#d6d6d3"/>
 </linearGradient>
+<filter id="grain" x="0" y="0" width="100%" height="100%">
+ <feTurbulence type="fractalNoise" baseFrequency="0.85 0.55" numOctaves="3" seed="7" result="n"/>
+ <feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0.5 0.5 0 0 -0.42" result="speck"/>
+ <feComposite in="speck" in2="SourceGraphic" operator="in" result="s2"/>
+ <feTurbulence type="fractalNoise" baseFrequency="0.012 0.03" numOctaves="2" seed="3" result="b"/>
+ <feColorMatrix in="b" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.16 -0.04" result="wear"/>
+ <feComposite in="wear" in2="SourceGraphic" operator="in" result="w2"/>
+ <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="w2"/><feMergeNode in="s2"/></feMerge>
+</filter>
+<linearGradient id="key-linear" x1="0" y1="0" x2="0" y2="1">
+ <stop offset="0" stop-color="#ff6a50"/><stop offset="0.08" stop-color="#f04a30"/><stop offset="0.6" stop-color="#d82c14"/><stop offset="1" stop-color="#a81a08"/>
+</linearGradient>
+<linearGradient id="key-gloss" x1="0" y1="0" x2="0" y2="1">
+ <stop offset="0" stop-color="#fff" stop-opacity="0.35"/><stop offset="0.45" stop-color="#fff" stop-opacity="0.06"/><stop offset="0.5" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.18"/>
+</linearGradient>
+<linearGradient id="chrome-linear" x1="0" y1="0" x2="0" y2="1">
+ <stop offset="0" stop-color="#f4f6f8"/><stop offset="0.42" stop-color="#9aa0a8"/><stop offset="0.5" stop-color="#2a2d33"/><stop offset="0.62" stop-color="#6c727a"/><stop offset="1" stop-color="#eceef0"/>
+</linearGradient>
+<radialGradient id="bake-radial" cx="0.38" cy="0.32" r="0.8">
+ <stop offset="0" stop-color="#7a4a2e"/><stop offset="0.4" stop-color="#3a1e10"/><stop offset="1" stop-color="#140803"/>
+</radialGradient>
+<radialGradient id="wside-radial" cx="0.38" cy="0.32" r="0.85">
+ <stop offset="0" stop-color="#fff" stop-opacity="0.22"/><stop offset="0.55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.55"/>
+</radialGradient>
+<radialGradient id="winset-radial" cx="0.4" cy="0.33" r="0.8">
+ <stop offset="0" stop-color="#fff" stop-opacity="0.38"/><stop offset="1" stop-color="#000" stop-opacity="0.28"/>
+</radialGradient>
+<radialGradient id="dome-radial" cx="0.38" cy="0.32" r="0.8">
+ <stop offset="0" stop-color="#6a6c70"/><stop offset="0.35" stop-color="#2c2d30"/><stop offset="1" stop-color="#050506"/>
+</radialGradient>
+<linearGradient id="rim-linear" x1="0.2" y1="0" x2="0.8" y2="1">
+ <stop offset="0" stop-color="#d8dadd"/><stop offset="0.45" stop-color="#3a3b3e"/><stop offset="1" stop-color="#9a9ca0"/>
+</linearGradient>
 </defs>"""
 
 
@@ -112,7 +145,145 @@ def knob_cap(cx, cy, r, a):
                   % (cx, cy - R * 0.25, cx, cy - R * 0.7, max(2, r / 10))))
 
 
-KNOB_LOOKS = {"moog": knob_moog, "chicken": knob_chicken, "metal": knob_metal, "cap": knob_cap}
+def knob_prophet(cx, cy, r, a):
+    """A ribbed black skirt, a silver ring and a black brushed top with a white pointer, seen from above (the Prophet '08 knob).
+    Drawn a little inside r so a value arc (class knob-arc, drawn by knob_frame) sits outside it."""
+    R = r - 0.5
+    n = 34
+    dash = 2 * math.pi * (R - 1.8) / n / 2
+    brush = "".join('<line x1="%g" y1="%g" x2="%g" y2="%g"/>' % (
+        cx + R * 0.1 * math.sin(k * math.pi / 14), cy - R * 0.1 * math.cos(k * math.pi / 14),
+        cx + R * 0.7 * math.sin(k * math.pi / 14), cy - R * 0.7 * math.cos(k * math.pi / 14)) for k in range(28))
+    return ('<circle class="look-pshadow" cx="%g" cy="%g" r="%g"/>' % (cx, cy + 1.5, R) +
+            '<circle class="look-pskirt" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R) +
+            _turn(a, cx, cy, '<circle class="look-prib" cx="%g" cy="%g" r="%g" style="stroke-width:3.6;stroke-dasharray:%.2f %.2f"/>'
+                  % (cx, cy, R - 1.8, dash, dash)) +
+            '<circle class="look-pring" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.83) +
+            '<circle class="look-pbevel" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.72) +
+            '<circle class="look-ptop" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.68) +
+            _turn(a, cx, cy, '<g class="look-pbrush">%s</g>' % brush) +
+            _turn(a, cx, cy, '<line class="look-pline" x1="%g" y1="%g" x2="%g" y2="%g" style="stroke-width:%g"/>'
+                  % (cx, cy - R * 0.1, cx, cy - R * 0.66, max(2.0, r / 10))) +
+            '<ellipse class="knob-sheen look-psheen" cx="%g" cy="%g" rx="%g" ry="%g"/>' % (cx - R * 0.18, cy - R * 0.3, R * 0.45, R * 0.28))
+
+
+def _rim_dashes(cx, cy, R, n, a, cls, sw):
+    dash = 2 * math.pi * R / n / 2
+    return _turn(a, cx, cy, '<circle class="%s" cx="%g" cy="%g" r="%g" style="stroke-width:%g;stroke-dasharray:%.2f %.2f"/>' % (cls, cx, cy, R, sw, dash, dash))
+
+
+def _spec(cx, cy, R, dx, dy, rx, ry, rot=True):
+    return '<ellipse class="look-hspec" cx="%g" cy="%g" rx="%g" ry="%g"%s/>' % (
+        cx + R * dx, cy + R * dy, R * rx, R * ry, ' transform="rotate(-30 %g %g)"' % (cx + R * dx, cy + R * dy) if rot else "")
+
+
+def _hshadow(cx, cy, R, k=0.06):
+    return '<ellipse class="look-hshadow" cx="%g" cy="%g" rx="%g" ry="%g"/>' % (cx + R * k, cy + R * 0.2, R * 1.02, R)
+
+
+def knob_hardware(cx, cy, r, a):
+    """A glossy black hardware knob: a ring of engraved scale ticks, a ribbed skirt, a domed top with a specular highlight and a
+    contact shadow, and a tapered white pointer (the MM-303 / TB-303 look). The ticks sit outside the knob and don't turn."""
+    R = r * 0.84
+    ticks = ""
+    for k in range(31):
+        th = math.radians(-135 + 270 * k / 30)
+        r0, r1 = r * 0.93, r * (1.06 if k % 5 == 0 else 1.0)
+        ticks += '<line x1="%.2f" y1="%.2f" x2="%.2f" y2="%.2f"/>' % (
+            cx + r0 * math.sin(th), cy - r0 * math.cos(th), cx + r1 * math.sin(th), cy - r1 * math.cos(th))
+    return ('<g class="look-hticks">%s</g>' % ticks + _hshadow(cx, cy, R, 0.08) +
+            '<circle class="look-hskirt" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R) +
+            _rim_dashes(cx, cy, R - 1.5, 40, a, "look-hrib", 3) +
+            '<circle class="look-hrim" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.86) +
+            '<circle class="look-hdome" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.8) +
+            _turn(a, cx, cy, '<path class="look-hpointer" d="M%g,%g L%g,%g L%g,%g Z"/>' % (
+                cx - R * 0.07, cy - R * 0.12, cx, cy - R * 0.78, cx + R * 0.07, cy - R * 0.12)) +
+            _spec(cx, cy, R, -0.28, -0.38, 0.3, 0.14) +
+            '<circle class="look-hglint" cx="%g" cy="%g" r="%g"/>' % (cx + R * 0.34, cy + R * 0.4, R * 0.1))
+
+
+def knob_chrome(cx, cy, r, a):
+    """A polished chrome dome: a mirror horizon band across the top, a bright rim, a dark engraved pointer."""
+    R = r * 0.86
+    return (_hshadow(cx, cy, R) +
+            '<circle class="look-crim" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R) +
+            '<circle class="look-cdome" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.86) +
+            _turn(a, cx, cy, '<line class="look-cline" x1="%g" y1="%g" x2="%g" y2="%g" style="stroke-width:%g"/>'
+                  % (cx, cy - R * 0.1, cx, cy - R * 0.8, max(2.2, r / 9))) +
+            _spec(cx, cy, R, -0.12, -0.5, 0.4, 0.12, False))
+
+
+def knob_bakelite(cx, cy, r, a):
+    """Vintage glossy brown-black bakelite with a ribbed skirt and a cream pointer line."""
+    R = r * 0.86
+    return (_hshadow(cx, cy, R) +
+            '<circle class="look-bskirt" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R) +
+            _rim_dashes(cx, cy, R - 1.5, 36, a, "look-brib", 3) +
+            '<circle class="look-btop" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.78) +
+            _turn(a, cx, cy, '<line class="look-bline" x1="%g" y1="%g" x2="%g" y2="%g" style="stroke-width:%g"/>'
+                  % (cx, cy - R * 0.18, cx, cy - R * 0.74, max(2.2, r / 9))) +
+            _spec(cx, cy, R, -0.3, -0.4, 0.28, 0.12))
+
+
+def knob_davies(cx, cy, r, a):
+    """A stepped Davies-style knob: a wide skirt, a smaller raised cap, and a bright pointer running from the cap to the rim."""
+    R = r * 0.9
+    return (_hshadow(cx, cy, R) +
+            '<circle class="look-dskirt" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R) +
+            '<circle class="look-dstep" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.66) +
+            '<circle class="look-dcap" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.6) +
+            _turn(a, cx, cy, '<line class="look-dline" x1="%g" y1="%g" x2="%g" y2="%g" style="stroke-width:%g"/>'
+                  % (cx, cy - R * 0.62, cx, cy - R * 0.97, max(3, r / 7))) +
+            _spec(cx, cy, R, -0.2, -0.28, 0.22, 0.1))
+
+
+def knob_rubber(cx, cy, r, a):
+    """A matte soft-touch rubber knob with a grip ring and a coloured dot (the theme's knob_dot) by the rim."""
+    R = r * 0.88
+    return (_hshadow(cx, cy, R, 0.05) +
+            '<circle class="look-rbody" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R) +
+            _rim_dashes(cx, cy, R - 2.5, 28, a, "look-rgrip", 4) +
+            '<circle class="look-rtop" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.74) +
+            _turn(a, cx, cy, '<circle class="look-rdot" cx="%g" cy="%g" r="%g"/>' % (cx, cy - R * 0.55, max(2.4, r / 9))))
+
+
+def knob_ledring(cx, cy, r, a):
+    """A matte dark knob inside a ring of 21 LEDs that light up to the pointer (the theme's accent colour)."""
+    R = r * 0.66
+    leds = ""
+    for k in range(21):
+        ang = -135 + 270 * k / 20
+        th = math.radians(ang)
+        x, y = cx + r * 0.88 * math.sin(th), cy - r * 0.88 * math.cos(th)
+        leds += '<circle class="look-led%s" cx="%.2f" cy="%.2f" r="%g"/>' % ("-on" if ang <= a + 0.01 else "-off", x, y, max(1.8, r / 14))
+    return (leds + _hshadow(cx, cy, R, 0.05) +
+            '<circle class="look-lbody" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R) +
+            _turn(a, cx, cy, '<line class="look-lline" x1="%g" y1="%g" x2="%g" y2="%g" style="stroke-width:%g"/>'
+                  % (cx, cy - R * 0.3, cx, cy - R * 0.85, max(2.2, r / 10))) +
+            _spec(cx, cy, R, -0.25, -0.4, 0.3, 0.12, False))
+
+
+def knob_taper(cx, cy, r, a):
+    """A tapered, waisted-stem knob seen from straight above: a wide stem base in shade, a bevel ring, a flat top with a lighter
+    inset disc, a soft highlight and a small turning notch. Drawn inside r so a value arc sits outside it. Recolour per size with
+    the data-r attribute (e.g. .look-wside[data-r="27"] for a red key knob)."""
+    R = r * 0.92
+    return ('<ellipse class="look-hshadow" cx="%g" cy="%g" rx="%g" ry="%g"/>' % (cx + R * 0.06, cy + R * 0.14, R * 1.02, R) +
+            '<circle class="look-wside" data-r="%d" cx="%g" cy="%g" r="%g"/>' % (round(r), cx, cy, R) +
+            '<circle class="look-wshade" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R) +
+            '<circle class="look-wtop" data-r="%d" cx="%g" cy="%g" r="%g"/>' % (round(r), cx, cy, R * 0.78) +
+            '<circle class="look-wbevel" cx="%g" cy="%g" r="%g"/>' % (cx, cy, R * 0.66) +
+            '<circle class="look-winset" data-r="%d" cx="%g" cy="%g" r="%g"/>' % (round(r), cx, cy, R * 0.6) +
+            _turn(a, cx, cy, '<line class="look-wnotch" x1="%g" y1="%g" x2="%g" y2="%g" style="stroke-width:%g"/>'
+                  % (cx, cy - R * 0.22, cx, cy - R * 0.5, max(2.0, r / 10))) +
+            '<ellipse class="look-hspec" cx="%g" cy="%g" rx="%g" ry="%g" transform="rotate(-35 %g %g)"/>' % (
+                cx - R * 0.22, cy - R * 0.3, R * 0.26, R * 0.1, cx - R * 0.22, cy - R * 0.3))
+
+
+KNOB_LOOKS = {"moog": knob_moog, "chicken": knob_chicken, "metal": knob_metal, "cap": knob_cap, "prophet": knob_prophet,
+              "hardware": knob_hardware, "chrome": knob_chrome,
+              "bakelite": knob_bakelite, "davies": knob_davies, "rubber": knob_rubber, "ledring": knob_ledring, "taper": knob_taper}
+ARC_LOOKS = ("prophet", "taper")     # looks that keep the value arc round the knob (the theme's knob-track / knob-arc)
 
 
 def fader_track(x, y, w, h, vert, th):
@@ -213,7 +384,7 @@ class Art:
             o += self.text(x + 18, y + 20, title, "frame-title", "start")
         self.ops.append(o)
 
-    def knob_svg(self, cx, cy, r, pct):
+    def knob_arc(self, cx, cy, r, pct):
         R = r + 2.5
         a0, a1 = -135.0, -135.0 + 270.0 * pct / 100.0
         pt = lambda a, rad: (cx + rad * math.sin(math.radians(a)), cy - rad * math.cos(math.radians(a)))
@@ -225,6 +396,13 @@ class Art:
             vx, vy = pt(a1, R)
             o += '<path class="knob-arc" style="stroke-width:%g" d="M%.2f %.2f A%g %g 0 %d 1 %.2f %.2f"/>' % (
                 max(2, r / 10), sx, sy, R, R, 1 if a1 - a0 > 180 else 0, vx, vy)
+        return o
+
+    def knob_svg(self, cx, cy, r, pct):
+        R = r + 2.5
+        a0, a1 = -135.0, -135.0 + 270.0 * pct / 100.0
+        pt = lambda a, rad: (cx + rad * math.sin(math.radians(a)), cy - rad * math.cos(math.radians(a)))
+        o = self.knob_arc(cx, cy, r, pct)
         o += '<circle class="knob-face" cx="%g" cy="%g" r="%g"/>' % (cx, cy, r - 2)
         o += '<circle class="knob-sheen" cx="%g" cy="%g" r="%g"/>' % (cx, cy, r - 2)
         px0, py0 = pt(a1, r * 0.3)
@@ -293,6 +471,8 @@ class Art:
             if look.get("img"):
                 o += _turn(a, cx, cy, self.image(look["img"], *b))
             elif look.get("look") in KNOB_LOOKS:
+                if look["look"] in ARC_LOOKS:
+                    o += self.knob_arc(cx, cy, r, pct)
                 o += KNOB_LOOKS[look["look"]](cx, cy, r, a)
         return '<g class="knob look-%s">%s</g>' % (look.get("look", "image"), o)
 

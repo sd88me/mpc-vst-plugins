@@ -1,4 +1,5 @@
 { "id": "tr-9w9", "name": "9W9", "author": "athousanddetails", "repo": "sd88me/mpc-vst-TR-MPC",
   "kind": "instrument", "style": "drum-machine", "tags": ["tr-909"], "license": "GPL-3.0-only",
   "asset_pattern": "9W9-*-mpc-armv7.zip",
-  "summary": "MPC/Force port of athousanddetails' schwung-9W9 TR-909 drum machine: circuit-modelled kick, snare, toms, rim and clap, with sampled hats, ride and crash (ER-99 derived), as on the original. Touchscreen skin and Q-Links." }
+  "summary": "MPC/Force port of athousanddetails' schwung-9W9 TR-909 drum machine: circuit-modelled kick, snare, toms, rim and clap, with sampled hats, ride and crash (ER-99 derived), as on the original. Touchscreen skin and Q-Links.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-TR-MPC/ba525167c18bb0961dfd60d5989a033f737fe517/docs/screenshots/9w9.png" }

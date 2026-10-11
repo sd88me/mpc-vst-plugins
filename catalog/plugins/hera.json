@@ -1,0 +1,5 @@
+  { "id": "hera", "name": "Hera", "author": "saustin2010", "repo": "saustin2010/mpc-vst-hera",
+    "kind": "instrument", "style": "synth", "tags": ["juno-60", "polyphonic", "chorus", "analog-modelling"], "license":
+  "GPL-3.0-only",
+    "summary": "Roland Juno-60: jpcima's Hera engine with its 56 presets, the BBD chorus and a touchscreen skin with Q-Links.",
+    "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-hera/v1.0.0/screenshots/page_0.png" }

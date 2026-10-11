@@ -1,3 +1,4 @@
 { "id": "maze-voice", "name": "Maze Voice", "author": "sd88me", "repo": "sd88me/mpc-vst-maze",
   "kind": "instrument", "style": "synth", "tags": ["monophonic", "wavefolder", "moog", "analog-modelling"], "license": "MIT", "asset_pattern": "Maze-Voice-*-mpc-armv7.zip",
-  "summary": "Monophonic Moog Labyrinth-style thru-zero oscillator, wavefolder and state-variable filter voice with two LFOs, a page randomiser and a three-page touchscreen skin with Q-Links." }
+  "summary": "Monophonic Moog Labyrinth-style thru-zero oscillator, wavefolder and state-variable filter voice with two LFOs, a page randomiser and a three-page touchscreen skin with Q-Links.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-maze/main/docs/img/maze-voice.png" }

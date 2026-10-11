@@ -1,0 +1,18 @@
+{
+  "id": "percolator",
+  "name": "Percolator",
+  "author": "Steve A",
+  "repo": "saustin2010/mpc-vst-percolator",
+  "kind": "instrument",
+  "style": "drum-machine",
+  "tags": [
+    "drums",
+    "percussion",
+    "kits",
+    "drone",
+    "envelope-display"
+  ],
+  "license": "MIT",
+  "summary": "Four-voice percussion synth laid out like the Erica Synths Pērkons HD-01 (three algorithms per voice, BBD delay, LFO to every knob), with envelope displays; plays the Pērkons' free kit packs.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-percolator/v1.2.0/screenshots/page_0.png"
+}

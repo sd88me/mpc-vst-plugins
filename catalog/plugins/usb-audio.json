@@ -12,5 +12,6 @@
     "inputs"
   ],
   "license": "MIT",
-  "summary": "The MPC as a USB audio interface: its outputs and inputs as channels on the computer, next to its MIDI ports."
+  "summary": "The MPC as a USB audio interface: its outputs and inputs as channels on the computer, next to its MIDI ports.",
+  "screenshot": "https://raw.githubusercontent.com/jacob-sabella/mpc-addin-usb-audio/f73cf3a1de3c3d005f30b6d38caddf587376e6d4/docs/tile.png"
 }

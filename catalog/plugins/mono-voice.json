@@ -1,0 +1,17 @@
+{
+  "id": "mono-voice",
+  "name": "Mono Voice",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-monovoice",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "monomachine",
+    "sid",
+    "fm",
+    "digital"
+  ],
+  "license": "MIT",
+  "summary": "Elektron Monomachine-style digital voice: SuperWave, SID, DigiPRO, FM and more machines; 12 factory patches.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-monovoice/v1.0.0/screenshots/page_0.png"
+}

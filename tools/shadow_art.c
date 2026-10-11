@@ -14,6 +14,8 @@
  *   knob|cx|cy|r|pct                  knob body: ring, face, pointer dot (no label/value)
  *   pill|cx|cy|on                     toggle pill (no label)
  *   button|cx|cy|RRGGBB|LABEL         push button
+ *   boxbtn|x|y|w|h|RRGGBB|LABEL|SCALE sized button. Play/Stop are a triangle and a square;
+ *                                     any other label is the 5x7 font, fitted, in the button-text colour
  *   seg|x|y|w|h|RRGGBB|RRGGBB|LABEL   one enum segment: fill colour, text colour
  *   crop|out.ppm|x|y|w|h              write a region of the canvas
  *   strip|out.ppm|r|frames|RRGGBB     vertical knob filmstrip (frames x (2r+10)^2) on a bg colour
@@ -23,6 +25,7 @@
  *   dotreadout|cx|cy|w|h|LABEL        dot-matrix LCD readout (JV-880-style), same "no text" convention
  *   dotstepper|cx|cy|w|h|LABEL        dot-matrix LCD stepper, same "no text" convention
  *   tile|x|y|w|h|FILL|BORDER|bw       list tile: fill, then a border of bw px (0 = the plate-line rules)
+ *   nmark|w|h|FILL|ACCENT|radius|alpha  pattern hit at 0,0: flat cell, rounded bar blended by alpha 0..255
  *   sstrip|out.ppm|w|h|frames|v|RRGGBB  slider filmstrip (frames x w*h, stacked vertically); v=1 vertical
  */
 #define main render_conf_preview_main
@@ -152,6 +155,87 @@ static void sstrip(const char *path, int w, int h, int frames, int vert, uint32_
     fclose(f);
 }
 
+/* Transport marks, instead of the 9x9 font blown up to button size. */
+static void play_glyph(int x, int y, int w, int h, uint32_t color) {
+    int side = h / 2;
+    if (side < 16) side = 16;
+    int tw = side * 4 / 5;
+    int x0 = x + (w - tw) / 2 + tw / 10;
+    int cy = y + h / 2;
+    for (int c = 0; c < tw; c++) {
+        int half = (side / 2) * (tw - 1 - c) / (tw > 1 ? tw - 1 : 1);
+        fill_rect(x0 + c, cy - half, 1, half * 2 + 1, color);
+    }
+}
+
+static void stop_glyph(int x, int y, int w, int h, uint32_t color) {
+    int s = h / 2;
+    if (s < 14) s = 14;
+    fill_rect(x + (w - s) / 2, y + (h - s) / 2, s, s, color);
+}
+
+/* Tight 5x7 label. The 9x9 font's cell is wider than its glyph, so a short word
+ * blown up to button size reads as "C o p y". */
+static void dot_label(int x, int y, int w, int h, const char *s, uint32_t ink) {
+    int n = s ? (int)strlen(s) : 0;
+    if (n <= 0 || n > 16) return;
+    int p = 6;
+    while (p > 2 && (n * 6 * p - p > w - 16 || 7 * p > h - 12)) p--;
+    int tw = n * 6 * p - p, th = 7 * p;
+    int ox = x + (w - tw) / 2, oy = y + (h - th) / 2;
+    int dot = p > 2 ? p - 1 : p;
+    for (int i = 0; i < n; i++) {
+        const uint8_t *g = dot_glyph(s[i]);
+        if (!g) continue;
+        for (int r = 0; r < 7; r++)
+            for (int c = 0; c < 5; c++)
+                if (g[r] & (16 >> c))
+                    fill_rect(ox + (i * 6 + c) * p, oy + r * p, dot, dot, ink);
+    }
+}
+
+/* A pattern hit: the cell, then a rounded bar inset from its border. alpha 0..255
+ * blends the accent onto the cell fill, so a quiet hit reads as transparent.
+ * Coverage of a rounded rect: the shared fill_rr() does not cut a radius this small. */
+static int rr_cover(int i, int j, int w, int h, int r) {
+    if (r <= 0) return 255;
+    float px = i + 0.5f, py = j + 0.5f, dx = 0, dy = 0;
+    if (px < r) dx = r - px;
+    else if (px > w - r) dx = px - (w - r);
+    if (py < r) dy = r - py;
+    else if (py > h - r) dy = py - (h - r);
+    float d = sqrtf(dx * dx + dy * dy);
+    if (d <= r - 0.5f) return 255;
+    if (d >= r + 0.5f) return 0;
+    return (int)((r + 0.5f - d) * 255);
+}
+
+static void fill_rr_blend(int x, int y, int w, int h, int r, uint32_t color, int a) {
+    if (w <= 0 || h <= 0 || a <= 0) return;
+    if (r * 2 > h) r = h / 2;
+    if (r * 2 > w) r = w / 2;
+    int cr = (color >> 16) & 255, cg = (color >> 8) & 255, cb = color & 255;
+    for (int j = 0; j < h; j++)
+        for (int i = 0; i < w; i++) {
+            int cov = rr_cover(i, j, w, h, r);
+            if (cov <= 0) continue;
+            int aa = a * cov / 255;
+            int px = x + i, py = y + j;
+            if (aa <= 0 || px < 0 || py < 0 || px >= LAND_W || py >= LAND_H) continue;
+            unsigned char *p = canvas[py][px];
+            p[0] = (unsigned char)((p[0] * (255 - aa) + cr * aa) / 255);
+            p[1] = (unsigned char)((p[1] * (255 - aa) + cg * aa) / 255);
+            p[2] = (unsigned char)((p[2] * (255 - aa) + cb * aa) / 255);
+        }
+}
+
+static void note_mark(int w, int h, uint32_t fill, uint32_t accent, int rad, int alpha) {
+    fill_rect(0, 0, w, h, fill);
+    int inset = 2;
+    if (alpha > 0 && w > inset * 2 && h > inset * 2)
+        fill_rr_blend(inset, inset, w - 2 * inset, h - 2 * inset, rad, accent, alpha);
+}
+
 #define HEX(s) ((uint32_t)strtoul((s), NULL, 16))
 
 int main(void) {
@@ -169,6 +253,18 @@ int main(void) {
         else if (!strcmp(op, "knob") && n == 5) knob_body(atoi(a[1]), atoi(a[2]), atoi(a[3]), atoi(a[4]));
         else if (!strcmp(op, "pill") && n == 4) pill(atoi(a[1]), atoi(a[2]), atoi(a[3]));
         else if (!strcmp(op, "button") && n == 5) widget_button(atoi(a[1]), atoi(a[2]), a[4], HEX(a[3]));
+        else if (!strcmp(op, "boxbtn") && n == 8) {
+            int x = atoi(a[1]), y = atoi(a[2]), w = atoi(a[3]), h = atoi(a[4]);
+            float scale = (float)atof(a[7]);
+            int rad = h / 8;
+            if (rad < 8) rad = 8;
+            if (rad > 18) rad = 18;
+            fill_rr(x, y, w, h, rad, HEX(a[5]));
+            if (!strcmp(a[6], "Play")) play_glyph(x, y, w, h, 0x141210);
+            else if (!strcmp(a[6], "Stop")) stop_glyph(x, y, w, h, 0x141210);
+            else if (a[6][0] && strcmp(a[6], " ")) dot_label(x, y, w, h, a[6], 0x141210);
+            (void)scale;
+        }
         else if (!strcmp(op, "seg") && n == 8) {
             int x = atoi(a[1]), y = atoi(a[2]), w = atoi(a[3]), h = atoi(a[4]);
             fill_rect(x, y, w, h, HEX(a[5]));
@@ -189,6 +285,7 @@ int main(void) {
                 fill_rect(x, y, w, 1, PLATE_LINE); fill_rect(x, y + h - 1, w, 1, PLATE_LINE);
             }
         }
+        else if (!strcmp(op, "nmark") && n == 7) note_mark(atoi(a[1]), atoi(a[2]), HEX(a[3]), HEX(a[4]), atoi(a[5]), atoi(a[6]));
         else if (!strcmp(op, "crop") && n == 6) crop(a[1], atoi(a[2]), atoi(a[3]), atoi(a[4]), atoi(a[5]));
         else if (!strcmp(op, "sstrip") && n == 7) sstrip(a[1], atoi(a[2]), atoi(a[3]), atoi(a[4]), atoi(a[5]), HEX(a[6]));
         else if (!strcmp(op, "strip") && n == 5) strip(a[1], atoi(a[2]), atoi(a[3]), HEX(a[4]));

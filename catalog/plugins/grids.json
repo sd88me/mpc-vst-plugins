@@ -1,0 +1,19 @@
+{
+  "id": "grids",
+  "name": "Grids",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-grids",
+  "kind": "instrument",
+  "role": "midi",
+  "style": "sequencer",
+  "tags": [
+    "mutable-instruments",
+    "drum",
+    "midi",
+    "euclidean",
+    "eurorack"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "Mutable Instruments Grids: a topographic drum sequencer that plays kick, snare and hats from MPC's clock through its own MIDI port.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-grids/v1.0.0/screenshots/page_0.png"
+}

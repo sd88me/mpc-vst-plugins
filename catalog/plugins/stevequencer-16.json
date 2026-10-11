@@ -1,0 +1,19 @@
+{
+  "id": "stevequencer-16",
+  "name": "Stevequencer 16",
+  "author": "Steve A",
+  "repo": "saustin2010/mpc-vst-stevequencer16",
+  "kind": "instrument",
+  "role": "midi",
+  "style": "sequencer",
+  "tags": [
+    "step-sequencer",
+    "midi",
+    "modulation",
+    "nrpn",
+    "q-links"
+  ],
+  "license": "MIT",
+  "summary": "16-step sequencer with eight modulation lanes that move any parameter of the instrument (CC or NRPN), on any page.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-stevequencer16/v1.0.0/screenshots/page_0.png"
+}

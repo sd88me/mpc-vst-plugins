@@ -66,6 +66,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/api/prune", a.prune)
 	mux.HandleFunc("/api/job", a.jobStatus)
 	mux.HandleFunc("/api/patches", a.patchList)
+	mux.HandleFunc("/api/patch/run", a.patchRun)
 	return a.guard(mux)
 }
 
@@ -775,21 +776,114 @@ func (a *App) patchList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	a.mu.Unlock()
-	fetch := func(p Patch) ([]byte, error) {
-		a.mu.Lock()
-		data, ok := a.patchCode[p.Script.SHA256]
-		a.mu.Unlock()
-		if ok {
-			return data, nil
-		}
-		data, err := FetchPatchScript(p)
-		if err != nil {
-			return nil, err
-		}
-		a.mu.Lock()
-		a.patchCode[p.Script.SHA256] = data
-		a.mu.Unlock()
+	fetch := a.patchScript
+	writeJSON(w, 200, map[string]any{"patches": PatchRows(dev, patches, fetch), "note": note, "connected": dev != nil})
+}
+
+// patchScript returns a patch's script, downloaded once and checked against the manifest's sha256 (never an unverified copy).
+func (a *App) patchScript(p Patch) ([]byte, error) {
+	a.mu.Lock()
+	data, ok := a.patchCode[p.Script.SHA256]
+	a.mu.Unlock()
+	if ok {
 		return data, nil
 	}
-	writeJSON(w, 200, map[string]any{"patches": PatchRows(dev, patches, fetch), "note": note, "connected": dev != nil})
+	data, err := FetchPatchScript(p)
+	if err != nil {
+		return nil, err
+	}
+	a.mu.Lock()
+	a.patchCode[p.Script.SHA256] = data
+	a.mu.Unlock()
+	return data, nil
+}
+
+// patchRun applies or undoes one patch from the published manifest. The patch is found by id in the manifest the app fetched, never
+// described by the page; the user must have typed the confirmation word for that action; one job at a time. Progress is the job log.
+func (a *App) patchRun(w http.ResponseWriter, r *http.Request) {
+	if !postOnly(w, r) {
+		return
+	}
+	var in struct {
+		ID      string `json:"id"`
+		Action  string `json:"action"`
+		Confirm string `json:"confirm"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&in); err != nil {
+		fail(w, 400, "bad request")
+		return
+	}
+	word := map[string]string{"install": ConfirmApply, "uninstall": ConfirmUndo}[in.Action]
+	if word == "" {
+		fail(w, 400, "unknown action")
+		return
+	}
+	if in.Confirm != word {
+		fail(w, 400, "type "+word+" to confirm")
+		return
+	}
+	busy := func() bool {
+		if a.job != nil {
+			st, _, _, _ := a.job.snapshot(0)
+			return st == "running"
+		}
+		return false
+	}
+	a.mu.Lock()
+	var p *Patch
+	for i := range a.patches {
+		if a.patches[i].ID == in.ID {
+			p = &a.patches[i]
+		}
+	}
+	dev := a.dev
+	switch {
+	case dev == nil:
+		a.mu.Unlock()
+		fail(w, 400, "connect to the device first")
+		return
+	case p == nil:
+		a.mu.Unlock()
+		fail(w, 404, "that patch is not in the list (open the Advanced step first)")
+		return
+	case busy():
+		a.mu.Unlock()
+		fail(w, 409, "a job is already running")
+		return
+	}
+	patch := *p
+	a.mu.Unlock()
+	if dev.Info.Arch != "" && patch.Supports.Arch != dev.Info.Arch {
+		fail(w, 400, "this patch is built for "+patch.Supports.Arch+"; this device is "+dev.Info.Arch)
+		return
+	}
+	if in.Action == "uninstall" && !patch.Reversible {
+		fail(w, 400, "this patch cannot be undone from the app")
+		return
+	}
+	script, err := a.patchScript(patch)
+	if err != nil {
+		fail(w, 502, err.Error())
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.dev != dev {
+		fail(w, 409, "the device changed; try again")
+		return
+	}
+	if busy() { // the lock was released while the script was fetched
+		fail(w, 409, "a job is already running")
+		return
+	}
+	j := &Job{ID: randHex(4), State: "running"}
+	a.job = j
+	go RunPatch(dev, patch, script, in.Action, j, func() {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		if a.dev == dev {
+			dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
+		}
+	})
+	writeJSON(w, 200, map[string]string{"job": j.ID})
 }

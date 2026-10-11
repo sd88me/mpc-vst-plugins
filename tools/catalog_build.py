@@ -69,6 +69,12 @@ def check_entry(e, fname=None):
         p.append("source_available must be true or false")
     if "style" in e and not (isinstance(e["style"], str) and ID.fullmatch(e["style"])):
         p.append("style must be a lowercase slug, e.g. sampler, synth, reverb")
+    if "role" in e and not (e["role"] == "midi" and e.get("kind") == "instrument"):
+        p.append("role must be \"midi\" and only on an instrument (a plugin that sends MIDI to other tracks instead of making sound)")
+    if "tier" in e and e["tier"] != "experimental":
+        p.append("tier can only be \"experimental\" (a cap; Verified and Listed are worked out from the releases), see docs/CATALOG.md")
+    if "featured" in e and not isinstance(e["featured"], bool):
+        p.append("featured must be true or false")
     if "tags" in e and not (isinstance(e["tags"], list) and all(isinstance(t, str) and ID.fullmatch(t) for t in e["tags"])):
         p.append("tags must be a list of lowercase slugs")
     dist = e.get("distribution", "release")
@@ -83,6 +89,47 @@ def check_entry(e, fname=None):
     else:
         p += check_build_yourself(e)
     return p
+
+
+def tier_of(entry, versions):
+    """Trust tier of a plugin. experimental: the registry caps it ("tier": "experimental") or it has no stable, unyanked
+    release (a beta alone, or nothing valid yet). verified: the newest stable, unyanked version has a tested.json entry.
+    listed: everything else that passed the release checks."""
+    live = [v for v in versions if v["channel"] == "stable" and not v["yanked"]]
+    if entry.get("tier") == "experimental" or not live:
+        return "experimental"
+    return "verified" if live[0].get("tested") else "listed"
+
+
+BAR = {   # id -> what the author sees. Informational: it never hides or demotes a plugin (docs/CATALOG_QUALITY.md, step 1).
+    "stable-release": "publish a stable (non-beta) release",
+    "screenshot": "add a screenshot of the plugin screen to the registry entry",
+    "skin": "ship a native MPC skin",
+    "cpu-fail": "bring the CPU use down (the bench verdict is FAIL)",
+    "cpu-bench": "run the CPU bench (docs/BENCH.md) so the release records a figure",
+    "tested": "add a tested.json entry for the newest release (device and MPC OS version)",
+}
+
+
+def bar_of(entry, versions, tier):
+    """Ids of the BAR items a plugin does not meet yet, in display order."""
+    live = [v for v in versions if v["channel"] == "stable" and not v["yanked"]]
+    m = (live[0].get("manifest") or {}) if live else {}
+    out = []
+    if not live:
+        out.append("stable-release")
+    if not entry.get("screenshot"):
+        out.append("screenshot")
+    if live and entry["kind"] != "addin" and entry.get("distribution", "release") == "release" and not m.get("skin"):
+        out.append("skin")
+    cpu = live[0].get("cpu") if live else None
+    if cpu and cpu.get("verdict") == "FAIL":
+        out.append("cpu-fail")
+    elif live and entry["kind"] != "addin" and entry.get("distribution", "release") == "release" and not cpu:
+        out.append("cpu-bench")
+    if tier != "verified" and live:
+        out.append("tested")
+    return out
 
 
 def _nonempty_str(v):
@@ -354,6 +401,29 @@ def build(entries, src, cache, yanked, keep=10, now=None):
             if any(v["version"] == rec["version"] for v in versions):
                 failed.append(({"id": e["id"], "tag": tag, "error": "duplicate version %s" % rec["version"]}, pub))
                 continue
+            # Gen2: an optional sibling asset (armv7 -> aarch64 in the pattern) built from the same tag. It must pass the same checks
+            # and agree with the armv7 zip on id, uid and version; a bad one is reported but never hides the Gen1 release.
+            rec["assets"] = {"armv7": {k: rec[k] for k in ("sha256", "size") if k in rec} | {"url": asset["browser_download_url"]}}
+            pat64 = e.get("asset_pattern", "*-mpc-armv7.zip").replace("armv7", "aarch64")
+            a64 = [x for x in rel.get("assets", []) if fnmatch.fnmatch(x["name"], pat64)]
+            if len(a64) == 1:
+                z64 = os.path.join(cache, "%s-%s.zip" % (e["id"], a64[0]["id"]))
+                try:
+                    if not os.path.exists(z64):
+                        src.download(a64[0], z64)
+                    err64, warn64, rec64 = catalog_check.check(z64, catalog=True, expect_id=e["id"], expect_repo=e["repo"])
+                    if not err64 and (rec64["manifest"]["arch"] != "aarch64" or rec64["version"] != rec["version"]
+                                      or rec64["manifest"]["uid"] != rec["manifest"]["uid"]):
+                        err64 = ["aarch64 zip is not arch aarch64 with the same version and uid as the armv7 zip"]
+                except Exception as ex:
+                    err64 = ["download/validate failed: %s" % ex]
+                if err64:
+                    failed.append(({"id": e["id"], "tag": tag, "error": "aarch64 asset: " + "; ".join(err64)}, pub))
+                else:
+                    rec["assets"]["aarch64"] = {k: rec64[k] for k in ("sha256", "size") if k in rec64} | {"url": a64[0]["browser_download_url"]}
+                    rec["gen2"] = True
+            elif len(a64) > 1:
+                failed.append(({"id": e["id"], "tag": tag, "error": "expected one asset matching %s, found %d" % (pat64, len(a64))}, pub))
             rec.update({
                 "url": asset["browser_download_url"],
                 "date": (rel.get("published_at") or "")[:10],
@@ -379,7 +449,7 @@ def build(entries, src, cache, yanked, keep=10, now=None):
         versions.sort(key=vkey, reverse=True)
         versions = versions[:keep]
         item = {k: e[k] for k in ("id", "name", "author", "repo", "kind", "license", "summary") }
-        for k in ("screenshot", "homepage", "style"):
+        for k in ("screenshot", "homepage", "style", "role"):
             if e.get(k):
                 item[k] = e[k]
         item["tags"] = e.get("tags", [])
@@ -391,6 +461,9 @@ def build(entries, src, cache, yanked, keep=10, now=None):
                     item[k] = json.loads(json.dumps(e[k]))   # a copy: the registry entry stays untouched
             item["build"].setdefault("needs", [])
         item["versions"] = versions
+        item["tier"] = tier_of(e, versions)
+        item["bar_missing"] = bar_of(e, versions, item["tier"])
+        item["featured"] = bool(e.get("featured")) and item["tier"] != "experimental"
         item["latest"] = next((v["version"] for v in versions if v["channel"] == "stable" and not v["yanked"]), None)
         item["latest_beta"] = next((v["version"] for v in versions if v["channel"] == "beta" and not v["yanked"]), None)
         item["downloads"] = all_time
@@ -398,7 +471,7 @@ def build(entries, src, cache, yanked, keep=10, now=None):
         plugins.append(item)
     plugins.sort(key=lambda p: p["name"].lower())
     catalog = {"schema": 1, "generated": (now or datetime.datetime.now(datetime.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-               "plugins": plugins}
+               "bar": BAR, "plugins": plugins}
     return catalog, problems
 
 
@@ -424,6 +497,11 @@ def main():
     json.dump(problems, open(os.path.join(a.out, "problems.json"), "w"), indent=1)
     for p in problems:
         print("problem: %(id)s %(tag)s: %(error)s" % p, file=sys.stderr)
+    miss = {}
+    for pl in catalog["plugins"]:
+        for k in pl["bar_missing"]:
+            miss[k] = miss.get(k, 0) + 1
+    print("quality bar, plugins still missing: " + (", ".join("%s %d" % kv for kv in sorted(miss.items())) or "none"))
     print("%d plugins, %d versions, %d problems" % (len(catalog["plugins"]), sum(len(p["versions"]) for p in catalog["plugins"]), len(problems)))
     sys.exit(1 if reg_problems else 0)
 

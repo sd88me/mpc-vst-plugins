@@ -43,7 +43,8 @@ The tools need Python 3; the skin build and preview also need Pillow (the ports 
 `opacity=0..1`, `italic=1`, `font=<family>` (only families the renderer's image has; Titillium Web is bundled) and
 `fontfile=<file.ttf|otf|woff|woff2>` (beside the layout; embedded, so any typeface works and it wins over `font=`; in the editor pick one from the list or **Upload…** to put it in `fonts/`). A font uploaded in the Style panel is also usable by family name in `font=`. Use a font
 whose licence lets you ship it. All of these are in the inspector when a text widget is selected. Baked text only:
-MPC's live names and values stay in Titillium Web.
+MPC's live names and values stay in Titillium Web. A list row's text is one colour on both the idle tile and the lit one, so a lit fill in that same colour hides the name. A row tap uses its own Toggle Switch and `<key>_on` supplies its state. `color=` on a list is the idle tile fill (default `theme_lcd`). `tap=no` on a list draws the rows without making them interactive; `mark=1` fills a lit row with the accent (a step grid) instead of the selection border. `mark=vel` draws each lit cell as a rounded bar (radius 2) and picks one of four opacities from the cell's value 0–4, so a quieter hit is more transparent. `tint=1` on a list paints each row from the integer parameter `tint_<n>` (0–5): a translucent colour washed over the dark tile, with a brighter picture while that row is on. A readout, stepper or list row can set that live text with
+`tsize=` (pixels), `tcolor=`, `tweight=`, `talign=` and `tfont=` (Titillium Web or Roboto).
 
 ## Browser editor
 Double-click the launcher at the repo root: `SkinStudio.command` on macOS, `SkinStudio.bat` on Windows, `SkinStudio.sh`
@@ -104,19 +105,19 @@ the build in Docker with only that folder (and this repo) mounted. Images: `.png
 
 | Asset | Layout | Notes |
 |---|---|---|
-| Knob, built-in | `knob ... look=moog` | `moog`, `chicken`, `metal`, `cap` (the theme's knob colours) |
+| Knob, built-in | `knob ... look=moog` | `moog`, `chicken`, `metal`, `cap` (the theme's knob colours), `prophet` (ribbed skirt, silver ring, brushed black top, white pointer; keeps the theme's value arc), plus the 303-style hardware set: `hardware` (glossy black dome, engraved ticks, `--tick` colour), `chrome` (mirror dome), `bakelite` (brown, cream pointer), `davies` (stepped cap, pointer to the rim), `rubber` (matte, dot in the theme's `knob_dot`), `taper` (flat top-down tapered stem: shaded base, bevel ring, inset disc and notch; keeps the value arc; colour per knob size with `.look-wside[data-r="27"]`), `ledring` (LED ring that lights to the value; theme `accent_hi`) |
 | Knob image | `knob ... img=knob.png [base=scale.png]` | turned through 270°; draw it pointing up (= the middle of the travel); `base` stays still under it |
 | Knob filmstrip | `knob ... strip=knob_strip.png [frames=N]` | frames stacked down (or across), minimum first; resampled to MPC's 128 |
 | Slider | `slider_v ... look=fader`, or `img=thumb.png [base=track.png]`, or `strip=` | the thumb is as wide as a vertical slider; the track is stretched to it |
 | Toggle / switch | `toggle ... look=led` (or `switch`), or `img=off.png [img_on=on.png] [w= h=]` | sized from the image (or `w`/`h`); without `img_on`, on = the off image brightened |
-| Button, key, pad | `button ... img=pad.png [img_on=pad_lit.png] [w= h=]` | the label is drawn on top; `label=""` for none |
+| Button, key, pad | `button ... img=pad.png [img_on=pad_lit.png] [w= h=] [label_on="..."]` | the label is drawn on top; `label=""` for none. `w=` and `h=` set the button size, and `label_on=` is the text while the button is on. Pressed fill is `theme_accent` (or `theme_btn_on=`). A sized button labelled Play or Stop is drawn as a triangle or a square; any other sized-button label is the 5×7 font fitted into the button. On a dark fill the glyph is light. `tsize=` with `get=<param>` draws that parameter's text on the button in Titillium, the same live type as a list row, instead of the 5×7 font. A near-invisible hit plate sits on top of that caption so the tap fires the trigger, not the text parameter. Mouse Down is Toggle Switch, so the orange on-image shows while the finger is down. |
 | Option segments | `enum_h` / `enum_v ... img=seg.png [img_on=seg_lit.png]` | each option: the image, its name on top |
 | Panel | `frame ... img=panel.png` | the picture (stretched) instead of the drawn border; the title on top |
 | Pop-out list | `popup ... img=list.png` | the open list's panel, under the options |
 | Page background | `art file=bg.jpg [fit=cover]` | fills the plugin area (`fit`: contain, cover, stretch) |
 | Placed image, logo | `art file=logo.png x= y= w= h=` | anywhere, at any size; ends up baked into the background |
 | Value pictures | `picture x= y= w= h= key=<param> files="a.png,b.png,.."` | one image per option of the parameter, the current one shown (MPC switches them: mode images) |
-| Meter | `meter cx= cy= w= h= key=<param> strip=meter.png` | a display-only filmstrip. The engine sets the parameter; MPC redraws it live when the wrapper reports the change (`HAS_DISPLAY_REV`, verified on an MPC One) |
+| Meter | `meter cx= cy= w= h= key=<param> strip=meter.png` | a display-only filmstrip. The engine sets the parameter; MPC redraws it live when the wrapper reports the change (`HAS_DISPLAY_REV`, verified on an MPC One). Frames are the meter's own w x h, as many as the strip has (`frames=`, else counted), at most 12288 px of strip (2026-10-07, as stock skins; device check pending) |
 
 **Defaults for a whole kind:** a top-level `<group>_<attr>=` line, e.g. `knob_look=moog`, `slider_img=images/cap.png`,
 `seg_img=images/seg.png` (groups `knob`, `slider`, `toggle`, `button`, `seg`, `frame`, `popup`, `meter`). A line that
@@ -166,7 +167,7 @@ The layout says where everything goes; a renderer draws it. Two do, from the sam
   Restyle it with a stylesheet: a top-level `art_css=skin.css` line in the layout, loaded after
   `tools/html_art/default.css` (its header lists the classes and variables). Any font (`@font-face` with a
   file next to the CSS), knob look, gradient or shadow; `theme_*` lines still set the colours. Only colours,
-  shapes and effects change: sizes and positions stay the layout's, because MPC puts its live controls there.
+  shapes and effects change (a shared `filter: url(#grain)` gives a plate a painted-metal grain and wear): sizes and positions stay the layout's, because MPC puts its live controls there.
 
 A port with its own build script runs `gen_vst.py` inside `mpc-vst-html-art` instead of `python:3.11-slim`
 (see `tools/build_port.sh`).
@@ -190,6 +191,23 @@ MPC reads two maps from the skin's `Q-Links.json`:
   MPC's bottom-up grid numbering for you). Without a `qlinks` line, a tab uses its first 16 controls in file order.
 - **Program/track mode** (Q-Links fixed to the track or program, whatever page is showing): one map. Set it with a
   top-level `qlinks_track = key,...` line (same ordering); without it, page 1's set is used.
+- **Per sub-page controls (2026-10-07, offline):** `banks="ONE|TWO"` on a control, frame, text or art line keeps it to
+  those `qlinks` pages of its tab, so each sub-page can show and touch-edit what its Q-Links turn (a step sequencer's
+  PITCH / GATE lanes in the same cells). Baked parts get their own image on those sub-pages. Not yet seen on a device.
+
+## Built-skin check (2026-10-07)
+`tools/skin_check.py "<plugin folder>"` reads the built `TUI.json`/`Q-Links.json` and reports, per page: TOUCH (two
+controls' touch boxes overlap while both show: MPC gives the touch to one), EDGE (a box past 1280x628) and QLINK (a
+Q-Link on a parameter no control on that page shows) and OPTS (a switch group missing some of its options). `gen_vst.py` runs it after every skin build and prints the
+findings as `warning: skin:` lines. It complements the browser editor's layout checks, and sees what the builder made
+(label widths, `when=` modes, `banks=` sub-pages).
+
+## Text size and touch width per control (2026-10-07, offline)
+`knob` and `slider_v`/`slider_h` take `ns=<px>` (name text; `ns=0` drops the name), `vs=<px>` (value text) and
+`bw=<px>` (touch box and text width; default 130). Narrow `bw=` where neighbours sit closer than ~130 px, or MPC gives
+a touch to the wrong control. Toggles take `bw=` and `ns=0` (the switch alone); `enum_v` takes `sh=` like `enum_h`.
+`knob ... lay=side bw= bh= vs=` puts the knob's picture at the left of a bw x bh box and its value, large, in the rest
+(no name): a step cell you drag like a knob. From `saustin2010/vst_instruments`' fork; not yet seen on a device.
 
 ## Coming next
 Tracked in [ROADMAP.md](ROADMAP.md) ("Skin controls" and "Porting and tooling"), including a build-and-preview

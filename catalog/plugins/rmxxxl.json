@@ -1,0 +1,4 @@
+{ "id": "rmxxxl", "name": "RMXXXL", "author": "L'Cronx", "repo": "sunskiefer/RMXXXL",
+  "kind": "effect", "style": "multi-fx", "tags": ["remix", "dj", "rmx", "isolator", "filter", "clouds", "reverb", "pads"],
+  "license": "GPL-3.0-or-later", "screenshot": "https://raw.githubusercontent.com/sunskiefer/RMXXXL/v1.2.0/docs/img/remix.png",
+  "summary": "RMX-1000-style remix effect: isolator, DJ filter, Build Up / Break Down scenes, synced echo, Release FX and a Release kill switch, Panic, Clouds, Dragonfly reverbs, sample pads with ADSR, 16 user presets and a brickwall limiter, with a big-button touchscreen skin and Q-Links." }

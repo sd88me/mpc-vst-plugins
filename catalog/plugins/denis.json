@@ -1,0 +1,17 @@
+{
+  "id": "denis",
+  "name": "Denis",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-denis",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "west-coast",
+    "serge",
+    "wavefolder",
+    "monophonic"
+  ],
+  "license": "MIT",
+  "summary": "West Coast / Serge-inspired mono synth: complex oscillators, a wavefolder and a modulation matrix.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-denis/v1.0.0/screenshots/page_0.png"
+}

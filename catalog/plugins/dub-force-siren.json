@@ -1,0 +1,17 @@
+{
+  "id": "dub-force-siren",
+  "name": "Dub Force Siren",
+  "author": "no3z",
+  "repo": "no3z/mpc-dubsiren",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "dub",
+    "siren",
+    "echo",
+    "sfx"
+  ],
+  "license": "MIT",
+  "summary": "Dub siren with tape echo: siren and zap modes, LFO, filter and ping-pong delay on one page mirroring two banks of eight Q-Links.",
+  "screenshot": "https://raw.githubusercontent.com/no3z/mpc-dubsiren/v2.0.0/resources/preview.png"
+}

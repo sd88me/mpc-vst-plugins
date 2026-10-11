@@ -1,4 +1,5 @@
 { "id": "tr-cw78", "name": "CW-78", "author": "athousanddetails", "repo": "sd88me/mpc-vst-TR-MPC",
   "kind": "instrument", "style": "drum-machine", "tags": ["cr-78"], "license": "GPL-3.0-only",
   "asset_pattern": "CW-78-*-mpc-armv7.zip",
-  "summary": "MPC/Force port of athousanddetails' schwung-CW-78 CR-78 drum machine: voices modelled from the 1979 service notes, with the preset rhythms. Touchscreen skin and Q-Links." }
+  "summary": "MPC/Force port of athousanddetails' schwung-CW-78 CR-78 drum machine: voices modelled from the 1979 service notes, with the preset rhythms. Touchscreen skin and Q-Links.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-TR-MPC/ba525167c18bb0961dfd60d5989a033f737fe517/docs/screenshots/cw78.png" }

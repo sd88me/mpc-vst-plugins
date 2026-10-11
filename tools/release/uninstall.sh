@@ -24,7 +24,7 @@ if [ -z "$MPC_INSTALL_TEST" ]; then
     [ "$(id -u)" = 0 ] || die "run as root"
     command -v systemctl >/dev/null || die "systemctl not found"
 fi
-SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
+SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
 [ -n "$SETTINGS" ] && [ -f "$SETTINGS" ] || die "MPC.settings not found"
 if [ $YES = 0 ]; then
     if [ $DEFER = 1 ]; then msg="MPC must already be stopped."; else msg="MPC will be stopped and restarted. Save your project first."; fi

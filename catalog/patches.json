@@ -26,13 +26,30 @@
       "license": "MIT",
       "docs": "tools/mpc_patch/drive_exec/README.md",
       "script": {
-        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/fe7e399a2ed994cb78a0aed08681343c1250ff27/tools/mpc_patch/drive_exec/drive-exec-patch.sh",
-        "sha256": "85ae102b14e16db2c3fee11829a3e15d2f65459b0d32325a4bbb34cb9bd9b642"
+        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/c581a9e5efb4f10562b03223f75b0fdd8fd231be/tools/mpc_patch/drive_exec/drive-exec-patch.sh",
+        "sha256": "f8cfa9732737aaa6867b806af6aa80dcc67fad77b4a92355b2dc26bd0cc61d8c"
       },
       "supports": {"os": "MPC OS Gen1 (tried on a Force, MPC OS 3.9.1)", "arch": "armv7l"},
       "modifies": ["/etc/drive-exec", "/etc/systemd/system/drive-exec.timer", "/usr/lib/systemd/system/drive-exec-bootstrap.service", "/media/<your drive>/Synths (an executable bind mount of the folder)"],
       "backup": "/data/mpc-vst-plugins/backups",
       "restarts_mpc": false,
+      "reversible": true
+    },
+    {
+      "id": "button-remap",
+      "title": "Button remap: open screens from hardware buttons",
+      "summary": "Remap hardware buttons on a standalone MPC or Force (an LD_PRELOAD shim: a button can become other buttons, a pad or a screen tap). Pick which remaps you want at install (Force: Mixer, Edit, Clip, Menu and Knobs options; the Mode Menu must be at its default layout for the ones that tap an icon). The author's hwremap was tried on an MPC Live (Hakai, MPC 3.9.1) and a Force (stock 3.9.0); this installer and its Force rules were run on one Force (MPC OS 3.x) on 2026-10-10. Not tried yet: uninstall and the MPC Live map on a device. It does not work together with MidiLoop / MockbaMod's input path.",
+      "author": "mmiroshnikov",
+      "license": "MIT",
+      "docs": "tools/mpc_patch/hwremap/README.md",
+      "script": {
+        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/0f5d20f5d8fa98d56d91017ce6dbd4323c943196/tools/mpc_patch/hwremap/hwremap-patch.sh",
+        "sha256": "3c36e3aa73f96e4486f0874d909f58d750a00e9bda3e423108974a84e33c54a9"
+      },
+      "supports": {"os": "MPC OS 3.9 (MPC Live with Hakai, and Force stock 3.9.0, as tried by the remap's author)", "arch": "armv7l"},
+      "modifies": ["/usr/bin/az01-launch-MPC", "/usr/lib/hwremap.so", "/data/hwremap/hwremap.so", "/etc/systemd/system/acvs.service.d/hwremap.conf", "/etc/systemd/system/inmusic-mpc.service.d/hwremap.conf", "/sdcard/hwremap.conf"],
+      "backup": "/data/mpc-vst-plugins/backups",
+      "restarts_mpc": true,
       "reversible": true
     }
   ]

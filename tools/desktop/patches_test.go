@@ -331,6 +331,9 @@ func TestRowsExplainReasonsAndPartialInstalls(t *testing.T) {
 	if r := row("STATE state=partial supported=1 backup=1"); r.State != "partial" || !strings.Contains(r.Detail, "not active") || !r.Supported {
 		t.Errorf("partial: %+v", r)
 	}
+	if r := row("STATE state=partial supported=1 backup=0 reason=not-loaded"); !strings.Contains(r.Detail, "has not loaded") || strings.Contains(r.Detail, "drive") {
+		t.Errorf("a partial reason gets its own sentence: %+v", r)
+	}
 	if r := row("STATE state=patched supported=1 backup=1"); r.State != "patched" || r.Detail != "" {
 		t.Errorf("patched has no detail: %+v", r)
 	}

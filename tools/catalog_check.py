@@ -21,13 +21,26 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import skin_compat  # noqa: E402
 
+MAX_GLIBC_GEN2 = (2, 39)   # aarch64 (Gen2) runs MPC OS 3.x only, which has glibc 2.39, so there is no 2.x ceiling to respect
 MAX_GLIBC = (2, 36)   # the newest glibc a catalog plugin may need: MPC OS 3.x and the Force have 2.39, the catalog toolchain (arm32v7/gcc:12) is 2.36.
 # Above skin_compat.MAX_GLIBC_2X (2.32, MPC OS 2.x) it is listed as MPC OS 3.x only; it is not rejected.
 SEMVER = re.compile(r"\d+\.\d+\.\d+")
 ID = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
-ADDIN_KEYS = ("ADDIN_ID", "ADDIN_NAME", "ADDIN_SO", "ADDIN_CONF", "ADDIN_FILES", "ADDIN_DONE", "ADDIN_VERSION")
+ADDIN_KEYS = ("ADDIN_ID", "ADDIN_NAME", "ADDIN_SO", "ADDIN_CONF", "ADDIN_FILES", "ADDIN_DONE", "ADDIN_NETWORK", "ADDIN_VERSION")
 ADDIN_SCRIPTS = ("install.sh", "uninstall.sh", "addin-lib.sh")
 ADDIN_FILE = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9._-]*")
+
+
+ARCHES = ("armv7", "aarch64")   # armv7 = Gen1 MPC and Force (32-bit); aarch64 = Gen2 MPC (RK3588, 64-bit; docs/GEN2.md)
+
+
+def arm64(d):
+    """Whether the bytes start an ELF file for a Gen2 device: 64-bit (EI_CLASS 2), little-endian, AArch64 (e_machine 183)."""
+    return d[:4] == b"\x7fELF" and d[4:6] == b"\x02\x01" and int.from_bytes(d[18:20], "little") == 183
+
+
+def arch_ok(d, arch):
+    return arm64(d) if arch == "aarch64" else arm32(d)
 
 
 def arm32(d):
@@ -161,13 +174,16 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
         err("an addin's kind must be addin")
     elif not addin and m["kind"] not in ("instrument", "effect"):
         err("kind must be instrument or effect")
-    if m["arch"] != "armv7":
-        err("arch is %s, catalog is armv7 only" % m["arch"])
+    if m["arch"] not in ARCHES:
+        err("arch is %s, catalog takes %s" % (m["arch"], " or ".join(ARCHES)))
+    if addin and m["arch"] != "armv7":
+        err("addins are armv7 only for now")
     if m.get("max_glibc"):
         need = tuple(int(x) for x in m["max_glibc"].split(".")[:2])
-        if need > MAX_GLIBC:
-            err("needs GLIBC %s, limit is %d.%d (MPC OS 3.x has 2.39)" % (m["max_glibc"], *MAX_GLIBC))
-        elif need > skin_compat.MAX_GLIBC_2X:
+        limit = MAX_GLIBC_GEN2 if m["arch"] == "aarch64" else MAX_GLIBC
+        if need > limit:
+            err("needs GLIBC %s, limit is %d.%d (MPC OS 3.x has 2.39)" % (m["max_glibc"], *limit))
+        elif need > skin_compat.MAX_GLIBC_2X and m["arch"] == "armv7":
             warn("needs GLIBC %s: listed as MPC OS 3.x only (MPC OS 2.x has about 2.32; build with arm32v7/gcc:11-bullseye to reach it)" % m["max_glibc"])
     else:
         warn("max_glibc not recorded")
@@ -278,8 +294,8 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
                     err("plugin folder is missing " + need)
             if files.get(base + m["so"], b"\x7fELF")[:4] != b"\x7fELF":
                 err(m["so"] + " is not an ELF file")
-            elif base + m["so"] in files and not arm32(files[base + m["so"]]):
-                err(m["so"] + " is not a 32-bit ARM library")
+            elif base + m["so"] in files and not arch_ok(files[base + m["so"]], m["arch"]):
+                err(m["so"] + " is not a %s library (manifest arch %s)" % ("64-bit ARM" if m["arch"] == "aarch64" else "32-bit ARM", m["arch"]))
             for e in m.get("extras", []):
                 if not any(f == base + e or f.startswith(base + e + "/") for f in files):
                     err("extra %s listed but not in the plugin folder" % e)

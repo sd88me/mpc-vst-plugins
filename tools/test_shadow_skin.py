@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Offline unit tests for shadow_skin geometry/invariants that don't need the art toolchain or a device:
-seg_rects honouring sw=, the two filmstrip frame-count conventions, and html_art's inlined SVGs keeping their ids
-and classes apart. No device: python3 tools/test_shadow_skin.py"""
+seg_rects honouring sw=, the talign= defaults, the two filmstrip frame-count conventions, and html_art's inlined
+SVGs keeping their ids and classes apart. No device: python3 tools/test_shadow_skin.py"""
 import os
 import re
 import sys
@@ -80,6 +80,21 @@ class StudioPreviewTabs(unittest.TestCase):
         self.assertEqual([c["componentData"]["type"] for c in before], [c["componentData"]["type"] for c in after])
 
 
+class TextAlignDefaults(unittest.TestCase):
+    """Readouts centre their text unless talign= says otherwise (skins built before talign= existed keep their look);
+    list rows start at the left."""
+
+    def test_readouts_default_to_centred(self):
+        self.assertEqual(shadow_skin.live_text({}, 26.0, "ffffff", shadow_skin.READOUT_JUST)[2],
+                         "horizontallyCentred verticallyCentred")
+
+    def test_list_rows_default_to_left(self):
+        self.assertEqual(shadow_skin.live_text({}, 24.0, "ffffff", shadow_skin.ROW_JUST)[2], "left verticallyCentred")
+
+    def test_talign_overrides_the_default(self):
+        self.assertEqual(shadow_skin.live_text({"talign": "left"}, 26.0, "ffffff", shadow_skin.READOUT_JUST)[2],
+                         "left verticallyCentred")
+
 class ListOrder(unittest.TestCase):
     W = {"key": "slot", "cols": 2, "rows": 3}
 
@@ -110,6 +125,138 @@ class FilmStripFrames(unittest.TestCase):
         # the (l)sstrip generator emits exactly FRAMES frames for sliders and meters, so their FilmStrip
         # numFrames must match it; FRAMES-1 here is the second-thumb bug.
         self.assertEqual(shadow_skin.STRIP_FRAMES, shadow_skin.FRAMES)
+
+
+class BuildAttrs(unittest.TestCase):
+    """banks= (controls per Q-Link sub-page) and ns=/vs=/bw= (text sizes, touch width), built with a stub renderer."""
+    PARAMS = [{"key": k, "name": k.upper(), "min": 0, "max": 1} for k in ("a", "b", "c", "d")]
+
+    def build(self, layout):
+        d = tempfile.mkdtemp()
+        lp, art = os.path.join(d, "layout.conf"), os.path.join(d, "art.sh")
+        open(lp, "w").write(layout)
+        open(art, "w").write("#!/bin/sh\ncat >/dev/null\n")
+        os.chmod(art, 0o755)
+        comps, tabs, _ = shadow_skin.build(lp, self.PARAMS, d, art, lambda a, b: None)
+        defs = {c["key"]: c["value"] for c in comps} if isinstance(comps, list) else comps
+        return defs, tabs
+
+    def tearDown(self):
+        shadow_skin.apply_theme([])
+
+    def page(self, defs, title):
+        return [c["componentData"]["name"] for c in defs["T|" + title]["componentsData"]]
+
+    def test_banks_limit_a_control_to_its_sub_pages(self):
+        defs, _ = self.build('[tab T]\nknob cx=200 cy=300 r=30 key=a banks="ONE"\nknob cx=400 cy=300 r=30 key=b\n'
+                             'frame x=600 y=200 w=200 h=200 title="X" banks="TWO"\n'
+                             'qlinks "ONE" = a,b\nqlinks "TWO" = b\n')
+        one, two = self.page(defs, "ONE"), self.page(defs, "TWO")
+        self.assertEqual(sorted(one), ["Background", "a", "b"])
+        self.assertEqual(sorted(two), ["Background", "Mode", "b"])   # the frame's own image, TWO only
+
+    def test_banks_must_name_a_qlinks_page(self):
+        with self.assertRaises(SystemExit):
+            self.build('[tab T]\nknob cx=200 cy=300 r=30 key=a banks="NOPE"\nqlinks "ONE" = a\n')
+
+    def knob_def(self, defs, prefix="shKnob"):
+        return [v for k, v in defs.items() if k.startswith(prefix)][0]
+
+    def test_knob_text_sizes_and_width(self):
+        defs, _ = self.build("[tab T]\nknob cx=200 cy=300 r=30 key=a ns=0 vs=40 bw=90\n")
+        kd = self.knob_def(defs)
+        names = [c["componentData"]["name"] for c in kd["componentsData"]]
+        self.assertNotIn("Name", names)
+        value = [c for c in kd["componentsData"] if c["componentData"]["name"] == "Value"][0]
+        self.assertEqual(value["componentData"]["data"]["textStyle"]["font"]["height"], 40.0)
+        self.assertEqual(int(value["bounds"]["bounds"].split()[2]), 90)
+
+    def test_side_knob_puts_the_value_beside_the_picture(self):
+        defs, _ = self.build("[tab T]\nknob cx=300 cy=300 r=20 key=a lay=side bw=240 bh=60 vs=40\n")
+        kd = self.knob_def(defs, "shKnobSide")
+        names = [c["componentData"]["name"] for c in kd["componentsData"]]
+        self.assertEqual(names, ["Focus", "Knob", "Value"])
+        value = kd["componentsData"][2]
+        self.assertEqual(value["bounds"]["bounds"].split(), ["54", "0", "182", "60"])
+
+    def test_toggle_bw_and_no_name(self):
+        defs, _ = self.build("[tab T]\ntoggle cx=300 cy=300 key=a bw=70\ntoggle cx=500 cy=300 key=b ns=0\n")
+        tg = {k: v for k, v in defs.items() if k.startswith("shToggle")}
+        self.assertEqual(len(tg), 2)
+        nn = [v for k, v in tg.items() if "_ns0" in k][0]
+        self.assertNotIn("Name", [c["componentData"]["name"] for c in nn["componentsData"]])
+        narrow = [v for k, v in tg.items() if "_bw70" in k][0]
+        self.assertEqual(narrow["componentsData"][0]["bounds"]["bounds"].split()[2], "70")
+
+    def test_enum_v_honours_sh(self):
+        w = {"kind": "enum_v", "options": ["A", "B"], "cx": 100, "cy": 100, "sh": 44}
+        self.assertEqual({r[3] for r in shadow_skin.seg_rects(w)}, {44})
+
+    def test_plain_knob_unchanged(self):
+        defs, _ = self.build("[tab T]\nknob cx=200 cy=300 r=30 key=a\n")
+        self.assertEqual([k for k in defs if k.startswith("shKnob")], ["shKnob30_ls%g" % shadow_skin.LABEL_SCALE])
+
+
+class StockStrips(unittest.TestCase):
+    """Slider and meter filmstrips as stock skins lay them out: frames of the widget's own size, numFrames = the count,
+    the strip under MAX_STRIP px (docs/NOTES.md 2026-10-07)."""
+
+    def test_short_widgets_keep_128_frames(self):
+        self.assertEqual(shadow_skin.strip_frames(40), shadow_skin.FRAMES)
+
+    def test_tall_widgets_get_fewer_frames(self):
+        n = shadow_skin.strip_frames(200)
+        self.assertEqual(n, 61)
+        self.assertLessEqual(n * 200, shadow_skin.MAX_STRIP)
+
+    def test_a_meter_keeps_its_own_frame_count(self):
+        self.assertEqual(shadow_skin.strip_frames(86, 3), 3)
+
+    def test_slider_bounds_are_its_own_size(self):
+        b = BuildAttrs()
+        defs, _ = b.build("[tab T]\nslider_v cx=500 cy=350 w=40 h=200 key=a\n")
+        sd = [v for k, v in defs.items() if k.startswith("shSlider")][0]
+        strip = [c for c in sd["componentsData"] if c["componentData"]["type"] == "Knob"][0]
+        self.assertEqual(strip["componentData"]["data"]["numFrames"], 61)
+        self.assertEqual(strip["bounds"]["bounds"].split()[2:], ["40", "200"])
+
+
+class SkinCheck(unittest.TestCase):
+    """tools/skin_check.py on a stub-built skin: overlapping touch boxes, boxes past the edge, stray Q-Links."""
+    PARAMS = [{"key": k, "name": k.upper(), "min": 0, "max": 1} for k in "abcd"]
+
+    def findings(self, layout):
+        import json
+        import skin_check
+        d = tempfile.mkdtemp()
+        lp, art = os.path.join(d, "layout.conf"), os.path.join(d, "art.sh")
+        open(lp, "w").write(layout)
+        open(art, "w").write("#!/bin/sh\ncat >/dev/null\n")
+        os.chmod(art, 0o755)
+        comps, tabs, qmap = shadow_skin.build(lp, self.PARAMS, d, art, lambda a, b: None)
+        json.dump({"pageData": {"componentDefinitions": {"localComponentDefinitions": comps}, "tabs": tabs}},
+                  open(os.path.join(d, "TUI.json"), "w"))
+        json.dump({"Screen Mode Q-Links": {"map": qmap}}, open(os.path.join(d, "Q-Links.json"), "w"))
+        return [f.split()[1] for f in skin_check.check(d)]
+
+    def tearDown(self):
+        shadow_skin.apply_theme([])
+
+    def test_a_clean_page_has_no_findings(self):
+        self.assertEqual(self.findings("[tab T]\nknob cx=200 cy=300 r=30 key=a\nknob cx=400 cy=300 r=30 key=b\n"), [])
+
+    def test_each_problem_is_found(self):
+        f = self.findings('[tab T]\nknob cx=200 cy=300 r=30 key=a\nknob cx=260 cy=300 r=30 key=b\n'
+                          'knob cx=1260 cy=300 r=30 key=c\nknob cx=600 cy=300 r=30 key=d banks="ONE"\n'
+                          'qlinks "ONE" = a,b,c,d\nqlinks "TWO" = a,b,c,d\n')
+        self.assertEqual(sorted(f), ["EDGE", "EDGE", "QLINK", "TOUCH", "TOUCH"])
+
+    def test_option_segments_are_complete(self):
+        self.PARAMS = [{"key": "a", "name": "A", "options": ["X", "Y", "Z"]}]
+        self.assertEqual(self.findings("[tab T]\nenum_h cx=400 cy=300 key=a\n"), [])
+
+    def test_narrow_bw_clears_the_overlap(self):
+        self.assertEqual(self.findings("[tab T]\nknob cx=200 cy=300 r=30 key=a bw=74\nknob cx=280 cy=300 r=30 key=b bw=74\n"), [])
 
 
 def _gen_like_tui():

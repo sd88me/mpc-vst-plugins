@@ -147,9 +147,7 @@ it back with the same file list and an updated `SHA256SUMS` line (the permission
 - **Generator option (#139, merged 2026-10-05):** `SHADOW_SKIN_MPC_OS=2` writes the 2.x shape (`to_mpc2x`), after a 2.x tester reported the converted Dexed skin working on a 2.15.1 MPC Live; its unit
   tests (in `tools/test_shadow_skin.py`) pass offline.
 - **User-facing docs (2026-10-05):** the main README, the install guide and the developer page (`catalog/pages/add.md`) describe the
-  labels and say that making a plugin 2.x-capable, and re-releasing it, is up to its developer. The nine plugin READMEs still carry
-  the earlier note ("Requires MPC OS 3.x; 2.x needs further development"), which is still accurate; change them when a plugin has a
-  2.x-capable release.
+  labels and say that making a plugin 2.x-capable, and re-releasing it, is up to its developer. The nine plugin READMEs (Dexed with its 1.0.5 release, the others by PR) carry the updated note: this release works on 3.x, 2.x needs a release with a compatible skin, the catalog labels each release (2026-10-05).
 - The test Force has Dexed's converted `TUI.json` installed; the original is at `/sdcard/os2test-backup/TUI.json.os3` on that
   device (copy it back over `Plugin Skins/TUI.json` to restore). MPC restarted on its own within seconds of that file swap;
   the cause is unknown (no crash lines in the log), so do not swap skin files on a live unit without telling the owner.

@@ -14,4 +14,5 @@
   },
   "components": [
     { "id": "machinemodule", "name": "Machinemodule", "kind": "instrument", "uid": "MdOn" }
-  ] }
+  ],
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-machinedrum/main/docs/img/machinemodule.png" }

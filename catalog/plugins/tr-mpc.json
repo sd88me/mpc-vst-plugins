@@ -1,0 +1,5 @@
+{ "id": "tr-mpc", "name": "TR-MPC", "author": "sd88me", "repo": "sd88me/mpc-vst-TR-MPC",
+  "kind": "instrument", "style": "drum-machine", "tags": ["tr-606", "tr-808", "cr-78", "tr-909", "modular"], "license": "GPL-3.0-only",
+  "asset_pattern": "TR-MPC-[0-9]*-mpc-armv7.zip",
+  "summary": "A modular 16-slot drum kit: each slot plays any of the 49 voices of athousanddetails' 6W6, 8W8, CW-78 and 9W9 (a 606 kick beside an 808 snare and 909 hats), with per-slot level, tune, decay, drive, pan and sends, one shared reverb, delay and master chain, a randomise module, and a touchscreen skin that reskins each slot to its voice's kit.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-TR-MPC/7e704c6f3be14b661c887631e203494d8cc3f74f/docs/img/tr-mpc-slots.png" }

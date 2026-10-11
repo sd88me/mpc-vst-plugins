@@ -21,7 +21,7 @@ sh /tmp/drive-exec-patch.sh status                      # changes nothing; lists
 sh /tmp/drive-exec-patch.sh install --root "/media/<your drive>"      # asks you to type PATCH
 sh /tmp/drive-exec-patch.sh uninstall                   # asks you to type REMOVE
 ```
-`--root` can be left out when exactly one drive under `/media` is mounted `noexec`. `--exec-dir vst` makes the contributor's original folder executable instead of `Synths`. A drive name may have spaces. After installing, install plugins to that drive with the installer app (Install to: the drive) or by hand, and add them to MPC's plugin list (the app's "Register plugin folders").
+`status` also lists every mount under `/media` (filesystem, device, `exec`/`noexec`). A drive is named by its label (`SSD - Force`) or, when it has none, by a number (`662522`); a folder in `/media` that has no line there is only an empty mount point left behind, not a drive. Patch the one marked `noexec`. `--root` can be left out when exactly one drive under `/media` is mounted `noexec`. `--exec-dir vst` makes the contributor's original folder executable instead of `Synths`. A drive name may have spaces. After installing, install plugins to that drive with the installer app (Install to: the drive) or by hand, and add them to MPC's plugin list (the app's "Register plugin folders").
 
 Before removing it, save your project. `uninstall` refuses while MPC has a plugin from the folder loaded (stop MPC first); the plugins stay on the drive but will not load until the patch is back. Run `status` after a reboot to see `patched`.
 

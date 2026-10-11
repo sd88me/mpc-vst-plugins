@@ -1,3 +1,4 @@
 { "id": "glass-spheres", "name": "Glass Spheres", "author": "Padbangers", "repo": "FullPace/glass-spheres",
-  "kind": "instrument", "style": "sequencer", "tags": ["mutable-instruments", "marbles", "random", "generative", "sequencer", "midi", "cv", "eurorack"], "license": "MIT",
-  "summary": "A random sampler after Mutable Instruments Marbles: random gates, melodies and deja vu loops that play other tracks over MIDI or analog gear over the MPC X's CV jacks, with envelopes, LFOs and a modulation matrix." }
+  "kind": "instrument", "role": "midi", "style": "sequencer", "tags": ["mutable-instruments", "marbles", "random", "generative", "sequencer", "midi", "cv", "eurorack"], "license": "MIT",
+  "summary": "A random sampler after Mutable Instruments Marbles: random gates, melodies and deja vu loops that play other tracks over MIDI or analog gear over the MPC X's CV jacks, with envelopes, LFOs and a modulation matrix.",
+  "screenshot": "https://raw.githubusercontent.com/FullPace/glass-spheres/glass-spheres-v1.0.0/docs/glass-spheres-main.png" }

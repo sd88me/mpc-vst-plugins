@@ -1,0 +1,18 @@
+{
+  "id": "airwindows-mackity",
+  "name": "Airwindows Mackity",
+  "author": "mmiroshnikov",
+  "repo": "mmiroshnikov/mpc-airwindows",
+  "kind": "effect",
+  "style": "saturation",
+  "tags": [
+    "airwindows",
+    "saturation",
+    "distortion",
+    "console"
+  ],
+  "license": "MIT",
+  "summary": "Mackie-style console distortion: drive it with the input trim, tame it with the output pad.",
+  "screenshot": "https://raw.githubusercontent.com/mmiroshnikov/mpc-airwindows/main/docs/screenshots/Mackity.jpg",
+  "asset_pattern": "Mackity-*-mpc-armv7.zip"
+}

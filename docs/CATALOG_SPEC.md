@@ -83,9 +83,9 @@ Warnings (need a human look): `install.sh`/`uninstall.sh`/`plugin_list.awk` diff
 { "id": "my-synth", "name": "My Synth", "author": "Someone", "repo": "someone/my-synth-vst",
   "kind": "instrument", "license": "MIT", "summary": "One line.",
   "style": "synth", "tags": ["poly"], "source_available": false,
-  "screenshot": "optional URL or path", "asset_pattern": "*-mpc-armv7.zip" }
+  "screenshot": "optional https URL", "asset_pattern": "*-mpc-armv7.zip" }
 ```
-`style` (one slug) and `tags` (slugs) are optional and drive the site filters. `source_available: true` is required
+`style` (one slug) and `tags` (slugs) are optional and drive the site filters. `role` is optional, `"midi"` only, and only on an `instrument`: the plugin is a MIDI generator or sequencer that plays other tracks (or outboard gear) rather than making its own sound; the catalog page and the installer list it under their MIDI tab instead of Instruments. A synth with a built-in arpeggiator is not `midi`. `source_available: true` is required
 when `license` is not on the open-source list; the site shows a "Restricted use" badge.
 No version fields: they are read from the releases (or, for `build-yourself`, the git tags). `id` must equal the manifest `id`, `repo` the manifest
 `source_repo`. Stable releases are GitHub releases that are not prereleases; prereleases form the beta channel.
@@ -160,6 +160,23 @@ zip uses `layout: "addin"`:
   a device that looks like MPC OS 2.x (glibc below 2.34); they warn and never block.
 - **`catalog.tsv`, addins:** `skin` and `uid` are `-`. `mpc-store.sh` installs an addin to `/data/mpc-addins/<id>` and reads the installed
   version from the folder's `addin.manifest` (`ADDIN_VERSION`), not from `.mpc-store`.
+
+## Companion apps (`catalog/apps.json`)
+Desktop tools that work with a standalone MPC but are not plugins. Not part of `catalog.json`, `catalog.tsv` or any installer: the site
+shows them on its Companion apps tab, and `apps.json` is published next to `catalog.json`. Checked by `tools/app_check.py` (the site build
+refuses an invalid file). `{"schema": 1, "apps": [...]}`, each app:
+
+| field | |
+|---|---|
+| `id`, `title`, `summary`, `author`, `license`, `repo` | required; `id` is lowercase words joined by hyphens, `repo` is `owner/name` |
+| `release` | required https URL of the release page |
+| `platforms` | required, from `macos`, `windows`, `linux` |
+| `release` | https URL of the release page; optional when `assets` is given (then set from the release) |
+| `assets` | optional rules `{platform, label, pattern}` (`pattern` is an fnmatch over asset names); `tools/app_resolve.py` reads them against the newest stable release (no drafts or prereleases) and fills `downloads`, `version` and `release` |
+| `downloads` | optional list of `{platform, label, url, sha256}`, `platform` one of the app's, `url` https, `sha256` 64 lowercase hex. Written by `app_resolve.py`; when there are no `assets`, or the release can't be read, the pinned list in the file is used |
+| `version`, `needs` (list), `tested` (`{device, os}`) | optional, shown on the card |
+
+`tools/app_resolve.py` runs in the Catalog build workflow (nightly, on pushes to `main` touching the catalog, and by hand) and writes `catalog/dist/apps.json`, which `catalog_site.py` prefers over `catalog/apps.json`. The sha256 is the asset's GitHub `digest`, else its line in a `SHA256SUMS` asset of the same release; an asset with neither is left out and reported. A failed read keeps the pinned `downloads`, so a bad night does not blank a card. A new release therefore appears on the next build, with no PR to this repo.
 
 ## Portable paths (for engines)
 Engines locate their data next to the `.so` (`wrapper/plugin_dir.h`, `MODULE_SUBDIR`), never at a fixed `/sdcard`.

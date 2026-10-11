@@ -1,4 +1,5 @@
 { "id": "tr-6w6", "name": "6W6", "author": "athousanddetails", "repo": "sd88me/mpc-vst-TR-MPC",
   "kind": "instrument", "style": "drum-machine", "tags": ["tr-606"], "license": "GPL-3.0-only",
   "asset_pattern": "6W6-*-mpc-armv7.zip",
-  "summary": "MPC/Force port of athousanddetails' schwung-6W6 TR-606 drum machine: voices fitted against real hardware recordings, with measured-partial hats and cymbal. Touchscreen skin and Q-Links." }
+  "summary": "MPC/Force port of athousanddetails' schwung-6W6 TR-606 drum machine: voices fitted against real hardware recordings, with measured-partial hats and cymbal. Touchscreen skin and Q-Links.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-TR-MPC/ba525167c18bb0961dfd60d5989a033f737fe517/docs/screenshots/6w6.png" }

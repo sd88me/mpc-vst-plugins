@@ -1,0 +1,5 @@
+{ "id": "boris-granular", "name": "Boris Granular", "author": "sd88me", "repo": "sd88me/mpc-vst-boris",
+  "kind": "effect", "style": "granular", "tags": ["granular", "freeze", "tempo-sync", "texture", "pads", "shimmer", "stutter"], "license": "GPL-3.0-only",
+  "asset_pattern": "Boris-Granular-*-mpc-armv7.zip",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-boris/2d7b1360c68ccc91b22b0c5030152e08dd3682b8/docs/screenshot-force.png",
+  "summary": "Real-time granular insert effect: incoming audio is written to a 10 s buffer and up to 24 overlapping grains replay it with per-grain random size, delay, pitch, direction, volume and pan. Tempo sync to MPC (1/16 to 4/1, dotted and triplet), freeze, feedback, dry/wet, three grain envelopes, 22 presets and a one-page touchscreen skin with two Q-Link sets. DSP from boris-move, a port of Boris Granular Station by Alessandro Gaiba." }

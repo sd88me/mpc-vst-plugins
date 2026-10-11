@@ -11,6 +11,7 @@
   bridge work on the engine side. The DX7 port hit this and switched to an in-process build of the same engine.
 - A port can live in its own repo next to a checkout of this one (`MPC_VST`), as mpc-vst-maze/-dx7/-acid do.
 - **MIDI generator** (sequencer/arp): MPC ignores VST MIDI out, so send through an ALSA seq port (`poc/midiport.c`).
+  Place steps from the host song position, not by counting MIDI clock pulses you synthesized: `docs/MIDI_TIMING.md`.
 - **App** (network, files, child processes): allowed, see NOTES "Beyond synths". Keep the audio thread
   non-blocking, use `posix_spawn` with LD_PRELOAD stripped (never `fork()`), and use libcurl for HTTPS.
 
@@ -19,7 +20,8 @@ Add a `vst.json` next to the engine (format in `tools/gen_vst.py`'s docstring; e
 `mpc-vst-maze/vst/vst.json`), then run `tools/build_port.sh path/to/vst.json`. That builds the skin from
 `layout` (or from an auto-layout when there's none, which is a good first pass), `params.h`, the `.so` (linked with
 `wrapper/vst2_wrap.c`) and `pluginlist-entry.xml`, all in `build/` next to `vst.json`. The port's own `build.sh` should
-just call it. Don't vendor copies of the wrapper or tools -- a port source that implements `mpc_engine()` itself
+just call it (a build that links `wrapper/vst2_wrap.c` itself must add `-lpthread`: the wrapper's engine lock needs
+it on the device's glibc 2.31 toolchain). Don't vendor copies of the wrapper or tools -- a port source that implements `mpc_engine()` itself
 can `#include "engine.h"` directly (the builder puts `wrapper/` on the include path). Then bench it (docs/BENCH.md) and package it (docs/RELEASING.md).
 
 **Vendor the engine's own source into the port's repo; don't fetch it at build time.** If the DSP comes from a
@@ -50,7 +52,9 @@ for the pattern). This applies to every future port, not just ones that hit the 
       sequenced notes) instead of at the 128-frame block start. The engine's `render()` must then accept any 1..128 frames
       (check block-counting clocks, fixed-block cores) and `tools/test_port.sh` plus a bench (docs/BENCH.md) must pass.
 - [ ] Optional: an engine that changes values by itself (a worker thread, a state machine, status text) sets `"defines": {"HAS_DISPLAY_REV": 1}` and
-      bumps a `display_rev` value whenever something changed; the wrapper polls it every ~100 ms and tells the host (text, `when=` panels, meters).
+      bumps a `display_rev` value whenever something changed; the wrapper polls it every ~100 ms and tells the host (text, `when=` panels, meters). With a PRESET menu and live meters add
+      `"DISPLAY_REV_NO_UPDATE": 1`: it reports only the moved values, no full `UpdateDisplay` (which closes the popup 10 times a second);
+      text readouts then stop refreshing, so draw live numbers as `picture` widgets keyed on the same value (ottmpc: `vst/art/make_art.py`).
       Readouts longer than 24 characters need `"PARAM_TEXT_MAX": <n>` (NOTES.md; `poc/uiprobe` is the example).
 - [ ] Never hardcode `/sdcard/...` in an engine. Set `"defines": {"MODULE_SUBDIR": "\"engine\""}` in vst.json and
       the wrapper passes `<dir of the .so>/engine` to `create()`, found at runtime with `dladdr` (`wrapper/plugin_dir.h`,
@@ -66,6 +70,12 @@ for the pattern). This applies to every future port, not just ones that hit the 
 - [ ] State saved via chunks (`effGetChunk`/`effSetChunk`).
 - [ ] Offline x86 test: `tools/test_port.sh <port>/vst.json` prints PASSED (instances, parameter round-trip,
       options, popups, MIDI → audio, chunk restore, under ASan).
+- [ ] Gen2 (optional, proven on two ports as of 2026-10-11 — Crate Digger, Profit-08, both loaded on a real MPC Live III): `"targets":
+      ["armv7", "aarch64"]` in vst.json, `tools/build_port.sh <port>/vst.json aarch64` builds `build/aarch64/<so>` (`arm64v8/gcc:12-bookworm`),
+      `tools/test_port.sh <port>/vst.json aarch64` must print PASSED (UBSan, arm64 container), and the release carries both zips
+      (docs/RELEASING.md, docs/GEN2.md). Still say "offline only" (or name the device once it's run there) until it has loaded on a Gen2
+      device of your own, and remember there is no SSH/root route on Gen2 this project provides — only testers who already have root
+      some other way can try it.
 
 ## 2. Parameters
 - [ ] Stable order (the VST index is what skins and projects bind to). Append only; never reorder a shipped plugin.
@@ -117,6 +127,18 @@ for the pattern). This applies to every future port, not just ones that hit the 
 - [ ] Instruments-browser tile: `"tile": "art/tile.png"` (270x110 PNG) in vst.json puts the artwork tile in the Sounds >
       INSTRUMENTS browser and ships a Default preset so the tile opens the plugin (`tools/xpl.py`; NOTES.md
       "Instruments-browser tiles"). Without it the plugin is a folder tile in the browser.
+- [ ] Presets in MPC's PRESET menu (2026-10-07; menu listing and loading checked on a Force, reload behaviour not yet): an engine with its own preset parameter
+      sets vst.json `"programs": {"param": "<key>"}` (an option list, or a `"display": "int"` range whose names the engine
+      gives as `get_param("<key>:<n>")`); one without sets `"presets": "presets.json"` (`{"presets": [{"name", "values":
+      {key: value}}]}`, values in each parameter's units or an option's label; gen_vst.py checks them). Set every
+      parameter in every preset, in the order the engine needs, and make the first one the plugin's default sound.
+- [ ] MIDI control (2026-10-07, offline): CC 20-35 on the track's MIDI input move the first page's Q-Links (first `qlinks`
+      line, column 1 top to bottom = CC 20-23) and NRPN n (CC 99/98, value on CC 6, fine on 38) sets parameter n. Both on by
+      default, and those CCs then don't reach the engine: an engine that reads CC 20-35 or NRPN itself sets vst.json
+      `"cc": false` / `"nrpn": false`.
+- [ ] Skin touch-ups the layout can't express (per-role live-text sizes/colours in `TUI.json`): a script named by
+      vst.json `"skin_post"`, run on the built skin folder; make it fail when its targets are missing. Design ideas from
+      other ports: `docs/COMMUNITY_SKINS.md`.
 
 ## 4. Device
 - [ ] The plugin is one folder, `/sdcard/Synths/<vendor> - VST - <name>/`: the `.so`, `Plugin Skins/`, `version.xml` and any data next to the `.so`.

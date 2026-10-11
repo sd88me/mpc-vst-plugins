@@ -1,0 +1,5 @@
+{ "id": "omni-sampler", "name": "Omni Sampler", "author": "MrHighMan", "repo": "B0ss-M/MrHighMan",
+  "kind": "instrument", "style": "sampler", "tags": ["akai", "emu", "roland", "kontakt", "sf2", "sfz", "disk-images"],
+  "license": "LGPL-3.0-or-later", "asset_pattern": "Omni-Sampler-*-mpc-armv7.zip",
+  "screenshot": "https://raw.githubusercontent.com/B0ss-M/MrHighMan/main/docs/screenshot.png",
+  "summary": "Multi-format sampler: plays Akai, E-mu, Roland, Kontakt/Maschine, SF2 and SFZ instruments straight from their files or sampler disk images, with layers, keyswitching, a mod matrix and its own screen skin." }

@@ -1,0 +1,18 @@
+{
+  "id": "stevequencer",
+  "name": "Stevequencer",
+  "author": "Steve A",
+  "repo": "saustin2010/mpc-vst-stevequencer",
+  "kind": "instrument",
+  "role": "midi",
+  "style": "sequencer",
+  "tags": [
+    "step-sequencer",
+    "midi",
+    "q-links",
+    "melodic"
+  ],
+  "license": "MIT",
+  "summary": "Melodic step sequencer edited from the Q-Links: 16 steps on a 4x4 grid, up to 64, with chance, ratchets and MOD lanes.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-stevequencer/v1.0.0/screenshots/page_0.png"
+}

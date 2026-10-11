@@ -1,0 +1,17 @@
+{
+  "id": "obxd",
+  "name": "OB-Xd",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-obxd",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "ob-x",
+    "analog-modelling",
+    "polyphonic",
+    "subtractive"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "OB-Xd, the Oberheim OB-X emulation: two oscillators with sync and cross-mod, a 12/24 dB filter, voice variation; 128 presets.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-obxd/v1.0.0/screenshots/page_0.png"
+}

@@ -48,13 +48,14 @@ mkdir -p "$DIR"
 for f in "$ADDIN_SO" $ADDIN_FILES; do   # staged, then renamed: a running MPC keeps the old file mapped
     cp "$f" "$DIR/$f.new" && chmod 644 "$DIR/$f.new" && mv "$DIR/$f.new" "$DIR/$f"
 done
-for f in $ADDIN_CONF; do [ -f "$DIR/$f" ] || cp "$f" "$DIR/$f"; done
+for f in $ADDIN_CONF; do [ -f "$DIR/$f" ] || { cp "$f" "$DIR/$f"; ask_bind "$DIR/$f"; }; done
 if [ "$(cd "$DIR" && pwd)" != "$(pwd)" ]; then   # not when reinstalling from the folder itself
     for f in $SELF_FILES; do cp "$f" "$DIR/$f.new" && chmod 644 "$DIR/$f.new" && mv "$DIR/$f.new" "$DIR/$f"; done
 fi
 preload_add "$SVC" "$UNIT" "$SO"
+mockba_hook_add "$SO"
 svc daemon-reload
 sync
-if [ $RESTART = 1 ]; then svc restart "$SVC"; echo "Done. MPC restarted."
+if [ $RESTART = 1 ]; then svc restart "$SVC"; echo "Done. MPC restarted."; check_loaded "$SO"
 else echo "Done. The addin starts with MPC's next start."; fi
 [ -z "$ADDIN_DONE" ] || echo "$ADDIN_DONE"

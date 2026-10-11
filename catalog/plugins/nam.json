@@ -1,3 +1,4 @@
 { "id": "nam", "name": "NAM", "author": "jacob-sabella", "repo": "jacob-sabella/mpc-vst-nam",
   "kind": "effect", "style": "amp-sim", "tags": ["nam", "guitar", "amp", "cab-ir", "tone3000"], "license": "MIT",
-  "summary": "Neural Amp Modeler captures as an insert effect, with cab IR, tone, gate, pitch, delay, reverb and an on-device TONE3000 downloader." }
+  "summary": "Neural Amp Modeler captures as an insert effect, with cab IR, tone, gate, pitch, delay, reverb and an on-device TONE3000 downloader.",
+  "screenshot": "https://raw.githubusercontent.com/jacob-sabella/mpc-vst-nam/f2fa28c8f4086606e929732a4824e72579bdcf80/docs/screenshots/nam.png" }

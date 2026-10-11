@@ -1,0 +1,4 @@
+{ "id": "morpho-pe", "name": "Morpho-PE", "author": "sd88me", "repo": "sd88me/mpc-vst-morpho-PE",
+  "kind": "instrument", "style": "synth", "tags": ["analog-modelling", "polyphonic", "sequencer", "evolver"], "license": "MIT", "asset_pattern": "Morpho-PE-*-mpc-armv7.zip",
+  "summary": "Four-voice synthesizer modelled on the Poly Evolver's voice: analog-style and digital waveshape oscillators, 2/4-pole lowpass, delay, feedback, distortion, 4 x 16 step sequencer, a bank browser and a touchscreen skin with Q-Links. Loads Poly Evolver program dumps and, from your own Prophet VS ROM chip images, the 95 factory waves.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-morpho-PE/main/docs/img/morpho-pe.png" }

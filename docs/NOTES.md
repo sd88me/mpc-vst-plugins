@@ -31,6 +31,8 @@ from the Force and may differ on MPC Live/One/X/Key (e.g. `Force Documents` vs `
 - Component library: `AKAI Components/AKAI Generic Components.json` (knobBlack/Blue/Green/Grip/
   Point/Red/Silver/Witch/Yellow). Bassline defines its own `btnBypass`, `comboBox`, `slider` locally;
   that's where to copy switch/button/menu definitions from.
+- Gen2 (offline, 2026-10-09, from the MPC OS 3.9.1 Gen2 update image's main rootfs, not a device): userland is aarch64 only, `/usr/lib/libc.so.6` is
+  GNU libc 2.39, so a Gen2 plugin is a separate aarch64 build with a 2.39 glibc ceiling. See `docs/GEN2.md`.
 
 ## Open issues (reviewed 2026-09-25)
 
@@ -46,6 +48,26 @@ from the Force and may differ on MPC Live/One/X/Key (e.g. `Force Documents` vs `
    with `snd_seq_event_output_direct`, synced to host `ppqPos`/tempo. MPC's own seq client ("MPC") hot-detects the
    new port, creates a matching input ("<client> <port>") and connects it with no restart. Enable Track on it in
    Preferences → MIDI, then any track can select it as MIDI input. Plugin sequencers/arps can drive other tracks.
+   **Force, 2026-10-08 (device):** Maschine Group opened client 130 / "MIDI Out" and MPC subscribed
+   (`129:6 "Maschine Group MIDI Out"`), but `MidiDevices.AutoEnableForTracks` was `0` and the port was
+   absent from `MidiDevices.Table`. Rec wrote no clip events until that input was Enable Track. Do not
+   flip AutoEnable globally on a unit that already has a long MIDI table; add this one port with
+   `track: true` or turn Enable Track in Preferences.
+   **Maschine Group kit switch (offline, 2026-10-08):** loading another group keeps Empty if Empty was
+   selected; if any other pattern was selected, the new group starts on its first pattern.
+   **Maschine Group scan (offline, 2026-10-08):** the default walk is only the plugin `groups/` folder.
+   Walking `/media` and `/sdcard` listed leftover `.mxgrp` files from the user's own library (a Flumex
+   kit under `/media/MPC/M8`) that nobody put in the plugin. Setup → Change folder / Refresh is how a
+   copied `Groups/` + `Samples/` tree is added. A group/pattern row tap that arrives as 0 is ignored so
+   the automate-off echo of the previous row does not unload.
+   **Maschine Group Change folder (offline, 2026-10-09):** `tsize=` + `get=help_6` put a Titillium Value
+   label on top of the button, remapped to the help string. The tap set that string param, not
+   `root_pick`, so the button did nothing. Skin: a near-invisible hit plate on top of the caption,
+   Mouse Down → Toggle Switch, pressed fill `theme_accent`. Needs an MPC restart to load the skin.
+   **Maschine Group folder browser (offline, 2026-10-09):** Change folder and Use folder shared
+   `root_pick`, so the same press opened the list and immediately committed (empty place list =
+   close). Use folder is now `root_use`, and commit is ignored for ~350 ms after open. Refresh
+   has no arrow glyph. Folder rows use a lighter tile fill (`color=2a2622`).
    Most likely stock MPC OS behaviour: MockbaMod's MidiLoop (`tkgl_anyctrl_lt.so`) only filters or blacklists
    ports; it doesn't create them. **Still unconfirmed on a stock unit.** Latency is about one audio block
    (direct, unscheduled send).
@@ -481,10 +503,11 @@ build's CC table, kept in sync by hand) since that pipeline only cares about the
 momentary shape, not the real host API.
 - **Clock, without a physical MIDI cable:** the standalone build derives BPM/transport from real 0xF8/
   0xFA/0xFC MIDI clock (EMA of inter-pulse interval). A VST host hands this over cleanly instead:
-  `audioMasterGetTime` gives exact `tempo` and `ppqPos` already, so the wrapper synthesizes the same
-  24-PPQN clock byte stream from the ppqPos delta each block (`ceil(last/step)*step .. end`, step =
-  1/24 quarter note) and feeds it to the engine's own `process_midi()` unchanged -- no core changes
-  needed.
+  `audioMasterGetTime` gives exact `tempo` and `ppqPos`. The first port synthesized the same 24-PPQN clock byte
+  stream from the ppqPos delta each block and let the core count pulses; **that is superseded (2026-10-08):
+  pulse counting keeps the step phase relative, so a lost pulse, a mid-song start or a loop wrap shifts it
+  for good. Place each step from `ppqPos` instead -- see docs/MIDI_TIMING.md** (mpc-vst-acid PR #8 does, unreleased as of 2026-10-08; the core
+  only needed a 0xF9 "step boundary" message and the wrapper owns the grid).
 - **Host API with no instance argument** (`host_api_v1_t.get_bpm`/`get_clock_status`, acid_core.h): fine
   to leave process-wide (one set of atomics, `move_midi_fx_init` called once), since MPC has one shared
   transport for every plugin instance anyway -- matches host_shim.cpp's own simplification.
@@ -623,6 +646,17 @@ path if the DSP returns nothing. The DSP answers it with real selection state (j
 `patch_slot_N_on` = loaded patch). MPC does not re-read a button's value on `audioMasterUpdateDisplay`, so
 `run_block` also calls `audioMasterAutomate(i, value)` for each such param whenever its `_on` value changes
 (`last_on[]` caches what the host was told). Without that push the highlight showed only sometimes.
+  Follow-up (2026-10-08): MPC calls `setParameter` from inside that `audioMasterAutomate`. Fed back into the
+  engine, the row that just turned off is selected again, so a tap above the current row never sticks and a
+  long list only highlights. The wrapper now ignores that echo (the same index and value it just pushed).
+  A real row touch changes the skin's host-side `Toggle Switch` before `setParameter`; the wrapper must copy
+  that value into `last_on` when the call arrives. Otherwise the cache still thinks the row has its previous
+  value and may never correct it, leaving several rows lit. With the cache synchronized, the next `<key>_on`
+  poll turns the previous row off and leaves only the engine's single selection on.
+  For lists whose rows are mutually exclusive by definition, `list select=<param> select_n=<N>` avoids that
+  independent-switch state entirely: every row is a button in one radio group bound to the shared integer
+  parameter (0 = none, 1..N = row). Until that lands in the skin builder, a row tap must ignore value 0
+  so the automate-off echo of the previous row does not become a new selection.
   Follow-up (2026-10-01, Chordsmith): that push only ran after a parameter set, so a tile whose `_on` changed
   from MIDI alone (a pad plays a chord, nothing on screen touched) never lit. `housekeeping()` now polls every
   `_on` every 10 ms (441 frames) and pushes a change with `audioMasterAutomate` plus an `UpdateDisplay`;
@@ -1059,8 +1093,9 @@ so a reboot seems to clear it (not confirmed); MPC restarts (`acvs`) don't. A te
 and restarts reached 729 files / 2.2 GB and filled the partition (copies failed with "No space left on device").
 The files are not held open between loads, so `rm -f /var/tmp/filmstrips/temp_*.img` frees the space safely
 (delete through `/var`, never the overlay's upper dir).
-Size per load is frames × frame area × 4: filmstrip frames are square (`square_strip`), so a wide thin bar as a
-`meter` is very expensive (a 360×4 bar became 128 frames of 360×360 = 66 MB per load). For bars use `picture`
+Size per load is frames × frame area × 4. Filmstrip frames used to be square-padded (`square_strip`), so a wide thin
+bar as a `meter` was very expensive (a 360×4 bar became 128 frames of 360×360 = 66 MB per load); since 2026-10-07
+slider and meter frames are their own w × h (see "reported by other forks" below), which makes that bar ~0.7 MB. For bars use `picture`
 (one image per step, mode images, no filmstrip), as the Plugin Manager does.
 
 ## Device screenshots (MPC One, 2026-10-01)
@@ -1068,6 +1103,9 @@ Size per load is frames × frame area × 4: filmstrip frames are square (`square
 (the display; `card1` is the GPU and refuses KMS ioctls) has one active CRTC with an 800x1280 XRGB8888 buffer, linear
 (modifier 0), so GETFB2 + PRIME export + mmap gives the exact screen. The panel is portrait: rotate 270 degrees. The plugin
 area is 1280x628 at y=110 of the upright image. `tools/screenshot.sh` does all of it.
+Same on an MPC Key 37 (MPC 3.9.1.2, 2026-10-05): the same 800x1280 portrait scanout, upright after the rotation, and
+`--plugin` crops both an instrument's edit screen and an insert effect's screen cleanly (both headers are 110 px tall).
+The catalog shots for NAM, Chordsmith and Keyscope were taken this way.
 
 ## 2026-10-03: patches step (read only) in the installer app, offline only
 Design in `docs/PATCHES.md`. Built so far: the drum-pad patch script v4 (`status` ends with a `STATE` line; `install --confirmed` skips the typed question; `status` unmounts the bind mount of `/` that it opened, which v1-v3 left mounted: found by reading the script, fixed and checked with shimmed `mount`/`umount`/`mountpoint`), `catalog/patches.json` + `tools/patch_check.py` (the site build publishes it only if it validates), and step 7 of the app (list and `status` only; no apply). Checked on the host only: `tools/test_patches.py` (13 tests: the script contract against a synthetic stand-in for the MPC binary with its checksums rewritten, the checker, the site build), `go test -race` in `tools/desktop` (new `patches_test.go`, six mutations each fail a test), and `tools/desktop/ui_test/ui_patches.py` (Chromium, API stubbed). **Not run:** `tools/mpc_patch/test_script.sh` with Akai's real MPC (not in the repo), the app against a real Force, or any apply/undo from the app (not built).
@@ -1164,5 +1202,181 @@ The contributor shared his package (a systemd timer service that makes one folde
 - **Adapted (version 0.2.0, `tools/mpc_patch/drive_exec`, **renamed "drive exec" on 2026-10-05**: nothing in it is specific to that drive or to a Force, "ForceHD" was the label of the contributor's own drive; the on-device names are `/etc/drive-exec`, `drive-exec.timer` and so on, so it never collides with his original `force-vst-exec`, which `status` reports and `install` refuses to touch, `reason=other-install`):** drive and folder chosen and strictly validated (the config is sourced by a root service), default folder `Synths`, mountinfo paths compared escaped, the empty `acvs` drop-in dropped, a wrapper with the `STATE` line (new state `partial`, new `reason=` tokens), typed words, one file. His three systemd units are his, with only the names changed.
 - **Tested offline, with real mounts** (`tools/test_drive_exec.py`, root, `unshare -m`): a `noexec` tmpfs at `/media/SSD - Force`; a compiled library really `dlopen`ed before, with, and after the patch (blocked, loads from `Synths`, outside stays blocked, blocked again after removal); the parent mount's id and options never change; install, status, uninstall, repeated apply, an absent drive, a plugin held by a process blocks removal, a failed install rolls back, the typed words, hostile drive and folder names (really mounted, e.g. a quote, `$(...)`), a foreign mount, another version, and the embedded files equal `src/`. Seven mutations of the script each fail a test. **Not covered (tmpfs is not exFAT, no systemd, no MPC):** a Force, exFAT specifics, a reboot, MPC loading a plugin from the folder, `Register plugin folders` after, and any firmware update. The patch is listed in `catalog/patches.json` (read-only in the app); applying it from the app is not built.
 
+## 2026-10-05: button remap as a device patch (hwremap), installer tested offline only
+`tools/mpc_patch/hwremap` vendors https://github.com/mmiroshnikov/akai_standalone_remap at `9d2aa57a570b` (MIT; `hwremap.c`, its host test, `configs/mpc-live.conf`, `configs/force.conf`, unchanged) and installs it the same way as the other device patches: one script, `status` / `install` / `uninstall`, a typed word, a backup under `/data/mpc-vst-plugins/backups`. Listed in `catalog/patches.json` as `button-remap`. The library is 32-bit ARM, built with `arm32v7/gcc:11-bullseye`; the highest glibc symbol it needs is 2.17 (`clock_gettime`), plus `pipe2` from 2.9.
+- **What the shim's author already tried** (that repo's README, not re-checked here): an MPC Live on Hakai, MPC 3.9.1, and a Force on stock firmware 3.9.0. Hakai gets `/usr/lib/hwremap.so` and a line in `/usr/bin/az01-launch-MPC`. The Force gets `/data/hwremap/hwremap.so` and a systemd drop-in that keeps the `LD_PRELOAD` already on `acvs`. Config is `/sdcard/hwremap.conf`.
+- **This installer** picks those two styles itself (launcher file, otherwise `acvs` or `inmusic-mpc`), stops and starts MPC, rolls back a failed install, and will not overwrite a config that is already there or a hwremap that was installed by hand. **Not run on a device.** Offline: `tools/test_hwremap_patch.py` (scratch root, shims; both styles, typed words, rollback, an edited config, a preload that is not a plain path; the unpacked library matches the built `.so`, and the same hex decodes identically with BusyBox awk). The library's host tests passed under ASan/UBSan in Docker (`gcc:11`). The manifest URL is pinned to `82e1c322f8a511e9c8546e9ad1f891b4df54c1c4`.
+- **Review fixes (offline, host-tested with a fake systemctl; not run on a device):** a launcher line with an unquoted `LD_PRELOAD=a.so cmd` now gets `:/usr/lib/hwremap.so` (a space made the library the command that ran), and the script checks the unpacked library's size and sha256 before it moves it into place (the awk unpacker has to emit NUL bytes, and a device awk that drops them would otherwise put a corrupt library into MPC's `LD_PRELOAD`). The script now also needs `wc`, `tr`, `cut` and `sha256sum`.
+
+## 2026-10-10: the button-remap installer run on a Force; MockbaMod's input path
+Force, MPC OS 3.x, over ssh with no terminal (so the checklist did not show).
+- **Stock path works.** With MockbaMod's `boot.sh` moved aside, `sh hwremap-patch.sh install` (typed word on stdin, default options) installed the drop-in and `/data/hwremap/hwremap.so`; `status` reported patched, MPC's `LD_PRELOAD` held the remote addin and hwremap, and the library hooked "Akai Pro Force Private". By hand, every default rule worked: Edit twice (editor), Clip + Left (Arrange), Menu twice (Main Mode), Mixer twice (Master), Mixer + the four arrows (tabs). With the `skipback` rule added, the log showed `remap 93 (double)` (the note-127 tap went out; nothing listens for it). The Mode Menu was at its default layout. Not run on a device: `uninstall`, the checklist, the Knobs options, the MPC Live map.
+- **Two installer bugs only a device showed** (fixed in the same PR): `status` chose the launcher style on a Force because `/usr/bin/az01-launch-MPC` exists there without an `LD_PRELOAD` line, and BusyBox's shell exits on `read < /dev/tty` when there is no tty even with `2>/dev/null ||` after it (dash does not, so the offline tests missed it).
+- **MockbaMod on: the remap does nothing.** MockbaMod running with MidiLoop, hwremap loaded (a small addon appended it to MockbaMod's preload list): MPC opens a `Virtual RawMIDI` port only and the library, which filters the port named "...Private", attached to nothing.
+- **MockbaMod on, MidiLoop disabled (its launcher `AddOns/run_midiloop.sh` renamed): no pads and no buttons after the restart.** Restored by renaming it back and restarting. Re-tried on 2026-10-11 with hwremap not loaded at all (the in-RAM preload list deleted before the restart, so it was rebuilt from the enabled addons only): the pads and buttons were dead again, so it is the missing MidiLoop, not hwremap. On that install the controller's input depends on MidiLoop's preload library (`tkgl_anyctrl_lt.so`) or process; the rest was not investigated.
+- **hwremap does not pair with MidiLoop / MockbaMod's input path.** MidiLoop (running) and MockbaMod's `mockbaMagic` put the controller behind a `Virtual RawMIDI` port, which hwremap does not filter, so none of its rules fire; MidiLoop cannot be switched off under MockbaMod without losing the pads and buttons. A Force that wants the remap runs the stock path (MockbaMod's `boot.sh` moved aside), and then loses MidiLoop and the other MockbaMod addons.
+- **Key login on the stock path.** MockbaMod keeps the SSH keys in a `/root` overlay that only exists while it boots, so on the stock path key login is refused (password login still works). The stock `/etc` is a persistent overlay (`/data/system/etc/overlay`): a second key file `/etc/ssh/authorized_keys.root` plus `AuthorizedKeysFile .ssh/authorized_keys /etc/ssh/authorized_keys.root` in `/etc/ssh/sshd_config` gave key login back (checked with a second `sshd` on port 2222 that read only the new file). `sshd_config.d` is not included by this `sshd_config`.
+
+## 2026-10-09: hwremap on a Force, checked by hand (button notes, touch taps, combo rule); the installer's options are offline only
+Tried on a Force (MPC OS 3.x) with a build of the vendored library loaded through an `acvs` drop-in and a config in `/sdcard/hwremap.conf`; the installer script itself was not run on it.
+- **Button notes** (channel 1, from the library's input log): Edit 37, Clip 9, Mixer 11, Menu 2, Shift 49, Up 112, Down 113, Left 114, Right 115 (Rec read as 93; not used).
+- **Touch taps** (`tX,Y` writes `ABS_MT_POSITION_X/Y`): the panel reports X 0..1280 and Y 0..720 (`EVIOCGABS` on `/dev/input/event0`) and is rotated against the 1280 x 800 screen: raw x = screen y x 1.6, raw y = 720 - screen x x 0.5625. Checked by taps that opened Arrange (`280,487`), Grid View (`280,360`) and the mixer's bottom tabs (`1232,540 / 301 / 181 / 421`). The stock config's `331,655` converts to screen (115, 207): the Clip Matrix tile at the top of the fixed left column, not the Main Mode house in the grid.
+- **`m<Name>` does nothing on a Force.** It presses note 123 (the MPC Live's Menu button) and a channel-10 pad; the Force's Menu is note 2. The rule is logged as fired and MPC ignores it. The Force map therefore taps by position (`b2 t...`).
+- **`combo HOLD SRC tokens...`** (the local patch in `VENDORED.md`) fired as designed: Clip (9) + Left (114) and Mixer (11) + Up/Down/Left/Right. The Mixer double-press rule and the Mixer + arrow rules did not interfere. Edit twice sending `d49 b9 u49` (Shift + Clip) opened the plugin editor; Mixer twice reached Master.
+- **MockbaMod diverts the buttons.** With MockbaMod's `boot.sh` running, MPC opened only a `Virtual RawMIDI` port and the library, which filters the port named "...Private", attached to nothing (its log showed no buttons). With `boot.sh` renamed away, MPC opened `hw:1,0,1` ("Akai Pro Force Private") and the library hooked it. MockbaMod also rebuilds MPC's `LD_PRELOAD` from its own list file, replacing the drop-in's value.
+- **MPC holds the touchscreen**: reading `/dev/input/event0` while a finger (or the remote addin) tapped returned nothing, yet the library's writes to it land. Calibrate by `EVIOCGABS` and a known icon, not by capturing taps.
+- **`LD_PRELOAD` in a drop-in needs quotes when it holds a space** (`Environment="LD_PRELOAD=a.so b.so"`): unquoted, systemd splits it into two assignments and drops the value (the loaded unit kept the old list). The installer already writes it quoted.
+- **After a full reboot MPC started without the drop-in's preloads** (no `LD_PRELOAD` in its environment; no library mapped) until `systemctl restart acvs`. Cause not found.
+- **Installer 0.2.0 (offline only):** the Force map is option blocks (`mixer-master`, `mixer-tabs`, `edit-editor`, `clip-arrange`, `menu-main-mode`, `knobs-short`, `knobs-long`, `knobs-double`; Knobs off by default; `skipback` off too: Rec Arm twice taps note 127 as a placeholder trigger for the skipback-save addin, nothing listens yet, Rec Arm read as note 93 from the press order only). Install shows a checklist on a terminal or takes `--options`, `--with`, `--without`; `options` lists them; `status` shows the choice. `status` on the Force said "launcher" because `/usr/bin/az01-launch-MPC` exists there too (the script the service runs; it sets no `LD_PRELOAD`), so the style check now needs an `LD_PRELOAD=` line in that file and otherwise takes the systemd drop-in. The first real install attempt over ssh with no terminal died at the typed-word prompt: BusyBox's shell exits when `read < /dev/tty` cannot open the tty (`can't open /dev/tty`), even with `2>/dev/null` and a `|| read` fallback, and dash (the offline tests) does not, so the tty is now tried in a subshell first (nothing had been changed at that point). 32 offline tests pass (`tools/test_hwremap_patch.py`, dash; one checks the script text for the unguarded form), and the option, checklist and render paths were run under BusyBox sh and awk in Docker. The manifest URL is pinned to the commit that holds this script.
+- **The `skipback` option was removed again (2026-10-10).** It tapped note 127 as a placeholder trigger for a skipback addin. The MPC Skipback addin (`sd88me/mpc-addin-skipback`, 0.3.0) turned out not to need a remap: it hooks `snd_rawmidi_read` on the Private port (read below `hwremap.so` in the preload chain, so it sees the raw hardware bytes, and the bytes pass through unchanged), sees Rec Arm (note 93) pressed twice within 350 ms, saves, and blinks the LED by writing a control change on channel 1 to the same port (controller = button, value = state). Verified on the Force (MPC 3.9.1) with this patch's `hwremap.so` loaded: the double press saved 30.0 s and the LED flashed. A remap-side action would also have had to sit before the addin in `LD_PRELOAD` to inject a note it could read, which the installer's append order doesn't give. An `f/PATH` token that creates a file was built for the same purpose and dropped unpushed. Script otherwise unchanged; manifest re-pinned.
+
 ## 2026-10-05: long integer lists skipped entries on a Q-Link and the wheel (Dexed banks, a Force); `nudge_pct` and `order=cols`
 Reported on a Force (Dexed 1.0.5 test build): on the BANKS tab the bank Q-Link and the wheel skipped several carts at a time. Cause, from the wrapper (`wrapper/vst2_wrap.c`, "whole numbers"): the bank index is an integer parameter spanning 0..998, and MPC sends a Q-Link event as the read-back value plus 1/128 of the range and a wheel click as plus 1/100 (NOTES "Input probe"), i.e. about 8 and 10 entries on that span; `settle()` rounds toward the move, so each event landed that far on (a short range such as 0..31 stays one step per event, as measured). Fix, opt-in per parameter: `"nudge_pct": N` (gen_vst.py, `param_t.nudge_pct`) makes any move up to N% of the range one step in its direction (combinable with `qlink_ticks`); a larger move still sets outright, and a move that lands on the minimum or maximum from inside that distance counts as a step, because MPC clamps what it sends (a nudge down from bank 3 sends 0, not -4.8). Test: `poc/steptest` has a `long` 0..998 param with `nudge_pct` 10, and `tools/host_test.c` checks six Q-Link events and six wheel clicks up one step each, back down to the minimum, a jump landing outright, and a clamped move at the top (all pass, `tools/test_port.sh poc/steptest/vst.json`, 31 checks). Offline only; not yet tried with a hand on the Force. Same report: the BANKS lists numbered across each row (1 2 / 3 4 ...), so a Q-Link stepping through them jumped left and right; `list ... order=cols` (`shadow_skin.list_keys`) numbers down each column first (left column 1..rows, then the next), so the lists read and step top to bottom.
+
+## 2026-10-07: reported by other forks (Live II, 2026-10-02..05; read from their notes, not re-verified here)
+`saustin2010/vst_instruments` keeps a patch against an older commit of this repo (`framework/mpc-vst-plugins.patch`)
+whose NOTES sections were verified on an MPC Live II by its owner. Summarised here so ports don't re-learn them; each
+needs a check on our devices before it becomes a rule. Survey of the techniques: `docs/COMMUNITY_SKINS.md`.
+- **FilmStrip `numFrames` is the frame count.** Stock skins use non-square frames: frame height = image height /
+  `numFrames` (Bassline `knob_phase` 76x258 = 3 frames of 86; Electric `slider_distance` 250x6969 = 101 of 69).
+  Display meters square-padded and resampled to 128 frames with `numFrames` 127 drew each frame a few px off per step
+  (~4.5 px with 32 frames of 141 px). Laid out as stock (frames of the meter's own w x h, `numFrames` = count) they
+  drew right. Knob strips (128 square frames, `numFrames` 127) are fine as they are.
+- **Tall slider strips.** Square-padded 128-frame slider strips 16640 to 30720 px tall animated wrongly; knob strips
+  up to 96x12288 are fine. Their builder caps slider strips at 12288 px (fewer frames). Compare our own 16384 px
+  knob limit ("Knob filmstrips over 16384 px drift", 2026-09-27).
+- **Animation is expensive.** A display parameter changed from `processReplacing` plus `audioMasterUpdateDisplay` or
+  `audioMasterAutomate` does repaint, but MPC's main (screen) thread pays: one 566x122 strip at 15 fps 25-55% of a
+  core; a 48-column dot scope at 10 fps 46-58% (peaks ~95%); with one `audioMasterAutomate` per column 107-113%.
+  Audio threads were unaffected. Keep pictures still between changes. MPC decodes skin images at 4 bytes/pixel:
+  a 566x122 x 384-frame set is ~106 MB of ~970 MB free.
+- **Q-Link outlines: one per column.** A 4-knob MPC drives one 4-slot column at a time and outlines that column's
+  `qlinkBoundsData` rectangle, so lay each column's controls out together (cf. our `qlink_bounds=column`).
+- **The Q-Link sidebar covers x >= ~1025.** Touching a Q-Link slides MPC's panel over the right ~255 px of the page;
+  keep controls you watch while turning out of that strip.
+- **MPC's PRESET menu lists VST programs** (`numPrograms`, `effGetProgramNameIndexed`, `effSetProgram`): their wrapper
+  maps an engine preset parameter (vst.json `"programs"`) or a `presets.json` to programs. In this repo since 2026-10-07 (section "VST programs from the wrapper" below).
+- **Plugin menu.** Sorted by type, VST plugins land in one VST folder (instruments, or effects with two inputs); the
+  plugin-list `category` moves nothing. Sorted by manufacturer, each manufacturer is a folder. Names sort
+  case-sensitively (digits, capitals, lower case).
+- **Two-thread engine calls.** The JUCE host sets/reads parameters on its message thread while audio runs on another;
+  an engine that assumes one caller can crash (Noisemaker's voice-count change). Their wrapper holds a recursive,
+  priority-inheriting mutex per instance around every engine call. In this repo since 2026-10-07 (section "one engine
+  call at a time" below).
+- **Screen grabs.** `/dev/fb0` is black (MPC draws through a DRM plane); map the scanout buffer from `/dev/dri/cardN`
+  (GETPLANE, GETFB, MAP_DUMB). The card number changed between boots (card0, then card1). Cf. `tools/drmgrab.c`.
+- **ALSA mirror ports.** MPC adds its own copy ("<client> <port>") of each new sequencer port on its client, which has
+  a lower number, so a substring search by port name finds MPC's copy first. Match exactly, or by pid.
+
+## 2026-10-07: VST programs from the wrapper (offline; device-checked in part)
+`wrapper/vst2_wrap.c` now reports VST programs (`numPrograms`, `effSetProgram`/`effGetProgram`, `effGetProgramName`,
+`effGetProgramNameIndexed`) when vst.json has `"presets"` (a `presets.json` compiled into `params.h` by gen_vst.py) or
+`"programs": {"param": key}` (an engine preset parameter: one program per option or whole number). Another fork saw
+MPC's PRESET menu list and load such programs on a Live II ("reported by other forks" above). Behaviour, host-tested
+(`tools/host_test.c` program checks, ASan) on `poc/steptest` variants:
+- Picking a preset sets each listed parameter through the engine's `set_param`, in file order, and reports each one to
+  the host from `housekeeping()` (never from inside the host's call), plus `audioMasterUpdateDisplay`.
+- Picking the program that is already current does nothing, so a host re-selecting program 0 at load can't overwrite
+  a restored chunk. The picked preset index isn't in the engine's state: after a project reload the menu shows the
+  first preset's name (the sound is restored from the chunk as before).
+- `"programs"` on a `"display": "int"` param names program n by `get_param("<key>:<n>")`, else "<Name> <n>".
+- Device check (2026-10-07, Force, MPC OS version not noted; test port = `poc/steptest` copy with `presets.json` of Init/Bright/Dark
+  and a 3-control layout): MPC's PRESET menu lists the presets, and picking Bright, Dark and Init moves MODE, NUM and CONT
+  on screen (user-observed). **Not checked on the device:** a tweak surviving a project reload and the name the menu then
+  shows, re-picking the current preset, and CC 20 moving the first Q-Link (the MIDI CC section stays offline only).
+
+## 2026-10-07: one engine call at a time per instance (offline)
+`wrapper/vst2_wrap.c` now wraps every engine call but create/destroy (`eng_set`, `eng_get`, `eng_midi`, `eng_render`,
+`eng_process`) in a per-instance recursive, priority-inheriting mutex, never held while calling the host. Why: the
+JUCE host calls parameters, chunks and displays on its message thread while audio runs on another, and another fork
+saw an engine that assumed one caller abort MPC on a Live II ("reported by other forks" above). `tools/host_test.c`
+now runs 3000 screen-side sets/reads/display reads on a second thread while rendering (ASan); every `poc/` port with
+a test passes. Links need `-lpthread` (added to `build_port.sh` and `test_port.sh`): on the device toolchain's glibc
+2.31, `pthread_mutexattr_setprotocol` is in libpthread. Not yet run on a device; the uncontended cost (one atomic
+operation per call) should be checked with docs/BENCH.md.
+
+## 2026-10-07: MIDI CC 20-35 and NRPN control in the wrapper (offline)
+After the other fork's Live II finding ("reported by other forks": CC 20/21 from a sequencer moved an instrument's
+controls through the track's MIDI input; MIDI-learning from a plugin's port froze MPC there):
+- gen_vst.py writes `PLUG_CC[16]` from the first tab's first `qlinks` line (column 1 top to bottom = CC 20-23, column 2 =
+  24-27, ...; `-`, triggers and text readouts get none). `effProcessEvents` sets the parameter as a touch would (option
+  lists and whole numbers round to the nearest step) and keeps the CC from the engine.
+- NRPN n (CC 99 MSB / 98 LSB) with its value on CC 6 (7-bit) and CC 38 (14-bit with the last CC 6) sets parameter n on
+  any page; CC 101/100 (an RPN) deselects it and goes to the engine as before.
+- The host hears of CC-driven changes from `housekeeping()` at most every 1024 frames, so the screen follows without a
+  flood. On by default; vst.json `"cc": false` / `"nrpn": false` turn each off (an engine that reads those CCs itself).
+host_test checks a CC 20 move and its report, and an NRPN set, on any parameter that keeps a value set from outside
+(engine-driven displays don't). Not yet run on a device.
+
+## 2026-10-07: drive exec `status` was confusing on a Force with two names under /media (user report, Discord, installer v0.4; offline fix)
+
+A Force user saw `No drive under /media is mounted noexec` on the first `status`, then `Drives mounted noexec: /media/662522` (`state=stock`) after closing the plugin manager page and the terminal. Their `/media` held `662522`, `acvs-synths`, `az01-internal`, `az01-internal-sd` and `SSD - Force`; they asked whether the SSD, not `662522`, must be patched.
+- `status` only lists mounts that `/proc/self/mountinfo` shows as `noexec` (`candidates`), so `662522` is the drive MPC mounted `noexec` at that time; `SSD - Force` was not a `noexec` mount then (not mounted, or mounted `exec`). `edisksd` names the mount point after the volume label, or a number when there is none; a leftover folder in `/media` is not proof of a mounted drive. Which of the two is the SSD was not shown by the output: needs `mount | grep /media` from the user (not yet received).
+- Why the first run found nothing is not established (the drive was probably not mounted yet or was remounted; the user's mount lines were not captured).
+- Change (offline only, tested against fake mountinfo and `tools/test_drive_exec.py`): `status` now also prints every mount under `/media` with filesystem, device and `exec`/`noexec`, so the output says which name is which drive.
+
+### 2026-10-09: first Gen2 (MPC Live III) tester report, via SSH as root (device, user-reported)
+- `MPC.settings` is at `/data/Settings/MPC/MPC.settings` on Gen2, not `/media/az01-internal/Settings/MPC/`. Our `install.sh` stopped with "MPC.settings not found (not an MPC OS device?)". The tester's staging folder was on a USB drive (`/media/<id>/VST Staging/`, read-only/noexec until `mount -o remount,rw,exec`).
+- Fix (offline, host-tested only): every installer (`install.sh`, `uninstall.sh`, `sync.sh`, `mpc-store.sh`, `probe_device.sh`) and the desktop app's default settings glob now also look in `/data/Settings/*/MPC.settings`. Not yet re-run on a Gen2.
+- The tester then hit "files damaged (SHA256SUMS mismatch)": expected after hand-editing `install.sh` (it is in SHA256SUMS). Not a bug; no key is involved. The fix above removes the reason to edit.
+- Still unknown on Gen2: Synths dir location (`/sdcard/Synths` may not exist), the service name for the stop/start, whether `/sdcard` is the same mount. Ask for `probe_device.sh` output.
+
+### 2026-10-09: Gen2 (MPC Live III) partition dumps read offline (`tools/gen2_image_facts.sh`, tester's `dd` images)
+Eleven `mmcblk0pN` dumps, read read-only with `debugfs`. Layout: p1-p6 raw/boot data (not ext4), p7 `factory` (empty ext4), p8/p9 `kernel.fit` (A/B), p10 rootfs (4.1G ext4), p11 `data` (11G ext4, label `data`).
+- Confirmed: `MPC.settings` is `Settings/MPC/MPC.settings` at the root of the `data` partition, i.e. `/data/Settings/MPC/MPC.settings` (matches the tester's shell). It holds 5 `<Location>` entries and one `pluginList-arm` line, as on Gen1.
+- Confirmed: rootfs has `/usr/lib/ld-linux-aarch64.so.1` and `libstdc++.so.6.0.32` (GCC 13), consistent with glibc 2.39.
+- Confirmed: the MPC service is `acvs.service` (plus `acvs-user-partition.service`); there is no `inmusic-mpc` unit on stock Gen2, so the installers' acvs default is right.
+- Not yet known: the rootfs `/etc/fstab` does not mount `/sdcard`, so where the internal drive and Synths folders live comes from `acvs-user-partition.service` (see the next run of the script). The rootfs has top-level `/sdcard`, `/synths`, `/content`, `/storage`, `/nvme`, `/data`.
+
+### 2026-10-10: Gen2 (MPC Live III) partition dumps, round 2 (offline, `tools/gen2_image_facts.sh` with symlink/unit output, same tester's `dd` images; p1-p6 raw strings)
+- `/sdcard` is mounted from a real partition (`sdcard.mount`, `What=/dev/disk/by-path/...-part1`, i.e. a physical SD/MMC slot), not the internal drive, unlike Gen1/Force where `/sdcard` *is* the internal drive. `/synths`, by contrast, is a **plain empty rootfs directory with no `.mount` unit and no `/etc/fstab` line** on this unit; the rootfs itself is mounted `ro` (`/dev/root / auto ro`), so nothing can be written under `/synths` unless something else bind-mounts a writable filesystem there first.
+- `acvs-user-partition.service` (`ExecStart=/usr/bin/setup-acvs-user-partition.sh`) only runs when the devicetree has `chosen/inmusic,acvs-loopback-content`. When it runs, it creates `/data/user-storage-image` (a GPT image file, one partition, PARTUUID `49e572b2-...`, label "MPC User"/"Force User", exFAT), loop-mounted at `/storage` (`storage.mount`, `What=PARTUUID=49e572b2-...`, `Where=/storage`) — this is Gen2's analog of Gen1's internal `/sdcard`. On this tester's device, `/data/user-storage-image` **does not exist**, so `/storage` has never been created/mounted there either.
+- `MPC.settings`' `<SynthContentLocations>` (read from the `data` partition's real `/Settings/MPC/MPC.settings`, 82279 bytes) lists exactly: `/media/9A5E-BA8A/Synths`, `/media/Force Disk/Synths` (removable), `/synths/Expansions`, `/synths/Synths` (internal — the Gen2 analog of Gen1's `/sdcard/Synths`), `/usr/share/Akai/Content/Synths` (factory, read-only). Its one plugin-list key is `pluginList-arm` (see the `pluginList-arm-64bit` entry below), holding only factory AIR plugins (e.g. "AW Reverb - kCosmos") — this device has never had a third-party aarch64 `.so` registered, so it doesn't by itself prove what key an installed one would use.
+- **Still open**: why `/synths/Synths` is listed in `MPC.settings` as a content location when nothing currently mounts anything at `/synths` on this unit. Possibilities: a udev rule or boot step we haven't found bind-mounts `/storage` (or the SD card) onto `/synths` once created; this tester's unit just never had its user partition provisioned; or `MPC.settings`' location list is written once at factory and is aspirational. Ask a tester to run `tools/probe_device.sh` (now also prints `mount | grep -E 'sdcard|synths|data|media|storage'`, `ls -ld /sdcard /synths /synths/Synths /content /storage`, and `systemctl cat acvs-user-partition`) on a live, booted Gen2.
+- Fix applied regardless (harmless either way): `sync.sh`'s default Synths-folder scan now also looks at `/synths/Synths` when it's a real directory (in addition to `/sdcard/Synths` and `/media/*/Synths`), so a plugin manually placed there gets picked up once the mount question above is settled.
+- Independently confirmed (second real device, matches the 2026-10-06 Discord report from different hardware): `strings` over the raw `spl1`/`spl2`/`uboot1`/`uboot2` partitions find **no `inmusic-unlock-magic` string**; fastboot plumbing is present but not the OEM unlock command (see `docs/FIRMWARE_BUILDER.md`).
+
+### 2026-10-10: Gen2 (MPC Live III) `probe_device.sh` output, live device (tester-run, settles the `/synths` question above)
+Two probe runs on the same unit (root via two different unofficial boot methods, both unrelated to this project; irrelevant to the result, both gave the same facts): `aarch64`, `MPC OS 5.0.18 (scarthgap)`, 8 cores (`0xd05`/`0xd0b`, i.e. Cortex-A55/A76, matches RK3588), VST2 compiled in (no VST3/LV2), `/data/Settings/MPC/MPC.settings` confirmed again.
+- `mount` shows **`/synths` is mounted** from `/dev/nvme0n1p1`, **exfat, `ro`** (`fmask=0022,dmask=0022`) — so `/synths/Synths` exists and (per `ls -ld`, 131072-byte dir, dated Jan 5 2026) is populated, but **nothing can be installed there: it's read-only on this unit.** This settles the open question above: `/synths/Synths` being listed in `MPC.settings` doesn't mean it's writable; whether it's writable depends on what's on the device's NVMe drive and how it got formatted/mounted.
+- `/storage` and `/content` are **not mounted at all** (no line in `mount`) — confirms the eMMC-dump finding that `/data/user-storage-image` / the `acvs-user-partition` loopback has never been provisioned on a real unit we've seen, on two separate devices now.
+- The only **writable** Synths locations on this device are removable media: `/media/9A5E-BA8A/Synths` and `/media/CARD/Synths` (both exfat, `rw`) — i.e. exactly the existing generic `/media/*/Synths` fallback our installers already scan. **No special Gen2 default is needed for install**; a Gen2 user installs with `-t "/media/<label>/Synths"` for whatever SD card or USB drive they have inserted, same as Gen1/Force with removable media. `/sdcard` and `/synths` are both unusable as install targets on this unit (`/sdcard` isn't mounted at all here; `/synths` is read-only).
+- `settings key parts: -arm pluginList` (from `strings` on the live `/usr/bin/MPC`) — same as the offline finding: the binary only has the literal `pluginList` and `-arm` as fixed substrings, nothing fixed for `-64bit`; the full key is built at runtime, consistent with either answer to the open `pluginList-arm-64bit` question.
+- Bug found and fixed in `tools/probe_device.sh`: `systemctl cat ... | head -20` isn't valid BusyBox `head` syntax (needs `-n 20`); it errored instead of printing the unit. Fixed; not yet re-run.
+- Not yet answered: the `pluginList-arm-64bit` question (needs an actual install attempt with the Crate Digger aarch64 zip, `-t` pointed at a removable Synths folder) and the `acvs-user-partition` unit's `Exec`/`After` lines on a live device (probe bug above).
+
+### 2026-10-10: unverified third-party report — Gen2 plugin browser needs `pluginList-arm-64bit`, not `pluginList-arm` (device, not reproduced by us)
+A beta tester of the Hakai VST Manager, testing the Crate Digger aarch64 test release, reports that MPC's plugin browser on a real Gen2 only shows a registered aarch64 `.so` when its entry is under `<VALUE name="pluginList-arm-64bit">`; an entry under `pluginList-arm` sits in `MPC.settings` but never appears in the browser. We have **not** reproduced this ourselves (no aarch64 pilot has loaded on hardware yet), and the one real Gen2 `MPC.settings` we've read offline (above) has only `pluginList-arm`, holding factory plugins — consistent with either key naming being right for third-party `.so` files. Treating it as credible but unconfirmed: `plugin_list.awk` now takes an optional `-v listkey=...`, and `install.sh`/`sync.sh` pick `pluginList-arm-64bit` for an `aarch64` package and `pluginList-arm` otherwise (`tools/desktop/sync.sh` and `tools/desktop/plugin_list.awk` kept identical to the `tools/release/` copies, as `test_catalog.py` checks). **Must be confirmed or corrected on real hardware** by the aarch64 pilot port (docs/GEN2.md item 3) before calling this settled either way.
+
+## 2026-10-09: Maschine Group on an MPC Live (device)
+GROUP and SETUP screenshots in `ports/maschine/docs/` (`tools/screenshot.sh --plugin`). Writing packed evdev events to the ILI2116 node updates absinfo but does not move MPC's UI (the main thread has that node open). Tab switches for the shots were done on the glass. SETUP showed the copied library path and the How to Add NI Groups copy. GROUP showed the kit list, 4×4 pads and pattern cells with 8-Ball Kit loaded (3 samples missing). Writing `/tmp/maschine-pattern.mid` cannot feed GRID Shift+Paste: `/usr/bin/MPC` has no system clipboard, and GRID reads MPC's own event buffer.
+
+### 2026-10-10: installer app Apply / Undo on the Force (device, user-reported; PR #260)
+The Force (MPC 3.9.1.2, drum-pad layout patch already applied, stock backup present, `status` read over SSH before the test) was driven through the 0.0.0-applytest build of the desktop app, step 7. The user reported that it "works well". What was and was not checked by us: before the test, `status` printed `STATE state=patched supported=1 backup=1 checksum=7cf96599ec61b1079688f253f3b65b9f` over SSH (read only); the click-through itself (Undo then Apply, typed `UNDO` / `APPLY`) was done by the user, and the checksums after each step were not read back by us. Only the drum-pad patch was tried; the drive exec and button remap patches have no Apply/Undo run yet, and the app offers default settings only (no per-patch options).
+
+## MPC's host toggles parameter 0 on insert and on every STOP (Live II, 2026-10-10)
+A trace on an MPC Live II (MPC OS 3.9.1) showed, on inserting a plugin and on every press of STOP: `effMainsChanged`,
+`effSetSampleRate`, `effSetBlockSize`, `effMainsChanged`, then `setParameter(0, 1.0)` and `setParameter(0, <old>)`
+(or 0.0 then old, when old >= 0.5). That is JUCE's `prepareToPlay` in its VST2 host ("a dodgy hack to force some
+plugins to initialise the sample rate", for plugins without an editor), which MPC runs again on STOP. Harmless for a
+knob, but where parameter 0 is a preset (Hera, Fizzik, NuSaw, Percolator's kit ...) each set loaded one, so every knob
+moved since went back to the preset when STOP was pressed. The wrapper now holds a host set of parameter 0 until the
+next block (or until a read of it, its display text, a preset, the state or another parameter comes) and drops a pair
+that ends where it started (`setParameter`, `flush_pend0`); the host's toggle reads nothing in between.
+`tools/host_test.c` replays the toggle with every knob moved (`param0_toggle_check`: Hera, a preset at parameter 0,
+failed it with 20 of 22 knobs changed before the fix). The toggle is from the device trace; the fix is checked offline
+only so far (2026-10-10).
+
+### 2026-10-11: first Gen2 (MPC Live III) plugin load, Crate Digger 1.1.9 aarch64 (device)
+Installed with `install.sh -t "/media/<label>/Synths"` (a removable drive; `/synths/Synths` was read-only on this unit, see the
+2026-10-10 entry above). It registered, **showed up in MPC's plugin browser, opened and its skin rendered correctly.** This
+confirms `pluginList-arm-64bit` (not `pluginList-arm`) is the right key for an aarch64 package on Gen2, settling the previously
+unverified third-party tester report (`plugin_list.awk`/`install.sh`/`sync.sh` need no further change). First "Gen2 verified" load
+for any plugin from this catalog (`mpc-vst-cratedigger`'s `tested.json`).
+- **Not working yet:** the plugin's Discogs search returned an error on-device. Not diagnosed remotely; candidates are network/DNS,
+  TLS/certificate store differences in the bundled Python, or something aarch64-specific in the bundled yt-dlp. Needs device-side
+  diagnostics (e.g. the daemon's own log, or a manual run of the bundled `python3`/`yt-dlp` with verbose output) before it's fixed.
+- The `SHA256SUMS mismatch` installer error hit along the way (1.1.8) was **not** an Akai signing/key issue — see the 2026-10-10
+  terminfo entry in `mpc-vst-cratedigger`'s history: the bundled Python's terminfo database has ~25 case-only duplicate filenames
+  that collide on the tester's case-insensitive exFAT drive. Fixed by stripping `share/terminfo` at build time (unused, no
+  curses/readline UI); worth checking any other plugin that bundles a full interpreter/runtime for the same risk.

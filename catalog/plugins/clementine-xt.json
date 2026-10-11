@@ -1,3 +1,4 @@
 { "id": "clementine-xt", "name": "Clementine-XT", "author": "sd88me", "repo": "sd88me/mpc-vst-clementineXT",
   "kind": "instrument", "style": "synth", "tags": ["wavetable", "polyphonic", "arpeggiator"], "license": "GPL-3.0-only", "asset_pattern": "Clementine-XT-*-mpc-armv7.zip",
-  "summary": "Ten-voice wavetable synthesizer modelled exactly on the Microwave II/XT with a ten-page touchscreen skin and Q-Links. Needs your own ROM files in its ROMS folder." }
+  "summary": "Ten-voice wavetable synthesizer modelled exactly on the Microwave II/XT with a ten-page touchscreen skin and Q-Links. Needs your own ROM files in its ROMS folder.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-clementineXT/main/docs/img/clementine-xt.png" }

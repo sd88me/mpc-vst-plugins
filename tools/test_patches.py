@@ -226,6 +226,24 @@ class SitePublishesManifest(unittest.TestCase):
         with open(src, "rb") as a, open(os.path.join(out, "site", "patches.json"), "rb") as b:
             self.assertEqual(a.read(), b.read())
 
+    def test_every_patch_has_a_listed_card_and_a_guide_page_out_of_the_menu(self):
+        src = os.path.join(ROOT, "catalog", "patches.json")
+        out, r = self.build(src)
+        self.addCleanup(shutil.rmtree, out, True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        site = os.path.join(out, "site")
+        with open(src) as f:
+            doc = json.load(f)
+        overview = open(os.path.join(site, "patches.html"), encoding="utf-8").read()
+        index = open(os.path.join(site, "index.html"), encoding="utf-8").read()
+        self.assertIn('href="patches.html"', index)
+        for p in doc["patches"]:
+            self.assertIn(p["script"]["sha256"], overview)
+            self.assertIn('href="patch-%s.html"' % p["id"], overview)
+            self.assertTrue(os.path.isfile(os.path.join(site, "patch-%s.html" % p["id"])))
+            self.assertNotIn('href="patch-%s.html"' % p["id"], index.split("<main")[0])   # guides are not in the menu
+            self.assertIn('href="patch-%s.html"' % p["id"], index)   # but the Device patches tab on the catalog page links them
+
     def test_an_invalid_manifest_fails_the_site_build(self):
         bad = os.path.join(tempfile.mkdtemp(), "patches.json")
         with open(bad, "w") as f:

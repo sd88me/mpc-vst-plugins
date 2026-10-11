@@ -13,10 +13,10 @@ an installer app, and the tools to build, test and release your own.
 
 ## Plugin catalog
 
-**[MPC OS Plugin Catalog](https://sd88me.github.io/mpc-vst-plugins/)**: one browsable list of the community's VST2
+**[Open MPC - Plugin Catalog](https://sd88me.github.io/mpc-vst-plugins/)**: one browsable list of the community's VST2
 plugins for MPC OS, with each plugin's current version, license, source link and a checksummed download.
 
-[![The MPC OS Plugin Catalog home page](docs/img/catalog-home.png)](https://sd88me.github.io/mpc-vst-plugins/)
+[![The Open MPC - Plugin Catalog home page](docs/img/catalog-home.png)](https://sd88me.github.io/mpc-vst-plugins/)
 
 - **Find a plugin.** Search, filter by kind, style, developer, license or distribution, and sort by recently updated or
   most downloaded. Every version shows its date and SHA-256, and what it was tested on. There is an Atom feed
@@ -30,7 +30,7 @@ plugins for MPC OS, with each plugin's current version, license, source link and
 - **Guides on the site:** [install a downloaded plugin](https://sd88me.github.io/mpc-vst-plugins/install.html),
   [build a plugin](https://sd88me.github.io/mpc-vst-plugins/build.html), the
   [release workflow](https://sd88me.github.io/mpc-vst-plugins/workflow.html) and
-  [how to get yours listed](https://sd88me.github.io/mpc-vst-plugins/add.html).
+  [how to get yours listed](https://sd88me.github.io/mpc-vst-plugins/workflow.html#list-it-in-the-catalog).
 - **Get your plugin listed.** Publish a GitHub release built with `tools/release.py` (or the reusable
   `vst-release.yml` workflow), then open a PR adding one small file, `catalog/plugins/<id>.json`. After that new
   releases appear on their own: the catalog reads your releases every night and checks each zip. Open-source licenses,
@@ -119,6 +119,8 @@ design.
 - App-like plugins: things that fetch from the web, stream, or write files that MPC's browser can open.
 - Pages with pop-up option lists, panels that change with a mode, live readouts, and your own look: any font,
   knob style, gradient or shadow, and artwork drawn in Inkscape, baked into the page.
+- Presets in MPC's PRESET menu, from the engine's own preset parameter or a `presets.json` (the menu listing and loading
+  checked on a Force; offline-tested otherwise). CC 20-35 and NRPN control from MIDI (offline-tested only so far).
 - Updating a plugin without restarting MPC: replace the file, remove every copy from the project, insert it again.
 - Shipping a plugin as one zip with an install script.
 
@@ -133,8 +135,9 @@ design.
   `inmusic-mpc` on firmware that has no `acvs`).
 - **No native drop-down picker.** MPC's own menu opens empty for plugins (and can't practically be patched), so option
   lists are drawn by the skin instead: segment buttons or our own pop-up.
-- **No custom-drawn widgets.** No envelope graphs, XY pads or waveform displays; only knobs, faders, buttons, text and
-  images. Envelopes become rows of knobs.
+- **No custom-drawn widgets.** No live-drawn graphs or XY pads; only knobs, faders, buttons, text and images. Displays
+  are pre-drawn pictures or filmstrips that follow a parameter (a waveform per wave shape, an envelope that follows its
+  knobs: docs/COMMUNITY_SKINS.md), kept still between changes, since animating them costs MPC's screen thread a lot.
 - **Two fonts for live text:** Titillium Web and Roboto. Any other typeface has to be baked into the artwork.
 - **No text entry** on the page.
 - **Plugin MIDI out is ignored by MPC.** Generators work around it by opening their own MIDI port, which MPC picks up
@@ -154,6 +157,7 @@ What's next is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 - [docs/NOTES.md](docs/NOTES.md): everything verified on hardware, with dates, plus open issues. The source of truth.
 - [docs/PORTING.md](docs/PORTING.md): the checklist for turning an engine or app into a plugin.
+- [docs/MIDI_TIMING.md](docs/MIDI_TIMING.md): how a sequencer/arp plugin should time its steps against MPC's transport.
 - [docs/SKIN_STUDIO.md](docs/SKIN_STUDIO.md): laying out and previewing pages.
 - [docs/BENCH.md](docs/BENCH.md): the on-device CPU check. [docs/RELEASING.md](docs/RELEASING.md): release zips.
 - [docs/ROADMAP.md](docs/ROADMAP.md): repo features still to do.
@@ -219,6 +223,8 @@ screen shows. If you are comfortable in a terminal and on 2.x, the output of thi
   checkout is needed.
 - `tools/html_art.py` + `tools/html_art/`: the optional browser renderer for skin artwork (`"art": "html"`):
   the same layouts drawn as SVG/CSS in headless Chromium, restyled per port with a stylesheet.
+- `tools/skin_check.py`: checks a built skin for overlapping touch areas, controls off the screen, Q-Links on hidden
+  parameters and switches missing options; `gen_vst.py` runs it after every build.
 - `tools/studio.py` + `tools/skin_template.svg`: the skin studio. Auto-layout from a port's
   parameters, a browser editor (`studio.py serve`, `tools/studio_web/`, started by the `SkinStudio.*` launchers), an
   Inkscape/Penpot SVG round trip, and page previews. Controls can use built-in looks or your own images and

@@ -1,0 +1,16 @@
+{
+  "id": "fizzik",
+  "name": "Fizzik",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-fizzik",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "physical-modelling",
+    "resonator",
+    "percussion"
+  ],
+  "license": "MIT",
+  "summary": "Physical modelling: an exciter and two coupled resonators (string, beam, plate, membrane).",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-fizzik/v1.0.0/screenshots/page_0.png"
+}

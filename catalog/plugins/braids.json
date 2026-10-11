@@ -1,0 +1,16 @@
+{
+  "id": "braids",
+  "name": "Braids",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-braids",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "mutable-instruments",
+    "macro-oscillator",
+    "eurorack"
+  ],
+  "license": "MIT",
+  "summary": "Mutable Instruments Braids: a macro oscillator with 47 synthesis models.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-braids/v1.0.0/screenshots/page_0.png"
+}

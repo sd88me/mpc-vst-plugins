@@ -13,7 +13,27 @@ Building on parameter-driven visibility (`IndexedEnabling`, NOTES "Conditional v
 - [ ] **Looks and images on a device.** Built and previewed offline (2026-09-25): check a skin with image knobs,
       an imported filmstrip, image toggles/buttons/segments, a panel picture, a popup list picture and a `picture`
       (one image per option) on a Force.
-- [ ] **Engine-driven live updates need a new wrapper mechanism.** Confirmed on a Force 2026-09-25
+- [ ] **Builder features from other forks (docs/COMMUNITY_SKINS.md "Adoption list", 2026-10-07).** Port from
+      `saustin2010/vst_instruments`' patch to `tools/shadow_skin.py`. Done offline 2026-10-07 (device check pending):
+      `banks=`, `ns=`/`vs=`/`bw=` on knobs and sliders. Sliders and meters as stock filmstrips (frames of their own size, `numFrames` = count,
+      <= 12288 px) done 2026-10-07. `lay=side` knobs, `ns=0`/`bw=` on toggles and `sh=` on enum_v
+      followed the same day. All offline; check on a device.
+- [ ] **Skin checker: the rest.** `tools/skin_check.py` (2026-10-07) covers TOUCH / EDGE / QLINK and runs in
+      `gen_vst.py`; OPTS (incomplete switch groups) added the same day. Still to add: Q-Links out of the layout's order
+      (needs the layout next to the skin).
+- [ ] **VST programs and wrapper presets: device check.** vst.json `"programs"` / `"presets"` are in (2026-10-07, offline,
+      host-tested); device-checked 2026-10-07 on a Force: the
+      PRESET menu lists and loads them. Still to check on a device: a tweak surviving a project reload (and the name the menu
+      then shows) and re-picking the current preset. Not yet supported: programs whose count
+      changes at run time (user banks) or names stepped from an engine that can't name a preset without loading it.
+- [ ] **MIDI CC 20-35 / NRPN control: device check.** In the wrapper 2026-10-07 (offline, host-tested); the other fork saw
+      CC 20/21 from a sequencer move an instrument's controls on a Live II. Confirm with one of ours, and that MPC keeps
+      none of CC 20-35 for itself.
+- [ ] **One engine call at a time: device check.** Done offline 2026-10-07 (`eng_set()` etc. in `wrapper/vst2_wrap.c`, a
+      two-thread section in `tools/host_test.c`); measure the uncontended cost on a device with docs/BENCH.md.
+- [ ] **Engine-driven live updates need a new wrapper mechanism.** (Partly stale: `HAS_DISPLAY_REV` now polls an
+      engine's `display_rev` and refreshes the host, NOTES "display_rev"; another fork measured that repainting
+      costs MPC's screen thread a lot, NOTES 2026-10-07. Re-check what is left before working on this.) Confirmed on a Force 2026-09-25
       (`poc/meterprobe`): `wrapper/vst2_wrap.c` never calls `audioMasterAutomate`/`audioMasterUpdateDisplay`
       for a parameter the DSP engine changes on its own between host-initiated calls (only in response to a
       touch/Q-Link, via `setParameter`'s `need_update_display`) — so a filmstrip `meter` or any other display
@@ -30,6 +50,13 @@ Building on parameter-driven visibility (`IndexedEnabling`, NOTES "Conditional v
 - [ ] **Catalog: MPC OS 2.x / 3.x compatibility field.** Derived by the release and catalog checks (glibc 2.32 or less, and the skin only uses
       versions 2.15.1's own skins use); badge and filter on the site, badge and warning in the installer app; developers opt in with the
       2.x skin shape. Plan and phases: [docs/OS2_SKINS.md](OS2_SKINS.md) ("Proposed direction").
+- [x] **Gen2 (aarch64) builds — pilot proven on real hardware (2026-10-11).** Site badge/filter/buttons, `mpc-store.sh` and desktop app
+      pick the zip by device arch, zip naming, checker, catalog `assets`/`gen2`, installer arch guard, `targets` build option, aarch64 host
+      test, the reusable release workflow (real CI run, not a dry run) all done. Two ports (Crate Digger, Profit-08) loaded, registered
+      and rendered their skin on a real MPC Live III. `pluginList-arm-64bit` confirmed as the correct Gen2 plugin-list key. Open: a
+      Gen1-style Synths-folder default for Gen2 isn't needed (removable media works the same way), `bench.c` for aarch64, a port template
+      repo, Crate Digger's Discogs search erroring on-device (not diagnosed), and there is still no SSH/root route on Gen2 that this
+      project provides or documents — every Gen2 tester so far reached root through unofficial third-party means. [docs/GEN2.md](GEN2.md).
 - [ ] **Q-Link feel on option lists and whole numbers.** A Q-Link event is one step on a Force (docs/NOTES.md "Stepping of option lists
       and whole numbers"), which is quick on a short range; the data wheel is right. Three prototypes of slowing it failed (NOTES). First
       thing to try: how the stock plugins (AIR, Akai) respond to the same Q-Link on a stepped param, by logging what MPC sends them
@@ -43,7 +70,11 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
 - [ ] **A port template repo** (`vst.json`, `build.sh`, release workflow, `tested.json` stub, README) so a new plugin is
       catalog-ready from its first commit.
 - [ ] **Update notices honour `param_compat`** (a major bump warns that saved projects will change).
+- [ ] **Catalog quality plan** (trust tiers, a visible bar, new entries start Experimental, trusted verifiers): steps in `docs/CATALOG_QUALITY.md`.
 - [ ] **Announce to the community** and collect what people ask for before building more.
+
+## Companion apps (catalog)
+- [ ] A custom domain for the site (the old `github.io` URL is hardcoded in `tools/mpc-store.sh`, the page template's `SITE` fallback, the desktop app and the README).
 
 ## Patches (installer app)
 - [ ] **"Advanced" step for device patches** (`tools/mpc_patch`: the drum-pad layout and drive exec, from #150). Plan in
@@ -51,8 +82,10 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
       Built (2026-10-03/04): the script contract (`STATE` line with checksum, `install --confirmed`, restore of an unknown build from a
       verified stock backup), `catalog/patches.json`, and a read-only step 7 in the app. Seen on a Force 2026-10-04: the app's row, the
       restore and the reinstall (NOTES 2026-10-04). The drive exec patch from #150 (run plugins from a `noexec` drive) is built and listed
-      (2026-10-05, offline only, real-mount tests). **Still to do:** a Force run of that patch (install, reboot, a plugin loads, uninstall), and
-      Apply and Undo from the app (then a Force test).
+      (2026-10-05, offline only, real-mount tests). The button remap (`tools/mpc_patch/hwremap`, from akai_standalone_remap) is built and listed
+      the same day, offline first; on 2026-10-10 its Force install and rules were run on a Force (NOTES 2026-10-10), the MPC Live map and `uninstall` on a device are not.
+      **Still to do:** a Force run of the drive exec patch (install, reboot, a plugin loads, uninstall), a device run of the button-remap uninstall and its MPC Live map, and
+      a Force test of Apply and Undo from the app (built 2026-10-10, offline only: `POST /api/patch/run`, typed `APPLY`/`UNDO`, default settings, no per-patch options yet).
 
 ## Verification
 - [ ] **Stock, unmodded MPC and other models:** the ALSA MIDI-out port (`poc/midiport.c`) without MockbaMod,

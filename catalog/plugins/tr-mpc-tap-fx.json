@@ -1,0 +1,5 @@
+{ "id": "tr-mpc-tap-fx", "name": "TR-MPC Tap FX", "author": "sd88me", "repo": "sd88me/mpc-vst-TR-MPC",
+  "kind": "effect", "style": "utility", "tags": ["routing", "multi-out", "drum"], "license": "GPL-3.0-only",
+  "asset_pattern": "TR-MPC-Tap-FX-*-mpc-armv7.zip",
+  "summary": "Companion to TR-MPC: sends any slot, or the kit's reverb or delay send, out on its own MPC track, sample-aligned with the kit, so MPC's mixer, submixes and insert effects can process it. Needs TR-MPC in the same project.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-TR-MPC/7e704c6f3be14b661c887631e203494d8cc3f74f/docs/img/tr-mpc-tap-fx.png" }

@@ -1,0 +1,17 @@
+{
+  "id": "hank",
+  "name": "Hank",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-hank",
+  "kind": "instrument",
+  "style": "fm-synth",
+  "tags": [
+    "fm",
+    "two-operator",
+    "polyphonic",
+    "bass"
+  ],
+  "license": "MIT",
+  "summary": "Small, immediate two-operator FM synth on one page: ratio, brightness, bite, envelopes, noise; 32 presets.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-hank/v1.0.0/screenshots/page_0.png"
+}

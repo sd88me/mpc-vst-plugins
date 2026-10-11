@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['catalog/**', 'tools/catalog_*.py', 'tools/catalog_site/**', 'tools/skin_compat.py', 'tools/skin_roles_2x.json', 'tools/test_skin_compat.py']
+    paths: ['catalog/**', 'tools/catalog_*.py', 'tools/app_*.py', 'tools/catalog_site/**', 'tools/skin_compat.py', 'tools/skin_roles_2x.json', 'tools/test_skin_compat.py']
   pull_request:
-    paths: ['catalog/**', 'tools/catalog_*.py', 'tools/catalog_site/**', 'tools/skin_compat.py', 'tools/skin_roles_2x.json', 'tools/test_skin_compat.py']
+    paths: ['catalog/**', 'tools/catalog_*.py', 'tools/app_*.py', 'tools/catalog_site/**', 'tools/skin_compat.py', 'tools/skin_roles_2x.json', 'tools/test_skin_compat.py']
 permissions:
   contents: read
   issues: write
@@ -28,11 +28,18 @@ jobs:
         run: python3 tools/test_skin_compat.py
       - name: Validate the registry
         run: python3 tools/catalog_build.py --check-registry
+      - name: Validate the companion apps
+        run: python3 tools/app_check.py
       - name: Build the catalog
         if: ${{ github.event_name != 'pull_request' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: python3 tools/catalog_build.py
+      - name: Resolve companion app downloads from their releases
+        if: ${{ github.event_name != 'pull_request' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 tools/app_resolve.py
       - name: Open and close issues for failing releases
         if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
         env:

@@ -1,0 +1,5 @@
+{ "id": "effectforce", "name": "EffectForce", "author": "Devko", "repo": "Devko/EffectForce",
+  "kind": "effect", "style": "multi-fx", "tags": ["looper", "performance-mixer", "octatrack-style", "crossfader", "scenes", "effect-rack", "granular", "shimmer-reverb"], "license": "MIT",
+  "asset_pattern": "EffectForce-*-mpc-armv7.zip",
+  "screenshot": "https://raw.githubusercontent.com/Devko/EffectForce/v0.0.1/docs/img/looper.png",
+  "summary": "A live looper and an Octatrack-style performance mixer in one insert slot: the looper records the next bars on MPC's grid (or keeps the bar just played) and plays, layers, rolls (1/2 to 1/32), slows, stops or reverses them; a crossfader (learn the Force's own to it) blends two scenes from a library of 64 one-tap effects (filter sweeps, echo throws, washes, rolls, tape stops, gates), whose sweeps and risers move by themselves from the next bar line. Underneath, a ten-module effect rack in any order (drive, filter, EQ, compressor / OTT, chorus, phaser / flanger, tremolo / gate, granular, delay, shimmer reverb) with macros, LFOs and an 8-slot mod matrix; 62 presets and a 14-page touchscreen skin with Q-Links." }

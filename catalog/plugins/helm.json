@@ -1,0 +1,5 @@
+{ "id": "helm", "name": "Helm", "author": "Lewinator56", "repo": "Lewinator56/mpc-vst-helm",
+  "kind": "instrument", "style": "synth", "tags": ["polyphonic", "subtractive", "arpeggiator", "step-sequencer", "mod-matrix"], "license": "GPL-3.0-only",
+  "asset_pattern": "Helm-*-mpc-armv7.zip",
+  "screenshot": "https://github.com/user-attachments/assets/b537127a-22e6-4e21-b9f1-48e473c892b8",
+  "summary": "32-voice polyphonic synthesizer (Helm engine by Matt Tytel) with 2 cross-mod oscillators, sub, noise, multi-mode filter, 3 LFOs, 3 envelopes, 32-step sequencer & arpeggiator, built-in effects and touchscreen skin with Q-Links." }

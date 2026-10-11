@@ -67,6 +67,9 @@ candidates() {   # drives mounted noexec directly under /media, one per line (in
         valid_root "$d" && printf '%s\n' "$d"
     done
 }
+media_mounts() {   # every mount directly under /media: "<mount point>  <fs>  <device>  <noexec|exec>" (what the drive really is, whatever its folder is called)
+    awk '$5 ~ /^\/media\/[^\/]+$/ { ex = "exec"; n = split($6, o, ","); for (i = 1; i <= n; i++) if (o[i] == "noexec") ex = "noexec"; for (i = 7; i <= NF && $i != "-"; i++) ; printf "%s  %s  %s  %s\n", $5, $(i+1), $(i+2), ex }' "$MOUNTINFO" | mi_unescape
+}
 write_payload() {   # $1 = folder to write the patch's files into
     d=$1
 @@PAYLOAD@@
@@ -120,8 +123,13 @@ cmd_status() {
         echo "Not installed. $ROOT is mounted noexec: the patch can be installed."; state_line stock 1; return
     fi
     n=$(candidates | wc -l)
-    if [ "$n" = 0 ]; then echo "Not installed. No drive under /media is mounted noexec (is it plugged in, and is it already executable?)."; state_line unsupported 0 no-noexec-drive; return; fi
+    if [ "$n" = 0 ]; then
+        echo "Not installed. No drive under /media is mounted noexec (is it plugged in, and is it already executable?)."
+        echo "Mounted under /media right now (a folder with no line here is only an empty mount point, not a drive):"; media_mounts | sed 's/^/  /'
+        state_line unsupported 0 no-noexec-drive; return
+    fi
     echo "Not installed. Drives mounted noexec:"; candidates | sed 's/^/  /'
+    echo "All mounts under /media (the drive is the one marked noexec; a drive can be named by its label or by a number):"; media_mounts | sed 's/^/  /'
     [ "$n" = 1 ] || echo "More than one: install needs --root /media/<drive>."
     state_line stock 1
 }

@@ -1,0 +1,4 @@
+{ "id": "ottmpc", "name": "OTTmpc", "author": "sd88me", "repo": "sd88me/mpc-vst-OTT",
+  "kind": "effect", "style": "compressor", "tags": ["ott", "multiband", "compressor", "dynamics"], "license": "GPL-3.0-only",
+  "summary": "Vital's OTT multiband up/down compressor as an insert effect: live band meters with dB numbers, 12 Q-Link controls and 10 presets.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-OTT/claude/friendly-wozniak-m9ak1l/docs/screenshot.png" }

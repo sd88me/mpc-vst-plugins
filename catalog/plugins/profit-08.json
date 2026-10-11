@@ -1,0 +1,4 @@
+{ "id": "profit-08", "name": "Profit-08", "author": "sd88me", "repo": "sd88me/mpc-vst-profit8",
+  "kind": "instrument", "style": "synth", "tags": ["analog", "poly", "layers", "sequencer"], "license": "MIT",
+  "summary": "Eight-voice, two-layer analog-style synthesizer: stack and split layers, a gated sequencer and arpeggiator, a resonant 2/4-pole filter and a banks browser for your own program and bank SysEx dumps.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-profit8/main/docs/img/screenshot-program.png" }

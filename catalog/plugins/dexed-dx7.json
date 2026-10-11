@@ -1,3 +1,4 @@
 { "id": "dexed-dx7", "name": "Dexed (DX7)", "author": "sd88me", "repo": "sd88me/mpc-vst-dx7",
   "kind": "instrument", "style": "fm-synth", "tags": ["yamaha", "dx7", "emulation"], "license": "GPL-3.0-only",
-  "summary": "Yamaha DX7-style 6-operator FM synth (Dexed/MSFA engine) as a native instrument, with .syx bank browsing, all 32 algorithm diagrams and a touchscreen skin with Q-Links." }
+  "summary": "Yamaha DX7-style 6-operator FM synth (Dexed/MSFA engine) as a native instrument, with .syx bank browsing, all 32 algorithm diagrams and a touchscreen skin with Q-Links.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-dx7/main/docs/img/dexed-dx7.png" }

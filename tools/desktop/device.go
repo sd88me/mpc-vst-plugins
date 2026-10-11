@@ -30,7 +30,7 @@ type Config struct {
 }
 
 func defaultConfig() Config {
-	return Config{Port: "22", User: "root", RemoteTmp: "/tmp", SynthsDir: "/sdcard/Synths", RootGlobs: "/sdcard/Synths /media/*/Synths", MountsFile: "/proc/mounts", SettingsGlob: "/media/az01-internal/Settings/*/MPC.settings", AddinsDir: "/data/mpc-addins",
+	return Config{Port: "22", User: "root", RemoteTmp: "/tmp", SynthsDir: "/sdcard/Synths", RootGlobs: "/sdcard/Synths /media/*/Synths", MountsFile: "/proc/mounts", SettingsGlob: "/media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings", AddinsDir: "/data/mpc-addins",
 		LibcPaths: "/lib/libc.so.6 /lib/arm-linux-gnueabihf/libc.so.6 /usr/lib/libc.so.6 /lib/libc-*.so /usr/lib/libc-*.so"}
 }
 
@@ -413,8 +413,8 @@ func (i DeviceInfo) problems() []string {
 	if i.UID != "0" {
 		p = append(p, "you are not logged in as root")
 	}
-	if !strings.HasPrefix(i.Arch, "armv7") {
-		p = append(p, "this is "+i.Arch+", not a 32-bit ARM MPC OS device")
+	if !strings.HasPrefix(i.Arch, "armv7") && i.Arch != "aarch64" {
+		p = append(p, "this is "+i.Arch+", not a 32-bit ARM (Gen1) or aarch64 (Gen2) MPC OS device")
 	}
 	if !i.Tar {
 		p = append(p, "the device has no tar")

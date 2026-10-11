@@ -97,6 +97,57 @@ text { font-family: var(--font); font-weight: 600; }
 .look-metal { fill: url(#metal-linear); stroke: #3b3b3a; stroke-width: 1.5; filter: var(--shadow); }
 .look-metal-top { fill: url(#metal-radial); }
 .look-notch { stroke: #1e1e1e; stroke-linecap: round; }
+/* knob look=prophet: ribbed black skirt, silver ring, brushed black top, white pointer */
+.look-pshadow { fill: rgba(0, 0, 0, 0.55); filter: blur(1.6px); }
+.look-pskirt { fill: #0b0b0c; }
+.look-prib { fill: none; stroke: #4a4b4f; }
+.look-pring { fill: url(#metal-linear); stroke: #8a8c90; stroke-width: 0.6; }
+.look-pbevel { fill: #55575b; }
+.look-ptop { fill: #1a1b1d; stroke: #08090a; stroke-width: 0.8; }
+.look-pbrush line { stroke: #34363a; stroke-width: 0.5; opacity: 0.8; }
+.look-pline { stroke: #f7f7f5; stroke-linecap: round; fill: none; }
+.look-psheen { opacity: 0.18; }
+/* knob look=hardware: glossy black dome, scale ticks, specular highlight, contact shadow */
+.look-hticks line { stroke: var(--tick, #14110a); stroke-width: 1.6; stroke-linecap: round; opacity: 0.9; }
+.look-hshadow { fill: rgba(0, 0, 0, 0.6); filter: blur(2.4px); }
+.look-hskirt { fill: #08080a; }
+.look-hrib { fill: none; stroke: #3b3c40; }
+.look-hrim { fill: url(#rim-linear); }
+.look-hdome { fill: url(#dome-radial); }
+.look-hpointer { fill: #f4f4f1; stroke: #d0d0cc; stroke-width: 0.4; stroke-linejoin: round; }
+.look-hspec { fill: #fff; opacity: 0.5; filter: blur(1.1px); }
+.look-hglint { fill: #fff; opacity: 0.16; filter: blur(1px); }
+/* knob look=chrome */
+.look-crim { fill: url(#rim-linear); stroke: #55585d; stroke-width: 0.8; }
+.look-cdome { fill: url(#chrome-linear); }
+.look-cline { stroke: #15161a; stroke-linecap: round; }
+/* knob look=bakelite */
+.look-bskirt { fill: #1c0d05; }
+.look-brib { fill: none; stroke: #5a3420; }
+.look-btop { fill: url(#bake-radial); stroke: #0d0502; stroke-width: 0.8; }
+.look-bline { stroke: #f1e6c8; stroke-linecap: round; }
+/* knob look=davies */
+.look-dskirt { fill: #121214; stroke: #000; stroke-width: 0.8; }
+.look-dstep { fill: #4b4d52; }
+.look-dcap { fill: url(#dome-radial); }
+.look-dline { stroke: #f2f2ee; stroke-linecap: butt; }
+/* knob look=rubber */
+.look-rbody { fill: #26272a; stroke: #0c0c0d; stroke-width: 1; }
+.look-rgrip { fill: none; stroke: #3a3b3f; }
+.look-rtop { fill: #2e2f33; stroke: #1a1b1d; stroke-width: 1; }
+.look-rdot { fill: var(--knob-dot); }
+/* knob look=ledring */
+.look-led-on { fill: var(--accent-hi); filter: drop-shadow(0 0 2.5px var(--accent-hi)); }
+.look-led-off { fill: #3a3a38; }
+.look-lbody { fill: #1d1e20; stroke: #070708; stroke-width: 1; }
+.look-lline { stroke: #f4f4f1; stroke-linecap: round; }
+/* knob look=taper: seen from above: shaded stem base, bevel ring, charcoal top, pale inset, notch; per-size colours via [data-r] */
+.look-wside { fill: #34343a; }
+.look-wshade { fill: url(#wside-radial); }
+.look-wtop { fill: #2a2a2e; stroke: #141416; stroke-width: 0.8; }
+.look-wbevel { fill: none; stroke: #5a5a60; stroke-width: 1.4; opacity: 0.8; }
+.look-winset { fill: #86868b; stroke: #444448; stroke-width: 0.8; }
+.look-wnotch { stroke: #1f1f23; stroke-linecap: round; }
 /* knob look=cap: the theme's knob colours */
 .look-cap-ring { fill: var(--knob-ring); filter: var(--shadow); }
 .look-cap-top { fill: var(--knob-dot); }

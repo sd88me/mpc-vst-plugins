@@ -1,0 +1,16 @@
+{
+  "id": "tablor",
+  "name": "Tablor",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-tablor",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "wavetable",
+    "polyphonic",
+    "unison"
+  ],
+  "license": "BSD-3-Clause",
+  "summary": "Two-oscillator wavetable synth with unison, filter and mod envelopes; ships its wavetable library and 9 presets.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-tablor/v1.0.0/screenshots/page_0.png"
+}

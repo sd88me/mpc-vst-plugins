@@ -19,7 +19,8 @@ import (
 
 // Device patches (docs/PATCHES.md): scripts from this project that change the device itself, not a plugin. This file only reads: it
 // fetches the manifest, checks each script against its sha256 and asks the device what state a patch is in (the script's `status`
-// command, which changes nothing). Nothing here applies or undoes a patch.
+// command, which changes nothing), and, only when the user has typed the confirmation word, runs the script's `install --confirmed`
+// or `uninstall --confirmed` (RunPatch) and checks the state afterwards.
 
 const maxPatchScript = 1 << 20
 
@@ -235,7 +236,11 @@ func PatchRows(dev *Device, patches []Patch, fetch func(Patch) ([]byte, error)) 
 					case "unsupported":
 						r.Detail = unsupportedDetail(p, st)
 					case "partial":
-						r.Detail = "Installed, but not active right now: the drive may not be mounted, or its mount was removed. Check the patch's guide."
+						if t, ok := reasonText[st.Reason]; ok {
+							r.Detail = t
+						} else {
+							r.Detail = "Installed, but not active right now: the drive may not be mounted, or its mount was removed. Check the patch's guide."
+						}
 					}
 				}
 			}
@@ -259,6 +264,11 @@ var reasonText = map[string]string{
 	"no-drive":        "That drive is not mounted.",
 	"not-needed":      "That drive already allows running programs, so the patch is not needed.",
 	"no-noexec-drive": "No drive is mounted that blocks running programs (is the drive plugged in, and does it already work?).",
+	"unknown-layout":  "This device has neither the Hakai launcher nor an acvs or inmusic-mpc service this patch can hook.",
+	"hand-install":    "A copy of this remap is already installed by hand. Remove it first; the patch's guide says how.",
+	"not-loaded":      "Installed, but the running MPC has not loaded it. Restart MPC.",
+	"not-running":     "Installed. MPC is not running, so it is not in effect until MPC starts.",
+	"incomplete":      "Installed, but a file is missing. The patch's guide says how to remove it and install it again.",
 }
 
 // unsupportedDetail says why the script would not touch the device, so a bare "not supported" is never all the page shows.
@@ -284,4 +294,89 @@ func unsupportedDetail(p Patch, st PatchState) string {
 		b.WriteString(" A backup from an earlier install is on the device: its guide explains how to restore the stock program from it with the script's uninstall.")
 	}
 	return b.String()
+}
+
+// Words the user must type before a patch is applied or undone (the page asks; the server checks again).
+const (
+	ConfirmApply = "APPLY"
+	ConfirmUndo  = "UNDO"
+)
+
+// patchAction checks that `action` makes sense for the state the device reported. The script has its own gates; this keeps the app
+// from even starting something the row already says cannot work.
+func patchAction(action string, st PatchState) error {
+	switch action {
+	case "install":
+		if !st.Supported || (st.State != "stock" && st.State != "old-patch") {
+			return fmt.Errorf("this patch cannot be applied here (state: %s)", st.State)
+		}
+	case "uninstall":
+		switch {
+		case st.State == "patched" || st.State == "old-patch" || st.State == "partial":
+		case st.State == "unsupported" && st.Backup: // the script restores the stock program from its own verified backup, or refuses
+		default:
+			return fmt.Errorf("there is nothing to undo (state: %s)", st.State)
+		}
+	default:
+		return errors.New("unknown action")
+	}
+	return nil
+}
+
+// RunPatch copies the (already verified) script to a private folder on the device, runs `<action> --confirmed` with its output in the
+// job's log, then asks `status` again and only reports success when the device is in the state that was asked for.
+func RunPatch(dev *Device, p Patch, script []byte, action string, j *Job, refresh func()) (err error) {
+	defer func() {
+		if refresh != nil {
+			refresh()
+		}
+		j.finish(err)
+	}()
+	tmp := dev.cfg.RemoteTmp + "/mpc-patch-" + randHex(4)
+	defer dev.Run("rm -rf "+shQuote(tmp), nil, nil)
+	if code, rerr := dev.Run("mkdir -p "+shQuote(tmp)+" && cat > "+shQuote(tmp+"/patch.sh"), bytes.NewReader(script), nil); rerr != nil || code != 0 {
+		return fmt.Errorf("cannot prepare the device (status %d): %v", code, rerr)
+	}
+	status := func() (PatchState, error) {
+		var lines []string
+		var mu sync.Mutex
+		code, rerr := dev.Run("sh "+shQuote(tmp+"/patch.sh")+" status </dev/null", nil, func(l string) { mu.Lock(); lines = append(lines, l); mu.Unlock() })
+		mu.Lock()
+		defer mu.Unlock()
+		if st, ok := parseStateLine(lines); ok && rerr == nil && code == 0 {
+			return st, nil
+		}
+		return PatchState{}, fmt.Errorf("the patch script's status did not answer (status %d) %v", code, rerr)
+	}
+	before, err := status()
+	if err != nil {
+		return err
+	}
+	if err = patchAction(action, before); err != nil {
+		return err
+	}
+	verb, want := "Applying", "patched"
+	if action == "uninstall" {
+		verb, want = "Undoing", "stock"
+	}
+	j.log("%s: %s", verb, p.Title)
+	if p.RestartsMPC {
+		j.log("The script stops and starts MPC itself if it has to.")
+	}
+	code, rerr := dev.Run("sh "+shQuote(tmp+"/patch.sh")+" "+action+" --confirmed </dev/null 2>&1", nil, func(l string) { j.log("  %s", l) })
+	if rerr != nil {
+		return rerr
+	}
+	if code != 0 {
+		return fmt.Errorf("the patch script stopped with status %d (see the log). Check the row: the script restores the original when it fails", code)
+	}
+	after, err := status()
+	if err != nil {
+		return fmt.Errorf("the script finished but the device would not report its state: %v", err)
+	}
+	if after.State != want {
+		return fmt.Errorf("the script finished but the device reports %q, not %q: check the patch's guide", after.State, want)
+	}
+	j.log("The device now reports: %s.", after.State)
+	return nil
 }

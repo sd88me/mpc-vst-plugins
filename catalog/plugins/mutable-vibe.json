@@ -1,3 +1,4 @@
 { "id": "mutable-vibe", "name": "Mutable Vibe MPC", "author": "nachtaktiv303", "repo": "nachtaktiv303/mpc-vst-mutable-vibe",
   "kind": "instrument", "style": "synth", "tags": ["mutable-instruments", "rings", "plaits", "resonator", "macro-oscillator", "eurorack"], "license": "MIT",
-  "summary": "Mutable Instruments Rings + Plaits in one synth: 6 resonator models and 14 melodic macro-oscillator engines, with filter, FX, 6 envelopes, 4 LFOs, a mod matrix and tempo sync, plus a touchscreen skin and Q-Links." }
+  "summary": "Mutable Instruments Rings + Plaits in one synth: 6 resonator models and 14 melodic macro-oscillator engines, with filter, FX, 4 envelopes, 4 LFOs, a mod matrix and tempo sync, plus a touchscreen skin and Q-Links.",
+  "screenshot": "https://raw.githubusercontent.com/nachtaktiv303/mpc-vst-mutable-vibe/main/preview_0.png" }
