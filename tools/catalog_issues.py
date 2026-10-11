@@ -14,6 +14,8 @@ the failure visible:
 - an open issue whose problem is gone or superseded is closed with a comment, unless its plugin could not be read in
   this build (then nothing is known about its releases); a second open issue with the same title is closed as a
   duplicate.
+Risky-call flags (flags.json, also from catalog_build.py) get one issue per flagged version, "Catalog: <id> <version>
+flagged for review". Closing it is the review: it is never reopened or closed by this script.
 Needs the `gh` CLI (GITHUB_TOKEN with issues: write in Actions). Standard library only.
 """
 import argparse
@@ -74,9 +76,30 @@ def plan(problems, issues):
     return to_open, to_close
 
 
+def flag_title(f):
+    return "Catalog: %s %s flagged for review" % (f["id"], f["version"])
+
+
+def plan_flags(flagged, issues):
+    """flagged: flags.json; issues as in plan(). -> to_open [(title, body)] for flagged versions with no issue in any state."""
+    known = {i["title"] for i in issues}
+    out = {}
+    for f in flagged:
+        t = flag_title(f)
+        if t in known or t in out:
+            continue
+        lines = ["- `%s`: %s" % (name, "; ".join("%s (%s)" % (c, ", ".join(v)) for c, v in r.items())) for name, r in f["flags"].items()]
+        out[t] = ("The catalog's release check found calls a synth or effect normally has no reason to make "
+                  "(network, running programs, loading code at runtime, changing the system):\n\n" + "\n".join(lines) +
+                  "\n\nThis is a flag, not a rejection: the release stays listed. Look at the source, or ask the author why "
+                  "it needs these, then close this issue. A closed issue is not reopened.")
+    return list(out.items())
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--problems", default="catalog/dist/problems.json")
+    ap.add_argument("--flags", default="catalog/dist/flags.json")
     ap.add_argument("--repo", help="owner/name (default: the current repo)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -95,6 +118,11 @@ def main():
         listing = json.loads(gh("issue", "list", *repo, "--state", "all", "--search", "Catalog: in:title",
                                 "--json", "number,title,state", "--limit", "1000"))
         to_open, to_close = plan(problems, listing)
+        try:
+            with open(a.flags) as f:
+                to_open += plan_flags(json.load(f), listing)
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"No flags read from {a.flags}: {e}", file=sys.stderr)
         for t, body in to_open:
             print("open:", t)
             if not a.dry_run:

@@ -99,6 +99,9 @@ Risky calls (2026-10-11, offline: `tools/test_catalog.py`): every ELF file in th
 its dynamic symbol table (`RISKY_CALLS` in `tools/catalog_check.py`): network, running programs, loading code at runtime, changing the
 system. A hit is a warning and a `flags` field on the version record, never a rejection: a person looks, or the author explains.
 It sees only what the file imports, so a determined author can hide a call; it catches the careless case, not a skilled one.
+The nightly build re-checks every kept version, prints a "flagged for review" line per hit, writes `flags.json` next to
+`problems.json`, and `tools/catalog_issues.py` opens one issue per flagged version ("Catalog: <id> <version> flagged for review").
+Closing that issue is the review; it is never reopened or closed automatically (2026-10-11, offline tests only).
 
 ### Site
 Generated static HTML (`tools/catalog_site.py`, no JS framework): searchable/filterable grid, a page per plugin

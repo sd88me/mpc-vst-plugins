@@ -593,6 +593,15 @@ class BuildTest(Base):
         self.assertEqual(p["downloads"], 9)   # all time: every published zip, including the yanked 1.0.0 and the invalid 1.2.0
         self.assertEqual(sorted((x["tag"] for x in problems)), ["v1.2.0", "v1.3.0-b"])
 
+    def test_flagged_versions_are_listed_and_kept(self):
+        z = self.build("1.0.0", imports=("socket",))
+        gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1)]}, {1: z})
+        cat, problems = catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "cache"), set())
+        self.assertEqual(problems, [])
+        self.assertEqual(cat["plugins"][0]["latest"], "1.0.0")   # flagged, still listed
+        self.assertEqual(catalog_build.flagged_of(cat), [{"id": "test-synth", "version": "1.0.0", "flags": {
+            "portable/Acme - VST - Test Synth/test_synth.so": {"network": ["socket"]}}}])
+
     def gen2_release(self, tag, a32, a64):
         r = self.rel(tag, a32)
         r["assets"].append({"id": a64, "name": "x-mpc-aarch64.zip", "browser_download_url": "https://x/x-mpc-aarch64.zip", "download_count": 1})
@@ -740,6 +749,17 @@ import catalog_issues  # noqa: E402
 
 class IssuesTest(unittest.TestCase):
     T = "Catalog: a %s failed validation"
+
+    def test_flags_open_one_issue_per_version_and_never_reopen(self):
+        fl = [{"id": "a", "version": "1.0.0", "flags": {"a.so": {"network": ["socket"]}}},
+              {"id": "a", "version": "1.1.0", "flags": {"a.so": {"network": ["socket"]}}},
+              {"id": "b", "version": "2.0.0", "flags": {"b.so": {"runs programs": ["system"]}}}]
+        issues = [{"number": 1, "title": "Catalog: a 1.0.0 flagged for review", "state": "CLOSED"},
+                  {"number": 2, "title": "Catalog: b 2.0.0 flagged for review", "state": "OPEN"}]
+        got = catalog_issues.plan_flags(fl, issues)
+        self.assertEqual([t for t, _ in got], ["Catalog: a 1.1.0 flagged for review"])
+        self.assertIn("network (socket)", got[0][1])
+        self.assertEqual(catalog_issues.plan([], issues), ([], []))   # flag issues are never closed by the problems plan
 
     def test_plan_dedupes_and_skips_known_titles(self):
         pr = [{"id": "a", "tag": "v1", "error": "x"}, {"id": "a", "tag": "v1", "error": "y"},

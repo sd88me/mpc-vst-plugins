@@ -422,6 +422,8 @@ def build(entries, src, cache, yanked, keep=10, now=None):
                 else:
                     rec["assets"]["aarch64"] = {k: rec64[k] for k in ("sha256", "size") if k in rec64} | {"url": a64[0]["browser_download_url"]}
                     rec["gen2"] = True
+                    for f, r in rec64.get("flags", {}).items():
+                        rec.setdefault("flags", {})["aarch64: " + f] = r
             elif len(a64) > 1:
                 failed.append(({"id": e["id"], "tag": tag, "error": "expected one asset matching %s, found %d" % (pat64, len(a64))}, pub))
             rec.update({
@@ -475,6 +477,12 @@ def build(entries, src, cache, yanked, keep=10, now=None):
     return catalog, problems
 
 
+def flagged_of(catalog):
+    """[{id, version, flags}] for every listed, unyanked version whose files import risky calls (catalog_check.RISKY_CALLS)."""
+    return [{"id": p["id"], "version": v["version"], "flags": v["flags"]}
+            for p in catalog["plugins"] for v in p["versions"] if v.get("flags") and not v.get("yanked")]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--registry", default="catalog/plugins")
@@ -495,6 +503,12 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     json.dump(catalog, open(os.path.join(a.out, "catalog.json"), "w"), indent=1)
     json.dump(problems, open(os.path.join(a.out, "problems.json"), "w"), indent=1)
+    flagged = flagged_of(catalog)
+    json.dump(flagged, open(os.path.join(a.out, "flags.json"), "w"), indent=1)
+    for fl in flagged:
+        for f, r in fl["flags"].items():
+            print("flagged for review: %s %s: %s calls %s" % (fl["id"], fl["version"], f,
+                  "; ".join("%s (%s)" % (c, ", ".join(v)) for c, v in r.items())))
     for p in problems:
         print("problem: %(id)s %(tag)s: %(error)s" % p, file=sys.stderr)
     miss = {}
