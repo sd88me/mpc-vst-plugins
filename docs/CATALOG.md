@@ -95,6 +95,10 @@ Zip layout matches the spec; manifest matches the registry (`id`, `uid`, repo); 
 GLIBC <= 2.36 (above 2.32 it is listed as MPC OS 3.x only); `install.sh`/`uninstall.sh`/`plugin_list.awk` are identical to this repo's canonical copies (or a
 diff is flagged for manual review); checksums match; `uid` and `file=` name don't collide with any other catalog
 entry; license file present. This reuses code already in `tools/release.py`.
+Risky calls (2026-10-11, offline: `tools/test_catalog.py`): every ELF file in the zip has its imported functions read from
+its dynamic symbol table (`RISKY_CALLS` in `tools/catalog_check.py`): network, running programs, loading code at runtime, changing the
+system. A hit is a warning and a `flags` field on the version record, never a rejection: a person looks, or the author explains.
+It sees only what the file imports, so a determined author can hide a call; it catches the careless case, not a skilled one.
 
 ### Site
 Generated static HTML (`tools/catalog_site.py`, no JS framework): searchable/filterable grid, a page per plugin

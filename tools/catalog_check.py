@@ -97,6 +97,47 @@ def max_glibc(path):
     return max(found, key=lambda v: tuple(map(int, v.split(".")))) if found else None
 
 
+# Calls a synth or effect has no reason to make. Flagged for a person to look at, never rejected (docs/CATALOG.md, "Validation").
+RISKY_CALLS = {
+    "network": ("socket", "connect", "bind", "listen", "accept", "getaddrinfo", "gethostbyname", "send", "sendto", "recv", "recvfrom"),
+    "runs programs": ("system", "popen", "execl", "execlp", "execle", "execv", "execve", "execvp", "execvpe", "fork", "vfork",
+                      "posix_spawn", "posix_spawnp", "clone"),
+    "loads code at runtime": ("dlopen", "dlmopen"),
+    "changes the system": ("mount", "umount", "umount2", "reboot", "setuid", "setgid", "chroot", "ptrace", "init_module"),
+}
+
+
+def imported_symbols(d):
+    """The undefined (imported) names in an ELF file's dynamic symbol table: what it asks the system for. Empty if not ELF."""
+    if d[:4] != b"\x7fELF":
+        return set()
+    bits64, bo = d[4] == 2, ("little" if d[5] == 1 else "big")
+    n = lambda o, k: int.from_bytes(d[o:o + k], bo)
+    shoff, shentsize, shnum = (n(40, 8), n(58, 2), n(60, 2)) if bits64 else (n(32, 4), n(46, 2), n(48, 2))
+    secs = []
+    for k in range(shnum):
+        o = shoff + k * shentsize
+        secs.append((n(o + 4, 4), n(o + 24, 8), n(o + 32, 8), n(o + 40, 4)) if bits64 else
+                    (n(o + 4, 4), n(o + 16, 4), n(o + 20, 4), n(o + 24, 4)))
+    out = set()
+    for sh_type, off, size, link in secs:
+        if sh_type != 11 or link >= len(secs):   # SHT_DYNSYM, names in its linked string table
+            continue
+        stroff, ent = secs[link][1], (24 if bits64 else 16)
+        for o in range(off + ent, off + size, ent):   # entry 0 is the null symbol
+            if n(o + (6 if bits64 else 14), 2) != 0:   # defined here, not imported
+                continue
+            name_off = stroff + n(o, 4)
+            out.add(d[name_off:d.index(b"\0", name_off)].decode(errors="replace"))
+    return out
+
+
+def risky_calls(d):
+    """{category: [names]} for the RISKY_CALLS an ELF file imports."""
+    imp = imported_symbols(d)
+    return {c: sorted(imp.intersection(names)) for c, names in RISKY_CALLS.items() if imp.intersection(names)}
+
+
 def parse_addin_manifest(text):
     """addin.manifest -> {key: value}. install.sh sources it as root, so only plain assignments of the known keys are allowed:
     KEY=bare, KEY="text" or KEY='text' (no $, backquote or backslash), comments and blank lines. Raises ValueError."""
@@ -376,12 +417,21 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
     # does the installer understand -n (the caller stops and starts MPC)? An installer that does not restarts MPC by itself, so a batch
     # installer must run it separately (docs/RELEASING.md). Releases of the old layout have no -n.
     defer = (not legacy) and b"DEFER=" in files.get("install.sh", b"")
+    flags = {}
+    for name, data in sorted(files.items()):
+        r = risky_calls(data)
+        if r:
+            flags[name] = r
+            warn("%s calls %s: flagged for manual review (the author can explain why)" % (
+                name, "; ".join("%s (%s)" % (c, ", ".join(v)) for c, v in r.items())))
     record = {
         "version": m["version"], "size": os.path.getsize(zpath), "defer": defer,
         "sha256": hashlib.sha256(open(zpath, "rb").read()).hexdigest(),
         "param_compat": m["param_compat"], "max_glibc": m.get("max_glibc"), "cpu": m.get("cpu"),
         "manifest": m,
     }
+    if flags:
+        record["flags"] = flags
     if os_gens is not None:
         record["os_compat"] = os_gens
         if "2.x" not in os_gens:

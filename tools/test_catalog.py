@@ -20,7 +20,7 @@ ENTRY = ('<PLUGIN name="Test Synth" format="VST" category="Synth" manufacturer="
          'numInputs="0" numOutputs="2" isShell="0" hasARAExtension="0" uniqueId="0"/>')
 
 
-def fake_so(path, machine=40, glibc=b"GLIBC_2.30", elf_class=1):
+def fake_so(path, machine=40, glibc=b"GLIBC_2.30", elf_class=1, imports=()):
     """A 32-bit little-endian ELF with just a string table and a version-needs section naming glibc (one need of
     libc.so.6 with one version), the shape the release tools read the glibc requirement from."""
     strtab = b"\0libc.so.6\0" + glibc + b"\0"
@@ -42,8 +42,18 @@ def fake_so(path, machine=40, glibc=b"GLIBC_2.30", elf_class=1):
     def shdr(sh_type, off, size, link):
         return (0).to_bytes(4, "little") + sh_type.to_bytes(4, "little") + (0).to_bytes(8, "little") \
             + off.to_bytes(4, "little") + size.to_bytes(4, "little") + link.to_bytes(4, "little") + bytes(12)
-    shdrs = shdr(0, 0, 0, 0) + shdr(3, 52, len(strtab), 0) + shdr(0x6FFFFFFE, 52 + len(strtab), len(verneed), 1)
-    open(path, "wb").write(bytes(ehdr) + strtab + verneed + shdrs)
+    # imported functions: a dynamic symbol table (null symbol, then one undefined symbol per name) and its string table
+    dynstr, dynsym = b"\0", bytes(16)
+    for name in imports:
+        dynsym += len(dynstr).to_bytes(4, "little") + bytes(8) + bytes([0x12, 0]) + (0).to_bytes(2, "little")
+        dynstr += name.encode() + b"\0"
+    p0 = len(body)
+    shdrs = shdr(0, 0, 0, 0) + shdr(3, 52, len(strtab), 0) + shdr(0x6FFFFFFE, 52 + len(strtab), len(verneed), 1) \
+        + shdr(3, p0, len(dynstr), 0) + shdr(11, p0 + len(dynstr), len(dynsym), 3)
+    shoff = p0 + len(dynstr) + len(dynsym)
+    ehdr[32:36] = shoff.to_bytes(4, "little")
+    ehdr[48:50] = (5).to_bytes(2, "little")
+    open(path, "wb").write(bytes(ehdr) + strtab + verneed + dynstr + dynsym + shdrs)
 
 
 class Base(unittest.TestCase):
@@ -70,9 +80,9 @@ class Base(unittest.TestCase):
                 zout.writestr(i, data[i.filename])
         return out
 
-    def build(self, version="1.2.0", machine=40, glibc=b"GLIBC_2.30", extra=(), elf_class=1, tui="{}"):
+    def build(self, version="1.2.0", machine=40, glibc=b"GLIBC_2.30", extra=(), elf_class=1, tui="{}", imports=()):
         t = self.tmp
-        fake_so(os.path.join(t, "test_synth.so"), machine, glibc, elf_class)
+        fake_so(os.path.join(t, "test_synth.so"), machine, glibc, elf_class, imports)
         skin = os.path.join(t, "Acme - VST - Test Synth")
         os.makedirs(os.path.join(skin, "Plugin Skins"), exist_ok=True)
         open(os.path.join(skin, "version.xml"), "w").write("<v/>")
@@ -94,6 +104,23 @@ class Base(unittest.TestCase):
                     data = fn(data)
                 zout.writestr(i, data)
         return out
+
+
+class RiskyCallsTest(Base):
+    def test_risky_imports_are_flagged_not_rejected(self):
+        z = self.build(imports=("memcpy", "sinf", "socket", "connect", "system", "dlopen"))
+        errors, warnings, rec = catalog_check.check(z, catalog=True, expect_id="test-synth", expect_repo="acme/test-synth")
+        self.assertEqual(errors, [])
+        self.assertTrue(any("network (connect, socket)" in w and "runs programs (system)" in w for w in warnings), warnings)
+        self.assertEqual(rec["flags"]["portable/Acme - VST - Test Synth/test_synth.so"], {"network": ["connect", "socket"], "runs programs": ["system"],
+                                                         "loads code at runtime": ["dlopen"]})
+
+    def test_an_ordinary_plugin_has_no_flags(self):
+        z = self.build(imports=("memcpy", "sinf", "malloc", "fopen"))
+        errors, warnings, rec = catalog_check.check(z, catalog=True, expect_id="test-synth", expect_repo="acme/test-synth")
+        self.assertEqual(errors, [])
+        self.assertNotIn("flags", rec)
+        self.assertFalse(any("manual review" in w for w in warnings))
 
 
 class OsCompatTest(Base):
