@@ -415,3 +415,35 @@ func TestMissingInternalSynthsFolderIsCreated(t *testing.T) {
 		t.Fatalf("the internal drive must be offered first: %+v", d.Info.Roots)
 	}
 }
+
+func TestAnExecBindMountOfTheSynthsFolderIsNotNoexec(t *testing.T) {
+	fd := newFakeDevice(t)
+	card := fd.addCard("MPC-DRIVE")
+	mp := filepath.Dir(card)
+	// BusyBox df names the drive for a bind mount of one of its folders (same device): the drive exec patch case
+	os.WriteFile(filepath.Join(fd.shims, "df"), []byte("#!/bin/sh\nfor a; do last=\"$a\"; done\ncase \"$last\" in\n\"$SSDSYNTHS\") echo 'Filesystem 1024-blocks Used Available Capacity Mounted on'; echo '/dev/sda1 1000000 1000 900000 1% '\"$SSDMP\" ;;\n*) exec /usr/bin/df \"$@\" ;;\nesac\n"), 0o755)
+	t.Setenv("SSDSYNTHS", card)
+	t.Setenv("SSDMP", mp)
+	mounts := filepath.Join(fd.dir, "mounts")
+	os.WriteFile(mounts, []byte("/dev/sda1 "+mp+" exfat rw,nosuid,nodev,noexec,relatime 0 0\n/dev/sda1 "+card+" exfat rw,nosuid,nodev,relatime 0 0\n"), 0o644)
+	cfg := fd.cfg()
+	cfg.MountsFile = mounts
+	d, err := Dial("127.0.0.1", "secret", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	root, ok := d.Info.root(card)
+	if !ok || root.FS != "exfat" || root.NoExec {
+		t.Fatalf("the patched Synths folder is exec even though its drive is noexec: %+v (found %v)", root, ok)
+	}
+	os.WriteFile(mounts, []byte("/dev/sda1 "+mp+" exfat rw,nosuid,nodev,noexec,relatime 0 0\n"), 0o644)
+	d2, err := Dial("127.0.0.1", "secret", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d2.Close()
+	if root, _ := d2.Info.root(card); !root.NoExec {
+		t.Fatalf("without the bind mount the folder is noexec: %+v", root)
+	}
+}

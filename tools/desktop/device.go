@@ -276,8 +276,10 @@ for r in %s; do
   rid=$(stat -L -c '%%d:%%i' "$r" 2>/dev/null)
   dfl=$(df -kP "$r" 2>/dev/null | awk 'NR==2 {m = $6; for (i = 7; i <= NF; i++) m = m " " $i; print $4 "\t" m}')   # the mount point may hold spaces ("/media/SSD - Force")
   free=${dfl%%%%$TAB*}; mp=${dfl#*$TAB}; [ -n "$free" ] || free=0; [ -n "$mp" ] || mp=/
-  mpe=$(printf %%s "$mp" | sed 's/ /\\040/g')   # /proc/mounts writes a space as \040
-  set -- $(MP="$mpe" awk '$2 == ENVIRON["MP"] {t = $3; o = $4} END {print t, o}' %s 2>/dev/null); fs=${1:-}; opts=${2:-}
+  re=$(printf %%s "$r" | sed 's/ /\\040/g')   # /proc/mounts writes a space as \040
+  # the mount that holds $r is the longest mount point on its path, the last one when stacked; not df's, which names the drive
+  # for a bind mount of one folder (the drive exec patch remounts <drive>/Synths exec on a noexec drive)
+  set -- $(R="$re" awk '{p = $2; if (p == "/" || ENVIRON["R"] == p || index(ENVIRON["R"], p "/") == 1) if (length(p) >= n) {n = length(p); t = $3; o = $4}} END {print t, o}' %s 2>/dev/null); fs=${1:-}; opts=${2:-}
   case ",$opts," in *,ro,*) continue ;; esac   # a read-only mount (MPC's own content folder) cannot take plugins, even though root may "write" to it
   nx=0; case ",$opts," in *,noexec,*) nx=1 ;; esac   # MPC cannot load a .so from a noexec mount (a Force's SSD): it lists the plugin but shows only "Load Plugin"
   printf 'root=%%s\t%%s\t%%s\t%%s\t%%s\n' "$r" "$rid" "$free" "$fs" "$nx"
