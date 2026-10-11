@@ -68,10 +68,11 @@ matching release:
 ```
 
 ## Trust tiers
-Every plugin shows one tier, worked out by the nightly build (nobody sets it by hand):
+Every plugin has one tier, worked out by the nightly build (nobody sets it by hand). Only Verified and Experimental get a badge on
+the card: a plugin with no badge is simply in the catalog (the Listed tier), and the Tier filter calls it "Not yet verified".
 - **Verified**: the newest stable release has a `tested.json` entry (above). Say on what, and tell the truth: an entry is a claim
   a maintainer may ask you to back up.
-- **Listed**: the release passed the catalog checks, but no hardware test is recorded for the newest release. This is where a
+- **Listed** (no badge): the release passed the catalog checks, but no hardware test is recorded for the newest release. This is where a
   plugin stays until you add a `tested.json` entry, and where it returns when you release a new version without testing it.
 - **Experimental**: no stable release yet (a beta alone counts), or a maintainer capped the entry with `"tier": "experimental"`
   (for example a bulk port nobody has run). Hidden from the default catalog view, shown by the Tier filter.

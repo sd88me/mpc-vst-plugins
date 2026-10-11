@@ -13,7 +13,7 @@ the catalog earned by evidence, at almost no cost to the maintainer.
 
 ## The tiers (live in PR #267; see CATALOG.md "Trust tiers")
 - **Verified:** the newest stable release has a `tested.json` entry (device, OS version, date) in the plugin's own repo.
-- **Listed:** a valid release that passed the catalog's release checks; no recorded test for the newest release.
+- **Listed:** a valid release that passed the catalog's release checks; no recorded test for the newest release. Shown with no badge (since 2026-10-11): in the catalog and not Verified means Listed.
 - **Experimental:** no stable release yet, or capped by a maintainer (`"tier": "experimental"` in the registry entry). Hidden from the default view.
 - Default sort "Recommended": featured, then Verified, then Listed, then name.
 - Rejected on purpose: star ratings, comments, upvotes as a quality signal (few users, needs a backend and moderation).

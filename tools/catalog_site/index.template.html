@@ -133,7 +133,8 @@ var BY_WARNING = "The result contains firmware-derived data: build it yourself, 
 var ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 function isBY(p) { return p.distribution === "build-yourself"; }
 function kindsOf(p) { var k = [p.kind]; (p.components || []).forEach(function (c) { if (k.indexOf(c.kind) < 0) k.push(c.kind); }); return k; }
-/* Trust tiers (tools/catalog_build.py tier_of, docs/CATALOG.md): verified = tested on a device, listed = passed the release checks,
+/* Trust tiers (tools/catalog_build.py tier_of, docs/CATALOG.md). Listed is the unlabelled middle: a card with no tier badge is in the catalog
+   and passed the release checks, nothing more. Only Verified and Experimental get a badge. verified = tested on a device, listed = passed the release checks,
    experimental = new, beta-only or capped by a maintainer. The default view hides experimental; the Tier filter shows it. */
 var TIERS = { verified: { rank: 0, label: "Verified", tip: "The newest release has a recorded hardware test (see Tested on)." },
               listed: { rank: 1, label: "Listed", tip: "Passed the catalog's release checks; no hardware test recorded for the newest release yet." },
@@ -159,7 +160,7 @@ var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin:
 function inTabKind(p, k) { if (k === "all") return true; return kindsOf(p).some(function (c) { return (c === "instrument" && p.role === "midi" && c === p.kind ? "midi" : c) === k; }); }
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
 fillSelect("f-dist", "Any distribution", ["release", "build-yourself"], function (v) { return v === "release" ? "Download a release zip" : "Build it yourself"; });
-fillSelect("f-tier", "Verified and Listed", ["verified", "listed", "experimental", "all"], function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "listed" ? "Listed only" : "Experimental only"; });
+fillSelect("f-tier", "Verified and unverified", ["verified", "listed", "experimental", "all"], function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "listed" ? "Not yet verified" : "Experimental only"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
 fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 / Force only"; });
 fillSelect("f-style", "All styles", uniq(function (p) { return p.style; }), title);
@@ -233,7 +234,7 @@ function barLine(p) {
 function card(p) {
   var by = isBY(p), v = shown(p), tags = [];
   if (by) tags.push('<span class="tag build" title="No download: you build it from your own files">Build it yourself</span>');
-  tags.push('<span class="tag tier-' + tierOf(p) + '" title="' + esc(TIERS[tierOf(p)].tip) + '">' + TIERS[tierOf(p)].label + '</span>');
+  if (tierOf(p) !== "listed") tags.push('<span class="tag tier-' + tierOf(p) + '" title="' + esc(TIERS[tierOf(p)].tip) + '">' + TIERS[tierOf(p)].label + '</span>');
   tags.push(p.kind === "addin" ? '<span class="tag" title="Loaded into MPC when it starts (LD_PRELOAD), not a plugin on a track">addin</span>' : '<span class="tag">' + esc(p.kind) + '</span>');
   if (p.style) tags.push('<span class="tag">' + esc(title(p.style)) + '</span>');
   tags.push('<span class="tag">' + esc(p.license) + '</span>');
@@ -246,7 +247,7 @@ function card(p) {
     return '<tr class="' + (x.yanked ? "y" : "") + '"><td>v' + esc(x.version) + '</td><td>' + esc(x.date) + '</td><td>' + esc(x.channel) + (x.yanked ? ", yanked" : "") + '</td>' + cols + '</tr>';
   }).join("") + '</table></details>' : "";
   var shot = p.screenshot && safeUrl(p.screenshot) !== "#" ? '<a class="shot" href="' + esc(p.screenshot) + '"><img src="' + esc(p.screenshot) + '" alt="' + esc(p.name) + ' screenshot" loading="lazy"></a>' : "";
-  var head = '<article class="card' + (by ? " by" : "") + '">' + shot + '<header><div><h2>' + esc(p.name) + '</h2><div class="by">by ' + esc(p.author) + '</div></div>' +
+  var head = '<article class="card' + (by ? " by" : "") + '" data-tier="' + tierOf(p) + '">' + shot + '<header><div><h2>' + esc(p.name) + '</h2><div class="by">by ' + esc(p.author) + '</div></div>' +
     (v ? '<span class="ver" title="Latest ' + (by ? "tag" : esc(v.channel) + " release") + '">v' + esc(v.version) + (v.channel === "beta" ? " beta" : "") + '</span>' : '<span class="ver">' + (by ? "no tag" : "no release") + '</span>') + '</header>' +
     '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>' + barLine(p);
   if (by) {

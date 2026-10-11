@@ -65,7 +65,8 @@ list. Each plugin gets a `tier` in `catalog.json`, computed by `catalog_build.py
 `verified` (the newest stable, unyanked version has a `tested.json` entry), `listed` (valid release, no recorded test) or
 `experimental` (no stable release, or the registry entry says `"tier": "experimental"`). The registry may only cap a tier
 (`"tier"` accepts only `"experimental"`); `"featured": true` is a maintainer pick, ignored while experimental. The site hides
-Experimental by default (the Tier filter and a "Show them" link reveal it), badges every card, and the default sort,
+Experimental by default (the Tier filter and a "Show them" link reveal it), badges Verified and Experimental cards only (2026-10-11:
+Listed is the unlabelled middle, still computed and filterable as "Not yet verified"), and the default sort,
 "Recommended", is featured, then tier, then name. Catalogs built before the field read as `listed`. Deliberately not done:
 star ratings, comments, upvotes (few users, needs a backend and moderation; if wanted later, compatibility reports through
 GitHub Discussions that feed `tested.json` fit the static model better, with any vote count only a tiebreaker inside a tier).

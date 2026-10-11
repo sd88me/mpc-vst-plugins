@@ -90,9 +90,11 @@ with sync_playwright() as p:
     pg.goto(URL); pg.reload()
     pg.select_option("#f-tier", "all")
     names = pg.locator("#grid article.card h2").all_inner_texts()
-    tiers = pg.locator("#grid article.card .tag[class*=tier-]").evaluate_all("e => e.map(x => x.className.replace('tag tier-', ''))")
+    tiers = pg.locator("#grid article.card").evaluate_all("e => e.map(x => x.getAttribute('data-tier'))")
     rank = {"verified": 0, "listed": 1, "experimental": 2}
-    check("every card shows a tier", len(tiers) == len(names) and len(names) > 0, str(tiers))
+    check("every card carries a tier", len(tiers) == len(names) and len(names) > 0, str(tiers))
+    check("Listed has no badge; Verified and Experimental do", pg.locator("#grid article[data-tier=listed] .tag[class*=tier-]").count() == 0
+          and pg.locator("#grid article[data-tier=verified] .tag.tier-verified").count() >= 1)
     check("Recommended sorts by tier", [rank[t] for t in tiers] == sorted(rank[t] for t in tiers), str(tiers))
     pg.select_option("#f-tier", index=0)
     check("experimental plugins are hidden by default", pg.locator(".tag.tier-experimental").count() == 0)
