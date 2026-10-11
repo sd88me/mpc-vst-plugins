@@ -133,9 +133,11 @@ def imported_symbols(d):
 
 
 def risky_calls(d):
-    """{category: [names]} for the RISKY_CALLS an ELF file imports."""
+    """{category: [names]} for the RISKY_CALLS an ELF file imports. Empty when runtime code loading is the only one."""
     imp = imported_symbols(d)
-    return {c: sorted(imp.intersection(names)) for c, names in RISKY_CALLS.items() if imp.intersection(names)}
+    r = {c: sorted(imp.intersection(names)) for c, names in RISKY_CALLS.items() if imp.intersection(names)}
+    # dlopen alone is too common (toolchains and runtimes import it) to mean anything; it is kept next to other calls
+    return {} if set(r) == {"loads code at runtime"} else r
 
 
 def parse_addin_manifest(text):

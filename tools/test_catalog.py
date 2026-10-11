@@ -115,6 +115,12 @@ class RiskyCallsTest(Base):
         self.assertEqual(rec["flags"]["portable/Acme - VST - Test Synth/test_synth.so"], {"network": ["connect", "socket"], "runs programs": ["system"],
                                                          "loads code at runtime": ["dlopen"]})
 
+    def test_dlopen_alone_is_not_flagged(self):
+        z = self.build(imports=("memcpy", "dlopen", "dlsym"))
+        errors, warnings, rec = catalog_check.check(z, catalog=True, expect_id="test-synth", expect_repo="acme/test-synth")
+        self.assertEqual(errors, [])
+        self.assertNotIn("flags", rec)
+
     def test_an_ordinary_plugin_has_no_flags(self):
         z = self.build(imports=("memcpy", "sinf", "malloc", "fopen"))
         errors, warnings, rec = catalog_check.check(z, catalog=True, expect_id="test-synth", expect_repo="acme/test-synth")
@@ -594,13 +600,27 @@ class BuildTest(Base):
         self.assertEqual(sorted((x["tag"] for x in problems)), ["v1.2.0", "v1.3.0-b"])
 
     def test_flagged_versions_are_listed_and_kept(self):
-        z = self.build("1.0.0", imports=("socket",))
-        gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1)]}, {1: z})
+        old, new = self.build("1.0.0", imports=("socket",)), self.build("1.1.0", imports=("socket", "system"))
+        gh = FakeGitHub({"acme/test-synth": [self.rel("v1.1.0", 2), self.rel("v1.0.0", 1)]}, {1: old, 2: new})
         cat, problems = catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "cache"), set())
         self.assertEqual(problems, [])
-        self.assertEqual(cat["plugins"][0]["latest"], "1.0.0")   # flagged, still listed
-        self.assertEqual(catalog_build.flagged_of(cat), [{"id": "test-synth", "version": "1.0.0", "flags": {
-            "portable/Acme - VST - Test Synth/test_synth.so": {"network": ["socket"]}}}])
+        self.assertEqual(cat["plugins"][0]["latest"], "1.1.0")   # flagged, still listed
+        so = "portable/Acme - VST - Test Synth/test_synth.so"
+        self.assertEqual(catalog_build.flagged_of(cat), [{"id": "test-synth", "version": "1.1.0", "flags": {   # the newest stable only
+            so: {"network": ["socket"], "runs programs": ["system"]}}}])
+        self.assertEqual(catalog_build.flagged_of(cat, [dict(self.ENTRY, flags_reviewed=["network"])]),
+                         [{"id": "test-synth", "version": "1.1.0", "flags": {so: {"runs programs": ["system"]}}}])
+        self.assertEqual(catalog_build.flagged_of(cat, [dict(self.ENTRY, flags_reviewed=["network", "runs programs"])]), [])
+
+    def test_a_non_plugin_release_in_the_repo_is_not_a_problem(self):
+        z = self.build("1.0.0")
+        e = dict(self.ENTRY, asset_pattern="Test-*-mpc-armv7.zip")
+        app = {"tag_name": "desktop-v0.5.2", "prerelease": False, "draft": False, "published_at": "2026-10-11T00:00:00Z", "body": "",
+               "assets": [{"id": 9, "name": "mpc-installer-linux.tar.gz", "browser_download_url": "https://x/a", "download_count": 1}]}
+        gh = FakeGitHub({"acme/test-synth": [app, self.rel("v1.0.0", 1, name="Test-1.0.0-mpc-armv7.zip")]}, {1: z})
+        cat, problems = catalog_build.build([e], gh, os.path.join(self.tmp, "cache"), set())
+        self.assertEqual(problems, [])
+        self.assertEqual(cat["plugins"][0]["latest"], "1.0.0")
 
     def gen2_release(self, tag, a32, a64):
         r = self.rel(tag, a32)
@@ -750,15 +770,18 @@ import catalog_issues  # noqa: E402
 class IssuesTest(unittest.TestCase):
     T = "Catalog: a %s failed validation"
 
-    def test_flags_open_one_issue_per_version_and_never_reopen(self):
-        fl = [{"id": "a", "version": "1.0.0", "flags": {"a.so": {"network": ["socket"]}}},
-              {"id": "a", "version": "1.1.0", "flags": {"a.so": {"network": ["socket"]}}},
-              {"id": "b", "version": "2.0.0", "flags": {"b.so": {"runs programs": ["system"]}}}]
-        issues = [{"number": 1, "title": "Catalog: a 1.0.0 flagged for review", "state": "CLOSED"},
-                  {"number": 2, "title": "Catalog: b 2.0.0 flagged for review", "state": "OPEN"}]
+    def test_flags_open_one_issue_per_plugin_and_call_set_and_never_reopen(self):
+        fl = [{"id": "a", "version": "1.1.0", "flags": {"a.so": {"network": ["socket"]}}},
+              {"id": "b", "version": "2.0.0", "flags": {"b.so": {"runs programs": ["system"]}}},
+              {"id": "c", "version": "3.0.0", "flags": {"c.so": {"network": ["send"], "runs programs": ["fork"]}}}]
+        issues = [{"number": 1, "title": "Catalog: a flagged for review (network)", "state": "CLOSED"},   # reviewed: a later version opens nothing
+                  {"number": 2, "title": "Catalog: b flagged for review (runs programs)", "state": "OPEN"},
+                  {"number": 3, "title": "Catalog: c flagged for review (network)", "state": "CLOSED"},   # c now also runs programs: new issue
+                  {"number": 4, "title": "Catalog: d 1.0.0 flagged for review", "state": "OPEN"}]        # old per-version form
         got = catalog_issues.plan_flags(fl, issues)
-        self.assertEqual([t for t, _ in got], ["Catalog: a 1.1.0 flagged for review"])
-        self.assertIn("network (socket)", got[0][1])
+        self.assertEqual([t for t, _ in got], ["Catalog: c flagged for review (network, runs programs)"])
+        self.assertIn("network (send)", got[0][1])
+        self.assertEqual([n for n, _ in catalog_issues.close_old_flags(issues)], [4])
         self.assertEqual(catalog_issues.plan([], issues), ([], []))   # flag issues are never closed by the problems plan
 
     def test_plan_dedupes_and_skips_known_titles(self):

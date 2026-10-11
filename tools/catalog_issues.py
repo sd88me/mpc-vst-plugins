@@ -14,8 +14,10 @@ the failure visible:
 - an open issue whose problem is gone or superseded is closed with a comment, unless its plugin could not be read in
   this build (then nothing is known about its releases); a second open issue with the same title is closed as a
   duplicate.
-Risky-call flags (flags.json, also from catalog_build.py) get one issue per flagged version, "Catalog: <id> <version>
-flagged for review". Closing it is the review: it is never reopened or closed by this script.
+Risky-call flags (flags.json, also from catalog_build.py: the newest stable version of each plugin) get one issue per plugin
+and set of call categories, "Catalog: <id> flagged for review (network, runs programs)". Closing it is the review: it is never
+reopened, and a later version with the same categories opens nothing; new categories open a new issue. Open issues in the old
+per-version form ("Catalog: <id> <version> flagged for review") are closed.
 Needs the `gh` CLI (GITHUB_TOKEN with issues: write in Actions). Standard library only.
 """
 import argparse
@@ -76,12 +78,22 @@ def plan(problems, issues):
     return to_open, to_close
 
 
+OLD_FLAG_RE = re.compile(r"^Catalog: \S+ \S+ flagged for review$")
+
+
 def flag_title(f):
-    return "Catalog: %s %s flagged for review" % (f["id"], f["version"])
+    cats = sorted({c for r in f["flags"].values() for c in r})
+    return "Catalog: %s flagged for review (%s)" % (f["id"], ", ".join(cats))
+
+
+def close_old_flags(issues):
+    """-> [(number, comment)] for open issues in the old per-version form."""
+    return [(i["number"], "Flag issues are now one per plugin and set of calls, for its newest stable version; see the new issue if any.")
+            for i in issues if i["state"].upper() == "OPEN" and OLD_FLAG_RE.match(i["title"])]
 
 
 def plan_flags(flagged, issues):
-    """flagged: flags.json; issues as in plan(). -> to_open [(title, body)] for flagged versions with no issue in any state."""
+    """flagged: flags.json; issues as in plan(). -> to_open [(title, body)] for flag sets with no issue in any state."""
     known = {i["title"] for i in issues}
     out = {}
     for f in flagged:
@@ -92,7 +104,8 @@ def plan_flags(flagged, issues):
         out[t] = ("The catalog's release check found calls a synth or effect normally has no reason to make "
                   "(network, running programs, loading code at runtime, changing the system):\n\n" + "\n".join(lines) +
                   "\n\nThis is a flag, not a rejection: the release stays listed. Look at the source, or ask the author why "
-                  "it needs these, then close this issue. A closed issue is not reopened.")
+                  "it needs these, then close this issue (or list the categories in the entry's `flags_reviewed`). "
+                  "A closed issue is not reopened; a later version with the same calls opens nothing.\n\nVersion checked: " + f["version"])
     return list(out.items())
 
 
@@ -121,6 +134,7 @@ def main():
         try:
             with open(a.flags) as f:
                 to_open += plan_flags(json.load(f), listing)
+            to_close += close_old_flags(listing)
         except (OSError, json.JSONDecodeError) as e:
             print(f"No flags read from {a.flags}: {e}", file=sys.stderr)
         for t, body in to_open:

@@ -32,7 +32,8 @@ vst-release.yml  --release-->   nightly + on-dispatch workflow:       device scr
 ### Registry entry (`plugins/<id>.json`, hand-written once)
 `id`, `name`, `author`, `repo` (owner/name), `kind` (instrument | effect), `license`, `summary`, `screenshot`
 (optional `https://` URL; the site ignores anything else), `asset_pattern` (default `*-mpc-armv7.zip`), `homepage` (optional),
-`tier` (optional, only `"experimental"`) and `featured` (optional bool); see Trust tiers below. Nothing versioned.
+`tier` (optional, only `"experimental"`) and `featured` (optional bool); see Trust tiers below. `flags_reviewed` (optional list of
+risky-call categories a maintainer has looked at, e.g. `["network"]` for a remote-control plugin; see Validation). Nothing versioned.
 
 ### Distribution types
 `distribution` in the registry entry: `release` (default; everything above) or `build-yourself`.
@@ -98,10 +99,13 @@ entry; license file present. This reuses code already in `tools/release.py`.
 Risky calls (2026-10-11, offline: `tools/test_catalog.py`): every ELF file in the zip has its imported functions read from
 its dynamic symbol table (`RISKY_CALLS` in `tools/catalog_check.py`): network, running programs, loading code at runtime, changing the
 system. A hit is a warning and a `flags` field on the version record, never a rejection: a person looks, or the author explains.
+`dlopen` on its own is not flagged (toolchains import it); next to other calls it is.
 It sees only what the file imports, so a determined author can hide a call; it catches the careless case, not a skilled one.
-The nightly build re-checks every kept version, prints a "flagged for review" line per hit, writes `flags.json` next to
-`problems.json`, and `tools/catalog_issues.py` opens one issue per flagged version ("Catalog: <id> <version> flagged for review").
-Closing that issue is the review; it is never reopened or closed automatically (2026-10-11, offline tests only).
+The nightly build re-checks every kept version and writes `flags.json` next to `problems.json`: the newest stable version of
+each plugin, less the categories in its entry's `flags_reviewed`. `tools/catalog_issues.py` opens one issue per plugin and set of
+categories ("Catalog: <id> flagged for review (network, runs programs)"). Closing it is the review: it is never reopened, a later
+version with the same categories opens nothing, new categories open a new issue (2026-10-11, offline tests only; the first run
+opened one issue per version, 70 in all, which this replaced).
 
 ### Site
 Generated static HTML (`tools/catalog_site.py`, no JS framework): searchable/filterable grid, a page per plugin

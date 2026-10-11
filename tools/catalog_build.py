@@ -73,6 +73,9 @@ def check_entry(e, fname=None):
         p.append("role must be \"midi\" and only on an instrument (a plugin that sends MIDI to other tracks instead of making sound)")
     if "tier" in e and e["tier"] != "experimental":
         p.append("tier can only be \"experimental\" (a cap; Verified and Listed are worked out from the releases), see docs/CATALOG.md")
+    if "flags_reviewed" in e and not (isinstance(e["flags_reviewed"], list) and e["flags_reviewed"]
+                                      and all(c in catalog_check.RISKY_CALLS for c in e["flags_reviewed"])):
+        p.append("flags_reviewed must list risky-call categories a maintainer has reviewed: %s" % ", ".join(catalog_check.RISKY_CALLS))
     if "featured" in e and not isinstance(e["featured"], bool):
         p.append("featured must be true or false")
     if "tags" in e and not (isinstance(e["tags"], list) and all(isinstance(t, str) and ID.fullmatch(t) for t in e["tags"])):
@@ -369,14 +372,17 @@ def build(entries, src, cache, yanked, keep=10, now=None):
         if build_yourself:
             versions = tag_versions(e, src, yanked, tested, keep, problems)
         newest = max((r for r in releases if not r.get("draft")), key=lambda r: r.get("published_at") or "", default=None)
+        own_prefixes = {tag_prefix(r.get("tag_name")) for r in releases if not r.get("draft") and any(
+            fnmatch.fnmatch(a["name"], e.get("asset_pattern", "*-mpc-armv7.zip")) for a in r.get("assets", []))}
         for rel in releases:
             if rel.get("draft"):
                 continue
             tag = rel.get("tag_name")
             assets = [a for a in rel.get("assets", []) if fnmatch.fnmatch(a["name"], e.get("asset_pattern", "*-mpc-armv7.zip"))]
             all_time += sum(a.get("download_count", 0) for a in assets)
-            if not assets and "asset_pattern" in e and (shared_repo or rel is not newest):
-                continue   # another plugin's release in a shared repo, or an old release from before the pattern existed
+            if not assets and "asset_pattern" in e and (shared_repo or rel is not newest or tag_prefix(tag) not in own_prefixes):
+                continue   # another plugin's release in a shared repo, an old release from before the pattern existed, or another
+                           # product's release in the same repo (its tags have another prefix: "desktop-v0.5.2" next to "v1.0.0")
             if len(assets) != 1:
                 failed.append(({"id": e["id"], "tag": tag, "error": "expected one asset matching %s, found %d" % (
                                     e.get("asset_pattern", "*-mpc-armv7.zip"), len(assets))},
@@ -477,10 +483,25 @@ def build(entries, src, cache, yanked, keep=10, now=None):
     return catalog, problems
 
 
-def flagged_of(catalog):
-    """[{id, version, flags}] for every listed, unyanked version whose files import risky calls (catalog_check.RISKY_CALLS)."""
-    return [{"id": p["id"], "version": v["version"], "flags": v["flags"]}
-            for p in catalog["plugins"] for v in p["versions"] if v.get("flags") and not v.get("yanked")]
+def tag_prefix(tag):
+    """The part of a tag before its version: "desktop-" for "desktop-v0.5.2", "" for "v1.0.0"."""
+    return re.sub(r"v?\d+(\.\d+)*.*$", "", tag or "")
+
+
+def flagged_of(catalog, entries=()):
+    """[{id, version, flags}] for each plugin whose newest stable version imports risky calls (catalog_check.RISKY_CALLS),
+    less the categories its registry entry lists in flags_reviewed (a maintainer looked: e.g. a remote-control plugin's network)."""
+    reviewed = {e["id"]: set(e.get("flags_reviewed", [])) for e in entries}
+    out = []
+    for p in catalog["plugins"]:
+        v = next((v for v in p["versions"] if v["version"] == p.get("latest")), None)
+        if not v or not v.get("flags"):
+            continue
+        flags = {f: {c: n for c, n in r.items() if c not in reviewed.get(p["id"], ())} for f, r in v["flags"].items()}
+        flags = {f: r for f, r in flags.items() if r}
+        if flags:
+            out.append({"id": p["id"], "version": v["version"], "flags": flags})
+    return out
 
 
 def main():
@@ -503,7 +524,7 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     json.dump(catalog, open(os.path.join(a.out, "catalog.json"), "w"), indent=1)
     json.dump(problems, open(os.path.join(a.out, "problems.json"), "w"), indent=1)
-    flagged = flagged_of(catalog)
+    flagged = flagged_of(catalog, entries)
     json.dump(flagged, open(os.path.join(a.out, "flags.json"), "w"), indent=1)
     for fl in flagged:
         for f, r in fl["flags"].items():
