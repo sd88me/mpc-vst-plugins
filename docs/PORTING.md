@@ -11,7 +11,11 @@
   bridge work on the engine side. The DX7 port hit this and switched to an in-process build of the same engine.
 - A port can live in its own repo next to a checkout of this one (`MPC_VST`), as mpc-vst-maze/-dx7/-acid do.
 - **MIDI generator** (sequencer/arp): MPC ignores VST MIDI out, so send through an ALSA seq port (`poc/midiport.c`).
-  Place steps from the host song position, not by counting MIDI clock pulses you synthesized: `docs/MIDI_TIMING.md`.
+  Place steps from the host song position, not by counting MIDI clock pulses you synthesized, and send each block's steps
+  at its start (look ahead one block, split at MPC's loop end): `docs/MIDI_TIMING.md`.
+  A generator on the shared wrapper (no hand-written one) sets `"defines": {"HAS_SONG_POS": 1}` and provides `song_pos()` in
+  `mpc_engine_t`: called once per block with `ppqPos`, tempo, play state and block length (`poc/songpos` is the test engine).
+  Offline only until a device port uses it.
 - **App** (network, files, child processes): allowed, see NOTES "Beyond synths". Keep the audio thread
   non-blocking, use `posix_spawn` with LD_PRELOAD stripped (never `fork()`), and use libcurl for HTTPS.
 
@@ -87,6 +91,9 @@ for the pattern). This applies to every future port, not just ones that hit the 
 
 ## 3. Skin
 - [ ] Design in a layout `.conf` (Force Shadow widget syntax plus `qlinks`/`rows=`), or port an existing shadow page.
+- [ ] **No other company's name or logo in the skin** (manufacturer wordmarks, logo-bearing panel artwork, trademarked
+      product art), none in the plugin name or the catalog `screenshot`. The summary and tags may say what you model
+      ("X-style") but not imply the maker's endorsement. A hardware-clone skin needs its own artwork and generic labels. See `catalog/README.md` "Skins and branding".
 - [ ] **If the app has its own `addon/shadow_page.conf`, copy its `style=`/`theme_*` lines verbatim into
       the top of the port's `layout.conf` before anything else.** Without them the skin renders in
       `shadow_art`'s generic default palette (cream knobs, dark plate, orange accent) instead of the

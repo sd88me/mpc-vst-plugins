@@ -27,6 +27,7 @@ line() { grep '^Environment' "$T/root/usr/lib/systemd/system/acvs.service" || tr
 fresh() { [ ! -d "$T/root" ] || chmod -R u+w "$T/root"; rm -rf "$T/root" "$T/addins" "$T/log"; pkg a; pkg b; }
 ro() { chmod "$1" "$T/root/usr/lib/systemd/system" "$T/root/usr/lib/systemd/system/acvs.service"; }   # a-w | u+w
 DROP="$T/root/etc/systemd/system/acvs.service.d/90-mpc-addins.conf"
+printf '/dev/root / ext4 rw,relatime 0 0\n' > "$T/mounts-plain"; export ADDIN_MOUNTS="$T/mounts-plain"   # no /etc overlay unless a case says so
 
 # 1. the service already preloads two libraries (the stock layout with a mouse and a MIDI shim)
 fresh; unit 'Environment=LD_PRELOAD=/usr/lib/x.so:/usr/lib/y.so'
@@ -198,5 +199,30 @@ fresh; echo 'ADDIN_NETWORK=1' >> "$T/pkg-a/addin.manifest"; echo 'bind=127.0.0.1
 printf 'y\nn\n' | ADDIN_INSTALL_TEST=1 SYSTEMD_ROOT="$T/root" ADDIN_TEST_LOG="$T/log" $SH "$T/pkg-a/install.sh" -t "$T/addins/a" > "$T/out" 2>&1
 run a install.sh
 grep -qx 'bind=127.0.0.1' "$T/addins/a/a.conf" && ok "ADDIN_NETWORK: a no, and -y, keep it local" || bad "bind: $(cat "$T/addins/a/a.conf")"
+
+# 14. /etc is an overlay that systemd mounts after reading its units (MPC OS 3.x), on a read-only root: the drop-in alone is
+# not seen at boot, so the first install adds a reload unit pulled in by MPC's service, and the last uninstall removes it
+fresh; unit 'Environment=LD_PRELOAD=/usr/lib/x.so'; ro a-w; chmod u+w "$T/root/usr/lib/systemd/system"   # the remount makes the root writable
+printf '/dev/root / ext4 ro,relatime 0 0\noverlay /etc overlay rw,lowerdir=/etc,upperdir=/data/system/etc/overlay 0 0\n' > "$T/mounts-ovl"
+export ADDIN_MOUNTS="$T/mounts-ovl"
+BU="$T/root/usr/lib/systemd/system/mpc-addins-reload.service"; BW="$T/root/usr/lib/systemd/system/acvs.service.wants/mpc-addins-reload.service"
+run a install.sh
+grep -qx "After=etc.mount" "$BU" && grep -qx "Before=acvs.service" "$BU" && grep -qx "ExecStart=-/bin/systemctl daemon-reload" "$BU" \
+  && grep -qx "ConditionPathExists=/etc/systemd/system/acvs.service.d/90-mpc-addins.conf" "$BU" && [ "$(readlink "$BW")" = "../mpc-addins-reload.service" ] \
+  && ok "overlay /etc: a reload unit, pulled in by MPC's service" || bad "boot unit: $(cat "$BU" 2>&1)"
+grep -q "mount -o remount,rw /" "$T/log" && [ "$(tail -n 3 "$T/log" | grep -c 'remount,ro /')" = 1 ] && ok "overlay /etc: the root is made writable for it, then read-only again" || bad "remount: $(cat "$T/log")"
+n=$(grep -c remount "$T/log"); run b install.sh
+[ "$(grep -c remount "$T/log")" = "$n" ] && ok "overlay /etc: a second addin leaves the root alone" || bad "second addin remounted"
+run a uninstall.sh
+[ -f "$BU" ] && [ -L "$BW" ] && ok "overlay /etc: the unit stays while an addin is left" || bad "unit removed early"
+run b uninstall.sh
+[ ! -e "$BU" ] && [ ! -e "$BW" ] && [ ! -e "$(dirname "$BW")" ] && ok "overlay /etc: the last uninstall removes the unit" || bad "unit left: $(ls "$(dirname "$BU")")"
+fresh; unit 'Environment=LD_PRELOAD=/usr/lib/x.so'; run a install.sh   # a writable unit is edited in place: no drop-in, no unit
+[ ! -e "$BU" ] && ! grep -q remount "$T/log" && ok "overlay /etc, unit edited in place: no reload unit" || bad "unit for an in-place edit"
+fresh; unit 'Restart=always'; ro a-w; chmod u+w "$T/root/usr/lib/systemd/system"
+printf '# written by someone else\n' > "$BU"; run a install.sh; cp "$T/out" "$T/out.a"; run a uninstall.sh
+[ "$(cat "$BU")" = "# written by someone else" ] && grep -q "not written by this installer" "$T/out.a" && ok "overlay /etc: a unit of the same name that is not ours is never touched" || bad "foreign unit: $(cat "$BU")"
+export ADDIN_MOUNTS="$T/mounts-plain"; fresh; unit 'Restart=always'; ro a-w; chmod u+w "$T/root/usr/lib/systemd/system"; run a install.sh
+[ ! -e "$BU" ] && ! grep -q remount "$T/log" && ok "no /etc overlay: no reload unit, no remount" || bad "unit without an overlay"
 
 [ $fails = 0 ] && echo "installer: all passed" || { echo "installer: $fails FAILED"; exit 1; }

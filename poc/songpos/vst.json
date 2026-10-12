@@ -1,0 +1,10 @@
+{
+ "name": "MPC Song Pos Test",
+ "vendor": "sd88me",
+ "uid": "SgPs",
+ "version": 1000,
+ "so": "songpos.so",
+ "params": "params.json",
+ "build": { "root": "../..", "sources": ["poc/songpos/engine.c"], "cflags": [], "libs": [] },
+ "defines": { "HAS_SONG_POS": 1 }
+}

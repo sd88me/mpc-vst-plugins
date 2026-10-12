@@ -4,6 +4,42 @@ Why: the catalog is growing fast, and some contributors bulk-convert open-source
 there is nobody with the time to review every entry. Goal: keep the registry open to everyone, but make the front of
 the catalog earned by evidence, at almost no cost to the maintainer.
 
+## Status and handoff (2026-10-11)
+**Live on the site:** Verified / Listed / Experimental tiers (Listed shows no badge; the Tier filter calls it "Not yet verified"),
+"Recommended" default sort, the collapsed "To improve this listing" list on each card, and `tested.json` for all of the maintainer's
+own plugins (Force, MPC OS 3.9.1, recorded 2026-10-10; 56 Verified, 50 Listed, 1 Experimental at the last build). PRs #267, #271 and #382.
+**Posted:** the Step 2 announcement went out on 2026-10-10 (Discord / community). No negative feedback so far. A one-line follow-up
+("Listed is now just in the catalog, no badge") is the maintainer's to add to the thread.
+**Not started:** Steps 3 to 5 below. Step 3 is on hold on purpose until the maintainer decides, after the community has had a few days.
+
+### What to do next, in order
+1. **Tidy-ups that need no decision** (do any time):
+   - Fix the 5 stale checks in `tools/catalog_site/browser_test.py` (filter 2x/3x, device gen2, Gen2 card, Gen2 buttons): they count
+     `article.card` across all tabs; scope them to `#grid`. They fail on `main`, so the site has less test coverage than it looks.
+   - Add an optional registry field `upstream` (link and licence of the project a port is converted from), shown on the card. It is the
+     missing bar item for bulk ports (`check_entry`, `catalog_build.py`; document in `catalog/README.md` and `docs/CATALOG_SPEC.md`).
+   - Look at the 2 plugins with a CPU `FAIL` verdict (`bar_missing` contains `cpu-fail` in `catalog.json`) and contact the authors.
+   - 78 plugins have no CPU bench figure. If that stays noisy, drop `cpu-bench` from `BAR` or label it optional.
+2. **Step 3 (decision first):** new registry entries start as Experimental.
+   - Decide: cap any existing weak bulk ports now (`"tier": "experimental"` in their registry files, one commit)? The maintainer names them.
+   - Registry PR check (`tools/catalog_build.py --check-registry`, run by `catalog.yml`): a *new* entry must carry `"tier": "experimental"`
+     (compare against `origin/main` so existing entries are not forced). Update the PR template and the "Add my plugin" issue template.
+   - Promotion: automatic when the bar is met (decide the rule: for example screenshot + skin + stable release + CPU not FAIL, then a
+     maintainer-free path to remove the cap, such as a PR that only deletes the `tier` line and that CI checks), or on request through an
+     issue template; a maintainer spot-checks one plugin only when asked.
+   - Announce first (a post, a go-live date), then merge.
+3. **Step 4 (when trusted people exist):** a `verifiers` list (named GitHub handles) whose compatibility reports count toward Verified; per-plugin
+   compatibility report thread or issue template ("works / doesn't work on device + OS"). Start with the maintainer alone.
+4. **Step 5 (only if people ask):** abandonment and delisting policy (entries are pointers; notice, then move down or remove), a within-tier
+   tiebreaker (reactions, "N people use this"), a hand-picked Featured row (`"featured": true` already works).
+
+### Gotchas for whoever continues
+- Verified needs a `tested.json` entry for the *newest stable* version, so every release by an author resets it to unverified until they add a
+  line. That is intended, but say so in the announcement follow-up.
+- The tier is computed in `tier_of` in `tools/catalog_build.py`; the registry can only cap it (`"tier": "experimental"`).
+- `fixture-catalog.json` (repo root) drives `tools/catalog_site/browser_test.py`; update it when `catalog.json` gains fields.
+- The catalog rebuilds nightly; run the "Catalog build" workflow (`gh workflow run catalog.yml`) after merging site changes to publish at once.
+
 ## Principles
 1. **Gate prominence, not entry.** Anyone can list a plugin. What is evidenced is shown higher.
 2. **Evidence over opinion.** Tiers come from things anyone can check (a recorded device test, a passing check), not from votes.

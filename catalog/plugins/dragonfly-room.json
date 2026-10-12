@@ -13,5 +13,5 @@
   "license": "GPL-3.0-only",
   "summary": "Dragonfly Room reverb as a native insert effect, with a touchscreen skin and Q-Links.",
   "asset_pattern": "Room-*-mpc-armv7.zip",
-  "image": "https://raw.githubusercontent.com/gmorb/mpc-vst-dragonfly-room/main/docs/banners/room.png"
+  "screenshot": "https://raw.githubusercontent.com/gmorb/mpc-vst-dragonfly-room/440ec7b3b3db2fec34b9f80cf4890102ca14d1c3/docs/banners/room.png"
 }

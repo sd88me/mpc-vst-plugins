@@ -129,6 +129,28 @@ static int find_param(const char *key) {
     return -1;
 }
 
+#if defined(HAS_SONG_POS) && HAS_SONG_POS
+/* poc/songpos: the engine reports its last song_pos() call as "ppq|bpm|playing|frames|calls". One call per block, with the
+ * host's ppqPos and tempo and the play flag; ppq -1 and bpm 0 when the host gives no position. */
+static void song_pos_tests(void) {
+    int lg = find_param("pos_log");
+    if (lg < 0) { printf("warn HAS_SONG_POS without a pos_log readout: not tested\n"); return; }
+    AEffect *c = VSTPluginMain(host);
+    char d[64];
+    ti_flags = 1 << 10 | 1 << 9 | 1 << 1; ti[3] = 9.25; run(c, 1);          /* playing, tempo and position valid */
+    d[0] = 0; c->d(c, 7, lg, 0, d, 0);
+    CHECK(!strcmp(d, "9.250|120.0|1|128|1"), "song_pos: playing -> \"%s\" (want 9.250|120.0|1|128|1)", d);
+    ti_flags = 1 << 10 | 1 << 9; ti[3] = 3.5; run(c, 2);                     /* stopped: still reported, playing 0 */
+    d[0] = 0; c->d(c, 7, lg, 0, d, 0);
+    CHECK(!strcmp(d, "3.500|120.0|0|128|3"), "song_pos: stopped, two blocks -> \"%s\" (want 3.500|120.0|0|128|3)", d);
+    ti_flags = 1 << 10; run(c, 1);                                           /* no position from the host */
+    d[0] = 0; c->d(c, 7, lg, 0, d, 0);
+    CHECK(!strcmp(d, "-1.000|0.0|0|128|4"), "song_pos: no ppq -> \"%s\" (want -1.000|0.0|0|128|4)", d);
+    ti_flags = 1 << 10; ti[3] = 0;
+    c->d(c, 1, 0, 0, 0, 0);
+}
+#endif
+
 #if defined(HAS_TRANSPORT) && HAS_TRANSPORT
 /* poc/steptest: the engine logs every "transport" value it gets in its "transport_log" readout. Play sends "1", stop "0",
  * a jump back in song position while playing (a loop, a locate) "1" again; moving forward sends nothing. */
@@ -462,6 +484,9 @@ int main(void) {
 #endif
 #if defined(HAS_TRANSPORT) && HAS_TRANSPORT
     transport_tests();
+#endif
+#if defined(HAS_SONG_POS) && HAS_SONG_POS
+    song_pos_tests();
 #endif
     param0_toggle_check();
     step_of_option_tests(a);

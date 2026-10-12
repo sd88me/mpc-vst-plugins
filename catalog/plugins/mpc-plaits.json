@@ -1,3 +1,4 @@
 { "id": "mpc-plaits", "name": "MPC Plaits", "author": "poloq", "repo": "poloq-instruments/mpc-vst-plaits",
   "kind": "instrument", "style": "synth", "tags": ["mutable-instruments", "plaits", "macro-oscillator", "eurorack"], "license": "MIT",
-  "summary": "Mutable Instruments Plaits, all 24 models, with LFOs, envelopes, two mod matrices, tempo sync and a touchscreen skin." }
+  "summary": "Mutable Instruments Plaits, all 24 models, with LFOs, envelopes, two mod matrices, tempo sync and a touchscreen skin.",
+  "screenshot": "https://raw.githubusercontent.com/poloq-instruments/mpc-vst-plaits/a30c24b83663a5efead73bbaca674ba4502a3eb5/docs/screenshots/card.png" }

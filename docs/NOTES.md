@@ -1385,3 +1385,28 @@ for any plugin from this catalog (`mpc-vst-cratedigger`'s `tested.json`).
 
 ## 2026-10-12: hwremap needs to be first in LD_PRELOAD when the remote addin is loaded
 On the Force (MPC OS 3.9.1, stock path) with `LD_PRELOAD` = remote addin : hwremap : skipback : commander, no hwremap rule fired and `log 1` wrote no `/tmp/hwremap.log` at all, although `hwremap.so` was mapped in MPC. `mpc_remote_addin.so` exports its own `snd_rawmidi_open`, `snd_rawmidi_read`, `snd_rawmidi_close`, `poll` and `__poll_chk`, so with it first the dynamic linker resolves MPC's calls to it and hwremap's hooks are never called. Putting hwremap first (`hwremap : remote : skipback : commander` in the `acvs` drop-in, then `systemctl restart acvs`) made Mixer x2, Edit x2 and Menu x2 work (user confirmed, device). The installer now puts hwremap at the front of the list (both the systemd drop-in and the launcher style); it used to append. Addins installed later by `addin-lib.sh` add themselves behind it (they edit the winning drop-in). Offline: `tools/test_hwremap_patch.py` passes with the new order. Any other addin that exports `snd_rawmidi_*` or `poll` has the same effect on whatever sits behind it.
+
+## 2026-10-11: the MPC Skipback addin (0.3.0, 0.4.0) on a Force; listed as Experimental
+`sd88me/mpc-addin-skipback`: records main out continuously and saves the last 30 to 60 s as a 24-bit WAV on a double press of a controller button. Run on the Force (MPC 3.9.1) with `hwremap.so` loaded before it in `LD_PRELOAD` (device checks 2026-10-10, offline tests ASan/UBSan against a fake libasound and rawmidi):
+- **Audio:** MPC opens `hw:2` (ADA2) as 4 ch S32 44.1 kHz interleaved; channels 0/1 are main out. A save is exact (30.0 s = 7,938,044 bytes) and takes 2 to 5 s on the SD card; the audio thread only copies samples.
+- **Controller port:** MPC opens the Private port once, input and output, as `hw:1,0,1` (`'Akai Pro Force' / 'Akai Pro Force Private'`). The addin hooks `snd_rawmidi_read` on it (reading below `hwremap.so` it sees the raw hardware bytes and changes none) and `snd_rawmidi_write` (to learn each LED's last value). Rec Arm is note 93 (`90 5D 7F`); a double press within 350 ms saves.
+- **LEDs:** MPC sets a button LED with a control change on channel 1 to the Private port (controller = button, value = state), only when it changes; the addin blinks the button's LED (three quick flashes on the press, three slow ones when written) and writes MPC's last value back. Seen values: LED 53 alternates 1/3 with the tempo, 94 = 1, 113 = 4, 56 = 2/4, 0 = 1, 67 = 3. MPC never wrote LED 93 in the tests, so the blink restores 0. The CC protocol is only known on the Force: `led=auto` sends nothing to other models.
+- **Where saves go:** `output_dir=auto` takes a mounted `/dev/sd*` volume first (here the 29 GB exfat USB drive at `/media/662522`, saved as `/media/662522/Skipback`), then an external SD card (`/dev/mmcblk1+`), then the Samples folder from `MPC.settings` (`folder3 = /sdcard/Force Documents/Samples`). The rules for other models are unchecked.
+- **Other models:** the default button there is Overdub (80), unverified; `button=learn` lets a user double-press any button to teach it (`button.learned`). Not run on a device yet.
+- **Installer:** the addin install landed in `hwremap.conf`'s quoted `LD_PRELOAD` (the last drop-in systemd reads) and kept the file's other entries; it also noticed an old MockbaMod `run_skipback.sh` on the USB stick and said so. Buffer: about 48 MB of RAM over the first couple of minutes whatever `window_sec` is.
+- **Catalog:** listed as Experimental (`catalog/plugins/skipback.json`; the releases are GitHub prereleases, so the build shows a beta channel and no stable version). A local `catalog_build.py` run on the entry alone: 1 plugin, 2 versions, 0 problems, no risky-call flags.
+
+## 2026-10-11: addins missing after a reboot: `/etc` is mounted after systemd reads its units (Key 37, MPC OS 3.9.1; device)
+Reported on a stock Key 37 3.9.1.2 (mpc-addin-usb-audio #2) and a Live II on custom firmware (#1): after a reboot the addin
+was not loaded, `systemctl show acvs -p DropInPaths` was empty although `90-mpc-addins.conf` existed, and
+`systemctl daemon-reload` plus a restart fixed it. Cause, read on a Key 37 (az01 base 5.0.17): `/etc` is an overlay
+(`upperdir=/data/system/etc/overlay`) mounted by systemd's own `etc.mount` (6.6 s into boot), after PID 1 read its units
+from the read-only lower `/etc`, so the drop-in in the upper layer is not seen until a reload. That boot started MPC at 8 s
+without addins. Nothing stock runs from writable storage after `/etc` is mounted (every unit's `ExecStart`, the launcher
+`az01-launch-MPC` and `az01-script-runner` checked), so the fix needs the root filesystem. Not caused by #238: the drop-in
+path dates from 2026-10-02. Fix: the addin installer's `mpc-addins-reload.service` (ADDINS.md, "After a reboot").
+**Device test (Key 37, 2026-10-11):** USB Audio 1.0.2 reinstalled with the new installer files wrote the unit and the
+`acvs.service.wants` link, `/` back read-only. After a reboot: `etc.mount` at 6.6 s, the reload unit 8.8-9.7 s (reload
+776 ms), MPC started at 10.2 s with every addin in its `LD_PRELOAD`, `NRestarts=0`, and USB Audio tapping from that first
+process. About 1 s is added to boot. Not tested: the uninstall path on a device, MPC OS 2.x (no overlay, so no unit) and
+a firmware update.

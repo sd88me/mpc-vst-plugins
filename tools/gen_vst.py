@@ -24,7 +24,8 @@ vst.json (paths are relative to the vst.json's folder):
                                                  #   (both on by default; cc_lines() below)
       "custom_skin": true,                       # optional: params.h + plugin-list entry only; the port makes the skin itself
       "defines": {"HAS_LFO_BPM": 1},             # optional extra #defines in params.h
-                                                 #   (HAS_LFO_BPM: host tempo as "lfo_bpm"; HAS_TRANSPORT: play/stop as "transport")
+                                                 #   (HAS_LFO_BPM: host tempo as "lfo_bpm"; HAS_TRANSPORT: play/stop as "transport";
+                                                 #   HAS_SONG_POS: the engine's song_pos(ppq, bpm, playing, frames) every block, for a MIDI generator)
                                                  #   (HAS_DISPLAY_REV: the DSP changes values by itself; the wrapper polls its "display_rev" and
                                                  #   refreshes the host; PARAM_TEXT_MAX: readout length, default 24 -- see wrapper/vst2_wrap.c)
       "build": {"root": "..", "sources": ["src/engine.c"], "cflags": ["-Isrc"], "libs": ["-lm"]}

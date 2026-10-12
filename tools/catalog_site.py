@@ -99,9 +99,11 @@ def app_cards(doc):
                '<a class="btn-l primary" href="%s">Download from GitHub</a>' % e(a["release"])
         sums = ('<details class="vers"><summary>Checksums (sha256)</summary><table>%s</table></details>' %
                 "".join("<tr><td>%s</td><td><code>%s</code></td></tr>" % (e(f["label"]), e(f["sha256"])) for f in files)) if files else ""
-        cards.append('<article class="card" data-platforms="%s" data-text="%s"><header><div><h2>%s</h2><div class="by">by %s</div></div></header>'
+        shot = ('<a class="shot" href="%s"><img src="%s" alt="%s screenshot" loading="lazy"></a>' % (e(a["screenshot"]), e(a["screenshot"]), e(a["title"]))
+                if str(a.get("screenshot", "")).startswith("https://") else "")   # as on a plugin card
+        cards.append('<article class="card" data-platforms="%s" data-text="%s">%s<header><div><h2>%s</h2><div class="by">by %s</div></div></header>'
                      '<div class="tags">%s</div><p>%s</p><dl class="meta">%s</dl><div class="actions">%s<a class="btn-l" href="%s">Release page</a></div>%s</article>'
-                     % (e(" ".join(a["platforms"])), e(" ".join([a["title"], a["author"], a["summary"]]).lower()), e(a["title"]), e(a["author"]),
+                     % (e(" ".join(a["platforms"])), e(" ".join([a["title"], a["author"], a["summary"]]).lower()), shot, e(a["title"]), e(a["author"]),
                         "".join(tags), e(a["summary"]), dl, btns, e(a["release"]), sums))
     return "".join(cards)
 

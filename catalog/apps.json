@@ -6,6 +6,7 @@
       "title": "MPC Link",
       "summary": "Menu bar / tray app that puts folders from your computer into the MPC's browser over the network: load samples straight from the computer, save projects back to it. Connects over SSH, copies a static sshfs to the device and mounts the shared folders on a drive MPC already shows.",
       "author": "Padbangers",
+      "screenshot": "https://raw.githubusercontent.com/FullPace/mpc-link/main/assets/catalog.png",
       "license": "MIT",
       "repo": "FullPace/mpc-link",
       "release": "https://github.com/FullPace/mpc-link/releases/tag/v1.0.1",

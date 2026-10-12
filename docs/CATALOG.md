@@ -14,6 +14,8 @@ checksum and device-verification status, that stays correct without anyone editi
    of that plugin passes; see `tools/catalog_issues.py`).
 5. **Installers execute as root on someone's device.** So: open source only, checksums shown, canonical
    `install.sh` checked, previous versions kept, a maintainer can yank a version.
+6. **No other company's branding.** Listed skins, screenshots and plugin names carry no manufacturer names or logos
+   (rule added 2026-10-12 after LXRXXL, #290, was delisted for it). See `catalog/README.md` "Skins and branding".
 6. **The catalog never hosts or links a build that contains someone else's firmware.** A port whose DSP is compiled
    from the user's own firmware cannot publish a zip, so it lists as **build-yourself** (below): open source, no
    download, no checksum, a build command and the user's own files it needs. This is a separate distribution type;

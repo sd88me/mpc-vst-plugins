@@ -1814,6 +1814,15 @@ class AppResolveTest(unittest.TestCase):
         self.assertIn("Resolved label", html)
         self.assertNotIn("MPC-Link-0.4.0-macOS", html.replace("Resolved label", ""))
 
+    def test_screenshot_is_an_https_url_shown_on_the_card(self):
+        import catalog_site
+        doc = self.doc(); doc["apps"][0]["screenshot"] = "https://x/shot.png"
+        self.assertEqual(app_check.check(doc)[0], [])
+        self.assertIn('<a class="shot" href="https://x/shot.png"><img src="https://x/shot.png"', catalog_site.app_cards(doc))
+        self.assertNotIn('class="shot"', catalog_site.app_cards(self.doc()))
+        doc["apps"][0]["screenshot"] = "http://x/shot.png"
+        self.assertIn("screenshot must be an https URL", app_check.check(doc)[0][0])
+
     def test_check_rules(self):
         bad = self.doc(); bad["apps"][0]["assets"][0]["platform"] = "amiga"; del bad["apps"][0]["release"]
         self.assertEqual(len(app_check.check(bad)[0]), 1)

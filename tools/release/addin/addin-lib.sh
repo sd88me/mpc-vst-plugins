@@ -139,6 +139,59 @@ preload_remove() {   # service so: out of every writable file that lists it, the
     [ ! -f "$o" ] || sync_ours "$1" "" "$2"
 }
 
+# After a reboot. Where /etc is an overlay that systemd mounts itself (etc.mount, a few seconds into boot, on MPC OS 3.x),
+# systemd has read its units before the drop-in above is visible: MPC's first start after a boot runs without the addins
+# until something reloads systemd (docs/ADDINS.md, "After a reboot"). A small unit on the root filesystem, pulled in by
+# MPC's service, reloads systemd once /etc is mounted and before MPC starts. It does nothing while there is no drop-in.
+# The root is mounted read-only, so writing it means a short remount; failing that, the installer warns and carries on.
+BOOT_UNIT=mpc-addins-reload.service
+BOOT_MARK="mpc-vst-plugins addin installer"
+ADDIN_MOUNTS="${ADDIN_MOUNTS:-/proc/mounts}"
+etc_overlay() { awk '$2 == "/etc" && $3 == "overlay" { f = 1 } END { exit !f }' "$ADDIN_MOUNTS" 2>/dev/null; }
+root_ro() { awk '$2 == "/" && $4 ~ /(^|,)ro(,|$)/ { f = 1 } END { exit !f }' "$ADDIN_MOUNTS" 2>/dev/null; }
+remount_root() {   # rw | ro (logged under test)
+    if [ -n "$ADDIN_INSTALL_TEST" ]; then echo "mount -o remount,$1 /" >> "${ADDIN_TEST_LOG:-/dev/null}"; return 0; fi
+    mount -o remount,"$1" /
+}
+boot_unit_text() {   # service
+    printf '[Unit]\nDescription=Reload systemd once /etc is mounted, so MPC starts with its addins (%s)\n' "$BOOT_MARK"
+    printf '# /etc is an overlay mounted after systemd read its units: without a reload, the addins drop-in is not seen at boot.\n'
+    printf 'After=etc.mount\nBefore=%s.service\nConditionPathExists=/etc/systemd/system/%s.service.d/%s\n\n' "$1" "$1" "$DROPIN_NAME"
+    printf '[Service]\nType=oneshot\nExecStart=-/bin/systemctl daemon-reload\nTimeoutStartSec=60\n'
+}
+boot_paths() {   # service: sets BU (the unit) and BW (its link in the service's .wants)
+    BU="$SYSTEMD_ROOT/usr/lib/systemd/system/$BOOT_UNIT"; BW="$SYSTEMD_ROOT/usr/lib/systemd/system/$1.service.wants/$BOOT_UNIT"
+}
+boot_reload_add() {   # service: when the shared drop-in is in use on an /etc overlay
+    [ -f "$(ours "$1")" ] && etc_overlay || return 0
+    boot_paths "$1"
+    if [ -f "$BU" ] && [ "$(cat "$BU")" = "$(boot_unit_text "$1")" ] && [ -L "$BW" ]; then return 0; fi
+    if [ -f "$BU" ] && ! grep -qF "$BOOT_MARK" "$BU"; then echo "warning: $BU exists and was not written by this installer: left alone" >&2; return 0; fi
+    was_ro=0; root_ro && was_ro=1
+    if [ $was_ro = 1 ] && ! remount_root rw; then
+        echo "warning: / could not be made writable, so after a reboot MPC starts without the addins until systemd reloads (docs/ADDINS.md, After a reboot)" >&2
+        return 0
+    fi
+    if mkdir -p "$(dirname "$BW")" && boot_unit_text "$1" > "$BU.new" && mv "$BU.new" "$BU" && ln -sf "../$BOOT_UNIT" "$BW"; then
+        echo "  $BOOT_UNIT (on the root filesystem) makes the addins load after a reboot too"
+    else
+        rm -f "$BU.new"; echo "warning: could not write $BU: after a reboot MPC starts without the addins until systemd reloads" >&2
+    fi
+    sync
+    [ $was_ro = 0 ] || remount_root ro || echo "warning: / is still writable; it is read-only again after a reboot" >&2
+}
+boot_reload_remove() {   # service: once the shared drop-in is gone (the last addin), take out the unit it wrote
+    [ ! -f "$(ours "$1")" ] || return 0
+    boot_paths "$1"
+    [ -L "$BW" ] || { [ -f "$BU" ] && grep -qF "$BOOT_MARK" "$BU"; } || return 0
+    was_ro=0; root_ro && was_ro=1
+    if [ $was_ro = 1 ] && ! remount_root rw; then echo "warning: / could not be made writable; $BU stays (it does nothing without the drop-in)" >&2; return 0; fi
+    rm -f "$BW"; rmdir "$(dirname "$BW")" 2>/dev/null || true
+    [ -f "$BU" ] && grep -qF "$BOOT_MARK" "$BU" && rm -f "$BU"
+    sync
+    [ $was_ro = 0 ] || remount_root ro || echo "warning: / is still writable; it is read-only again after a reboot" >&2
+}
+
 # addin.manifest, next to install.sh: shell assignments, checked before anything uses them.
 #   ADDIN_ID      folder and identity: /data/mpc-addins/<id> (letters, digits, - and _)
 #   ADDIN_NAME    shown to the user

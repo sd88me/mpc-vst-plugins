@@ -24,6 +24,11 @@ typedef struct {
  * A port that sets "defines": {"SAMPLE_ACCURATE": 1} in vst.json (instruments only) has render() called with any
  * frame count from 1 to 128, so MIDI can start at its in-block position: the engine must not assume 128. */
     void (*process)(void *inst, const int16_t *in_lr, int16_t *out_lr, int frames);
+    /* Only with "defines": {"HAS_SONG_POS": 1}: called once per host block, before that block's render()/process(), with the
+     * host's song position in beats (ppqPos at the block start) and tempo, whether the transport is playing, and the block's
+     * frame count (the block ends at ppq + frames * bpm / 60 / 44100). ppq is -1 and bpm 0 when the host gave no position.
+     * For a MIDI generator that places notes from the song position (docs/MIDI_TIMING.md). NULL otherwise (add it last). */
+    void (*song_pos)(void *inst, double ppq, double bpm, int playing, int frames);
 } mpc_engine_t;
 
 const mpc_engine_t *mpc_engine(void);

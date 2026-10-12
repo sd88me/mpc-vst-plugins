@@ -57,6 +57,10 @@ void wrap_trace(int kind, int idx, float value);
 #define HAS_TRANSPORT 0 /* 1: tell the DSP when the host transport plays/stops as "transport" = "1"/"0"; a jump back
                           * in song position while playing (a loop, a locate) is sent as "1" again */
 #endif
+#ifndef HAS_SONG_POS
+#define HAS_SONG_POS 0  /* 1: call the engine's song_pos() every block with the host's ppqPos, tempo and play state (a MIDI
+                          * generator placing notes from the song position; docs/MIDI_TIMING.md). The engine must provide it. */
+#endif
 #ifndef MODULE_DIR
 #define MODULE_DIR NULL /* set via vst.json "defines" for a DSP that reads its own files
                           * (ROMs, etc.) from "<module_dir>/..." (see jv880's create_instance) */
@@ -377,6 +381,10 @@ static float getParameter(AEffect *e, int32_t i) {
     return v;
 }
 
+static void eng_song_pos(wrap_t *w, double ppq, double bpm, int playing, int frames) {
+    pthread_mutex_lock(&w->lock); g_api->song_pos(w->dsp, ppq, bpm, playing, frames); pthread_mutex_unlock(&w->lock);
+}
+
 static void update_transport(wrap_t *w, const VstTimeInfo *ti) {
     int playing = (ti->flags & kVstTransportPlaying) != 0, ppq_ok = (ti->flags & kVstPpqPosValid) != 0;
     int restart = playing && w->playing && ppq_ok && ti->ppqPos < w->ppq - 0.01;
@@ -385,11 +393,15 @@ static void update_transport(wrap_t *w, const VstTimeInfo *ti) {
     if (ppq_ok) w->ppq = ti->ppqPos;
 }
 
-static void update_tempo(wrap_t *w) {
+static void update_tempo(wrap_t *w, int32_t n) {
     VstTimeInfo *ti = (VstTimeInfo *)w->master(&w->fx, audioMasterGetTime, 0,
-                                              kVstTempoValid | (HAS_TRANSPORT ? kVstPpqPosValid : 0), 0, 0);
+                                              kVstTempoValid | ((HAS_TRANSPORT || HAS_SONG_POS) ? kVstPpqPosValid : 0), 0, 0);
     if (!ti) return;
     if (HAS_TRANSPORT) update_transport(w, ti);
+    if (HAS_SONG_POS) {   /* ppq < 0 tells the engine the host gave no position */
+        int ok = (ti->flags & kVstPpqPosValid) && (ti->flags & kVstTempoValid) && ti->tempo > 0;
+        eng_song_pos(w, ok ? ti->ppqPos : -1.0, ok ? ti->tempo : 0.0, (ti->flags & kVstTransportPlaying) != 0, n);
+    }
     if (!HAS_LFO_BPM || !(ti->flags & kVstTempoValid) || ti->tempo <= 0) return;
     if (fabs(ti->tempo - w->bpm) > 0.01) {
         char buf[32];
@@ -458,7 +470,7 @@ static void render_events(wrap_t *w, float **out, int32_t n, int accumulate) {
 
 static void housekeeping(AEffect *e, int32_t n) {
     wrap_t *w = e->object;
-    if (HAS_LFO_BPM || HAS_TRANSPORT) update_tempo(w);
+    if (HAS_LFO_BPM || HAS_TRANSPORT || HAS_SONG_POS) update_tempo(w, n);
     /* A trigger param (e.g. Generate) fired: tell the host it is back to 0 so
      * buttons bound to it drop their highlight. Done here, not inside
      * setParameter, so the host is not re-entered from its own call. */
@@ -774,6 +786,9 @@ __attribute__((visibility("default"))) AEffect *VSTPluginMain(audioMasterCallbac
     if (!g_api) return NULL;
 #ifdef PLUG_EFFECT
     if (!g_api->process) return NULL;   /* an effect port must provide process() */
+#endif
+#if HAS_SONG_POS
+    if (!g_api->song_pos) return NULL;  /* a HAS_SONG_POS port must provide song_pos() */
 #endif
     wrap_t *w = calloc(1, sizeof *w);
     if (!w) return NULL;

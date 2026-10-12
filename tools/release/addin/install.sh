@@ -53,6 +53,7 @@ if [ "$(cd "$DIR" && pwd)" != "$(pwd)" ]; then   # not when reinstalling from th
     for f in $SELF_FILES; do cp "$f" "$DIR/$f.new" && chmod 644 "$DIR/$f.new" && mv "$DIR/$f.new" "$DIR/$f"; done
 fi
 preload_add "$SVC" "$UNIT" "$SO"
+boot_reload_add "$SVC"
 mockba_hook_add "$SO"
 svc daemon-reload
 sync

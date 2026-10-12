@@ -92,16 +92,21 @@ the plugin (`poc/midiport.c`: `snd_seq_open` → `snd_seq_create_simple_port` RE
 link `-lasound`; build needs `apt install libasound2-dev` in the arm32v7/gcc:11-bullseye container). MPC hot-detects the
 port with no restart; the user enables Track on it in Preferences → MIDI. Sync from `audioMasterGetTime` ppqPos/tempo.
 **Step timing (read `docs/MIDI_TIMING.md`):** derive every step from `ppqPos` (16th `k` at `k/4`, swing as a ppq delay on odd
-`k`, re-cover the straddling block on a loop wrap, resync on a jump, first boundary at/after the playhead is step 0). Do **not**
+`k`, resync on a jump, first boundary at/after the playhead is step 0). **Send each block's steps at its start, for
+`[ppqPos, ppqPos + blk)`** (a high-water mark of what was sent), not the block that just played: that is a block (~2.9 ms) late
+and users add track delay to compensate. MPC reports its loop (`kVstCyclePosValid`, `cycleStartPos/EndPos`) and the block
+before a wrap covers the loop end: split it there and continue from the loop start. `ppqPos` jitters up to 0.0009 beat. Do **not**
 synthesize 24-PPQN pulses and count them: the phase becomes relative and a lost pulse, mid-song start or loop wrap shifts it
 permanently. Never pace from the wall clock. A tempo change moves `ppqPos` back a little: a backward step under 1 beat is
 not a loop wrap (hold the high-water mark). Make the **pattern position** a function of the song position too (hand the
 core the absolute 16th index; skip indices already fired), or fast tempo changes shift the pattern until Stop/Start.
 Test with a block-misaligned loop, a mid-song start and tempo lurches in `host_test`; keep file I/O out of
-`processReplacing`. Reference: `mpc-vst-acid` `feed_transport()` (1.0.7). MPC's track Mute does not reach an ALSA-port
+`processReplacing`. Reference: `mpc-vst-acid` `feed_transport()`/`play_span()`; `transport_grid.h` (Euclidier 1.0.7). MPC's track Mute does not reach an ALSA-port
 generator: add a plugin Mute (drop note-ons, pass note-offs, keep running). A plugin that spawns an engine process
 needs a watchdog (exit/hang -> respawn with cached params + SPP), child stdio to `/dev/null`, and `steady_clock` timers
 (`mpc-vst-euclidier` 1.0.5). Details: `docs/MIDI_TIMING.md`.
+On the shared wrapper (not a hand-written one) `"defines": {"HAS_SONG_POS": 1}` hands the engine `ppqPos`, tempo and play state each block
+through `song_pos()` (`wrapper/engine.h`, test engine `poc/songpos`; offline only so far).
 Name ports plainly (e.g. client "<Plugin>", port "MIDI Out"): no "(Mockba)" suffix; the user wants MockbaMod
 references kept out of mpc-vst.
 

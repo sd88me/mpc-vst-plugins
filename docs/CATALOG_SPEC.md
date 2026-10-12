@@ -175,6 +175,7 @@ refuses an invalid file). `{"schema": 1, "apps": [...]}`, each app:
 | `assets` | optional rules `{platform, label, pattern}` (`pattern` is an fnmatch over asset names); `tools/app_resolve.py` reads them against the newest stable release (no drafts or prereleases) and fills `downloads`, `version` and `release` |
 | `downloads` | optional list of `{platform, label, url, sha256}`, `platform` one of the app's, `url` https, `sha256` 64 lowercase hex. Written by `app_resolve.py`; when there are no `assets`, or the release can't be read, the pinned list in the file is used |
 | `version`, `needs` (list), `tested` (`{device, os}`) | optional, shown on the card |
+| `screenshot` | optional https URL of a picture for the card (as a plugin's `screenshot`: 1280×628, the plugin area's shape, fits best; the card shows it at 2:1) |
 
 `tools/app_resolve.py` runs in the Catalog build workflow (nightly, on pushes to `main` touching the catalog, and by hand) and writes `catalog/dist/apps.json`, which `catalog_site.py` prefers over `catalog/apps.json`. The sha256 is the asset's GitHub `digest`, else its line in a `SHA256SUMS` asset of the same release; an asset with neither is left out and reported. A failed read keeps the pinned `downloads`, so a bad night does not blank a card. A new release therefore appears on the next build, with no PR to this repo.
 
