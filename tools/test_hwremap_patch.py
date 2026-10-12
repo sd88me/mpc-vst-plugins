@@ -31,8 +31,8 @@ LAUNCHER = textwrap.dedent("""\
 LAUNCHER_PATCHED = textwrap.dedent("""\
     #!/bin/sh
     export LD_PRELOAD="customBufferSizeMPC.so /usr/lib/hwremap.so $CURSOR_SO"
-    LD_PRELOAD="/usr/lib/libforce_cursor.so /usr/lib/hwremap.so"
-    LD_PRELOAD=/usr/lib/foo.so:/usr/lib/hwremap.so
+    LD_PRELOAD="/usr/lib/hwremap.so /usr/lib/libforce_cursor.so"
+    LD_PRELOAD=/usr/lib/hwremap.so:/usr/lib/foo.so
     # a comment about LD_PRELOAD= must stay a comment
     """)
 
@@ -236,9 +236,9 @@ class Contract(Rig):
         r = self.patch("install", "--confirmed")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         text = read(os.path.join(self.root, "usr", "bin", "az01-launch-MPC"))
-        self.assertEqual(text, "#!/bin/sh\nLD_PRELOAD=/usr/lib/foo.so:/usr/lib/hwremap.so env\n")
+        self.assertEqual(text, "#!/bin/sh\nLD_PRELOAD=/usr/lib/hwremap.so:/usr/lib/foo.so env\n")
         seen = subprocess.run([SH, "-c", text], capture_output=True, text=True, timeout=30).stdout.splitlines()
-        self.assertIn("LD_PRELOAD=/usr/lib/foo.so:/usr/lib/hwremap.so", seen)
+        self.assertIn("LD_PRELOAD=/usr/lib/hwremap.so:/usr/lib/foo.so", seen)
 
     def test_the_library_unpacks_the_same_under_gawk_in_a_utf8_locale(self):
         # gawk writes printf "%c" values above 127 as multi-byte characters in a UTF-8 locale: the script forces LC_ALL=C
@@ -299,7 +299,7 @@ class Contract(Rig):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         drop = os.path.join(self.root, "etc", "systemd", "system", "acvs.service.d", "hwremap.conf")
         body = read(drop)
-        self.assertEqual(body, '[Service]\nEnvironment="LD_PRELOAD=/usr/lib/libforce_cursor.so /data/hwremap/hwremap.so"\n')
+        self.assertEqual(body, '[Service]\nEnvironment="LD_PRELOAD=/data/hwremap/hwremap.so /usr/lib/libforce_cursor.so"\n')
         self.assertTrue(os.path.isfile(os.path.join(self.root, "data", "hwremap", "hwremap.so")))
         self.assertFalse(os.path.exists(os.path.join(self.root, "usr", "lib", "hwremap.so")))
         self.assertIn("dbl 37 d49 b9 u49", read(os.path.join(self.root, "sdcard", "hwremap.conf")))

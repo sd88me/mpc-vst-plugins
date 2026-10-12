@@ -772,9 +772,9 @@ patch_launcher() {
             if (index($0, "$CURSOR_SO") > 0)
                 sub(/\$CURSOR_SO/, "/usr/lib/hwremap.so $CURSOR_SO")
             else if (match($0, /LD_PRELOAD="[^"]*"/))
-                $0 = substr($0, 1, RSTART + RLENGTH - 2) " /usr/lib/hwremap.so" substr($0, RSTART + RLENGTH - 1)
+                $0 = substr($0, 1, RSTART + 11) "/usr/lib/hwremap.so " substr($0, RSTART + 12)
             else if (match($0, /LD_PRELOAD=[^[:space:]]+/))
-                $0 = substr($0, 1, RSTART + RLENGTH - 1) ":/usr/lib/hwremap.so" substr($0, RSTART + RLENGTH)
+                $0 = substr($0, 1, RSTART + 10) "/usr/lib/hwremap.so:" substr($0, RSTART + 11)
             else {
                 print "ERROR: a launcher line sets LD_PRELOAD in a shape this patch cannot edit" > "/dev/stderr"
                 print $0 > "/dev/stderr"
@@ -1002,7 +1002,7 @@ cmd_install() {
         dropin)
             cur=$(current_preload)
             plain_preload "$cur" || die "the current LD_PRELOAD is not a plain list of paths; refusing to rewrite it"
-            case " $cur " in *" $SO_DROPIN "*) new=$cur ;; "") new=$SO_DROPIN ;; *) new="$cur $SO_DROPIN" ;; esac
+            case " $cur " in *" $SO_DROPIN "*) new=$cur ;; "") new=$SO_DROPIN ;; *) new="$SO_DROPIN $cur" ;; esac
             mkdir -p "$MARK" "$(dirname "$(dropin_file "$SVC")")" || die "cannot create the drop-in folder"
             write_so "$P$SO_DROPIN"
             [ "${HW_FAIL:-}" = after-launcher ] && die "test failure after writing the library"

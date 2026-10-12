@@ -12,7 +12,7 @@ The library and the two example maps are inside the one script. Full behaviour, 
 | Device | What the script changes | Default map |
 |---|---|---|
 | Hakai (a launcher `/usr/bin/az01-launch-MPC`) | `/usr/lib/hwremap.so`, and that launcher's `LD_PRELOAD` lines. The root filesystem is remounted writable for a moment. | Pad Bank A–D and `+` / `−` open Mode Menu cells. Shift keeps the original button. |
-| systemd (`acvs` or `inmusic-mpc`; a stock Force) | `/data/hwremap/hwremap.so`, and a drop-in that adds it to the service's `LD_PRELOAD`, keeping whatever was already there. | The options below (Mixer, Edit, Clip, Menu; the Knobs ones are off unless you pick them). |
+| systemd (`acvs` or `inmusic-mpc`; a stock Force) | `/data/hwremap/hwremap.so`, and a drop-in that puts it at the front of the service's `LD_PRELOAD`, keeping whatever was already there (it has to come before any addin that hooks the MIDI port, such as the remote addin). | The options below (Mixer, Edit, Clip, Menu; the Knobs ones are off unless you pick them). |
 
 ## The Force options
 The Force map is a set of options. Install asks which to turn on (a checklist on a terminal) or takes them as flags. The Knobs options change what a Knobs press does, so they start off.
