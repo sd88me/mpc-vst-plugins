@@ -152,7 +152,7 @@ class Contract(Rig):
                 self.assertEqual(blob, f.read())
         self.assertTrue(os.stat(os.path.join(self.root, "usr/lib", "hwremap.so")).st_mode & stat.S_IXUSR)
         self.assertEqual(read(os.path.join(self.root, "sdcard", "hwremap.conf")), read(LIVE))
-        self.assertEqual(read(os.path.join(self.root, "data", "hwremap", "VERSION")).strip(), "0.2.0")
+        self.assertEqual(read(os.path.join(self.root, "data", "hwremap", "VERSION")).strip(), "0.2.1")
         self.assertEqual(read(os.path.join(self.root, "data", "hwremap", "STYLE")).strip(), "launcher")
         log = read(self.log)
         self.assertEqual(log.count("stop acvs\n"), 1)

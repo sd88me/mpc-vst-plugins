@@ -677,12 +677,30 @@ static void feed(unsigned char b)
     }
 }
 
+// The next definition of a symbol after this library, by libc's own dlsym called from here. An addin that exports its
+// dlsym (the commander addin before 1.0.1) answers RTLD_NEXT relative to itself, which skips every shim between this
+// library and it; dlvsym is a different symbol, so libc's dlsym is reachable and takes this library as the caller.
+static void *next_sym(const char *name)
+{
+    static void *(*libc_dlsym)(void *, const char *);
+    if (!libc_dlsym) {
+        // the versions of libc's dlsym: 2.34 moved it from libdl into libc
+        static const char *const vers[] = {"2.34", "2.4", "2.17", "2.2.5", "2.0"};
+        for (size_t i = 0; i < sizeof vers / sizeof *vers && !libc_dlsym; i++) {
+            char v[16] = "GLIBC_";
+            strcat(v, vers[i]);
+            libc_dlsym = (void *(*)(void *, const char *))dlvsym(RTLD_DEFAULT, "dlsym", v);
+        }
+    }
+    return (libc_dlsym ? libc_dlsym : dlsym)(RTLD_NEXT, name);
+}
+
 static void init_syms(void)
 {
     if (!real_open)
-        real_open = dlsym(RTLD_NEXT, "snd_rawmidi_open");
+        real_open = next_sym("snd_rawmidi_open");
     if (!real_read)
-        real_read = dlsym(RTLD_NEXT, "snd_rawmidi_read");
+        real_read = next_sym("snd_rawmidi_read");
 }
 
 static int is_private(snd_rawmidi_t *h, const char *name)
@@ -744,7 +762,7 @@ __attribute__((visibility("default"))) int poll(struct pollfd *fds, nfds_t nfds,
 {
     static int (*real_poll)(struct pollfd *, nfds_t, int);
     if (!real_poll)
-        real_poll = dlsym(RTLD_NEXT, "poll");
+        real_poll = next_sym("poll");
     int idx = -1;
     if (priv_fd >= 0 && wake_fd[0] >= 0 && nfds < 16)
         for (nfds_t i = 0; i < nfds; i++)

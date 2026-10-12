@@ -42,7 +42,7 @@
 #
 # Version 0.2.0. Source: tools/mpc_patch/hwremap of the repository this came from.
 set -u
-VERSION=0.2.0
+VERSION=0.2.1
 P=${HW_PREFIX:-}                 # tests only: a folder that stands for /
 MARK=$P/data/hwremap
 CONF=$P/sdcard/hwremap.conf
