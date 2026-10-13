@@ -1,8 +1,21 @@
-# Optional: MPC OS drum-pad patch (16-pad drum layout)
+# Optional device patches (`tools/mpc_patch`)
 
-**Not part of any plugin release.** `mpc-drum-pad-patch.sh` is a standalone script you run on the device yourself, if you want it.
+**None of these is part of any plugin release.** Each is a standalone script you run on the device yourself, if you want it. They change the device, not just add files, so each has its own warnings, backups and uninstall.
 
-See also `drive_exec/` (load plugins from a drive mounted `noexec`) and `hwremap/` (remap hardware buttons). Both are optional device patches, listed next to this one.
+| Patch | What it does | Script | Details |
+|---|---|---|---|
+| 16-pad drum layout (this page) | Lets MPC treat selected plugins as drum instruments with 16 lit pads. Patches `/usr/bin/MPC`; MPC OS 3.9.1.2 only. | `mpc-drum-pad-patch.sh` | below |
+| Drive exec | Makes one folder on a `noexec` drive (a Force's SSD) executable so plugins load from it. No MPC restart. Untested on a device by this project. | `drive_exec/drive-exec-patch.sh` | [`drive_exec/README.md`](drive_exec/README.md) |
+| Button remap (hwremap) | An `LD_PRELOAD` shim that turns a button into other buttons, a pad or a touchscreen tap. Restarts MPC. Tried on one Force; not with MidiLoop / MockbaMod. | `hwremap/hwremap-patch.sh` | [`hwremap/README.md`](hwremap/README.md) |
+
+## Ways to install
+All three scripts share one interface (`status`, `install`, `uninstall`, and `--confirmed` to skip the typed question), so both routes run the same code.
+1. **The installer app, "Advanced: device patches" step** (`docs/PATCHES.md`). It lists the patches from `catalog/patches.json`, shows `status` for each (applied / not applied / unsupported firmware), and runs `install` / `uninstall` after you type the confirmation word. It downloads the script, checks its sha256 and passes `--confirmed` itself. Apply and Undo from the app are built and tested offline only (not yet on a device); the step is otherwise read-only. The same patches are on the catalog page's **Device patches** tab, with a guide page each.
+2. **By hand over SSH** (always available): copy the script to the device and run it as root; see "Use" below and each patch's README.
+
+Every patch is opt-in: nothing applies by default, as part of a plugin install, or as part of an update. Save your project first (the drum-pad and hwremap patches restart MPC).
+
+# 16-pad drum layout (`mpc-drum-pad-patch.sh`)
 
 ## What it does
 Stock MPC OS 3.9.1.2 treats only Akai's own `DrumSynth:Multi` as a drum instrument. The patch makes MPC treat the plugins in its name table (Machinedrum Module / Machinemodule, 6W6, 8W8, CW-78, 9W9, TR-MPC, Lucky Dip) as drum instruments with **16 pads, all lit**; pad n sends MIDI note n-1, which these plugins accept. Akai's DrumSynth Multi keeps its layout but also shows 16 lit pads. The pad colour is one red for every plugin. You can edit the pad colours with the standard Pad Colour Editor like normal manually.
@@ -15,7 +28,7 @@ Stock MPC OS 3.9.1.2 treats only Akai's own `DrumSynth:Multi` as a drum instrume
 - Nothing of Akai's is in the script: only the changed bytes and checksums.
 
 ## Use
-Copy it to the device and run it as root:
+By hand, copy it to the device and run it as root (or use the installer app, above):
 ```
 scp tools/mpc_patch/mpc-drum-pad-patch.sh root@<device-ip>:/tmp/
 ssh root@<device-ip>
