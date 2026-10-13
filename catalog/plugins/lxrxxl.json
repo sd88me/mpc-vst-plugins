@@ -1,4 +1,4 @@
-{ "id": "lxrxxl", "name": "LXRXXL", "author": "Suns Kiefer", "repo": "sunskiefer/LXR02XXL",
+{ "id": "lxrxxl", "name": "LXRXXL", "author": "L'Cronx", "repo": "sunskiefer/LXR02XXL",
   "kind": "instrument", "style": "drum-machine", "tags": ["drums", "drum-machine", "lxr", "lxr-02", "sonic-potions", "erica-synths", "sequencer", "randomizer"],
   "license": "LicenseRef-LXR02-Open", "source_available": true,
   "screenshot": "https://raw.githubusercontent.com/sunskiefer/LXR02XXL/v0.5.8/docs/img/page.png",
