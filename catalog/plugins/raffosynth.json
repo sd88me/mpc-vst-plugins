@@ -2,7 +2,7 @@
   "id": "raffosynth",
   "name": "RaffoSynth",
   "author": "saustin2010",
-  "repo": "saustin2010/mpc-vst-moog",
+  "repo": "saustin2010/mpc-vst-raffosynth",
   "kind": "instrument",
   "style": "synth",
   "tags": [
@@ -13,5 +13,5 @@
   ],
   "license": "MIT",
   "summary": "RaffoSynth: a Minimoog-style mono synth with four oscillators and a ladder filter.",
-  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-moog/v1.0.0/screenshots/page_0.png"
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-raffosynth/v1.2.0/screenshots/page_0.png"
 }

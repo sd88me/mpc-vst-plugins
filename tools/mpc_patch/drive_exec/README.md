@@ -34,7 +34,11 @@ The mount logic, its checks and the rollback are **"ForceHD VST Exec 0.1.3" by t
 - the service names `acvs` or `inmusic-mpc` are both handled, like the other scripts here.
 Not changed: ordering with MPC (none), the timer, the root-bootstrap that adds the unit to the system image, the ownership and parent checks, no forced or lazy unmount.
 
+## Check that it works: `verify`
+`sh drive-exec-patch.sh verify` (also run at the end of `install`). "Installed" is not "works": it checks that the folder is an executable mount, that **MPC's own process** sees that mount (it reads `/proc/<MPC pid>/mountinfo`; a service in its own mount namespace, or one that started before the mount, would not), and lists the plugin folders in it. Its last line is `VERIFY result=ok|not-installed|not-active|mpc-blind|mpc-stopped|no-plugins`. `mpc-blind`: restart MPC with the drive in. `no-plugins`: install into this drive's `Synths` folder (the app's Install to). `ok` but a plugin still shows only "Load Plugin": register the plugin folders again (installer app step 5) and restart MPC. Offline tests only (`tools/test_drive_exec.py`); not run on a device yet.
+
 ## Known limits
+- **One drive, `/media/<name>` only, 32-bit ARM (Gen1) only.** An SD card and a USB stick at once need two installs, which the script refuses; patch the one you keep plugins on, and use the internal drive for the rest.
 - **Boot timing:** MPC does not wait for the mount. A project that opens by itself at start can open before the drive is ready; wait for the mount and reload it. MPC drops plugin-list entries whose file is missing at startup: run the app's "Register plugin folders" if entries disappear.
 - A firmware update may remove the unit in the system image. Run `status`, then `install` again.
 - The timer runs every 5 s while the drive is absent (journal noise, no other effect).

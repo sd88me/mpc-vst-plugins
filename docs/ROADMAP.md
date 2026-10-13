@@ -31,15 +31,12 @@ Building on parameter-driven visibility (`IndexedEnabling`, NOTES "Conditional v
       none of CC 20-35 for itself.
 - [ ] **One engine call at a time: device check.** Done offline 2026-10-07 (`eng_set()` etc. in `wrapper/vst2_wrap.c`, a
       two-thread section in `tools/host_test.c`); measure the uncontended cost on a device with docs/BENCH.md.
-- [ ] **Engine-driven live updates need a new wrapper mechanism.** (Partly stale: `HAS_DISPLAY_REV` now polls an
-      engine's `display_rev` and refreshes the host, NOTES "display_rev"; another fork measured that repainting
-      costs MPC's screen thread a lot, NOTES 2026-10-07. Re-check what is left before working on this.) Confirmed on a Force 2026-09-25
-      (`poc/meterprobe`): `wrapper/vst2_wrap.c` never calls `audioMasterAutomate`/`audioMasterUpdateDisplay`
-      for a parameter the DSP engine changes on its own between host-initiated calls (only in response to a
-      touch/Q-Link, via `setParameter`'s `need_update_display`) — so a filmstrip `meter` or any other display
-      bound to a free-running engine value never visibly updates, even during playback. Needs the engine
-      interface (`wrapper/engine.h`) or wrapper to gain a way for an engine to flag "this key changed" so
-      `run_block()` can call the host back regardless of whether `setParameter()` fired. See NOTES.md.
+- [x] **Engine-driven live updates (2026-10-12).** Two ways now: `HAS_DISPLAY_REV` (the engine bumps `display_rev`; the
+      wrapper polls it every ~100 ms and reports every value that moved, NOTES "display_rev") and `mpc_engine_changed()`
+      in `wrapper/engine.h` (the engine names each key it changed; the wrapper reports those as it does a MIDI CC's, no
+      poll; `poc/selfset` offline, a Live II with saustin2010's Percolator, NOTES 2026-10-12). Repainting still costs MPC's
+      screen thread a lot (NOTES 2026-10-07). The gap this item was opened for (2026-09-25, `poc/meterprobe` on a Force:
+      the wrapper never called the host back for a value the engine changed on its own) is in NOTES.
 - [ ] **Tab images.** MPC draws the function-key tab bar; find how stock skins give tabs on/off images (from a
       stock TUI.json, described in NOTES, not committed) and whether a plugin skin can. `Indicator`
       (`indicatorId`, `numIndicatorsInGroup`, on/off images — see below) is an unverified candidate.

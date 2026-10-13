@@ -51,7 +51,7 @@ mkdir -p "$SYNTHS" || die "cannot create $SYNTHS"
 # MPC cannot load a .so from a noexec mount (a Force's SSD is one): the plugin is listed but only shows "Load Plugin"
 MP=$(df -kP "$SYNTHS" 2>/dev/null | awk 'NR==2 {m = $6; for (i = 7; i <= NF; i++) m = m " " $i; print m}' | sed 's/ /\\040/g')
 if [ -n "$MP" ] && MP="$MP" awk '$2 == ENVIRON["MP"] {print $4}' /proc/mounts 2>/dev/null | grep -q '\(^\|,\)noexec\(,\|$\)'; then
-    echo "warning: $SYNTHS is on a noexec mount, so MPC will not be able to load this plugin from it. Install on the internal drive or an SD card (-t /sdcard/Synths)."
+    echo "warning: $SYNTHS is on a noexec mount, so MPC will not be able to load this plugin from it. Install on the internal drive (-t /sdcard/Synths), or on Gen1 apply the drive exec patch (tools/mpc_patch/drive_exec) and then run its verify."
 fi
 grep -q "$SYNTHS" "$SETTINGS" || echo "warning: $SYNTHS isn't in MPC's SynthContentLocations; the skin may not show"
 

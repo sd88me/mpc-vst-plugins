@@ -738,6 +738,32 @@ class BuildTest(Base):
         gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1, pre=True)]}, {1: self.build("1.0.0")})
         self.assertEqual(catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "b"), set())[0]["plugins"][0]["tier"], "experimental")
 
+    def test_verified_is_split_by_generation(self):
+        def plugin(tested, gen2=True):
+            z32 = self.build("1.0.0")
+            rel = self.gen2_release("v1.0.0", 1, 2) if gen2 else self.rel("v1.0.0", 1)
+            gh = FakeGitHub({"acme/test-synth": [rel]}, {1: z32, 2: self.build("1.0.0", machine=183, elf_class=2)})
+            gh.tested = lambda repo: tested
+            return catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "g%d" % len(os.listdir(self.tmp))), set())[0]["plugins"][0]
+        g1 = {"version": "1.0.0", "device": "Force", "firmware": "3.9.1"}
+        g2 = {"version": "1.0.0", "device": "MPC Live III (Gen2)", "firmware": "5.0.18"}
+        p = plugin([g1])
+        self.assertEqual((p["tier"], p["verified_on"]), ("verified", ["gen1"]))
+        self.assertIn("tested-gen2", p["bar_missing"])
+        self.assertNotIn("tested", p["bar_missing"])
+        p = plugin([g2])
+        self.assertEqual((p["tier"], p["verified_on"]), ("verified", ["gen2"]))
+        self.assertIn("tested", p["bar_missing"])
+        self.assertNotIn("tested-gen2", p["bar_missing"])
+        p = plugin([g1, g2])
+        self.assertEqual(p["verified_on"], ["gen1", "gen2"])
+        self.assertFalse({"tested", "tested-gen2"} & set(p["bar_missing"]))
+        # a Gen2 test of a version with no Gen2 build verifies nothing; no Gen2 build, no Gen2 bar item
+        p = plugin([g2], gen2=False)
+        self.assertEqual((p["tier"], p["verified_on"]), ("listed", []))
+        self.assertNotIn("tested-gen2", plugin([g1], gen2=False)["bar_missing"])
+        self.assertEqual(plugin([])["verified_on"], [])
+
     def test_quality_bar(self):
         gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1)]}, {1: self.build("1.0.0")})
         cat, _ = catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "bar"), set())
@@ -1808,7 +1834,7 @@ class AppResolveTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as t:
             resolved = self.doc(); resolved["apps"][0]["downloads"] = [{"platform": "macos", "label": "Resolved label", "url": "https://dl/x", "sha256": self.SHA}]
             json.dump(resolved, open(os.path.join(t, "apps.json"), "w"))
-            subprocess.run([sys.executable, os.path.join(HERE, "catalog_site.py"), "--catalog", os.path.join(root, "site-fixture", "catalog.json"),
+            subprocess.run([sys.executable, os.path.join(HERE, "catalog_site.py"), "--catalog", os.path.join(HERE, "catalog_site", "fixture-catalog.json"),
                             "--out", os.path.join(t, "site")], cwd=root, check=True, capture_output=True)
             html = open(os.path.join(t, "site", "index.html"), encoding="utf-8").read()
         self.assertIn("Resolved label", html)

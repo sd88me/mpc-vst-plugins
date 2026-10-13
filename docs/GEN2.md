@@ -53,9 +53,11 @@ boot methods unrelated to this repo, so Gen2 plugin support remains usable only 
   Gen2 tag and a "no Gen2 build" note on a Gen2 device. Tested against a fake SSH device only; no real Gen2.
 
 ## Site
-`index.html`: a **Gen2** tag on a version with an aarch64 asset ("Gen2 build", or "Gen2 · tested" when a `tested.json` entry's `device`
-contains "Gen2"), a **Device** filter (has a Gen2 build / Gen1 and Force only), and two download buttons, "Download (Gen1 / Force)" and
+`index.html`: a **Gen2 build** tag on a version with an aarch64 asset (always that text and a neutral colour since 2026-10-12; whether it
+was tested on a Gen2 unit is in its hover text, the card's Gen2 row and the Verified Gen2 badge), a **Device** filter (has a Gen2 build / Gen1 only), and two download buttons, "Download (Gen1)" and
 "Download (Gen2)". A passing aarch64 build is not "tested": that needs the device string. Use e.g. `"device": "MPC Live III (Gen2)"` in `tested.json`.
+The same rule splits the Verified badge (2026-10-12, offline): the newest stable release gets "Verified Gen2" from such an entry (only when it
+has an aarch64 build) and "Verified Gen1" from any other entry, each its own badge and Tier filter option (`verified_on` in `catalog.json`).
 Checked in Chromium (Playwright) against a fixture catalog with two Gen2 versions.
 
 ## Developers

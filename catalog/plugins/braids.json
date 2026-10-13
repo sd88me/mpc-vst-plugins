@@ -1,16 +1,15 @@
 {
   "id": "braids",
-  "name": "Braids",
+  "name": "Macro Osc",
   "author": "saustin2010",
-  "repo": "saustin2010/mpc-vst-braids",
+  "repo": "saustin2010/mpc-vst-macro-osc",
   "kind": "instrument",
   "style": "synth",
   "tags": [
-    "mutable-instruments",
     "macro-oscillator",
     "eurorack"
   ],
   "license": "MIT",
-  "summary": "Mutable Instruments Braids: a macro oscillator with 47 synthesis models.",
-  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-braids/v1.0.0/screenshots/page_0.png"
+  "summary": "Macro Osc: a macro oscillator with 47 synthesis models, from Émilie Gillet's open-source Braids.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-macro-osc/v1.1.0/screenshots/page_0.png"
 }

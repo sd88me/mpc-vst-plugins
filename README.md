@@ -7,8 +7,9 @@ an installer app, and the tools to build, test and release your own.
 
 > **MPC OS 2.x and 3.x.** Plugins here are built and tested on **MPC OS 3.x**. On **MPC OS 2.x** a plugin loads and its
 > Q-Links work, but its touchscreen page only appears if the plugin's skin is written in the older format 2.x reads. The
-> catalog says which each release is (**MPC OS 2.x + 3.x** or **MPC OS 3.x only**), checked from its files, so you know
-> before you install. A 3.x-only plugin becomes 2.x-capable when its developer re-releases it with a compatible skin
+> catalog checks from its files whether each release can work on 2.x, and marks one tested on a 2.x unit **MPC OS 2.x tested**
+> (3.x, the standard, gets no badge); the installers warn before putting a 3.x-only plugin on a device that looks like 2.x.
+> A 3.x-only plugin becomes 2.x-capable when its developer re-releases it with a compatible skin
 > (how, and what the catalog checks: [MPC OS 2.x vs 3.x](#mpc-os-2x-vs-3x) below).
 
 ## Plugin catalog
@@ -19,7 +20,7 @@ plugins for MPC OS, with each plugin's current version, license, source link and
 [![The Open MPC - Plugin Catalog home page](docs/img/catalog-home.png)](https://sd88me.github.io/mpc-vst-plugins/)
 
 - **Find a plugin.** Search, filter by kind, style, developer, license or distribution, and sort by recently updated or
-  most downloaded. Every version shows its date and SHA-256, and what it was tested on. Each plugin is **Verified** (the newest release was tested on real hardware and the test is recorded), **Listed** (it passed the catalog's automatic release checks, but no hardware test is recorded) or **Experimental** (new or unproven, hidden unless you ask for it). None of these is a security review: nobody reads each plugin's code, so stick to developers you trust. There is an Atom feed
+  most downloaded. Every version shows its date and SHA-256, and what it was tested on. Each plugin is **Verified** (the newest release was tested on real hardware and the test is recorded; shown per generation as Verified Gen1 and/or Verified Gen2), **Listed** (it passed the catalog's automatic release checks, but no hardware test is recorded) or **Experimental** (new or unproven, hidden unless you ask for it). None of these is a security review: nobody reads each plugin's code, so stick to developers you trust. There is an Atom feed
   (`feed.xml`) of new releases.
 - **Install with the installer app.** The [MPC plugin installer](https://github.com/sd88me/mpc-vst-plugins/releases/latest) is a
   small Windows, Mac and Linux app: connect to your device, tick plugins from the catalog (or drop in zips, including
@@ -60,8 +61,8 @@ authors, listed in the catalog, and installed by people on their own units.
   (layout, checksums, glibc and CPU limits), smoke-tested on a real device and only then published. Each version
   shows its SHA-256 and what it was tested on.
 - **MPC OS 2.x and 3.x, labelled per release.** Plugins are built against glibc 2.31, so they load on older firmware
-  (glibc 2.32, e.g. MPC OS 2.15) as well as current (2.39). The catalog checks each release's library and skin and labels it
-  **MPC OS 2.x + 3.x** or **MPC OS 3.x only**; the installers warn before putting a 3.x-only plugin on a device that looks
+  (glibc 2.32, e.g. MPC OS 2.15) as well as current (2.39). The catalog checks each release's library and skin and classes it
+  2.x + 3.x or 3.x only (the MPC OS filter and line on the card; the only badge is **MPC OS 2.x tested**); the installers warn before putting a 3.x-only plugin on a device that looks
   like 2.x. Every release so far (2026-10) is 3.x only: whether to publish a 2.x-capable skin is up to each plugin's developer.
   A plugin that needs more than 2.32 (up to 2.36) is listed as 3.x only; the catalog refuses more than 2.36.
 - **Tested on a Force** (MPC OS 3.9.1) as the reference device. Other Gen1 MPC OS devices (Live and Live II, One, X,
@@ -121,6 +122,7 @@ design.
   knob style, gradient or shadow, and artwork drawn in Inkscape, baked into the page.
 - Presets in MPC's PRESET menu, from the engine's own preset parameter or a `presets.json` (the menu listing and loading
   checked on a Force; offline-tested otherwise). CC 20-35 and NRPN control from MIDI (offline-tested only so far).
+- Controls the engine moves by itself (a worker thread, MIDI on a port of its own) followed on the screen.
 - Updating a plugin without restarting MPC: replace the file, remove every copy from the project, insert it again.
 - Shipping a plugin as one zip with an install script.
 
@@ -195,8 +197,8 @@ What differs, and what the catalog does about it (checked on an MPC Live on 2.15
   Force touch works as before, and a tester on a 2.15.1 MPC Live reported the same skin working there too.
 - **The catalog decides, from the files.** For every release it works out `os_compat`: **2.x + 3.x** when the library needs
   glibc 2.32 or less and every object in the skin has a version and fields that 2.15.1's own skins use, otherwise **3.x only**
-  (the reasons show on hover). Developers do not declare it. It is a check against one 2.x version's own skins, not a test on a
-  2.x unit, so a plain "2.x" badge also needs a 2.x device test listed.
+  (the reasons show on the catalog card's MPC OS line). Developers do not declare it. It is a check against one 2.x version's own
+  skins, not a test on a 2.x unit, so the only badge, **MPC OS 2.x tested**, also needs a 2.x device test listed.
 - **For developers: opting in is optional.** To make a plugin 2.x-capable, write its skin in the 2.x shape, check it with
   `python3 tools/skin_compat.py check "<skin>/Plugin Skins/TUI.json" "<skin>/Plugin Skins/Q-Links.json"` (it lists what still
   stops 2.x) and publish a new release; the label changes by itself on the next catalog build. Releases that are not

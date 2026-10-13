@@ -58,7 +58,8 @@ The page uses that to state the exact number of MPC restarts before you confirm,
 itself. A zip you drop in is inspected directly.
 
 **MPC OS badge and warnings.** The catalog also says which MPC OS generations a version works on (`os_compat`, `os_compat_why` and `max_glibc` in
-`catalog.json`; columns 15 and 16 of `catalog.tsv`; docs/OS2_SKINS.md). The list shows "MPC OS 2.x + 3.x" or "MPC OS 3.x only", and connecting
+`catalog.json`; columns 15 and 16 of `catalog.tsv`; docs/OS2_SKINS.md). MPC OS 3.x is the standard, so the list shows only one
+badge, "MPC OS 2.x tested", on a 2.x-capable version with a 2.x device test (`tested[].firmware` 2.x; 2026-10-12, as on the catalog site). Connecting
 reads the device's glibc (`libc` in the device info: run the libc for its version, or take it from `libc-2.33.so`; nothing is guessed when
 neither works). Against that glibc the list adds a note per plugin, and the install dialog repeats it: a plugin that needs a newer glibc than
 the device has "will not load" (the button becomes *Install anyway*), and a 3.x-only plugin on a device below glibc 2.34 (MPC OS 2.x) "may

@@ -337,7 +337,7 @@ func genName(devArch string) string {
 	if devArch == "aarch64" {
 		return "Gen2"
 	}
-	return "Gen1 or Force"
+	return "Gen1"
 }
 
 func otherZip(devArch string) string {

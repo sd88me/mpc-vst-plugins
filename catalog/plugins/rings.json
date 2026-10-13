@@ -1,17 +1,16 @@
 {
   "id": "rings",
-  "name": "Rings",
+  "name": "Resonator",
   "author": "saustin2010",
-  "repo": "saustin2010/mpc-vst-rings",
+  "repo": "saustin2010/mpc-vst-resonator",
   "kind": "instrument",
   "style": "synth",
   "tags": [
-    "mutable-instruments",
     "resonator",
     "physical-modelling",
     "eurorack"
   ],
   "license": "MIT",
-  "summary": "Mutable Instruments Rings: seven resonator models (strings, modal, FM, chords) strummed by the notes you play; 14 presets.",
-  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-rings/v1.0.0/screenshots/page_0.png"
+  "summary": "Resonator: seven resonator models (strings, modal, FM, chords) strummed by the notes you play; 14 presets, from Émilie Gillet's open-source Rings.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-resonator/v1.1.0/screenshots/page_0.png"
 }

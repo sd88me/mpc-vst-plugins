@@ -32,3 +32,12 @@ typedef struct {
 } mpc_engine_t;
 
 const mpc_engine_t *mpc_engine(void);
+
+/* Optional: an engine that changes its own parameters (from MIDI it reads on an ALSA port of its own, say) reports them
+ * here, one key per call, into `key` (`len` bytes), and returns 0 once none are left. The wrapper asks once per host
+ * block, under the engine lock, and tells the host as it does for a MIDI CC's change (audioMasterAutomate, at most every
+ * 1024 frames per control), so the screen follows; an option list's change also asks for an UpdateDisplay, since it can
+ * rename other controls. A weak symbol, not an mpc_engine_t member: an engine that doesn't define it is unaffected
+ * (a C++ engine defines it extern "C", as it does mpc_engine()). Unlike HAS_DISPLAY_REV, nothing is polled: only the
+ * keys the engine names are read back. `poc/selfset` is the test engine. */
+int mpc_engine_changed(void *inst, char *key, int len) __attribute__((weak));

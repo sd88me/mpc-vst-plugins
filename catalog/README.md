@@ -70,14 +70,17 @@ firmware-derived data and must not be shared. `{tag}` in `docs_url` becomes the 
 Optional `tested.json` at the root of your repo's default branch; the nightly build shows it as "Tested on" for the
 matching release:
 ```json
-[ { "version": "1.2.0", "device": "MPC Live II", "firmware": "3.6.0", "date": "2026-09-29" } ]
+[ { "version": "1.2.0", "device": "MPC Live II", "firmware": "3.6.0", "date": "2026-09-29" },
+  { "version": "1.2.0", "device": "MPC Live III (Gen2)", "firmware": "5.0.18", "date": "2026-10-11" } ]
 ```
+A test of your Gen2 (aarch64) build needs "Gen2" in `device`, as in the second line; any other device counts as Gen1.
 
 ## Trust tiers
 Every plugin has one tier, worked out by the nightly build (nobody sets it by hand). Only Verified and Experimental get a badge on
 the card: a plugin with no badge is simply in the catalog (the Listed tier), and the Tier filter calls it "Not yet verified".
 - **Verified**: the newest stable release has a `tested.json` entry (above). Say on what, and tell the truth: an entry is a claim
-  a maintainer may ask you to back up.
+  a maintainer may ask you to back up. Each generation gets its own badge: **Verified Gen1** for a test on a Gen1 device,
+  **Verified Gen2** for a test on a Gen2 device (only when that release has a Gen2 build). The Tier filter can pick either.
 - **Listed** (no badge): the release passed the catalog checks, but no hardware test is recorded for the newest release. This is where a
   plugin stays until you add a `tested.json` entry, and where it returns when you release a new version without testing it.
 - **Experimental**: no stable release yet (a beta alone counts), or a maintainer capped the entry with `"tier": "experimental"`
@@ -94,7 +97,8 @@ is hidden or demoted because of it. The items:
 - add a **screenshot** (the `screenshot` link in your registry entry)
 - ship a native **skin** (instruments and effects)
 - run the **CPU bench** (`docs/BENCH.md`; `release.py` records the figure), and bring the CPU down if the verdict is FAIL
-- add a **`tested.json`** entry for your newest release (this is what makes a plugin Verified)
+- add a **`tested.json`** entry for your newest release (this is what makes a plugin Verified), and one on a Gen2 device if the release has
+  a Gen2 build
 
 ## Feed
 The site publishes `feed.xml` (Atom, newest 50 non-yanked releases).

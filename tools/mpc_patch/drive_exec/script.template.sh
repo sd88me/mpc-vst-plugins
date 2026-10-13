@@ -9,6 +9,7 @@
 #   sh drive-exec-patch.sh install [--root /media/<drive>] [--exec-dir Synths] [--confirmed]
 #                                                       install it (asks you to type PATCH first)
 #   sh drive-exec-patch.sh uninstall [--confirmed]   remove it (asks you to type REMOVE first)
+#   sh drive-exec-patch.sh verify                    after install: does MPC itself see the executable folder, and which plugins are in it
 #   sh drive-exec-patch.sh help
 # Run it ON the device as root (ssh root@<device-ip>), after copying the file there (scp).
 #
@@ -48,7 +49,7 @@ LINK_BOOT=$P/usr/lib/systemd/system/multi-user.target.wants/drive-exec-bootstrap
 UNIT_SVC=$P/etc/systemd/system/drive-exec.service
 UNIT_TIMER=$P/etc/systemd/system/drive-exec.timer
 die() { echo "ERROR: $*" >&2; exit 1; }
-usage() { sed -n '2,12p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
+usage() { sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit "${1:-0}"; }
 
 mi_path() { printf '%s' "$1" | sed 's/\\/\\134/g; s/ /\\040/g'; }
 mi_unescape() { sed 's/\\040/ /g'; }
@@ -112,7 +113,7 @@ cmd_status() {
             state_line unsupported 0 other-version; return
         fi
         out=$(/bin/sh "$ETC/drive-exec.sh" status 2>&1); echo "$out"
-        case "$out" in *"State: ACTIVE"*) echo "Installed and active."; state_line patched 1 ;;
+        case "$out" in *"State: ACTIVE"*) echo "Installed and active. Check that MPC sees it: sh $0 verify"; state_line patched 1 ;;
             *) echo "Installed, but the executable mount is not active now (the drive is not mounted, or the mount was removed)."; state_line partial 1 ;; esac
         return
     fi
@@ -132,6 +133,38 @@ cmd_status() {
     echo "All mounts under /media (the drive is the one marked noexec; a drive can be named by its label or by a number):"; media_mounts | sed 's/^/  /'
     [ "$n" = 1 ] || echo "More than one: install needs --root /media/<drive>."
     state_line stock 1
+}
+
+# verify: "installed" is not "works". MPC is a separate process: it must SEE the executable mount, and its plugin list must point into it.
+# Reads MPC's own /proc/<pid>/mountinfo (a service can run in its own mount namespace and miss a mount made outside it).
+# Last line, for programs: VERIFY result=ok|not-installed|not-active|mpc-blind|mpc-stopped|no-plugins [plugins=N]
+verify_line() { echo "VERIFY result=$1${2:+ $2}"; }
+cmd_verify() {
+    v=$(installed_version) || { echo "The patch is not installed."; verify_line not-installed; return 1; }
+    . "$ETC/config"; T=$DRIVE_ROOT/$EXEC_DIR
+    case ",$(mount_options "$T")," in
+        ,,) echo "$T is not a separate mount right now: the drive is not mounted, or the patch has not run yet. Wait 10 seconds and try again; if it stays so, run: systemctl start drive-exec.service"; verify_line not-active; return 1 ;;
+        *,noexec,*) echo "$T is mounted but still noexec: the patch did not take effect. Run: sh $ETC/drive-exec.sh status"; verify_line not-active; return 1 ;;
+    esac
+    echo "OK: $T is a mount that allows running programs (drive stays noexec)."
+    pid=$(pidof MPC 2>/dev/null | awk '{print $1}')
+    if [ -z "$pid" ]; then echo "MPC is not running now, so what it sees was not checked."; verify_line mpc-stopped; return 0; fi
+    Q=$(mi_path "$T")
+    mo=$(Q="$Q" awk '$5==ENVIRON["Q"]{v=$6} END{if(v)print v}' "${DEX_MPC_MOUNTINFO:-/proc/$pid/mountinfo}" 2>/dev/null)
+    if [ -z "$mo" ] || case ",$mo," in *,noexec,*) true ;; *) false ;; esac; then
+        echo "PROBLEM: MPC (pid $pid) does not see the executable mount (it sees: ${mo:-nothing at $T}). It started before the mount or runs in its own mount namespace."
+        echo "Fix: stop and start MPC (systemctl restart $(mpc_service); save your project first), then run verify again."
+        verify_line mpc-blind; return 1
+    fi
+    echo "OK: MPC (pid $pid) sees it too."
+    n=0
+    for f in "$T"/*/plugin-meta.xml; do [ -f "$f" ] || continue; n=$((n+1)); echo "  plugin folder: $(basename "$(dirname "$f")")"; done
+    if [ "$n" = 0 ]; then
+        echo "No plugin is installed in $T yet. Install them into this folder (the installer app: pick this drive under Install to), then run: sh $0 verify"
+        verify_line no-plugins plugins=0; return 0
+    fi
+    echo "$n plugin folder(s) there. If a plugin still only shows \"Load Plugin\": it was registered while the drive was not ready. In the installer app run step 5 (Register plugin folders), then restart MPC."
+    verify_line ok plugins=$n
 }
 
 cmd_install() {
@@ -217,6 +250,7 @@ cmd_install() {
     echo "Patch $VERSION installed. Backup: $BACKUP"
     echo "MPC remains running. Plugins installed into $TARGET (for example with the installer app, to this drive) can now load."
     echo "Check it after a reboot: sh $0 status"
+    echo; cmd_verify || echo "(The patch is installed; see the problem above.)"
 }
 
 cmd_uninstall() {
@@ -234,6 +268,7 @@ cmd_uninstall() {
 
 case "$CMD" in
     status) cmd_status ;;
+    verify) need_device; cmd_verify ;;
     install) cmd_install ;;
     uninstall) cmd_uninstall ;;
     help|-h|--help) usage 0 ;;

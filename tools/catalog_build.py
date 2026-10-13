@@ -94,14 +94,29 @@ def check_entry(e, fname=None):
     return p
 
 
+GEN2_DEVICE = re.compile(r"gen\s*2", re.I)   # a tested.json device naming Gen2, e.g. "MPC Live III (Gen2)" (docs/GEN2.md)
+
+
+def verified_on(versions):
+    """Device generations the newest stable, unyanked version has a tested.json entry for: "gen1" (a Gen1 device, the armv7
+    build) and/or "gen2" (a device naming Gen2; counts only when that version has an aarch64 build)."""
+    live = [v for v in versions if v["channel"] == "stable" and not v["yanked"]]
+    if not live:
+        return []
+    gens = {"gen2" if GEN2_DEVICE.search(t.get("device", "")) else "gen1" for t in live[0].get("tested", [])}
+    if not live[0].get("gen2"):
+        gens.discard("gen2")
+    return sorted(gens)
+
+
 def tier_of(entry, versions):
     """Trust tier of a plugin. experimental: the registry caps it ("tier": "experimental") or it has no stable, unyanked
-    release (a beta alone, or nothing valid yet). verified: the newest stable, unyanked version has a tested.json entry.
-    listed: everything else that passed the release checks."""
+    release (a beta alone, or nothing valid yet). verified: the newest stable, unyanked version has a tested.json entry
+    (on either generation; verified_on says which). listed: everything else that passed the release checks."""
     live = [v for v in versions if v["channel"] == "stable" and not v["yanked"]]
     if entry.get("tier") == "experimental" or not live:
         return "experimental"
-    return "verified" if live[0].get("tested") else "listed"
+    return "verified" if verified_on(versions) else "listed"
 
 
 BAR = {   # id -> what the author sees. Informational: it never hides or demotes a plugin (docs/CATALOG_QUALITY.md, step 1).
@@ -110,11 +125,12 @@ BAR = {   # id -> what the author sees. Informational: it never hides or demotes
     "skin": "ship a native MPC skin",
     "cpu-fail": "bring the CPU use down (the bench verdict is FAIL)",
     "cpu-bench": "run the CPU bench (docs/BENCH.md) so the release records a figure",
-    "tested": "add a tested.json entry for the newest release (device and MPC OS version)",
+    "tested": "add a tested.json entry for the newest release on a Gen1 device (device and MPC OS version)",
+    "tested-gen2": "add a tested.json entry for the newest release's Gen2 build (a device naming Gen2, e.g. \"MPC Live III (Gen2)\")",
 }
 
 
-def bar_of(entry, versions, tier):
+def bar_of(entry, versions):
     """Ids of the BAR items a plugin does not meet yet, in display order."""
     live = [v for v in versions if v["channel"] == "stable" and not v["yanked"]]
     m = (live[0].get("manifest") or {}) if live else {}
@@ -130,8 +146,11 @@ def bar_of(entry, versions, tier):
         out.append("cpu-fail")
     elif live and entry["kind"] != "addin" and entry.get("distribution", "release") == "release" and not cpu:
         out.append("cpu-bench")
-    if tier != "verified" and live:
+    gens = verified_on(versions)
+    if live and "gen1" not in gens:
         out.append("tested")
+    if live and live[0].get("gen2") and "gen2" not in gens:
+        out.append("tested-gen2")
     return out
 
 
@@ -471,7 +490,8 @@ def build(entries, src, cache, yanked, keep=10, now=None):
             item["build"].setdefault("needs", [])
         item["versions"] = versions
         item["tier"] = tier_of(e, versions)
-        item["bar_missing"] = bar_of(e, versions, item["tier"])
+        item["verified_on"] = verified_on(versions) if item["tier"] == "verified" else []
+        item["bar_missing"] = bar_of(e, versions)
         item["featured"] = bool(e.get("featured")) and item["tier"] != "experimental"
         item["latest"] = next((v["version"] for v in versions if v["channel"] == "stable" and not v["yanked"]), None)
         item["latest_beta"] = next((v["version"] for v in versions if v["channel"] == "beta" and not v["yanked"]), None)

@@ -44,6 +44,7 @@ type CatPlugin struct {
 	OSCompat    []string `json:"os_compat"`     // the MPC OS generations it works on ("2.x", "3.x"); empty when the catalog does not say
 	OSWhy       []string `json:"os_compat_why"` // why it is not 2.x, when it is not
 	MaxGlibc    string   `json:"max_glibc"`     // the newest glibc its library needs; empty when the catalog does not say
+	Tested2x    bool     `json:"tested_2x"`     // the version has a tested.json entry on MPC OS 2.x firmware
 	Gen2        bool     `json:"gen2"`          // the version also has a Gen2 (aarch64) zip; SHA256/URL/Size above are the Gen1 (armv7) one
 	Aarch64     *Asset   `json:"aarch64,omitempty"`
 }
@@ -90,6 +91,9 @@ type rawCatalog struct {
 				UID      string   `json:"uid"`
 				UserData []string `json:"user_data"`
 			} `json:"manifest"`
+			Tested []struct {
+				Firmware string `json:"firmware"`
+			} `json:"tested"`
 		} `json:"versions"`
 	} `json:"plugins"`
 }
@@ -115,9 +119,13 @@ func parseCatalog(data []byte) ([]CatPlugin, error) {
 			if a, ok := v.Assets["aarch64"]; ok && isHTTPS(a.URL) && len(a.SHA256) == 64 {
 				a64 = &a
 			}
+			tested2x := false
+			for _, t := range v.Tested {
+				tested2x = tested2x || strings.HasPrefix(t.Firmware, "2.")
+			}
 			out = append(out, CatPlugin{ID: p.ID, Name: p.Name, Author: p.Author, Kind: p.Kind, Role: p.Role, Summary: p.Summary, Version: v.Version,
 				Size: v.Size, SHA256: v.SHA256, URL: v.URL, Skin: v.Manifest.Skin, ParamCompat: v.ParamCompat, UID: v.Manifest.UID, UserData: v.Manifest.UserData, Defer: v.Defer,
-				OSCompat: v.OSCompat, OSWhy: v.OSWhy, MaxGlibc: v.MaxGlibc, Gen2: a64 != nil, Aarch64: a64})
+				OSCompat: v.OSCompat, OSWhy: v.OSWhy, MaxGlibc: v.MaxGlibc, Tested2x: tested2x, Gen2: a64 != nil, Aarch64: a64})
 			break
 		}
 	}

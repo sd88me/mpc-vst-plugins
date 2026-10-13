@@ -529,6 +529,20 @@ static void housekeeping(AEffect *e, int32_t n) {
             }
         }
     }
+    /* parameters the engine changed by itself (engine.h mpc_engine_changed): reported as a CC's are, just below */
+    if (mpc_engine_changed) {
+        char key[64];
+        pthread_mutex_lock(&w->lock);
+        for (int k = 0; k < NPARAMS && mpc_engine_changed(w->dsp, key, sizeof key) > 0; k++)
+            for (int i = 0; i < NPARAMS; i++)
+                if (!strcmp(PARAMS[i].key, key)) {
+                    w->last_pos[i] = -1;   /* the host's last position no longer stands (settle()) */
+                    w->cc_changed[i] = 1;
+                    if (PARAMS[i].nopts > 1) w->need_update_display = 1;
+                    break;
+                }
+        pthread_mutex_unlock(&w->lock);
+    }
     if ((w->cc_report -= n) <= 0) {
         w->cc_report = 1024;
         for (int i = 0; i < NPARAMS; i++)

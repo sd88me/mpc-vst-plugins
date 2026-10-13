@@ -57,7 +57,6 @@ dialog .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:1
 .catbar { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:space-between; align-items:center; margin:2px 0 8px; font-size:13px; color:var(--muted); }
 .linkbtn { font:600 12px/1 var(--display); letter-spacing:.1em; text-transform:uppercase; color:var(--accent); background:none; border:0; padding:6px 0; cursor:pointer; }
 .tag.up { color:#8a5a00; border-color:#c58b00; }
-.tag.warn { color:#4b3f94; border-color:#8a7cc9; }   /* MPC OS 3.x only: not the update tag's amber */
 ul.list .t .d.osn.err { color:var(--accent); } ul.list .t .d.osn.warn { color:#4b3f94; }
 #selbar { position:sticky; bottom:12px; z-index:4; display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--lcd); color:var(--lcd-fg);
   border-radius:8px; padding:10px 12px 10px 16px; box-shadow:0 6px 24px rgb(0 0 0/.25); margin-top:12px; }
@@ -125,7 +124,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="s3" class="off">
   <h2><span class="n">3</span>Install</h2>
   <p class="sub" id="summary">Nothing selected yet.</p>
-  <fieldset class="where" id="where" hidden><legend>Install to</legend><div id="whereopts"></div><p class="msg" id="wherewarn"></p></fieldset>
+  <fieldset class="where" id="where" hidden><legend>Install to</legend><div id="whereopts"></div><p class="msg" id="wherewarn"></p><p class="small" id="wherefix" hidden><a href="#d7" id="wherefixlink">Open step 7: the drive exec patch</a></p></fieldset>
   <button class="primary" id="go" disabled>Install…</button>
   <p class="msg" id="result" role="status" aria-live="polite"></p>
   <pre class="log" id="log" hidden></pre>
@@ -210,7 +209,7 @@ function setConnected(c, info, problems) {
   S.patches = null; drawPatches();
   if (c) {
     var n = (info.installed || []).length;
-    S.roots = info.roots || []; var pr = S.roots.filter(function (r) { return r.primary; })[0] || S.roots[0]; S.root = pr ? pr.path : "";
+    S.roots = info.roots || []; var pr = S.roots.filter(function (r) { return r.primary && !r.noExec; })[0] || S.roots.filter(function (r) { return !r.noExec; })[0] || S.roots[0]; S.root = pr ? pr.path : "";
     var places = S.roots.map(function (r) { return r.label + " (" + (r.fs ? r.fs + ", " : "") + gb(r.freeKB) + " free)"; }).join("; ");
     var m = "Connected to " + info.host + " (" + (info.arch || "?") + "). " + n + " plugin folder" + (n === 1 ? "" : "s") + " found. Plugin locations: " + (places || info.synths) + ". Device key " + info.fingerprint + ".";
     if (S.problems.length) msg($("connmsg"), m + " Cannot install here: " + S.problems.join("; ") + ".", "err"); else msg($("connmsg"), m, "ok");
@@ -288,10 +287,11 @@ function vgt(a, b) {   /* is version a newer than version b ("2.34" > "2.33") */
   for (var i = 0; i < Math.max(x.length, y.length); i++) { var p = x[i] || 0, q = y[i] || 0; if (p !== q) return p > q; }
   return false;
 }
+/* MPC OS 3.x is the current, standard OS, so it gets no badge: only a 2.x-capable version with a 2.x device test does (as on the catalog site).
+   A 3.x-only plugin on a device that looks like 2.x still gets osNote's warning. */
 function osTagFor(p) {
-  var g = p.os_compat || []; if (!g.length) return null;
-  if (g.indexOf("2.x") >= 0) { var t = el("span", "tag", "MPC OS 2.x + 3.x"); t.title = "Its skin and library were checked against MPC OS 2.15.1's own skins and glibc. Not the same as tested on a 2.x unit."; return t; }
-  var w = el("span", "tag warn", "MPC OS 3.x only"); w.title = "Not compatible with MPC OS 2.x" + ((p.os_compat_why || []).length ? " (" + p.os_compat_why.join("; ") + ")" : ""); return w;
+  var g = p.os_compat || []; if (g.indexOf("2.x") < 0 || !p.tested_2x) return null;
+  var t = el("span", "tag", "MPC OS 2.x tested"); t.title = "Tested on an MPC OS 2.x unit; its skin and library were also checked against MPC OS 2.15.1's own skins and glibc. Works on MPC OS 3.x too."; return t;
 }
 function osNote(p) {   /* {level, text} when this plugin will not work as expected on the connected device, else null */
   if (S.arch === "aarch64" && !p.gen2) return { level: "err", text: p.name + " has no Gen2 (aarch64) build yet, so it cannot be installed on this device." };
@@ -327,7 +327,7 @@ function drawCat() {
 }
 function rootNote(r) {
   var n = [];
-  if (r.noExec) n.push("Mounted noexec: MPC cannot load plugins from here (they are listed but only show Load Plugin). Use the internal drive or an SD card.");
+  if (r.noExec) n.push("Mounted noexec: this drive does not let MPC run programs from it, so plugins installed here would be listed but only show Load Plugin. Two ways forward: install on the internal drive (pick it above), or keep this drive and apply the drive exec patch in step 7 (Advanced), which makes only this drive's Synths folder executable.");
   if (r.noSymlinks) n.push("Formatted " + r.fs + ", which cannot store symbolic links: a plugin that needs them (Crate Digger) cannot be installed here.");
   if (!r.inContent) n.push("MPC does not list this folder as a content location, so a plugin's screen may not show until you add it in MPC's settings.");
   if (!r.primary) n.push("If this drive is not in when MPC starts, its plugins drop out of MPC's plugin list until you register them again (step 5).");
@@ -335,18 +335,19 @@ function rootNote(r) {
 }
 function drawWhere() {
   var box = $("whereopts"); box.textContent = "";
-  $("where").hidden = S.roots.length < 2;
+  $("where").hidden = S.roots.length < 2 && !S.roots.some(function (r) { return r.noExec; });
   S.roots.forEach(function (r, i) {
     var lab = el("label", "whereopt"), rb = document.createElement("input"); rb.type = "radio"; rb.name = "where"; rb.value = r.path; rb.checked = r.path === S.root;
     rb.addEventListener("change", function () { S.root = r.path; drawWherewarn(); });
-    var sp = el("span"); sp.appendChild(el("b", null, r.label)); sp.appendChild(el("small", null, r.path + " · " + (r.fs ? r.fs + " · " : "") + gb(r.freeKB) + " free"));
+    var sp = el("span"); sp.appendChild(el("b", null, r.label + (r.noExec ? " (cannot run plugins: noexec)" : ""))); sp.appendChild(el("small", null, r.path + " · " + (r.fs ? r.fs + " · " : "") + gb(r.freeKB) + " free"));
     lab.appendChild(rb); lab.appendChild(sp); box.appendChild(lab);
   });
   drawWherewarn();
 }
 function drawWherewarn() {
   var r = S.roots.filter(function (x) { return x.path === S.root; })[0], n = r ? rootNote(r) : [];
-  msg($("wherewarn"), S.roots.length > 1 ? n.join(" ") : "", n.length ? "err" : "");
+  msg($("wherewarn"), n.join(" "), n.length && r && r.noExec ? "err" : "");
+  var w = $("wherefix"); if (w) w.hidden = !(r && r.noExec);
 }
 function rootLabelOf(path) { var r = S.roots.filter(function (x) { return x.path === path; })[0]; return r ? r.label : path; }
 function loadUnreg() {
@@ -482,6 +483,7 @@ function refresh() {
   text($("selcount"), n + " plugin" + (n === 1 ? "" : "s") + " selected");
 }
 
+$("wherefixlink").addEventListener("click", function (e) { e.preventDefault(); $("d7").open = true; $("d7").scrollIntoView(); });
 $("d7").addEventListener("toggle", function () { if ($("d7").open && S.connected && !S.patches) loadPatches(); });
 $("patchcheck").addEventListener("click", loadPatches);
 $("conn").addEventListener("submit", function (e) {

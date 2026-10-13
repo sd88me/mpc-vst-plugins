@@ -26,8 +26,8 @@
       "license": "MIT",
       "docs": "tools/mpc_patch/drive_exec/README.md",
       "script": {
-        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/c581a9e5efb4f10562b03223f75b0fdd8fd231be/tools/mpc_patch/drive_exec/drive-exec-patch.sh",
-        "sha256": "f8cfa9732737aaa6867b806af6aa80dcc67fad77b4a92355b2dc26bd0cc61d8c"
+        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/f036a8791daff1ccf426c3953e84a8942c979564/tools/mpc_patch/drive_exec/drive-exec-patch.sh",
+        "sha256": "500b5ccdfbc4b735a810e747d03c4bab38dec279dff31b682a89a905970d0594"
       },
       "supports": {"os": "MPC OS Gen1 (tried on a Force, MPC OS 3.9.1)", "arch": "armv7l"},
       "modifies": ["/etc/drive-exec", "/etc/systemd/system/drive-exec.timer", "/usr/lib/systemd/system/drive-exec-bootstrap.service", "/media/<your drive>/Synths (an executable bind mount of the folder)"],
@@ -43,8 +43,8 @@
       "license": "MIT",
       "docs": "tools/mpc_patch/hwremap/README.md",
       "script": {
-        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/0f5d20f5d8fa98d56d91017ce6dbd4323c943196/tools/mpc_patch/hwremap/hwremap-patch.sh",
-        "sha256": "3c36e3aa73f96e4486f0874d909f58d750a00e9bda3e423108974a84e33c54a9"
+        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/0ad5e511ebcb9c1e180e4fde52615a2f92131fd1/tools/mpc_patch/hwremap/hwremap-patch.sh",
+        "sha256": "8e587d3d7dc02dd822fa3d1966e55cd582cff7d28c038c39b914a8b098ebcfe6"
       },
       "supports": {"os": "MPC OS 3.9 (MPC Live with Hakai, and Force stock 3.9.0, as tried by the remap's author)", "arch": "armv7l"},
       "modifies": ["/usr/bin/az01-launch-MPC", "/usr/lib/hwremap.so", "/data/hwremap/hwremap.so", "/etc/systemd/system/acvs.service.d/hwremap.conf", "/etc/systemd/system/inmusic-mpc.service.d/hwremap.conf", "/sdcard/hwremap.conf"],

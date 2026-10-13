@@ -115,7 +115,13 @@
    "latest": "1.1.0",
    "latest_beta": null,
    "downloads": 6,
-   "updated": "2026-09-29"
+   "updated": "2026-09-29",
+   "tier": "listed",
+   "bar_missing": [
+    "screenshot",
+    "tested"
+   ],
+   "verified_on": []
   },
   {
    "id": "three-only",
@@ -234,7 +240,10 @@
    "latest": "1.1.0",
    "latest_beta": null,
    "downloads": 6,
-   "updated": "2026-09-29"
+   "updated": "2026-09-29",
+   "tier": "experimental",
+   "bar_missing": [],
+   "verified_on": []
   },
   {
    "id": "old-catalog",
@@ -339,7 +348,8 @@
    "latest": "1.1.0",
    "latest_beta": null,
    "downloads": 6,
-   "updated": "2026-09-29"
+   "updated": "2026-09-29",
+   "bar_missing": []
   },
   {
    "id": "tested-two",
@@ -404,8 +414,26 @@
        "device": "MPC Live",
        "firmware": "2.15.1",
        "date": "2026-10-04"
+      },
+      {
+       "device": "MPC Live III (Gen2)",
+       "firmware": "5.0.18",
+       "date": "2026-10-11"
       }
-     ]
+     ],
+     "gen2": true,
+     "assets": {
+      "armv7": {
+       "sha256": "922f0105745efa4e1097baed78a529b60cbb472f96af8b951edb3397d047ba34",
+       "size": 11799,
+       "url": "https://x/x-mpc-armv7.zip"
+      },
+      "aarch64": {
+       "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+       "size": 12011,
+       "url": "https://x/x-mpc-aarch64.zip"
+      }
+     }
     },
     {
      "version": "1.0.0",
@@ -466,7 +494,18 @@
    "latest": "1.1.0",
    "latest_beta": null,
    "downloads": 6,
-   "updated": "2026-09-29"
+   "updated": "2026-09-29",
+   "tier": "verified",
+   "featured": true,
+   "bar_missing": [],
+   "verified_on": [
+    "gen1",
+    "gen2"
+   ]
   }
- ]
+ ],
+ "bar": {
+  "screenshot": "add a screenshot of the plugin screen to the registry entry",
+  "tested": "add a tested.json entry for the newest release (device and MPC OS version)"
+ }
 }

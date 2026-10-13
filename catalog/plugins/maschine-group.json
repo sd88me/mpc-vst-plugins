@@ -2,12 +2,13 @@
   "id": "maschine-group",
   "name": "Maschine Group",
   "author": "mmiroshnikov",
-  "repo": "sd88me/mpc-vst-plugins",
+  "repo": "mmiroshnikov/mpc-maschine-group",
   "kind": "instrument",
   "style": "sampler",
   "tags": ["drums", "maschine", "sampler", "patterns"],
   "license": "MIT",
   "asset_pattern": "Maschine-Group-*-mpc-armv7.zip",
-  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/main/ports/maschine/docs/group.png",
-  "summary": "Opens a Native Instruments Maschine 2 drum group (.mxgrp) and plays its pads and stored patterns, with a three-page touchscreen skin and Q-Links."
+  "screenshot": "https://raw.githubusercontent.com/mmiroshnikov/mpc-maschine-group/main/docs/group.png",
+  "summary": "Opens a Native Instruments Maschine 2 drum group (.mxgrp) and plays its pads and stored patterns, with a three-page touchscreen skin and Q-Links.",
+  "flags_reviewed": ["runs programs", "loads code at runtime"]
 }

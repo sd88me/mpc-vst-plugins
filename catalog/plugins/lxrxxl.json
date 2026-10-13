@@ -1,0 +1,5 @@
+{ "id": "lxrxxl", "name": "LXRXXL", "author": "L'Cronx", "repo": "sunskiefer/LXR02XXL",
+  "kind": "instrument", "style": "drum-machine", "tags": ["drums", "drum-machine", "lxr", "lxr-02", "sonic-potions", "erica-synths", "sequencer", "randomizer"],
+  "license": "LicenseRef-LXR02-Open", "source_available": true,
+  "screenshot": "https://raw.githubusercontent.com/sunskiefer/LXR02XXL/v0.5.8/docs/img/page.png",
+  "summary": "A port of the open-source Sonic Potions LXR engine to MPC, with LXR-02-style features written from the manual. Inspired by the Erica Synths LXR-02. The whole panel on one page (artwork by Suns Kiefer), the LXR's voices with PWM and an FX unit, the 64-step sequencer with songs, rolls and the euclidean generator, Force pads and MPC's step sequencer playing the voices in order, voice and step randomizers, a RESET key and the Hrtl LXR-02 DLC presets. Non-commercial license." }

@@ -1,17 +1,16 @@
 {
   "id": "elements",
-  "name": "Elements",
+  "name": "Modal Voice",
   "author": "saustin2010",
-  "repo": "saustin2010/mpc-vst-elements",
+  "repo": "saustin2010/mpc-vst-modal-voice",
   "kind": "instrument",
   "style": "synth",
   "tags": [
-    "mutable-instruments",
     "modal",
     "physical-modelling",
     "eurorack"
   ],
   "license": "MIT",
-  "summary": "Mutable Instruments Elements: a modal synthesis voice you bow, blow and strike, with 12 presets.",
-  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-elements/v1.0.0/screenshots/page_0.png"
+  "summary": "Modal Voice: a modal synthesis voice you bow, blow and strike, with 12 presets, from Émilie Gillet's open-source Elements.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-modal-voice/v1.1.0/screenshots/page_0.png"
 }

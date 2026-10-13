@@ -20,11 +20,12 @@ typedef struct { int32_t type,byteSize,deltaFrames,flags,noteLength,noteOffset; 
 typedef struct { int32_t n; intptr_t r; void* ev[2]; } EV;
 extern AEffect* VSTPluginMain(cb);
 
-static int automated[NPARAMS > 0 ? NPARAMS : 1], fails;
+static int automated[NPARAMS > 0 ? NPARAMS : 1], fails, updates;   /* updates: audioMasterUpdateDisplay calls */
 static double ti[16];                    /* VstTimeInfo: [3] ppqPos, [4] tempo, flags = ((int32_t *)&ti[8])[5] */
 static int32_t ti_flags = 1 << 10;       /* tempo valid; transport_tests() adds playing (1 << 1) and ppq valid (1 << 9) */
 static intptr_t host(AEffect*e,int32_t op,int32_t i,intptr_t v,void*p,float o){
     if (op == 0 && i >= 0 && i < NPARAMS) automated[i]++;
+    if (op == 42) updates++;
     if (op == 7) { ti[4] = 120.0; ((int32_t*)&ti[8])[5] = ti_flags; return (intptr_t)ti; }
     return 0;
 }
@@ -229,6 +230,34 @@ static void cc_tests(AEffect *a) {
     }
 #endif
 }
+
+#ifdef SELFSET_PROBE
+/* poc/selfset (wrapper/engine.h mpc_engine_changed): the engine sets "level" from CC 1 and "shape" from CC 2 by itself and
+ * names each. The host hears about each as it would a MIDI CC's change (once, then at most every 1024 frames), an
+ * option's change with an UpdateDisplay, and about nothing the engine didn't name. */
+static void selfset_tests(void) {
+    int lv = find_param("level"), sh = find_param("shape"), pl = find_param("plain");
+    if (lv < 0 || sh < 0 || pl < 0) { printf("warn SELFSET_PROBE without level, shape and plain: not tested\n"); return; }
+    AEffect *c = VSTPluginMain(host);
+    run(c, 9);
+    memset(automated, 0, sizeof automated); updates = 0;
+    run(c, 9);
+    CHECK(!automated[lv] && !automated[sh] && !automated[pl] && !updates, "engine changes: none named, none reported");
+    cc(c, 1, 127); run(c, 9);
+    CHECK(fabsf(c->getP(c, lv) - 1.0f) < 1e-3f && automated[lv] == 1 && !automated[sh] && !updates,
+          "engine changes: CC 1 moves level to the top (%g), reported %d time(s), %d UpdateDisplay(s)", c->getP(c, lv), automated[lv], updates);
+    memset(automated, 0, sizeof automated); updates = 0;
+    cc(c, 2, 127); run(c, 9);
+    CHECK(fabsf(c->getP(c, sh) - 1.0f) < 1e-3f && automated[sh] == 1 && updates > 0 && !automated[lv],
+          "engine changes: CC 2 moves shape to its last option (%g), reported %d time(s), with an UpdateDisplay", c->getP(c, sh), automated[sh]);
+    memset(automated, 0, sizeof automated);
+    for (int k = 0; k < 64; k++) { cc(c, 1, k); run(c, 1); }   /* a change every block for 8192 frames */
+    CHECK(automated[lv] >= 7 && automated[lv] <= 9 && fabsf(c->getP(c, lv) - 63 / 127.0f) < 1e-3f,
+          "engine changes: a CC every block for 8192 frames reported %d times (every 1024 frames), ending where it stopped", automated[lv]);
+    CHECK(!automated[pl], "engine changes: plain, never named, never reported");
+    c->d(c, 1, 0, 0, 0, 0);
+}
+#endif
 
 /* Two threads, as a JUCE host drives a plugin: parameter sets/reads and display text on one, audio on the other. The
  * wrapper runs one engine call at a time (vst2_wrap.c eng_set()); an engine that is unsafe without that crashes here. */
@@ -501,6 +530,9 @@ int main(void) {
 
     program_tests(a);
     cc_tests(a);
+#ifdef SELFSET_PROBE
+    selfset_tests();
+#endif
     two_thread_tests(a);
     a->d(a, 1, 0, 0, 0, 0); b->d(b, 1, 0, 0, 0, 0);
     printf("%s\n", fails ? "FAILED" : "PASSED");

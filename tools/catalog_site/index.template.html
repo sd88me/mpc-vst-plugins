@@ -134,12 +134,18 @@ var ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 function isBY(p) { return p.distribution === "build-yourself"; }
 function kindsOf(p) { var k = [p.kind]; (p.components || []).forEach(function (c) { if (k.indexOf(c.kind) < 0) k.push(c.kind); }); return k; }
 /* Trust tiers (tools/catalog_build.py tier_of, docs/CATALOG.md). Listed is the unlabelled middle: a card with no tier badge is in the catalog
-   and passed the release checks, nothing more. Only Verified and Experimental get a badge. verified = tested on a device, listed = passed the release checks,
+   and passed the release checks, nothing more. Only Verified (one badge per generation, below) and Experimental get a badge. verified = tested on a device, listed = passed the release checks,
    experimental = new, beta-only or capped by a maintainer. The default view hides experimental; the Tier filter shows it. */
 var TIERS = { verified: { rank: 0, label: "Verified", tip: "The newest release has a recorded hardware test (see Tested on)." },
               listed: { rank: 1, label: "Listed", tip: "Passed the catalog's release checks; no hardware test recorded for the newest release yet." },
               experimental: { rank: 2, label: "Experimental", tip: "New, beta-only or unproven: it may not load, draw its skin or run well. Test it before relying on it." } };
 function tierOf(p) { return TIERS[p.tier] ? p.tier : "listed"; }
+/* Verified is per device generation (catalog_build.py verified_on): gen1 = a tested.json entry on a Gen1 device, gen2 = one whose device
+   names Gen2, on a version with an aarch64 build. Each gets its own badge. Catalogs built before the field: a verified plugin counts as Gen1. */
+var GENS = { gen1: { label: "Verified Gen1", tip: "The newest release has a recorded hardware test on a Gen1 device (see Tested on)." },
+             gen2: { label: "Verified Gen2", tip: "The newest release's Gen2 (aarch64) build has a recorded hardware test on a Gen2 MPC (see Tested on)." } };
+function verifiedOn(p) { return tierOf(p) !== "verified" ? [] : Array.isArray(p.verified_on) ? p.verified_on.filter(function (g) { return GENS[g]; }) : ["gen1"]; }
+var TIER_FILTERS = ["verified", "verified-gen1", "verified-gen2", "listed", "experimental", "all"];
 var SORTS = {
   recommended: { label: "Recommended",     cmp: function (a, b) { return (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || TIERS[tierOf(a)].rank - TIERS[tierOf(b)].rank || a.name.localeCompare(b.name); }, desc: false },
   name:      { label: "Name",              cmp: function (a, b) { return a.name.localeCompare(b.name); }, desc: false },
@@ -160,9 +166,9 @@ var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin:
 function inTabKind(p, k) { if (k === "all") return true; return kindsOf(p).some(function (c) { return (c === "instrument" && p.role === "midi" && c === p.kind ? "midi" : c) === k; }); }
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
 fillSelect("f-dist", "Any distribution", ["release", "build-yourself"], function (v) { return v === "release" ? "Download a release zip" : "Build it yourself"; });
-fillSelect("f-tier", "Verified and unverified", ["verified", "listed", "experimental", "all"], function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "listed" ? "Not yet verified" : "Experimental only"; });
+fillSelect("f-tier", "Verified and unverified", TIER_FILTERS, function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "verified-gen1" ? "Verified on Gen1" : v === "verified-gen2" ? "Verified on Gen2" : v === "listed" ? "Not yet verified" : "Experimental only"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
-fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 / Force only"; });
+fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 only"; });
 fillSelect("f-style", "All styles", uniq(function (p) { return p.style; }), title);
 fillSelect("f-dev", "All developers", uniq(function (p) { return p.author; }));
 fillSelect("f-lic", "Any license", ["open", "source-available"], function (v) { return v === "open" ? "Open source" : "Source-available (restricted use)"; });
@@ -184,17 +190,18 @@ function osWhy(v) {   /* plain words; the exact reasons stay in the tooltip */
   var w = v.os_compat_why || [], lib = w.some(function (x) { return /^needs glibc/.test(x); }), skin = w.some(function (x) { return !/^needs glibc/.test(x); });
   return (lib ? "needs a newer system library than MPC OS 2.x has" : "") + (lib && skin ? "; " : "") + (skin ? "its skin uses a newer file format than MPC OS 2.x reads" : "");
 }
+/* MPC OS 3.x is the current, standard OS, so it gets no badge: only a 2.x-capable version with a 2.x device test does. The MPC OS row and filter
+   still say 2.x and 3.x / 3.x only. */
 function osTag(v) {
-  var g = osGens(v); if (!g) return "";
-  if (g.indexOf("2.x") >= 0) return '<span class="tag ok" title="' + esc("Skin and library checked against MPC OS 2.15.1's own skins and glibc. " + (tested2x(v) ? "Tested on a 2.x unit." : "Not yet tested on a 2.x unit.")) + '">MPC OS 2.x + 3.x' + (tested2x(v) ? " &middot; tested" : "") + '</span>';
-  return '<span class="tag warn" title="' + esc("Not compatible with MPC OS 2.x" + (osWhy(v) ? ": " + osWhy(v) : "") + ((v.os_compat_why || []).length ? " (" + v.os_compat_why.join("; ") + ")" : "")) + '">MPC OS 3.x only</span>';
+  var g = osGens(v); if (!g || g.indexOf("2.x") < 0 || !tested2x(v)) return "";
+  return '<span class="tag ok" title="' + esc("Tested on an MPC OS 2.x unit; skin and library also checked against MPC OS 2.15.1's own skins and glibc. Works on MPC OS 3.x too.") + '">MPC OS 2.x tested</span>';
 }
-/* Gen2 (aarch64, MPC OS 3.x): the version also has an -mpc-aarch64.zip that passed the same checks (docs/GEN2.md). "Tested" needs a tested.json
-   entry whose device says Gen2; a passing build alone is not a device run. */
+/* Gen2 (aarch64, MPC OS 3.x): the version also has an -mpc-aarch64.zip that passed the same checks (docs/GEN2.md). The tag always says "Gen2 build";
+   a device run is the Verified Gen2 badge. "Tested" (the hover text and the Gen2 row) needs a tested.json entry whose device says Gen2. */
 function tested2(v) { return !!(v && (v.tested || []).some(function (t) { return /gen\s*2/i.test(t.device || ""); })); }
 function genTag(v) {
   if (!v || !v.gen2) return "";
-  return '<span class="tag gen" title="' + esc("Also built for Gen2 (aarch64) MPC devices. " + (tested2(v) ? "Tested on a Gen2 unit." : "Not yet tested on a Gen2 unit.")) + '">Gen2' + (tested2(v) ? " &middot; tested" : " build") + '</span>';
+  return '<span class="tag gen" title="' + esc("Also built for Gen2 (aarch64) MPC devices. " + (tested2(v) ? "Tested on a Gen2 unit." : "Not yet tested on a Gen2 unit.")) + '">Gen2 build</span>';
 }
 function genRow(v) {
   return v && v.gen2 ? '<dt>Gen2</dt><dd>aarch64 build available (' + (tested2(v) ? "tested on a Gen2 unit" : "not yet tested on a Gen2 unit") + ')</dd>' : "";
@@ -208,7 +215,8 @@ function match(p) {
   var s = state, hay = [p.name, p.author, p.style || "", (p.tags || []).join(" "), p.summary].join(" ").toLowerCase();
   if (s.q && hay.indexOf(s.q.toLowerCase()) < 0) return false;
   if (PLUGIN_TABS.indexOf(s.tab) >= 0 && !inTabKind(p, s.tab)) return false;
-  if (s.tier === "all") {} else if (s.tier) { if (tierOf(p) !== s.tier) return false; } else if (tierOf(p) === "experimental") return false;
+  if (s.tier === "all") {} else if (/^verified-/.test(s.tier)) { if (verifiedOn(p).indexOf(s.tier.slice(9)) < 0) return false; }
+  else if (s.tier) { if (tierOf(p) !== s.tier) return false; } else if (tierOf(p) === "experimental") return false;
   if (s.dist === "build-yourself" && !isBY(p)) return false;
   if (s.dist === "release" && isBY(p)) return false;
   if (s.style && p.style !== s.style) return false;
@@ -234,7 +242,8 @@ function barLine(p) {
 function card(p) {
   var by = isBY(p), v = shown(p), tags = [];
   if (by) tags.push('<span class="tag build" title="No download: you build it from your own files">Build it yourself</span>');
-  if (tierOf(p) !== "listed") tags.push('<span class="tag tier-' + tierOf(p) + '" title="' + esc(TIERS[tierOf(p)].tip) + '">' + TIERS[tierOf(p)].label + '</span>');
+  if (tierOf(p) === "verified") verifiedOn(p).forEach(function (g) { tags.push('<span class="tag tier-verified" data-gen="' + g + '" title="' + esc(GENS[g].tip) + '">' + GENS[g].label + '</span>'); });
+  else if (tierOf(p) !== "listed") tags.push('<span class="tag tier-' + tierOf(p) + '" title="' + esc(TIERS[tierOf(p)].tip) + '">' + TIERS[tierOf(p)].label + '</span>');
   tags.push(p.kind === "addin" ? '<span class="tag" title="Loaded into MPC when it starts (LD_PRELOAD), not a plugin on a track">addin</span>' : '<span class="tag">' + esc(p.kind) + '</span>');
   if (p.style) tags.push('<span class="tag">' + esc(title(p.style)) + '</span>');
   tags.push('<span class="tag">' + esc(p.license) + '</span>');
@@ -271,7 +280,7 @@ function card(p) {
   return head +
     '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + (p.kind !== "addin" ? osRow(v) + genRow(v) : "") +
     (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
-    '<div class="actions">' + (v ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1 / Force)' : '') + '</a>' : '') +
+    '<div class="actions">' + (v ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
     (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="Gen2 MPC devices (aarch64, MPC OS 3.x)">Download (Gen2)</a>' : '') +
     '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a>' +
     (v && ID_RE.test(p.id) ? '<label class="pick"><input type="checkbox" data-pick="' + esc(p.id) + '"' + (state.sel.indexOf(p.id) >= 0 ? " checked" : "") + '> Add to install list</label>' : '') +
@@ -306,7 +315,7 @@ function load() {
     else if (k in state) state[k] = v;
   });
   if (!SORTS[state.sort]) state.sort = "recommended";
-  if (state.tier && state.tier !== "all" && !TIERS[state.tier]) state.tier = "";
+  if (state.tier && TIER_FILTERS.indexOf(state.tier) < 0) state.tier = "";
   if (state.tab === "plugins") state.tab = "instrument";   // links from before the split
   if (TABS.indexOf(state.tab) < 0) state.tab = "instrument";
 }
