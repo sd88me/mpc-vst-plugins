@@ -1,5 +1,5 @@
 { "id": "evil-tuner-xxl", "name": "Evil Tuner XXL", "author": "L'Cronx", "repo": "sunskiefer/Evil-Tuner-XXL",
-  "kind": "instrument", "style": "radio-granular", "tags": ["radio", "internet-radio", "granular", "airplay", "roc", "phone", "looper", "trance-gate", "stutter", "delay", "reverb", "lo-fi", "sampling"],
+  "kind": "instrument", "style": "radio-granular", "tags": ["radio", "internet-radio", "granular", "airplay", "looper", "stutter", "reverb", "sampling"],
   "license": "GPL-3.0-or-later",
   "screenshot": "https://raw.githubusercontent.com/sunskiefer/Evil-Tuner-XXL/main/docs/img/RADIO.png",
-  "summary": "Internet radio (Radio Browser: 30,000+ stations by genre, country or search), a phone over Wi-Fi (Roc Droid on Android) or AirPlay (iPhone) played into an MPC track, through an 8-voice granular engine, a multimode filter, eleven character stages, a saturator, an Erica-style delay, plate / reverse / room reverb with shimmer, a 16-step trance gate, stutter, MIDI duck, a tempo-synced looper with a rolling 3-minute tape and stretch renders, and three LFOs. Inspired by the concept of the Endorphin.es Evil Pet (no affiliation, no code). Needs a network." }
+  "summary": "Internet radio (30,000+ stations), or a phone over Wi-Fi or AirPlay, played into an MPC track through a granular engine, filter, character stages, delay, reverb, trance gate, stutter, tempo-synced looper and three LFOs. Inspired by the Endorphin.es Evil Pet (no affiliation, no code). Needs a network." }

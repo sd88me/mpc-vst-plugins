@@ -43,9 +43,6 @@ ZIP_PATTERN = "*-mpc-armv7.zip"
 # SPDX ids accepted as open source; anything else needs a human decision (edit this list in the PR that adds it).
 MAX_SUMMARY = 350   # characters; longer detail belongs in the repo README (docs/CATALOG.md)
 MAX_TAGS = 8
-# Entries that predate the limits and are waiting for their authors' feedback on a trim; the trim removes the id from here.
-OVER_LIMIT_OK = {"loop-saboteurxxl", "boris-granular", "effectforce", "evil-tuner-xxl", "interzonexxl", "lxrxxl-bazzline", "lxrxxl-zynth", "lxrxxl",
-                 "plateauxxl", "sturm-tp", "subforce", "surgexxl"}
 OPEN_LICENSES = {"MIT", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Apache-2.0", "GPL-2.0-only", "GPL-2.0-or-later",
                  "GPL-3.0-only", "GPL-3.0-or-later", "LGPL-2.1-only", "LGPL-2.1-or-later", "LGPL-3.0-only",
                  "LGPL-3.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later", "MPL-2.0", "Unlicense", "CC0-1.0", "Zlib"}
@@ -61,7 +58,7 @@ def check_entry(e, fname=None):
         return p
     if not ID.fullmatch(e["id"]):
         p.append("bad id %r" % e["id"])
-    if len(e["summary"]) > MAX_SUMMARY and e["id"] not in OVER_LIMIT_OK:
+    if len(e["summary"]) > MAX_SUMMARY:
         p.append("summary is %d characters, the limit is %d: keep the card short and put the detail in the repo README"
                  % (len(e["summary"]), MAX_SUMMARY))
     if fname and os.path.splitext(os.path.basename(fname))[0] != e["id"]:
@@ -88,7 +85,7 @@ def check_entry(e, fname=None):
         p.append("featured must be true or false")
     if "tags" in e and not (isinstance(e["tags"], list) and all(isinstance(t, str) and ID.fullmatch(t) for t in e["tags"])):
         p.append("tags must be a list of lowercase slugs")
-    elif len(e.get("tags", [])) > MAX_TAGS and e["id"] not in OVER_LIMIT_OK:
+    elif len(e.get("tags", [])) > MAX_TAGS:
         p.append("%d tags, the limit is %d: keep the ones people would filter by" % (len(e["tags"]), MAX_TAGS))
     dist = e.get("distribution", "release")
     if dist not in DISTRIBUTIONS:
