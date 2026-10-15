@@ -827,6 +827,12 @@ class BuildTest(Base):
         self.assertTrue(catalog_build.check_entry({**self.ENTRY, "tier": "verified"}))
         self.assertTrue(catalog_build.check_entry({**self.ENTRY, "featured": "yes"}))
 
+    def test_stray_json_beside_the_registry(self):
+        os.makedirs(os.path.join(self.tmp, "plugins"))
+        for n in ("apps.json", "patches.json", "yanked.json", "plugins/test-synth.json", "test-synth.json", "README.md"):
+            open(os.path.join(self.tmp, n), "w").write("{}")
+        self.assertEqual([os.path.basename(f) for f, _ in catalog_build.stray_files(self.tmp)], ["test-synth.json"])
+
 
 import catalog_issues  # noqa: E402
 

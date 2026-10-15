@@ -14,7 +14,7 @@ the user's own firmware) has no download: versions are the repo's vX.Y.Z git tag
 declared build script. A GitHub release that carries a *-mpc-armv7.zip asset is reported loudly (it would break the
 licence position). No zip is fetched or validated.
 
-GITHUB_TOKEN (optional) raises the API rate limit. --check-registry only validates the registry files (for PRs).
+GITHUB_TOKEN (optional) raises the API rate limit. --check-registry only validates the registry files, and that no stray *.json sits beside them in catalog/ (for PRs).
 Standard library only. See docs/CATALOG.md and docs/CATALOG_SPEC.md.
 """
 import argparse
@@ -43,6 +43,7 @@ ZIP_PATTERN = "*-mpc-armv7.zip"
 # SPDX ids accepted as open source; anything else needs a human decision (edit this list in the PR that adds it).
 MAX_SUMMARY = 350   # characters; longer detail belongs in the repo README (docs/CATALOG.md)
 MAX_TAGS = 8
+CATALOG_FILES = {"apps.json", "patches.json", "yanked.json"}   # the only JSON directly in catalog/; plugin entries live in plugins/
 # Entries that predate the limits and are waiting for their authors' feedback on a trim; the trim removes the id from here.
 OVER_LIMIT_OK = {"loop-saboteurxxl", "boris-granular", "effectforce", "evil-tuner-xxl", "interzonexxl", "lxrxxl-bazzline", "lxrxxl-zynth", "lxrxxl",
                  "plateauxxl", "sturm-tp", "subforce", "surgexxl"}
@@ -249,6 +250,13 @@ def load_registry(path):
                 comp_ids[c["id"]] = e["id"]
             entries.append(e)
     return entries, problems
+
+
+def stray_files(catalog_dir):
+    """JSON files directly in catalog/ other than CATALOG_FILES: usually a plugin entry added one folder too high (GitHub's
+    "Create file" in catalog/), which the build never reads, so without this check CI passes an entry that is never listed."""
+    return [(f, "not read by the build: a plugin entry goes in plugins/<id>.json")
+            for f in sorted(glob.glob(os.path.join(catalog_dir, "*.json"))) if os.path.basename(f) not in CATALOG_FILES]
 
 
 class GitHub:
@@ -555,6 +563,8 @@ def main():
                     help="validate only these entries' releases and fail when a newest release is of the old layout (PR check for new listings)")
     a = ap.parse_args()
     entries, reg_problems = load_registry(a.registry)
+    if a.check_registry:
+        reg_problems += stray_files(os.path.dirname(os.path.normpath(a.registry)))
     for f, m in reg_problems:
         print("error: %s: %s" % (f, m), file=sys.stderr)
     if a.check_registry:

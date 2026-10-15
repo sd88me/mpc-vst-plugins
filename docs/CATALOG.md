@@ -221,6 +221,7 @@ Locrian's installer uses a drop-in folder in `Synths` (`docs/CATALOG_SPEC.md`, "
 - [x] Guides (Install, Build, Workflow; Setup was merged into Build on 2026-10-01) checked against the new layout (2026-09-30): Install's manual steps use `plugin-meta.xml`,
       and it has "If a plugin disappears after a restart". Site cards carry no layout-specific text (`index.template.html`).
 - [x] Old-layout releases are flagged (2026-10-13, offline: `tools/test_catalog.py`): warning in `catalog_check.py`, a builder problem for a newest stable release, and a PR check (`--require-portable`) for new or changed registry entries. Prompted by a third-party port whose release zip still used `/sdcard/vst` and did not show up in plugin managers.
+- [x] Stray registry files are rejected (2026-10-15, offline: `tools/test_catalog.py`): `--check-registry` fails on any `*.json` directly in `catalog/` other than `apps.json`, `patches.json` and `yanked.json`. The build only reads `catalog/plugins/*.json`, so an entry added one folder too high (GitHub's "Create file" in `catalog/`) used to pass CI and never be listed (Fretty, #447).
 - [x] Published releases still in the old layout dropped off a list-rebuilding scanner (NOTES 2026-09-30); all current plugins were re-released above, so the scanner and the catalog agree.
 
 ### Phase 4: Install and update from the device or desktop

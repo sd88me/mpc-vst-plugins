@@ -6,7 +6,8 @@ Design: `docs/CATALOG.md`. Formats: `docs/CATALOG_SPEC.md`.
 ## Add your plugin
 1. Make a release zip with `tools/release.py` (or the `vst-release.yml` workflow) with `--repo owner/name --license <SPDX>`,
    and check it: `tools/catalog_check.py <zip> --catalog`. Publish it as a GitHub release on your repo.
-2. Open a PR adding `catalog/plugins/<id>.json` (the `<id>` in your manifest):
+2. Open a PR adding `catalog/plugins/<id>.json` (the `<id>` in your manifest; a file directly in `catalog/` is never read, and
+   `--check-registry` fails on it):
    ```json
    { "id": "my-synth", "name": "My Synth", "author": "Your name", "repo": "you/my-synth-vst",
      "kind": "instrument", "license": "MIT", "summary": "One line.",
@@ -108,7 +109,8 @@ Add `"<id>@<version>"` (or `"<id>@*"` for all versions) to `yanked.json`. It sta
 never offered as the latest.
 
 ## Build locally
-`python3 tools/catalog_build.py --check-registry` validates entries; without the flag it fetches releases (set
+`python3 tools/catalog_build.py --check-registry` validates entries (and fails on any `*.json` directly in `catalog/` other than
+`apps.json`, `patches.json` and `yanked.json`: an entry put one folder too high); without the flag it fetches releases (set
 `GITHUB_TOKEN` to avoid API limits) and writes `catalog/dist/catalog.json` and `problems.json`.
 In `problems.json`, `superseded: true` marks a failing release that a newer, unyanked release of the same plugin
 replaces. `python3 tools/catalog_issues.py --dry-run` shows the issues the nightly would open and close.
