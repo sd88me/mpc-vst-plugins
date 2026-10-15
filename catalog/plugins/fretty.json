@@ -4,7 +4,7 @@
   "repo": "3dthc/fretty-mpc",
   "kind": "instrument",
   "style": "rompler",
-  "tags": ["guitar", "acoustic", "electric", "harp", "violin", "zither", "chords", "polyphonic", "sampler"],
+  "tags": ["guitar", "acoustic", "electric", "harp", "violin", "zither", "chords", "sampler"],
   "license": "MIT",
   "summary": "Sampled guitars, harps, violin and zithers on a six-string playing model with an animated fretboard, strum, slide, chord pads and a synth layer. All samples CC0.",
   "screenshot": "https://raw.githubusercontent.com/3dthc/fretty-mpc/0a4ce7cdf82e48ff9469ab1554107db5cab3aa3f/docs/images/play_black.png",
