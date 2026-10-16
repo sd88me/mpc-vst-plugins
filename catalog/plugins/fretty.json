@@ -6,5 +6,6 @@
   "kind": "instrument",
   "license": "MIT",
   "summary": "A guitar instrument for Akai MPC OS standalone devices (native VST2, built with mpc-vst-plugins), with a synth layer as a twist.",
-  "asset_pattern": "*-mpc-armv7.zip"
+  "screenshot": "https://raw.githubusercontent.com/3dthc/fretty-mpc/main/docs/images/play_sunburst.png",
+"asset_pattern": "*-mpc-armv7.zip"
 }
