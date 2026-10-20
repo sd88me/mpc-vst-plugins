@@ -174,7 +174,7 @@ device, with the draft's zip; publishing the draft creates the tag. Call it from
 ```yaml
 jobs:
   addin:
-    uses: sd88me/mpc-vst-plugins/.github/workflows/addin-release.yml@<sha>
+    uses: open-mpc/mpc-vst-plugins/.github/workflows/addin-release.yml@<sha>
     permissions: { contents: write }
     with:
       tag: my-addin-v${{ inputs.version }}

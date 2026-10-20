@@ -438,7 +438,7 @@ function drawPatches() {
       if (back && p.reversible) bar.appendChild(patchButton(p, "uninstall"));
       li.appendChild(bar);
     }
-    if (p.docs) { var a = el("a", null, "Guide"); a.href = "https://github.com/sd88me/mpc-vst-plugins/blob/main/" + p.docs.replace(/^\/+/, ""); a.target = "_blank"; a.rel = "noopener"; a.style.color = "var(--accent)"; li.appendChild(a); }
+    if (p.docs) { var a = el("a", null, "Guide"); a.href = "https://github.com/open-mpc/mpc-vst-plugins/blob/main/" + p.docs.replace(/^\/+/, ""); a.target = "_blank"; a.rel = "noopener"; a.style.color = "var(--accent)"; li.appendChild(a); }
     ul.appendChild(li);
   });
 }

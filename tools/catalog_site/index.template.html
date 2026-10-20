@@ -430,7 +430,7 @@ load(); sync(); render(); showTab(state.tab); filterApps(); modal();
 
 /* Install command: ssh into the device, download mpc-store.sh from this site, run it. The plugin ids are validated above and the
    address below, and everything is written with textContent, so nothing typed here can inject markup or shell syntax. */
-var SITE = /^https?:$/.test(location.protocol) ? new URL(".", location.href).href : "https://sd88me.github.io/mpc-vst-plugins/";
+var SITE = /^https?:$/.test(location.protocol) ? new URL(".", location.href).href : "https://open-mpc.github.io/mpc-vst-plugins/";
 var IP_RE = /^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$/;
 function target() { var v = $("ip").value.trim(); return v && IP_RE.test(v) ? v : "<device-ip>"; }
 function withScript(args, tty) {   /* one ssh call: fetch the script, then run it. -t so its questions can be answered */

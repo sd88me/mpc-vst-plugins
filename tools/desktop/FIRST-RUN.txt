@@ -10,4 +10,4 @@ The first time, your system will warn that the program is from an unknown develo
   Linux:   chmod +x mpc-installer
 
 Everything runs on your computer. Your device's address and password are not saved.
-Source and documentation: https://github.com/sd88me/mpc-vst-plugins/tree/main/tools/desktop
+Source and documentation: https://github.com/open-mpc/mpc-vst-plugins/tree/main/tools/desktop

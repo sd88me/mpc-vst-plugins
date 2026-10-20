@@ -114,7 +114,7 @@ deletes its folder.
 
 ## Files
 
-See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (`docs/ADDINS.md`).
+See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/open-mpc/mpc-vst-plugins) (`docs/ADDINS.md`).
 """.format(name=name, ver=a.version, about=(a.about + "\n\n") if a.about else "", id=aid, top=top, so=so,
            requires=("- %s\n" % a.requires) if a.requires else "",
            conf_md=("\nSettings are in `/data/mpc-addins/%s/%s`; an upgrade keeps your edits.\n" % (aid, conf)) if conf else "",

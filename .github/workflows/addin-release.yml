@@ -3,7 +3,7 @@
 # the draft, which creates the tag. The plugin counterpart is vst-release.yml.
 #
 # Call it from the addin's repo, pinning this repo to one commit in BOTH places:
-#   uses: sd88me/mpc-vst-plugins/.github/workflows/addin-release.yml@<sha>
+#   uses: open-mpc/mpc-vst-plugins/.github/workflows/addin-release.yml@<sha>
 #   with: { tools_ref: <sha>, ... }
 # It has no permissions: block of its own: it creates the draft release with the caller's GITHUB_TOKEN, so the calling
 # job must grant   permissions: { contents: write }
@@ -85,7 +85,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-          repository: sd88me/mpc-vst-plugins
+          repository: open-mpc/mpc-vst-plugins
           ref: ${{ inputs.tools_ref }}
           path: mpc-vst-plugins
 

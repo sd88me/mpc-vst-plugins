@@ -50,7 +50,7 @@ A plugin install is additive (files plus one settings entry). A patch rewrites A
       "author": "sd88me",
       "license": "MIT",
       "docs": "tools/mpc_patch/README.md",
-      "script": {"url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/<commit>/tools/mpc_patch/mpc-drum-pad-patch.sh",
+      "script": {"url": "https://raw.githubusercontent.com/open-mpc/mpc-vst-plugins/<commit>/tools/mpc_patch/mpc-drum-pad-patch.sh",
                  "sha256": "4b9a8b08ef00e17639e7976d243431bc216864939981a48d6dc5719f4a1425cb"},
       "supports": {"mpc_md5": ["592eebc8e1ce0797dc8c98e7002143b8"], "os": "MPC OS 3.9.1.2", "arch": "armv7l"},
       "modifies": ["/usr/bin/MPC"],
@@ -132,7 +132,7 @@ checks that (1) a wrong sha256 is refused before anything is copied, (2) `status
 - Two JSON fields with the same key in one struct (`Patch.Backup`, a folder, and the device's flag) silently shadowed each other: the page printed "a backup goes to true". The flag is `hasBackup` now. A stubbed browser test cannot catch this, so keep a Go test on the real JSON.
 - `status` used to leave `mount --bind / /tmp/mpc-patch-root` mounted; v4 unmounts it when it opened it. The app runs `status` only when step 7 is opened or "Check the device" is pressed, never at connect or during a job.
 - The patch script's `uninstall` of a known build writes the saved regions and falls back to the full backup; of an unknown build it only ever copies the full backup, and only after its md5 matches the stock program.
-- Releases: the desktop workflow (`desktop.yml`, "Run workflow", inputs `version` and `changes` separated by `|`) builds a **draft**; it cannot be re-run for a version whose draft or release still exists, so delete the draft first. The agent sessions cannot publish or delete releases; the owner does that on the Releases page. The site (`catalog.yml`) redeploys by itself on a push to `main` that touches `catalog/**`; a GitHub Pages deploy cannot be checked from the agent session (github.io is blocked), so open `https://sd88me.github.io/mpc-vst-plugins/patches.json` by hand.
+- Releases: the desktop workflow (`desktop.yml`, "Run workflow", inputs `version` and `changes` separated by `|`) builds a **draft**; it cannot be re-run for a version whose draft or release still exists, so delete the draft first. The agent sessions cannot publish or delete releases; the owner does that on the Releases page. The site (`catalog.yml`) redeploys by itself on a push to `main` that touches `catalog/**`; a GitHub Pages deploy cannot be checked from the agent session (github.io is blocked), so open `https://open-mpc.github.io/mpc-vst-plugins/patches.json` by hand.
 - The device is shared with the owner's live setup: every device step in this work was run by the owner, with the project saved, from commands we wrote. Keep it that way.
 
 **To resume.** Read this file, NOTES 2026-10-03 and 2026-10-04, `tools/mpc_patch/README.md`, then run `go test -race ./...` in `tools/desktop`, `python3 tools/test_patches.py`, `python3 tools/patch_check.py` and `python3 tools/desktop/ui_test/ui_patches.py` (needs Playwright and a Chromium) to see the baseline.

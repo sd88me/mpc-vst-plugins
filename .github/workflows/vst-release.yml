@@ -3,7 +3,7 @@
 # 4-5), and publishes the draft, which creates the tag. See docs/RELEASING.md "Releasing from CI".
 #
 # Call it from the port's repo, pinning this repo to one commit in BOTH places:
-#   uses: sd88me/mpc-vst-plugins/.github/workflows/vst-release.yml@<sha>
+#   uses: open-mpc/mpc-vst-plugins/.github/workflows/vst-release.yml@<sha>
 #   with: { tools_ref: <sha>, ... }
 name: VST draft release
 
@@ -103,7 +103,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-          repository: sd88me/mpc-vst-plugins
+          repository: open-mpc/mpc-vst-plugins
           ref: ${{ inputs.tools_ref }}
           path: mpc-vst-plugins
 

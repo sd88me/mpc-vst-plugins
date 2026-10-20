@@ -204,7 +204,7 @@ class ManifestCheck(unittest.TestCase):
         d["patches"].append(copy.deepcopy(d["patches"][0]))
         self.assertTrue(any("duplicate" in e for e in self.errors(d)))
         d = copy.deepcopy(self.doc)
-        d["patches"][0]["script"]["url"] = "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/" + "a" * 40 + "/../x.sh"
+        d["patches"][0]["script"]["url"] = "https://raw.githubusercontent.com/open-mpc/mpc-vst-plugins/" + "a" * 40 + "/../x.sh"
         self.assertTrue(any("escapes" in e for e in self.errors(d)))
 
 

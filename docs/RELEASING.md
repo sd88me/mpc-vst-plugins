@@ -47,7 +47,7 @@ commit in both places:
 ```yaml
 jobs:
   vst:
-    uses: sd88me/mpc-vst-plugins/.github/workflows/vst-release.yml@<sha>
+    uses: open-mpc/mpc-vst-plugins/.github/workflows/vst-release.yml@<sha>
     permissions: { contents: write }
     with:
       tag: my-port-vst-v${{ inputs.version }}
