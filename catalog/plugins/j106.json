@@ -1,0 +1,4 @@
+{ "id": "j106", "name": "JN-106", "author": "sd88me", "repo": "sd88me/mpc-vst-jn106",
+  "kind": "instrument", "style": "synth", "tags": ["analog", "poly", "vintage", "chorus"], "license": "GPL-3.0-only",
+  "summary": "Six-voice DCO polysynth modelled on two early-80s classics (Ultramaster KR-106 DSP): sub oscillator, resonant filter, arpeggiator, the famous chorus, 256 factory presets and a realistic panel skin.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-jn106/9053529f679d2a5f07781f002004e27cc12959e0/docs/img/screenshot-lfo-dco.png" }
