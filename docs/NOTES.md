@@ -1525,3 +1525,10 @@ Ports that need the opt-in: `dynamic_name` labels following a selector (Machined
 `"poll": false` readouts that depend on a written param. Every port must be rebuilt to get the fix. Checked on our Force (2026-10-21,
 JV-880 rebuilt with this and the 50 ms cap): Q-Links on track edit → automation work, and the bank and patch readouts still follow
 the stepper arrows and a direct Q-Link turn.
+
+## 2026-10-22: JN-106 (ultramaster_kr106 DSP) on a Force (device)
+JN-106 0.1.0 (sd88me/mpc-vst-jn106, catalog id `j106`) loads from Sounds > Instruments, plays and loads its 256 presets on our
+Force (MPC OS 3.9.1, armv7). CPU with `tools/bench.sh`, six held notes, by VCF oversampling: 1x 20%, 2x 31%, 4x 53% of a block,
+so the port offers 1x/2x only (2x default) and fixes the voice count at six. The Q-Link sweep stays at p99 47% (FAIL) at 2x;
+not yet profiled. Open: the PRESET dropdown in the plugin header does not open for this plugin (the Sounds browser works).
+The aarch64 zip has not been run on a Gen2 device.
