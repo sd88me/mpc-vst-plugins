@@ -1,0 +1,4 @@
+{ "id": "prloguexxl", "name": "PrLogueXXL", "author": "L'Cronx", "repo": "sunskiefer/PrLogueXXL",
+  "kind": "instrument", "style": "synth", "tags": ["prologue", "korg", "analog", "poly", "vpm", "multi-engine", "arpeggiator"],
+  "license": "GPL-3.0-or-later", "screenshot": "https://raw.githubusercontent.com/sunskiefer/PrLogueXXL/v0.1.1/docs/img/main.png",
+  "summary": "Prologue-style 16-voice poly synth: two VCOs, multi engine (noise, VPM, user units from the logue SDK), voice modes, two timbres, arpeggiator, mod/delay/reverb effects and L.F. COMP, with the panel as four touch pages and Q-Links." }
