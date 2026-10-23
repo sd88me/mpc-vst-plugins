@@ -15,7 +15,12 @@ import (
 	"time"
 )
 
-const defaultCatalogURL = "https://sd88me.github.io/mpc-vst-plugins/catalog.json"
+// The catalog moves to the open-mpc organization. Until it has, and for installs that predate the move, the old address is
+// tried second: it stays alive as a copy (docs/ORG_MIGRATION.md). Both serve the same catalog.json.
+const (
+	defaultCatalogURL = "https://open-mpc.github.io/mpc-vst-plugins/catalog.json"
+	legacyCatalogURL  = "https://sd88me.github.io/mpc-vst-plugins/catalog.json"
+)
 
 // Asset is one downloadable zip of a version: the Gen2 (aarch64) build sits beside the main (armv7) one.
 type Asset struct {
@@ -140,8 +145,11 @@ func isHTTPS(u string) bool {
 
 var httpClient = &http.Client{Timeout: 20 * time.Minute}
 
+// catalogClient has a timeout of its own: a first address that hangs must not keep the next one from being tried.
+var catalogClient = &http.Client{Timeout: 30 * time.Second}
+
 func FetchCatalog(u string) ([]CatPlugin, error) {
-	resp, err := http.Get(u) //nolint:gosec // the catalog address is the app's own setting
+	resp, err := catalogClient.Get(u) //nolint:gosec // the catalog address is the app's own setting
 	if err != nil {
 		return nil, err
 	}

@@ -1573,14 +1573,14 @@ class StoreTest(Base):
         helpers = [(n, os.path.join(self.web, n)) for n in ("sync.sh", "plugin_list.awk")]
         open(os.path.join(self.web, "catalog.tsv"), "w").write(self.catalog_site.tsv(cat, helpers))
 
-    def store(self, *args, stdin="", env_extra=None):
+    def store(self, *args, stdin="", env_extra=None, url=None):
         env = dict(os.environ, **(env_extra or {}), MPC_INSTALL_TEST="1", MPC_SETTINGS=self.settings_path, MPC_TEST_LOG=self.log, MPC_STORE_TMP=self.tmp,
                    MPC_LEGACY_ROOT=os.path.join(self.tmp, "nolegacy"),
                    ADDIN_INSTALL_TEST="1", SYSTEMD_ROOT=os.path.join(self.tmp, "root"), ADDIN_TEST_LOG=os.path.join(self.tmp, "addin.log"),
                    MPC_ADDINS=os.path.join(self.tmp, "addins"))
         if os.environ.get("INSTALLER_TEST_PATH"):
             env["PATH"] = os.environ["INSTALLER_TEST_PATH"]
-        cmd = ["sh", os.path.join(HERE, "mpc-store.sh"), "-y", "-t", self.synths, "--url", "http://127.0.0.1:%d/catalog.tsv" % self.port, *args]
+        cmd = ["sh", os.path.join(HERE, "mpc-store.sh"), "-y", "-t", self.synths, "--url", url or "http://127.0.0.1:%d/catalog.tsv" % self.port, *args]
         return subprocess.run(cmd, env=env, capture_output=True, text=True, input=stdin)
 
     def calls(self):
@@ -1640,6 +1640,26 @@ class StoreTest(Base):
 
     def test_list_marks_3x_only_plugins(self):
         self.assertIn("[MPC OS 3.x only]", self.store("list").stdout)
+
+    def test_a_missing_first_catalog_address_falls_back_to_the_next(self):
+        """The org address does not exist until the repo moves: the old address, tried second, must carry the run, helpers included."""
+        base = "http://127.0.0.1:%d" % self.port
+        r = self.store("install", "test-synth", url="%s/not-there-yet/catalog.tsv %s/catalog.tsv" % (base, base))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("not-there-yet/catalog.tsv", r.stdout)
+        self.assertEqual(self.calls(), ["stop", "start"])
+        self.assertTrue(os.path.exists(os.path.join(self.synths, self.SKIN, "test_synth.so")))
+
+    def test_an_address_that_answers_with_something_else_is_skipped_and_all_failing_is_one_clear_error(self):
+        base = "http://127.0.0.1:%d" % self.port
+        open(os.path.join(self.web, "page.html"), "w").write("<html>a Pages 200 page</html>")
+        r = self.store("list", url="%s/page.html %s/catalog.tsv" % (base, base))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        r = self.store("list", url="%s/page.html" % base)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("that is not a catalog this script understands", r.stderr)
+        r = self.store("list", url="%s/gone.tsv" % base)
+        self.assertIn("cannot download the catalog", r.stderr)
 
     def test_install_verifies_installs_and_restarts_mpc_once(self):
         r = self.store("install", "test-synth")

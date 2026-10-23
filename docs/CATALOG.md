@@ -275,3 +275,11 @@ Locrian's installer uses a drop-in folder in `Synths` (`docs/CATALOG_SPEC.md`, "
 - **Authors not using `release.py`.** Support them by documenting the manifest; the validator is the contract.
 - **Rate limits / token.** One nightly run with the Actions token is far below limits for hundreds of plugins.
 - **Catalog scope creep.** Every feature that needs a server, a DB or manual curation is out of scope by default.
+
+## Client addresses during the organization move (2026-10-20, offline tests only)
+The desktop app and `tools/mpc-store.sh` try `https://open-mpc.github.io/mpc-vst-plugins/` first and the old
+`https://sd88me.github.io/mpc-vst-plugins/` second (a custom `--catalog` / `--url` / `MPC_STORE_URL` is used as given; the script takes
+several addresses separated by spaces). The new address answers 404 until the repo has moved, so the old one carries every run until
+then, and afterwards the old address is a copy kept alive from `sd88me.github.io` (`ORG_MIGRATION.md`, steps 2 and 3).
+Helper files and `patches.json` come from the same folder as the catalog that worked. Releases published before this change only
+know the old address.

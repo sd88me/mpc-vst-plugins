@@ -14,10 +14,12 @@
 # once and started once, and is started again if something fails. What was installed is remembered in <synths-dir>/.mpc-store.
 # Addins (catalog kind "addin": libraries MPC preloads, docs/ADDINS.md) go to /data/mpc-addins/<id> instead of a Synths folder; each
 # installed addin folder holds its version (addin.manifest) and its own uninstall.sh.
-# The catalog is https://sd88me.github.io/mpc-vst-plugins/catalog.tsv (docs/CATALOG.md); the helper files it lists (sync.sh,
+# The catalog is https://open-mpc.github.io/mpc-vst-plugins/catalog.tsv, with https://sd88me.github.io/mpc-vst-plugins/catalog.tsv (the
+# old address, kept as a copy) tried when the first does not give a catalog (docs/CATALOG.md, docs/ORG_MIGRATION.md); the helper files it lists (sync.sh,
 # plugin_list.awk) are fetched from the same folder and checked against the hashes in it. Build-yourself plugins are not here.
 set -e
-URL="${MPC_STORE_URL:-https://sd88me.github.io/mpc-vst-plugins/catalog.tsv}"
+# MPC_STORE_URL and --url take one address, or several separated by spaces that are tried in turn; the first that gives a catalog wins.
+URL="${MPC_STORE_URL:-https://open-mpc.github.io/mpc-vst-plugins/catalog.tsv https://sd88me.github.io/mpc-vst-plugins/catalog.tsv}"
 SYNTHS=/sdcard/Synths; YES=0; DRY=0; MAJOR=0
 ADDINS="${MPC_ADDINS:-/data/mpc-addins}"
 TAB=$(printf '\t')
@@ -58,10 +60,16 @@ fetch() {   # fetch <url> <dest>
 }
 sha_of() { sha256sum "$1" | cut -d' ' -f1; }
 
-echo "Reading the catalog: $URL"
-fetch "$URL" "$W/catalog.tsv" || die "cannot download the catalog (is the device online?)"
-head -n 1 "$W/catalog.tsv" | grep -q '^#mpc-catalog-tsv 1' || die "that is not a catalog this script understands"
-BASE="${URL%/*}"
+WHY="cannot download the catalog (is the device online?)"; GOT=
+for u in $URL; do
+    echo "Reading the catalog: $u"
+    if ! fetch "$u" "$W/catalog.tsv"; then WHY="cannot download the catalog (is the device online?)"; continue; fi
+    if ! head -n 1 "$W/catalog.tsv" | grep -q '^#mpc-catalog-tsv 1'; then WHY="that is not a catalog this script understands"; continue; fi
+    GOT="$u"; break
+done
+[ -n "$GOT" ] || die "$WHY"
+URL="$GOT"
+BASE="${URL%/*}"   # the helper files are fetched from the folder of the address that worked
 
 row() {   # row <id> [version]: the catalog line (latest when no version)
     awk -F'\t' -v id="$1" -v v="${2:-}" '$1 == "plugin" && $2 == id && ((v == "" && $4 == 1) || (v != "" && $3 == v)) { print; exit }' "$W/catalog.tsv"
