@@ -1920,5 +1920,55 @@ class AppResolveTest(unittest.TestCase):
         self.assertIn("needs 'release'", app_check.check(no_source)[0][0])
 
 
+class MirrorTest(unittest.TestCase):
+    """tools/catalog_mirror.py: the copy of the site that keeps the old catalog address alive after the repo moves."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.site = os.path.join(self.tmp, "site")
+        os.makedirs(os.path.join(self.site, "p"))
+        for name, text in (("catalog.json", '{"schema":1}'), ("catalog.tsv", "#mpc-catalog-tsv 1\n"), ("patches.json", "{}"), ("sync.sh", "echo"),
+                           ("mpc-store.sh", "echo"), ("feed.xml", "<feed/>"), ("index.html", "<h1>real page</h1>"), ("install.html", "<h1>install</h1>"),
+                           ("p/acid.html", "<h1>acid</h1>"), ("secret.txt", "not a data file")):
+            with open(os.path.join(self.site, name), "w") as f:
+                f.write(text)
+        self.out = os.path.join(self.tmp, "host", "mpc-vst-plugins")
+        self.base = "https://open-mpc.github.io/mpc-vst-plugins/"
+
+    def run_mirror(self, *extra, base=None):
+        return subprocess.run([sys.executable, os.path.join(HERE, "catalog_mirror.py"), "--site", self.site, "--out", self.out,
+                               "--new-base", base or self.base, *extra], capture_output=True, text=True)
+
+    def test_data_files_are_copied_verbatim_and_pages_become_redirects(self):
+        r = self.run_mirror()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        for name in ("catalog.json", "catalog.tsv", "patches.json", "sync.sh", "mpc-store.sh", "feed.xml"):
+            self.assertEqual(open(os.path.join(self.out, name)).read(), open(os.path.join(self.site, name)).read(), name)
+        self.assertFalse(os.path.exists(os.path.join(self.out, "secret.txt")), "only the listed data files are copied")
+        self.assertIn('url=https://open-mpc.github.io/mpc-vst-plugins/"', open(os.path.join(self.out, "index.html")).read())
+        self.assertIn("https://open-mpc.github.io/mpc-vst-plugins/install.html", open(os.path.join(self.out, "install.html")).read())
+        self.assertIn("https://open-mpc.github.io/mpc-vst-plugins/p/acid.html", open(os.path.join(self.out, "p", "acid.html")).read())
+        self.assertNotIn("real page", open(os.path.join(self.out, "index.html")).read())
+
+    def test_the_output_folder_is_replaced_so_removed_files_do_not_linger(self):
+        os.makedirs(self.out)
+        open(os.path.join(self.out, "old-plugin.html"), "w").write("stale")
+        self.assertEqual(self.run_mirror().returncode, 0)
+        self.assertFalse(os.path.exists(os.path.join(self.out, "old-plugin.html")))
+
+    def test_refuses_a_bad_base_an_unbuilt_site_and_a_git_checkout(self):
+        self.assertNotEqual(self.run_mirror(base="http://x.example/a/").returncode, 0)
+        self.assertNotEqual(self.run_mirror(base="https://x.example/a").returncode, 0)
+        os.remove(os.path.join(self.site, "catalog.tsv"))
+        self.assertIn("not a built site", self.run_mirror().stderr)
+        open(os.path.join(self.site, "catalog.tsv"), "w").write("x")
+        os.makedirs(os.path.join(self.out, ".git"))
+        r = self.run_mirror()
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("refusing", r.stderr)
+        self.assertTrue(os.path.isdir(os.path.join(self.out, ".git")), "a git checkout is left untouched")
+
+
 if __name__ == "__main__":
     unittest.main()

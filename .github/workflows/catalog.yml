@@ -81,3 +81,43 @@ jobs:
     steps:
       - id: deploy
         uses: actions/deploy-pages@v4
+  mirror:
+    # Keeps the OLD catalog address answering after the repo has moved to another owner (docs/ORG_MIGRATION.md, step 2), by committing a
+    # copy of the data files and redirect pages to a repo that hosts it (a user-site repo such as sd88me/sd88me.github.io). Does nothing
+    # until the repository variable CATALOG_MIRROR_REPO is set. One-time setup by the repo owner:
+    #   - a deploy key WITH write access on that repo, its private half in the secret MIRROR_DEPLOY_KEY (no account-wide token)
+    #   - variables: CATALOG_MIRROR_REPO (owner/name), optional CATALOG_MIRROR_DIR (folder in it, default: this repo's name)
+    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.CATALOG_MIRROR_REPO != '' }}
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    concurrency:
+      group: catalog-mirror
+      cancel-in-progress: false
+    env:
+      MIRROR_DIR: ${{ vars.CATALOG_MIRROR_DIR || github.event.repository.name }}
+      NEW_BASE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: tools-src
+      - uses: actions/download-artifact@v4
+        with:
+          name: catalog
+          path: dist
+      - name: Check out the repo that hosts the old address
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.CATALOG_MIRROR_REPO }}
+          ssh-key: ${{ secrets.MIRROR_DEPLOY_KEY }}
+          path: mirror
+      - name: Build the copy
+        run: python3 tools-src/tools/catalog_mirror.py --site dist/site --out "mirror/$MIRROR_DIR" --new-base "$NEW_BASE"
+      - name: Commit and push if it changed
+        working-directory: mirror
+        run: |
+          git add -A -- "$MIRROR_DIR"
+          git diff --cached --quiet && { echo "mirror is up to date"; exit 0; }
+          git -c user.name='catalog mirror' -c user.email='noreply@github.com' commit -q -m "Mirror the catalog from $GITHUB_REPOSITORY@${GITHUB_SHA::7}"
+          git push
