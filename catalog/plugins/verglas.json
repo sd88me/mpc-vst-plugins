@@ -1,0 +1,17 @@
+{
+  "id": "verglas",
+  "name": "Verglas",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-verglas",
+  "kind": "effect",
+  "style": "granular",
+  "tags": [
+    "clouds",
+    "granular",
+    "texture",
+    "eurorack"
+  ],
+  "license": "MIT",
+  "summary": "Verglas: granular, stretch, looper and spectral modes and freeze as an insert effect; 12 presets, from Émilie Gillet's open-source Clouds.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-verglas/v1.2.0/screenshots/page_0.png"
+}

@@ -1,0 +1,18 @@
+{
+  "id": "skipback",
+  "name": "MPC Skipback",
+  "author": "sd88me",
+  "repo": "sd88me/mpc-addin-skipback",
+  "kind": "addin",
+  "style": "utility",
+  "tags": [
+    "skipback",
+    "recording",
+    "sampling",
+    "wav",
+    "buffer"
+  ],
+  "license": "MIT",
+  "summary": "Records the main output all the time and saves the last 30 to 60 seconds as a WAV when you double-press a hardware button (Rec Arm on a Force; Overdub, or a button you teach it, on other models). Tested on a Gen1 Force; other models are unverified.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-addin-skipback/dc82602b2a05354d42445c8a330fb92a864892fb/docs/img/skipback.png"
+}

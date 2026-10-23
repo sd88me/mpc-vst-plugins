@@ -177,6 +177,35 @@ class Mechanism(Rig):
         st = self.state(self.run_patch("status", "--root", drive).stdout)
         self.assertEqual(st["state"], "stock")
 
+    def test_verify_says_whether_mpc_itself_sees_the_executable_folder(self):
+        def vline(out):
+            ls = [l for l in out.splitlines() if l.startswith("VERIFY ")]
+            self.assertEqual(len(ls), 1, out)
+            self.assertEqual(out.strip().splitlines()[-1], ls[0], "the VERIFY line must be last")
+            return dict(kv.split("=") for kv in ls[0].split()[1:])
+        r = self.run_patch("verify")
+        self.assertEqual((r.returncode, vline(r.stdout)["result"]), (1, "not-installed"))
+        drive = self.make_drive("SD Card")
+        r = self.run_patch("install", "--root", drive, "--confirmed")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("VERIFY result=mpc-stopped", r.stdout, "install ends by verifying")
+        self.assertEqual(vline(self.run_patch("verify").stdout)["result"], "mpc-stopped")
+        write(self.pidfile, "4242\n")
+        blind = os.path.join(self.root, "mpc-mountinfo")      # a mount namespace that never got the bind mount
+        write(blind, "\n".join(l for l in read("/proc/self/mountinfo").splitlines() if "/Synths" not in l) + "\n")
+        self.env["DEX_MPC_MOUNTINFO"] = blind
+        r = self.run_patch("verify")
+        self.assertEqual((r.returncode, vline(r.stdout)["result"]), (1, "mpc-blind"))
+        self.assertIn("restart", r.stdout)
+        self.env["DEX_MPC_MOUNTINFO"] = "/proc/self/mountinfo"
+        r = self.run_patch("verify")
+        self.assertEqual((r.returncode, vline(r.stdout)["result"], vline(r.stdout)["plugins"]), (0, "no-plugins", "0"))
+        os.makedirs(drive + "/Synths/me - VST - X")
+        write(drive + "/Synths/me - VST - X/plugin-meta.xml", "<x/>")
+        v = vline(self.run_patch("verify").stdout)
+        self.assertEqual((v["result"], v["plugins"]), ("ok", "1"))
+        self.run_patch("uninstall", "--confirmed")
+
     def test_the_original_vst_folder_works_too(self):
         drive = self.make_drive("ForceHD")
         r = self.run_patch("install", "--root", drive, "--exec-dir", "vst", "--confirmed")

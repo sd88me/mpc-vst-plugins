@@ -14,6 +14,8 @@ checksum and device-verification status, that stays correct without anyone editi
    of that plugin passes; see `tools/catalog_issues.py`).
 5. **Installers execute as root on someone's device.** So: open source only, checksums shown, canonical
    `install.sh` checked, previous versions kept, a maintainer can yank a version.
+6. **No other company's branding.** Listed skins, screenshots and plugin names carry no manufacturer names or logos
+   (rule added 2026-10-12 after LXRXXL, #290, was delisted for it). See `catalog/README.md` "Skins and branding".
 6. **The catalog never hosts or links a build that contains someone else's firmware.** A port whose DSP is compiled
    from the user's own firmware cannot publish a zip, so it lists as **build-yourself** (below): open source, no
    download, no checksum, a build command and the user's own files it needs. This is a separate distribution type;
@@ -31,7 +33,13 @@ vst-release.yml  --release-->   nightly + on-dispatch workflow:       device scr
 
 ### Registry entry (`plugins/<id>.json`, hand-written once)
 `id`, `name`, `author`, `repo` (owner/name), `kind` (instrument | effect), `license`, `summary`, `screenshot`
-(optional `https://` URL; the site ignores anything else), `asset_pattern` (default `*-mpc-armv7.zip`), `homepage` (optional). Nothing versioned.
+(optional `https://` URL; the site ignores anything else), `asset_pattern` (default `*-mpc-armv7.zip`), `homepage` (optional),
+`tier` (optional, only `"experimental"`) and `featured` (optional bool); see Trust tiers below. `flags_reviewed` (optional list of
+risky-call categories a maintainer has looked at, e.g. `["network"]` for a remote-control plugin; see Validation). Nothing versioned.
+
+Length limits (checked by `tools/catalog_build.py`): `summary` at most 350 characters and `tags` at most 8, so cards and the page stay
+readable. Put the full feature list in the repo README. Maintainers may edit a summary or tags for length and consistency, but do not
+change claims about testing or safety without the author.
 
 ### Distribution types
 `distribution` in the registry entry: `release` (default; everything above) or `build-yourself`.
@@ -57,10 +65,38 @@ installer. What the catalog holds instead of a download:
   and a fixed warning: the result contains firmware-derived data, build it yourself, install it on your own devices only,
   never share it. No download button, no checksum.
 
+### Trust tiers (2026-10-10, offline: unit tests and a headless-browser check, not yet published)
+Open registration plus bulk ports means the catalog needs a way to say how much to trust an entry, without gatekeeping who may
+list. Each plugin gets a `tier` in `catalog.json`, computed by `catalog_build.py` (`tier_of`) from evidence, never typed:
+`verified` (the newest stable, unyanked version has a `tested.json` entry), `listed` (valid release, no recorded test) or
+`experimental` (no stable release, or the registry entry says `"tier": "experimental"`). The registry may only cap a tier
+(`"tier"` accepts only `"experimental"`); `"featured": true` is a maintainer pick, ignored while experimental. The site hides
+Experimental by default (the Tier filter and a "Show them" link reveal it), badges Verified and Experimental cards only (2026-10-11:
+Listed is the unlabelled middle, still computed and filterable as "Not yet verified"), and the default sort,
+"Recommended", is featured, then tier, then (2026-10-14, offline) Verified on both generations before one, newest hardware-test
+date, downloads, and finally name. Verified is split by device generation (2026-10-12, offline: unit tests and a
+headless-browser check): `verified_on` in `catalog.json` lists `gen1` and/or `gen2` (`verified_on` in `catalog_build.py`). A `tested.json`
+entry whose `device` names Gen2 counts for `gen2`, and only when that version has an aarch64 build; any other entry counts for `gen1`.
+The card shows one badge per generation ("Verified Gen1", "Verified Gen2"), the Tier filter has "Verified on Gen1" and
+"Verified on Gen2", and the quality bar asks for a Gen2 test (`tested-gen2`) when a Gen2 build has none. The tier itself stays one
+value (verified on either generation), so the sort is unchanged. Catalogs built before the field read a verified plugin as Gen1. Catalogs built before the field read as `listed`. Deliberately not done:
+star ratings, comments, upvotes (few users, needs a backend and moderation; if wanted later, compatibility reports through
+GitHub Discussions that feed `tested.json` fit the static model better, with any vote count only a tiebreaker inside a tier).
+
+### Quality bar (2026-10-10, offline: unit tests and a headless-browser check)
+`catalog_build.py` lists, per plugin, the bar items it does not meet yet (`bar_missing`, texts in `catalog.json` `bar`; `BAR` and
+`bar_of`): no stable release, no screenshot, no skin, CPU verdict FAIL, no CPU bench figure, no `tested.json` entry for the newest
+release. The card shows them in a collapsed "To improve this listing". Informational only: it changes no tier and hides nothing.
+The build log prints how many plugins miss each item. Plan and next steps: `docs/CATALOG_QUALITY.md`.
+
 ### Zip manifest (`mpc-plugin.json`, generated by `release.py`)
 `schema`, `id`, `uid` (VST uid), `name`, `version`, `so` file, `skin` dir, `kind`, `armv7`, `max_glibc`, `cpu`
 (bench verdict), `requires` (firmware/MockbaMod notes), `source_repo`, `license`, `param_compat` (the X in X.Y.Z:
 bumping it breaks saved projects), `sha256` of every file. `INSTALL.md` stays for humans.
+
+### Gen2 (aarch64)
+A version may also have a `*-mpc-aarch64.zip` on the same release (arch `aarch64`, same id/uid/version). It is listed under the same
+registry entry as `versions[].assets.aarch64` with `gen2: true`; `url`/`sha256` stay the armv7 asset. `catalog.tsv` carries the aarch64 zip in three trailing columns (size, sha256, url). A plugin with only a Gen2 build (`asset_pattern` for `*-mpc-aarch64.zip` alone) is `gen2_only: true`, with `-` in the armv7 columns. See [GEN2.md](GEN2.md).
 
 ### Generated `catalog.json`
 Per plugin (`distribution: release`): registry fields + `versions[]` (newest first, last N kept): `version`, `date`, `url`, `size`, `sha256`,
@@ -73,6 +109,16 @@ Zip layout matches the spec; manifest matches the registry (`id`, `uid`, repo); 
 GLIBC <= 2.36 (above 2.32 it is listed as MPC OS 3.x only); `install.sh`/`uninstall.sh`/`plugin_list.awk` are identical to this repo's canonical copies (or a
 diff is flagged for manual review); checksums match; `uid` and `file=` name don't collide with any other catalog
 entry; license file present. This reuses code already in `tools/release.py`.
+Risky calls (2026-10-11, offline: `tools/test_catalog.py`): every ELF file in the zip has its imported functions read from
+its dynamic symbol table (`RISKY_CALLS` in `tools/catalog_check.py`): network, running programs, loading code at runtime, changing the
+system. A hit is a warning and a `flags` field on the version record, never a rejection: a person looks, or the author explains.
+`dlopen` on its own is not flagged (toolchains import it); next to other calls it is.
+It sees only what the file imports, so a determined author can hide a call; it catches the careless case, not a skilled one.
+The nightly build re-checks every kept version and writes `flags.json` next to `problems.json`: the newest stable version of
+each plugin, less the categories in its entry's `flags_reviewed`. `tools/catalog_issues.py` opens one issue per plugin and set of
+categories ("Catalog: <id> flagged for review (network, runs programs)"). Closing it is the review: it is never reopened, a later
+version with the same categories opens nothing, new categories open a new issue (2026-10-11, offline tests only; the first run
+opened one issue per version, 70 in all, which this replaced).
 
 ### Site
 Generated static HTML (`tools/catalog_site.py`, no JS framework): searchable/filterable grid, a page per plugin
@@ -148,7 +194,7 @@ here first and move to its own repo (recommended, for community ownership) once 
       with a shared menu; checked in headless Chromium at desktop and phone width.
 - [x] (2026-09-29; live, `feed.xml` and `catalog.tsv` both served, checked 2026-10-02) Atom feed `feed.xml`; "Tested on" from optional `tested.json` in the plugin repo; contributor docs in `catalog/README.md`.
 - [x] (2026-10-03) `catalog/patches.json`, the device patches the installer app lists in its read-only step 7, is validated by `tools/patch_check.py` and published by `tools/catalog_site.py` next to `catalog.json` (`docs/PATCHES.md`).
-- [x] (2026-10-09, offline: browser-checked at desktop and phone width, not yet published) The catalog page has tabs: Plugins (filters and grid as before), Device patches (the `patches.html` cards) and
+- [x] (2026-10-09, offline: browser-checked at desktop and phone width, not yet published) The catalog page has tabs: All, Instruments, MIDI, Effects and Addins (2026-10-10; All is every plugin together; since 2026-10-14, offline, All is the first tab and the landing tab, so a link without `tab=` opens on All and an Instruments link carries `#tab=instrument`: MIDI is the optional registry field `role: "midi"`, tagged by hand on 14 sequencers/generators and listed there instead of under Instruments; the other tabs are the old single Plugins tab split by kind; they share the filter bar and grid, a bundle shows under each kind it installs, old `#tab=plugins` links open Instruments), Device patches (the `patches.html` cards) and
       Companion apps (`catalog/apps.json`, `tools/app_check.py`; issue #232, MPC Link first). The tab is in the URL hash (`#tab=apps`). The site is named "Open MPC - Plugin Catalog" and the footer links the Discord.
 - [x] (2026-10-09, tested offline against MPC Link v0.4.0 and a fake GitHub; the first nightly run is unverified) Companion app downloads are read from each app's newest stable GitHub release by `tools/app_resolve.py` (`assets` rules in `catalog/apps.json`), run by `catalog.yml`; pinned `downloads` are the fallback.
 - [ ] Announce to the community; collect what people actually ask for before building Phase 4.
@@ -174,6 +220,8 @@ Locrian's installer uses a drop-in folder in `Synths` (`docs/CATALOG_SPEC.md`, "
 - [x] Re-release the current plugins in the new layout and test on a device (done 2026-10-02, verified on a Force): Dexed 1.0.4, JV-880 1.0.5, Acid 1.0.3, Crate Digger 1.1.5, Maze Voice 1.0.1, Maze Sequencer 1.0.1; Monomodule 0.10.2 and Machinemodule 0.3.6 are build-yourself (per-user builds go through `release.py`, so they are portable). Euclidier stays parked.
 - [x] Guides (Install, Build, Workflow; Setup was merged into Build on 2026-10-01) checked against the new layout (2026-09-30): Install's manual steps use `plugin-meta.xml`,
       and it has "If a plugin disappears after a restart". Site cards carry no layout-specific text (`index.template.html`).
+- [x] Old-layout releases are flagged (2026-10-13, offline: `tools/test_catalog.py`): warning in `catalog_check.py`, a builder problem for a newest stable release, and a PR check (`--require-portable`) for new or changed registry entries. Prompted by a third-party port whose release zip still used `/sdcard/vst` and did not show up in plugin managers.
+- [x] Stray registry files are rejected (2026-10-15, offline: `tools/test_catalog.py`): `--check-registry` fails on any `*.json` directly in `catalog/` other than `apps.json`, `patches.json` and `yanked.json`. The build only reads `catalog/plugins/*.json`, so an entry added one folder too high (GitHub's "Create file" in `catalog/`) used to pass CI and never be listed (Fretty, #447).
 - [x] Published releases still in the old layout dropped off a list-rebuilding scanner (NOTES 2026-09-30); all current plugins were re-released above, so the scanner and the catalog agree.
 
 ### Phase 4: Install and update from the device or desktop
@@ -187,6 +235,13 @@ Locrian's installer uses a drop-in folder in `Synths` (`docs/CATALOG_SPEC.md`, "
 - [x] (2026-09-30) Catalog page that builds the one-line command (`ssh -t root@<ip> "wget -qO /tmp/mpc-store.sh <site>/mpc-store.sh && sh /tmp/mpc-store.sh install acid jv-880"`: download, then run, not piped into `sh`, so the confirmation prompts can read the keyboard), with the script
       text and a "download and review first" version. Ticks on the cards, IP box, copy button, the review steps with the script's sha256; the
       selection lives in the link (`#sel=acid,jv-880`); `tools/catalog_site/browser_test.py` (Playwright in the html_art image) covers it.
+- [x] (2026-10-12) Screenshot popup: a card's `screenshot` sits at the top of the card (cropped to 2:1, a dead link drops the frame); clicking
+      it opens the whole card over a dark backdrop with the picture uncropped. The popup has its own link, `#p=<id>` added to the page's
+      hash (ids are stable); a link without `tab=` opens on the plugin's tab. Escape, Back, the backdrop and × close it. Same browser test.
+- [x] (2026-10-13) Share links: `catalog_site.py` writes `p/<id>.html` per plugin with the card's Open Graph and Twitter tags (title,
+      summary, screenshot), since link previews read neither the `#p=` hash nor JS. The page sends a browser on to `index.html#p=<id>` by
+      script (no meta refresh: Facebook's crawler would follow it). The popup's "Copy link" button, the card's title and its screenshot all
+      link there; the title opens the popup on cards without a screenshot too.
 - [x] Desktop helper (2026-09-30): `tools/desktop` (Go, one static binary per OS, one dependency): a local web page on 127.0.0.1 behind a random
       token; connect over SSH, pick catalog plugins and/or drop release zips (build-yourself ones too), install with one MPC stop/start;
       catalog downloads checked against the catalog's sha256; tar stream keeps modes/symlinks; older installers (no `-n`) run first
@@ -213,6 +268,9 @@ Locrian's installer uses a drop-in folder in `Synths` (`docs/CATALOG_SPEC.md`, "
 ## Risks and open questions
 - **Root install of third-party binaries.** Mitigated by open-source-only, canonical installer check, visible
   checksums and yanking. State clearly on the site that everything is community-provided.
+  Done (2026-10-11): the catalog footer and the installer app's connect step say community-provided, root, at your own risk,
+  no warranty, back up first, not affiliated with Akai. What Verified means (a hardware test, not a security review)
+  is explained on the install page and in the README, not on every page.
 - **Non-GitHub hosting.** Start GitHub-only; the registry's `repo` field can grow a `releases_url` later.
 - **Authors not using `release.py`.** Support them by documenting the manifest; the validator is the contract.
 - **Rate limits / token.** One nightly run with the Actions token is far below limits for hundreds of plugins.

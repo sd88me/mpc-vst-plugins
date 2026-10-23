@@ -1,0 +1,11 @@
+[Unit]
+Description=Auto exec bootstrap after writable etc
+Requires=etc.mount
+After=etc.mount
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /etc/auto-exec/bootstrap.sh
+RemainAfterExit=yes
+TimeoutStartSec=15
+PrivateMounts=no

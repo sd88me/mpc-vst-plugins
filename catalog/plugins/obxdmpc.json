@@ -1,0 +1,18 @@
+{
+  "id": "obxdmpc",
+  "name": "OB-Xd MPC",
+  "author": "3dthc",
+  "repo": "3dthc/OB-XD-MPC",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "ob-x",
+    "analog-modelling",
+    "polyphonic",
+    "subtractive"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "OB-Xd, the Oberheim OB-X emulation: two oscillators with sync and cross-mod, a 12/24 dB filter, voice variation; 128 presets.",
+  "screenshot": "https://raw.githubusercontent.com/3dthc/OB-XD-MPC/master/docs/screenshots/obxd-mpc-black.png",
+  "asset_pattern": "*-mpc-armv7.zip"
+}

@@ -42,6 +42,8 @@ ul.list .t .d { display:block; color:var(--muted); font-size:13px; }
 .log { background:var(--lcd); color:var(--lcd-fg); border-radius:6px; padding:12px; font:500 12.5px/1.5 ui-monospace,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; max-height:340px; overflow:auto; margin:12px 0 0; }
 dialog { border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--fg); max-width:520px; width:calc(100% - 32px); padding:20px; }
 dialog::backdrop { background:rgb(0 0 0/.45); }
+.spinner { display:inline-block; width:13px; height:13px; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:spin .8s linear infinite; vertical-align:-2px; margin-right:6px; }
+@keyframes spin { to { transform:rotate(360deg); } }
 dialog h3 { font:700 20px var(--display); text-transform:uppercase; letter-spacing:.06em; margin:0 0 8px; }
 dialog .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
 .tools[hidden] { display:none; }
@@ -49,10 +51,14 @@ dialog .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:1
 .tools .wide { grid-column:1 / -1; }
 .tools select { font:400 14px var(--text); color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 12px; width:100%; }
 .tools label.f { min-width:0; }
+.ktabs { display:flex; gap:4px; background:#c9c6bd; border-radius:6px 6px 0 0; padding:6px 6px 0; margin:8px 0 0; overflow-x:auto; }
+.ktabs button { font:700 14px/1 var(--display); letter-spacing:.08em; text-transform:uppercase; color:#4a4c52; background:transparent; border:0; border-radius:5px 5px 0 0; padding:10px 14px; cursor:pointer; white-space:nowrap; }
+.ktabs button:hover { color:var(--fg); background:#d6d3cb; }
+.ktabs button[aria-selected=true] { color:var(--fg); background:var(--panel); box-shadow:inset 0 3px 0 var(--accent); }
+.ktabs .n { font:500 12px var(--text, inherit); letter-spacing:0; background:#b7b4aa; color:var(--fg); border-radius:10px; padding:1px 7px; margin-left:4px; }
 .catbar { display:flex; flex-wrap:wrap; gap:6px 16px; justify-content:space-between; align-items:center; margin:2px 0 8px; font-size:13px; color:var(--muted); }
 .linkbtn { font:600 12px/1 var(--display); letter-spacing:.1em; text-transform:uppercase; color:var(--accent); background:none; border:0; padding:6px 0; cursor:pointer; }
 .tag.up { color:#8a5a00; border-color:#c58b00; }
-.tag.warn { color:#4b3f94; border-color:#8a7cc9; }   /* MPC OS 3.x only: not the update tag's amber */
 ul.list .t .d.osn.err { color:var(--accent); } ul.list .t .d.osn.warn { color:#4b3f94; }
 #selbar { position:sticky; bottom:12px; z-index:4; display:flex; gap:12px; align-items:center; justify-content:space-between; background:var(--lcd); color:var(--lcd-fg);
   border-radius:8px; padding:10px 12px 10px 16px; box-shadow:0 6px 24px rgb(0 0 0/.25); margin-top:12px; }
@@ -68,6 +74,8 @@ details.collapse[open] > summary .hint::after { content:"Hide"; font-size:12px; 
 details.collapse[open] > summary { margin-bottom:6px; }
 .row input[type=number] { width:100%; font:400 15px var(--text); color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 12px; }
 ul.list li.grp { display:block; padding:12px 2px 6px; font:700 12px/1 var(--display); letter-spacing:.12em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line); }
+#drivelist li { flex-wrap:wrap; align-items:center; } #drivelist .t { flex:1 1 180px; min-width:0; } #drivelist button { flex:none; }
+label.opt { display:block; margin:8px 0; }
 fieldset.where { border:1px solid var(--line); border-radius:6px; margin:0 0 12px; padding:8px 12px 10px; }
 fieldset.where[hidden] { display:none; }
 fieldset.where legend { font:600 11px/1 var(--display); letter-spacing:.1em; text-transform:uppercase; color:var(--muted); padding:0 6px; }
@@ -82,14 +90,22 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 </head>
 <body>
 <div class="wrap">
+<div id="newver" class="small" hidden style="background:var(--panel);border:1px solid var(--accent);border-radius:6px;padding:10px 14px;margin-top:16px"></div>
 <header>
   <h1>MPC plugin installer</h1>
   <p class="lede">Install plugins from the catalog, or zips you already have, on your MPC or Force. This page runs on your computer only. Nothing about your device is saved.</p>
 </header>
 
+<div class="ktabs" id="modetabs" role="tablist" aria-label="Mode">
+  <button type="button" id="mode-install" role="tab" aria-selected="true">Install over SSH</button>
+  <button type="button" id="mode-stick" role="tab" aria-selected="false">Plugin install (no SSH or connection needed)</button>
+</div>
+
+<div id="install-mode">
 <section id="s1">
   <h2><span class="n">1</span>Connect to your device</h2>
   <p class="sub">Your device needs SSH access as <b>root</b> (a modded unit). Use the IP address shown on the device or in your router.</p>
+  <p class="sub">Plugins and patches are community-provided and run as root on your device. Use them at your own risk, with no warranty: they can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Save your project and back up first. Not affiliated with or endorsed by Akai Professional.</p>
   <form id="conn" class="row" autocomplete="off">
     <label class="f">IP address<input id="host" type="text" inputmode="decimal" placeholder="e.g. 192.168.1.20" spellcheck="false" required></label>
     <label class="f">Password (if it has one)<input id="pw" type="password" placeholder="only used for this connection"></label>
@@ -101,9 +117,9 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="s2" class="off">
   <h2><span class="n">2</span>Choose plugins</h2>
   <p class="sub">Tick what you want from the catalog, and/or drop plugin zips you downloaded or built yourself.</p>
+  <div class="ktabs" id="ktabs" role="tablist" aria-label="Plugin kind" hidden></div>
   <div class="tools" id="tools" hidden>
     <label class="f wide">Search<input id="q" type="search" placeholder="Name, developer or what it does" autocomplete="off"></label>
-    <label class="f">Kind<select id="f-kind"></select></label>
     <label class="f">Developer<select id="f-dev"></select></label>
     <label class="f">Show<select id="f-show"></select></label>
     <label class="f">Sort by<select id="f-sort"></select></label>
@@ -119,7 +135,8 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="s3" class="off">
   <h2><span class="n">3</span>Install</h2>
   <p class="sub" id="summary">Nothing selected yet.</p>
-  <fieldset class="where" id="where" hidden><legend>Install to</legend><div id="whereopts"></div><p class="msg" id="wherewarn"></p></fieldset>
+  <fieldset class="where" id="where" hidden><legend>Install to</legend><div id="whereopts"></div><div id="drives" hidden><p class="small">These drives have no <code>Synths</code> folder yet. Create one to install there:</p><ul class="list" id="drivelist"></ul></div><p class="msg" id="drivemsg" role="status" aria-live="polite"></p><p class="msg" id="wherewarn"></p><p class="small" id="wherefix" hidden><a href="#d7" id="wherefixlink">Open step 7: the drive exec patch</a></p></fieldset>
+  <label class="small opt" id="regboxl"><input type="checkbox" id="regon" checked> After installing, register every plugin folder on the device with MPC (built in, nothing needed on the device: it adds missing entries, drops broken ones, and backs up MPC's settings first)</label>
   <button class="primary" id="go" disabled>Install…</button>
   <p class="msg" id="result" role="status" aria-live="polite"></p>
   <pre class="log" id="log" hidden></pre>
@@ -160,14 +177,97 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="s7" class="off">
 <details id="d7" class="collapse">
   <summary><h2><span class="n">7</span>Advanced: device patches</h2><span class="hint">Show</span></summary>
-  <p class="sub"><b>Not for most people.</b> A patch changes the device itself (for example Akai's own MPC program), not a plugin. This list only <b>looks</b>: it asks the device which patches are applied and changes nothing. Applying or undoing a patch from this app is not available yet. To use one now, follow its guide and run its script yourself over SSH.</p>
+  <p class="sub"><b>Not for most people.</b> A patch changes the device itself (for example Akai's own MPC program), not a plugin. If it goes wrong, MPC may not start until you Undo it or reinstall the OS. Checking only <b>looks</b>: it asks the device which patches are applied and changes nothing. <b>Apply</b> and <b>Undo</b> run the patch's own script on the device, with its default settings, and only after you type a confirmation word. Read the patch's guide first; one patch at a time; never as part of a plugin install. For options (such as which buttons to remap), run the script yourself over SSH as its guide says.</p>
   <div class="row"><button id="patchcheck" type="button" disabled>Check the device</button></div>
   <p class="small" id="patchinfo">Connect, then open this step to check.</p>
   <ul class="list" id="patchlist"></ul>
+  <div class="msg" id="patchres"></div>
+  <pre class="log" id="patchlog" hidden></pre>
 </details>
 </section>
 
 <div id="selbar" hidden role="region" aria-label="Selected plugins"><span><b id="selcount"></b> <button class="linkbtn" type="button" id="selclear">Clear</button></span><button class="primary" id="go2" type="button">Install…</button></div>
+</div>
+
+<div id="stick-mode" hidden>
+<section id="st-intro">
+  <p class="sub"><b>What this is for:</b> installing the plugin manager (and other catalog plugins) on a device you have no SSH
+  access to at all -- no connecting, no password, no setup. You build a small USB stick here; it does the rest on the device
+  itself.</p>
+  <p class="sub"><b>How it works:</b> MPC OS has its own stock "USB script" reader, built in by Akai (not a security hole): a
+  stick with the right files on it makes MPC ask one on-screen question, then run a script as root. This builds that stick.
+  Nothing is installed until you confirm the prompt on the device's own screen.</p>
+  <p class="sub"><b>Works on:</b> Gen1 MPC (Live/One/X/Key), Force, and Gen2 (Live III, One G2, Key(s) G2) -- but only on
+  <b>MPC OS up to 3.9.1</b>. Akai closed this route in <b>MPC OS 3.10</b> and later; a stick built here will not work on a
+  device already updated past that.</p>
+  <p class="sub"><b>Gen2 devices specifically:</b> their storage can't be made to remember changes the way Gen1/Force can. The
+  plugin manager itself, once installed, stays. But anything else this does -- putting back addins you'd already installed,
+  or the optional SSH access below -- is undone by every reboot, so you'd reinsert the stick and confirm the prompt again
+  each time the device restarts.</p>
+</section>
+<section id="st1">
+  <h2><span class="n">1</span>Firmware</h2>
+  <p class="sub">This reads your device's own stock Akai update image to work out a one-time check it needs (nothing from this image is kept or sent anywhere). Use the exact image for your device: Gen1 MPC, Force, or Gen2 (Live III, One G2, Key(s) G2). <a href="https://www.akaipro.com/downloads-and-support/downloads/firmware/mpc/" target="_blank" rel="noopener">Get it from Akai</a> if you don't have it already, then point this at the downloaded file.</p>
+  <div class="row">
+    <label class="f">Path to the firmware file (.img, or the MPC executable from one)<input id="st-fw" type="text" placeholder="e.g. /home/you/Downloads/MPC-3.9.1-Gen2-update.img" spellcheck="false"></label>
+    <button id="st-fw-browse" type="button">Browse…</button>
+    <button class="primary" id="st-scan" type="button">Scan…</button>
+  </div>
+  <p class="msg" id="st-scanmsg" role="status" aria-live="polite"><span class="spinner" id="st-scanspin" hidden></span><span id="st-scanmsgtext"></span></p>
+  <pre class="log" id="st-scanlog" hidden></pre>
+</section>
+
+<section id="st2" class="off">
+<details id="dst2" class="collapse">
+  <summary><h2><span class="n">2</span>Advanced: SSH access (optional)</h2><span class="hint">Show</span></summary>
+  <p class="sub"><b>Most people can skip this.</b> It only matters if you also want an ordinary SSH login on this device, separate
+  from the one-time install below (which happens either way). Leave it on "None" unless you know you want this.</p>
+  <div class="row">
+    <label class="f">
+      <span style="display:flex;flex-wrap:wrap;gap:16px;text-transform:none;letter-spacing:0;font:400 15px var(--text);color:var(--fg)">
+        <label><input type="radio" name="st-sshmode" id="st-ssh-none" checked> None (recommended)</label>
+        <label><input type="radio" name="st-sshmode" id="st-ssh-paste"> Use my public key</label>
+        <label><input type="radio" name="st-sshmode" id="st-ssh-gen"> Generate a new key</label>
+        <label><input type="radio" name="st-sshmode" id="st-ssh-pw"> Set a password instead</label>
+      </span>
+    </label>
+  </div>
+  <p class="small">A key doesn't weaken your device's login: it only adds a key, on top of what's already there. On a device whose
+  root filesystem can't be made writable (most Gen2 units), it lasts until the next reboot — reinsert the stick to redo it.</p>
+  <label class="f" id="st-sshpaste-wrap" hidden>Public key (the line from your id_ed25519.pub or similar)<input id="st-sshpaste" type="text" placeholder="ssh-ed25519 AAAA... you@host" spellcheck="false"></label>
+  <div id="st-sshgen-wrap" hidden>
+    <p class="msg ok" id="st-sshgen-warn"><b>Shown once.</b> Save this private key now (e.g. as <code>~/.ssh/id_mpc</code>, <code>chmod 600</code>); the app does not keep a copy.</p>
+    <pre class="log" id="st-sshgen-priv"></pre>
+    <p class="small">Public key (goes on the stick): <code id="st-sshgen-pub" style="user-select:all"></code></p>
+  </div>
+  <div id="st-sshpw-wrap" hidden>
+    <p class="msg err"><b>Not recommended.</b> A password can be guessed or intercepted; a key can't. This also turns on
+    password login for root over SSH, where before only a key would have worked — anyone who learns this password gets a
+    root shell on your device. Only works on a device whose root can be made writable (most Gen1/Force units); refused
+    outright on most Gen2 units, which have no writable place to keep it.</p>
+    <label class="f">Password<input id="st-sshpw" type="password" autocomplete="new-password" spellcheck="false"></label>
+  </div>
+</details>
+</section>
+
+<section id="st3" class="off">
+  <h2><span class="n">3</span>What to install</h2>
+  <p class="sub">Catalog plugin IDs, one or more, comma-separated. The plugin manager (default) then lets you browse and install more from the MPC screen itself.</p>
+  <label class="f">Catalog IDs<input id="st-install" type="text" value="plugin-manager" spellcheck="false"></label>
+</section>
+
+<section id="st4" class="off">
+  <h2><span class="n">4</span>Build the stick</h2>
+  <p class="sub">Writes the stick's files to the folder you pick. Point it straight at a mounted FAT32/exFAT USB stick's top level (pick one below, or Browse to it) and there's nothing left to copy -- otherwise, copy everything in the folder (hidden files too) to the root of a stick afterward. Either way: insert the stick into the device and confirm the prompt there.</p>
+  <div id="st-drives"></div>
+  <div class="row">
+    <label class="f">Folder to write it to<input id="st-out" type="text" placeholder="e.g. /home/you/Desktop/mpc-stick, or a mounted USB stick" spellcheck="false"></label>
+    <button id="st-out-browse" type="button">Browse…</button>
+    <button class="primary" id="st-build" type="button">Build…</button>
+  </div>
+  <p class="msg" id="st-buildmsg" role="status" aria-live="polite"></p>
+</section>
+</div>
 
 <footer>Community-provided software. Installing runs a script as root on your device and edits MPC's settings (a backup is made first). Downloads are checked against the catalog's checksums before anything is copied.</footer>
 </div>
@@ -179,11 +279,19 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
   <div class="actions"><button id="no">Cancel</button><button class="primary" id="yes">Install</button></div>
 </dialog>
 
+<dialog id="bdlg">
+  <h3 id="bdlgtitle">Choose a folder</h3>
+  <p class="small" id="bdlgpath" style="word-break:break-all"></p>
+  <p class="msg" id="bdlgmsg" role="status" aria-live="polite"></p>
+  <ul class="list" id="bdlglist" style="max-height:320px;overflow:auto"></ul>
+  <div class="actions"><button id="bdlgcancel">Cancel</button><button id="bdlgup">Up a level</button><button class="primary" id="bdlgpick">Use this folder</button></div>
+</dialog>
+
 <script>
 "use strict";
 var T = new URLSearchParams(location.search).get("t") || "";
 try { history.replaceState(null, "", location.pathname); } catch (e) {}
-var S = { connected: false, problems: [], cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], root: "", unreg: null, mode: "install", f: { q: "", kind: "", dev: "", show: "", sort: "name" } };
+var S = { connected: false, problems: [], cat: [], ups: [], pickCat: {}, pickUp: {}, running: false, dev: [], pickDev: {}, bk: null, roots: [], drives: [], root: "", unreg: null, mode: "install", f: { q: "", kind: "instrument", dev: "", show: "", sort: "name" } };
 function $(id) { return document.getElementById(id); }
 function text(el, s) { el.textContent = s; }
 function api(path, body, raw) {
@@ -197,12 +305,12 @@ function mb(n) { return n >= 1048576 ? (n / 1048576).toFixed(1) + " MB" : Math.m
 function el(tag, cls, t) { var e = document.createElement(tag); if (cls) e.className = cls; if (t != null) e.textContent = t; return e; }
 
 function setConnected(c, info, problems) {
-  S.connected = c; S.problems = problems || []; S.libc = c && info ? (info.libc || "") : "";
+  S.connected = c; S.problems = problems || []; S.libc = c && info ? (info.libc || "") : ""; S.arch = c && info ? (info.arch || "") : "";
   $("s2").classList.toggle("off", !c); $("s3").classList.toggle("off", !c); $("s4").classList.toggle("off", !c); $("s5").classList.toggle("off", !c); $("s6").classList.toggle("off", !c); $("s7").classList.toggle("off", !c);
   S.patches = null; drawPatches();
   if (c) {
     var n = (info.installed || []).length;
-    S.roots = info.roots || []; var pr = S.roots.filter(function (r) { return r.primary; })[0] || S.roots[0]; S.root = pr ? pr.path : "";
+    S.roots = info.roots || []; S.drives = info.drives || []; var pr = S.roots.filter(function (r) { return r.primary && !r.noExec; })[0] || S.roots.filter(function (r) { return !r.noExec; })[0] || S.roots[0]; S.root = pr ? pr.path : "";
     var places = S.roots.map(function (r) { return r.label + " (" + (r.fs ? r.fs + ", " : "") + gb(r.freeKB) + " free)"; }).join("; ");
     var m = "Connected to " + info.host + " (" + (info.arch || "?") + "). " + n + " plugin folder" + (n === 1 ? "" : "s") + " found. Plugin locations: " + (places || info.synths) + ". Device key " + info.fingerprint + ".";
     if (S.problems.length) msg($("connmsg"), m + " Cannot install here: " + S.problems.join("; ") + ".", "err"); else msg($("connmsg"), m, "ok");
@@ -217,26 +325,49 @@ function loadCatalog() {
 }
 var SHOWS = { "": "All plugins", "new": "Not on the device yet", "on": "Already on the device", "upd": "Updates available", "sel": "Only the ones I ticked" };
 var SORTS = { name: "Name", dev: "Developer", kind: "Kind", size: "Smallest download" };
-var KINDS = { instrument: "Instruments", effect: "Effects", addin: "Addins" };
+var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin: "Addins", all: "All" };
+function kindWord(k) { return k === "midi" ? "MIDI plugins" : k === "all" ? "plugins" : (KINDS[k] || "plugins").toLowerCase(); }
+function tabOf(p) { return p.role === "midi" && p.kind === "instrument" ? "midi" : p.kind; }   // MIDI generators and sequencers have their own tab
 function fill(id, opts, val) {
   var sel = $(id); sel.textContent = "";
   opts.forEach(function (o) { var op = document.createElement("option"); op.value = o[0]; op.textContent = o[1]; sel.appendChild(op); });
   sel.value = val;
 }
 function buildTools() {
-  var kinds = {}, devs = {};
-  S.cat.forEach(function (p) { kinds[p.kind] = 1; devs[p.author] = 1; });
-  fill("f-kind", [["", "All kinds"]].concat(Object.keys(kinds).sort().map(function (k) { return [k, KINDS[k] || k]; })), S.f.kind);
+  var devs = {};
+  S.cat.forEach(function (p) { devs[p.author] = 1; });
+  if (S.cat.length && !S.cat.some(function (p) { return tabOf(p) === S.f.kind; })) {   // nothing of the open kind: open the first kind there is
+    var first = KIND_TABS.filter(function (k) { return S.cat.some(function (p) { return tabOf(p) === k; }); })[0]; if (first) S.f.kind = first;
+  }
   fill("f-dev", [["", "All developers"]].concat(Object.keys(devs).sort().map(function (d) { return [d, d]; })), S.f.dev);
   fill("f-show", Object.keys(SHOWS).map(function (k) { return [k, SHOWS[k]]; }), S.f.show);
   fill("f-sort", Object.keys(SORTS).map(function (k) { return [k, SORTS[k]]; }), S.f.sort);
   $("tools").hidden = S.cat.length === 0;
+  drawKindTabs();
 }
-function shownCat() {
+/* Instruments, Effects, Addins, as on the catalog page. Counts follow the other filters, so a search shows which tab holds the matches.
+   Ticks are kept across tabs (the bar at the bottom counts them all). */
+var KIND_TABS = ["instrument", "midi", "effect", "addin", "all"];
+function kindCounts() { var c = {}; shownCat(true).forEach(function (p) { c[tabOf(p)] = (c[tabOf(p)] || 0) + 1; c.all = (c.all || 0) + 1; }); return c; }
+function drawKindTabs() {
+  var box = $("ktabs"); box.hidden = S.cat.length === 0; box.textContent = "";
+  var c = kindCounts();
+  KIND_TABS.forEach(function (k) {
+    var b = el("button", null, KINDS[k]); b.type = "button"; b.setAttribute("role", "tab"); b.id = "kt-" + k; b.setAttribute("aria-selected", S.f.kind === k ? "true" : "false");
+    b.tabIndex = S.f.kind === k ? 0 : -1; b.appendChild(el("span", "n", String(c[k] || 0)));
+    b.addEventListener("click", function () { S.f.kind = k; drawKindTabs(); drawCat(); });
+    b.addEventListener("keydown", function (e) {
+      var i = KIND_TABS.indexOf(S.f.kind), d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (!d) return;
+      e.preventDefault(); S.f.kind = KIND_TABS[(i + d + KIND_TABS.length) % KIND_TABS.length]; drawKindTabs(); drawCat(); $("kt-" + S.f.kind).focus();
+    });
+    box.appendChild(b);
+  });
+}
+function shownCat(anyKind) {
   var f = S.f, q = f.q.trim().toLowerCase();
   var out = S.cat.filter(function (p) {
     if (q && [p.name, p.author, p.summary, p.id].join(" ").toLowerCase().indexOf(q) < 0) return false;
-    if (f.kind && p.kind !== f.kind) return false;
+    if (!anyKind && f.kind !== "all" && tabOf(p) !== f.kind) return false;
     if (f.dev && p.author !== f.dev) return false;
     if (f.show === "new" && p.installed) return false;
     if (f.show === "on" && !p.installed) return false;
@@ -257,12 +388,14 @@ function vgt(a, b) {   /* is version a newer than version b ("2.34" > "2.33") */
   for (var i = 0; i < Math.max(x.length, y.length); i++) { var p = x[i] || 0, q = y[i] || 0; if (p !== q) return p > q; }
   return false;
 }
+/* MPC OS 3.x is the current, standard OS, so it gets no badge: only a 2.x-capable version with a 2.x device test does (as on the catalog site).
+   A 3.x-only plugin on a device that looks like 2.x still gets osNote's warning. */
 function osTagFor(p) {
-  var g = p.os_compat || []; if (!g.length) return null;
-  if (g.indexOf("2.x") >= 0) { var t = el("span", "tag", "MPC OS 2.x + 3.x"); t.title = "Its skin and library were checked against MPC OS 2.15.1's own skins and glibc. Not the same as tested on a 2.x unit."; return t; }
-  var w = el("span", "tag warn", "MPC OS 3.x only"); w.title = "Not compatible with MPC OS 2.x" + ((p.os_compat_why || []).length ? " (" + p.os_compat_why.join("; ") + ")" : ""); return w;
+  var g = p.os_compat || []; if (g.indexOf("2.x") < 0 || !p.tested_2x) return null;
+  var t = el("span", "tag", "MPC OS 2.x tested"); t.title = "Tested on an MPC OS 2.x unit; its skin and library were also checked against MPC OS 2.15.1's own skins and glibc. Works on MPC OS 3.x too."; return t;
 }
 function osNote(p) {   /* {level, text} when this plugin will not work as expected on the connected device, else null */
+  if (S.arch === "aarch64" && !p.gen2) return { level: "err", text: p.name + " has no Gen2 (aarch64) build yet, so it cannot be installed on this device." };
   if (!S.libc) return null;
   if (p.max_glibc && vgt(p.max_glibc, S.libc)) return { level: "err", text: p.name + " needs glibc " + p.max_glibc + " but this device has " + S.libc + ": MPC will list it but it will not load." };
   var g = p.os_compat || [];
@@ -271,7 +404,8 @@ function osNote(p) {   /* {level, text} when this plugin will not work as expect
 }
 function drawCat() {
   var ul = $("cat"); ul.textContent = "";
-  var rows = shownCat(), f = S.f, filtered = !!(f.q || f.kind || f.dev || f.show);
+  var rows = shownCat(), f = S.f, filtered = !!(f.q || f.dev || f.show);
+  var inTab = S.cat.filter(function (p) { return f.kind === "all" || tabOf(p) === f.kind; }).length;
   rows.forEach(function (p) {
     var li = el("li"), cb = document.createElement("input"); cb.type = "checkbox"; cb.id = "c_" + p.id; cb.checked = !!S.pickCat[p.id];
     cb.addEventListener("change", function () { S.pickCat[p.id] = cb.checked; refresh(); if (S.f.show === "sel") drawCat(); });
@@ -280,20 +414,21 @@ function drawCat() {
     if (p.update) b.appendChild(el("span", "tag up", "update: v" + p.installedVersion + " → v" + p.version));
     if (p.defer === false) { var dt = el("span", "tag", "restarts MPC itself"); dt.title = "This release has an older installer that restarts MPC on its own, so it adds a restart to the batch."; b.appendChild(dt); }
     var ot = p.kind === "addin" ? null : osTagFor(p); if (ot) b.appendChild(ot);
+    if (p.gen2) { var gt = el("span", "tag", "Gen2"); gt.title = "Also built for Gen2 (aarch64) MPC devices; the app installs the right zip for the connected device."; b.appendChild(gt); }
     t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " by " + p.author + " · " + mb(p.size) + " · " + p.summary));
     var on = osNote(p); if (on) t.appendChild(el("span", "d osn " + on.level, on.text));
     var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);
     li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
   });
   if (!S.cat.length) ul.appendChild(el("li", "small", "The catalog has no downloadable plugins right now."));
-  else if (!rows.length) ul.appendChild(el("li", "small", "No plugins match. Try clearing the filters."));
+  else if (!rows.length) ul.appendChild(el("li", "small", inTab ? "No " + kindWord(f.kind) + " match. Try clearing the filters, or look in the other tabs." : "The catalog has no " + kindWord(f.kind) + " right now."));
   var n = Object.keys(S.pickCat).filter(function (k) { return S.pickCat[k]; }).length;
-  text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + S.cat.length + " plugin" + (S.cat.length === 1 ? "" : "s") + (n ? " · " + n + " ticked from the catalog" : "") : "");
+  text($("catcount"), S.cat.length ? "Showing " + rows.length + " of " + inTab + " " + kindWord(f.kind) + (n ? " · " + n + " ticked from the catalog" : "") : "");
   $("resetf").hidden = !filtered;
 }
 function rootNote(r) {
   var n = [];
-  if (r.noExec) n.push("Mounted noexec: MPC cannot load plugins from here (they are listed but only show Load Plugin). Use the internal drive or an SD card.");
+  if (r.noExec) n.push("Mounted noexec: this drive does not let MPC run programs from it, so plugins installed here would be listed but only show Load Plugin. Two ways forward: install on the internal drive (pick it above), or keep this drive and apply the auto exec patch in step 7 (Advanced), which makes the Synths folder of every noexec drive executable. If auto exec is already installed, it takes up to five seconds after the folder appears: connect again to rescan.");
   if (r.noSymlinks) n.push("Formatted " + r.fs + ", which cannot store symbolic links: a plugin that needs them (Crate Digger) cannot be installed here.");
   if (!r.inContent) n.push("MPC does not list this folder as a content location, so a plugin's screen may not show until you add it in MPC's settings.");
   if (!r.primary) n.push("If this drive is not in when MPC starts, its plugins drop out of MPC's plugin list until you register them again (step 5).");
@@ -301,18 +436,41 @@ function rootNote(r) {
 }
 function drawWhere() {
   var box = $("whereopts"); box.textContent = "";
-  $("where").hidden = S.roots.length < 2;
+  $("where").hidden = S.roots.length < 2 && !S.roots.some(function (r) { return r.noExec; }) && !S.drives.length;
   S.roots.forEach(function (r, i) {
     var lab = el("label", "whereopt"), rb = document.createElement("input"); rb.type = "radio"; rb.name = "where"; rb.value = r.path; rb.checked = r.path === S.root;
     rb.addEventListener("change", function () { S.root = r.path; drawWherewarn(); });
-    var sp = el("span"); sp.appendChild(el("b", null, r.label)); sp.appendChild(el("small", null, r.path + " · " + (r.fs ? r.fs + " · " : "") + gb(r.freeKB) + " free"));
+    var sp = el("span"); sp.appendChild(el("b", null, r.label + (r.noExec ? " (cannot run plugins: noexec)" : ""))); sp.appendChild(el("small", null, r.path + " · " + (r.fs ? r.fs + " · " : "") + gb(r.freeKB) + " free"));
     lab.appendChild(rb); lab.appendChild(sp); box.appendChild(lab);
   });
-  drawWherewarn();
+  drawWherewarn(); drawDrives();
+}
+function drawDrives() {
+  var ul = $("drivelist"); ul.textContent = ""; $("drives").hidden = !S.drives.length;
+  S.drives.forEach(function (d) {
+    var li = el("li"), t = el("div", "t");
+    t.appendChild(el("b", null, d.label));
+    t.appendChild(el("span", "d", d.path + " · " + (d.fs ? d.fs + " · " : "") + gb(d.freeKB) + " free" + (d.noExec ? " · mounted noexec right now" : "")));
+    var b = el("button", null, "Create Synths folder"); b.type = "button";
+    b.addEventListener("click", function () { makeRoot(d, b); });
+    li.appendChild(t); li.appendChild(b); ul.appendChild(li);
+  });
+}
+function makeRoot(d, b) {
+  b.disabled = true; msg($("drivemsg"), "Creating " + d.path + "/Synths…");
+  api("/api/mkroot", { drive: d.path }).then(function (j) {
+    var info = j.device, made = d.path + "/Synths";
+    S.roots = info.roots || []; S.drives = info.drives || [];
+    var r = S.roots.filter(function (x) { return x.path === made; })[0];
+    if (r && !r.noExec) S.root = r.path;
+    drawWhere(); loadDevice(); loadUnreg();
+    msg($("drivemsg"), "Created " + made + ".", "ok"); refresh();
+  }).catch(function (e) { b.disabled = false; msg($("drivemsg"), e.message, "err"); });
 }
 function drawWherewarn() {
   var r = S.roots.filter(function (x) { return x.path === S.root; })[0], n = r ? rootNote(r) : [];
-  msg($("wherewarn"), S.roots.length > 1 ? n.join(" ") : "", n.length ? "err" : "");
+  msg($("wherewarn"), n.join(" "), n.length && r && r.noExec ? "err" : "");
+  var w = $("wherefix"); if (w) w.hidden = !(r && r.noExec);
 }
 function rootLabelOf(path) { var r = S.roots.filter(function (x) { return x.path === path; })[0]; return r ? r.label : path; }
 function loadUnreg() {
@@ -370,9 +528,43 @@ function drawPatches() {
     var ch = "Changes " + p.modifies.join(", ") + (p.restarts_mpc ? "; MPC restarts" : "") + (p.backup ? "; a backup goes to " + p.backup : "") + ". Works on " + p.supports.os + ". By " + p.author + ".";
     li.appendChild(el("div", "small", ch));
     if (p.detail) li.appendChild(el("div", "small", p.detail));
+    var can = p.state === "stock" || p.state === "old-patch" ? "install" : "", back = p.state === "patched" || p.state === "old-patch" || p.state === "partial" || (p.state === "unsupported" && p.hasBackup);
+    if ((can && p.supported) || (back && p.reversible)) {
+      var bar = el("div", "row");
+      if (can && p.supported) bar.appendChild(patchButton(p, "install"));
+      if (back && p.reversible) bar.appendChild(patchButton(p, "uninstall"));
+      li.appendChild(bar);
+    }
     if (p.docs) { var a = el("a", null, "Guide"); a.href = "https://github.com/sd88me/mpc-vst-plugins/blob/main/" + p.docs.replace(/^\/+/, ""); a.target = "_blank"; a.rel = "noopener"; a.style.color = "var(--accent)"; li.appendChild(a); }
     ul.appendChild(li);
   });
+}
+function patchButton(p, action) {
+  var b = el("button", "pbtn", action === "install" ? "Apply…" : "Undo…"); b.type = "button"; b.disabled = S.running;
+  b.addEventListener("click", function () { patchConfirm(p, action, b.parentNode.parentNode); });
+  return b;
+}
+// The warning, what it changes and a typed word; nothing runs until the word matches. The server checks the word again.
+function patchConfirm(p, action, li) {
+  var old = li.querySelector(".pconfirm"); if (old) old.remove();
+  var word = action === "install" ? "APPLY" : "UNDO", box = el("div", "pconfirm");
+  box.style.cssText = "margin-top:8px;padding:10px;border:1px solid var(--accent);border-radius:6px";
+  box.appendChild(el("div", null, (action === "install" ? "Apply" : "Undo") + ": " + p.title));
+  box.appendChild(el("div", "small", "This changes " + p.modifies.join(", ") + "." + (p.restarts_mpc ? " MPC may stop and start again, so anything unsaved on the device is lost." : "") +
+    (p.backup ? " A backup goes to " + p.backup + "." : "") + (action === "install" ? " You can undo it from here afterwards." : " The script restores what it saved.")));
+  var lab = el("label", "small", "Type " + word + " to continue "), inp = document.createElement("input"); inp.type = "text"; inp.autocomplete = "off"; inp.spellcheck = false; inp.setAttribute("aria-label", "Type " + word);
+  lab.appendChild(inp); box.appendChild(lab);
+  var go = el("button", "primary", action === "install" ? "Apply patch" : "Undo patch"), no = el("button", null, "Cancel"); go.type = no.type = "button"; go.disabled = true;
+  inp.addEventListener("input", function () { go.disabled = inp.value !== word || S.running; });
+  no.addEventListener("click", function () { box.remove(); });
+  go.addEventListener("click", function () {
+    box.remove(); S.running = true; refresh(); var log = $("patchlog"); log.hidden = false; log.textContent = ""; msg($("patchres"), "Working…");
+    api("/api/patch/run", { id: p.id, action: action, confirm: word })
+      .then(function () { poll(0, log, $("patchres"), action === "install" ? "Applied. The row shows what the device now reports." : "Undone. The row shows what the device now reports."); })
+      .catch(function (e) { S.running = false; refresh(); msg($("patchres"), e.message, "err"); });
+  });
+  var row = el("div", "row"); row.appendChild(go); row.appendChild(no); box.appendChild(row);
+  li.appendChild(box); inp.focus();
 }
 function loadBackups() {
   return api("/api/backups").then(function (j) { S.bk = j.backups; drawBk(); refresh(); }).catch(function (e) { S.bk = null; text($("bkinfo"), e.message); refresh(); });
@@ -400,12 +592,13 @@ function drawUps() {
 }
 function selection() {
   return { catalog: S.cat.filter(function (p) { return S.pickCat[p.id]; }).map(function (p) { return p.id; }),
-           uploads: S.ups.filter(function (p) { return S.pickUp[p.handle]; }).map(function (p) { return p.handle; }), root: S.root };
+           uploads: S.ups.filter(function (p) { return S.pickUp[p.handle]; }).map(function (p) { return p.handle; }), root: S.root, register: $("regon").checked };
 }
 function refresh() {
   var s = selection(), n = s.catalog.length + s.uploads.length;
   text($("summary"), !S.connected ? "Connect to your device first." : n === 0 ? "Nothing selected yet." : n + " plugin" + (n === 1 ? "" : "s") + " selected.");
   $("go").disabled = !S.connected || n === 0 || S.running || S.problems.length > 0;
+  Array.prototype.forEach.call(document.querySelectorAll(".pbtn"), function (b) { b.disabled = S.running; });
   var kn = keepN(); $("prune").disabled = !S.connected || S.running || !S.bk || kn === 0 || S.bk.count <= kn;
   $("rm").disabled = !S.connected || S.running || S.problems.length > 0 || !S.dev.some(function (p) { return S.pickDev[devKey(p)] && p.known; });
   $("reg").disabled = !S.connected || S.running || S.problems.length > 0 || !S.unreg || (S.unreg.add.length + S.unreg.remove.length) === 0;
@@ -413,6 +606,7 @@ function refresh() {
   text($("selcount"), n + " plugin" + (n === 1 ? "" : "s") + " selected");
 }
 
+$("wherefixlink").addEventListener("click", function (e) { e.preventDefault(); $("d7").open = true; $("d7").scrollIntoView(); });
 $("d7").addEventListener("toggle", function () { if ($("d7").open && S.connected && !S.patches) loadPatches(); });
 $("patchcheck").addEventListener("click", loadPatches);
 $("conn").addEventListener("submit", function (e) {
@@ -457,11 +651,11 @@ $("go2").addEventListener("click", startInstall);
 $("selclear").addEventListener("click", function () {
   S.pickCat = {}; S.ups.forEach(function (p) { S.pickUp[p.handle] = false; }); drawCat(); drawUps(); refresh();
 });
-[["q", "q", "input"], ["f-kind", "kind", "change"], ["f-dev", "dev", "change"], ["f-show", "show", "change"], ["f-sort", "sort", "change"]].forEach(function (m) {
-  $(m[0]).addEventListener(m[2], function () { S.f[m[1]] = $(m[0]).value; drawCat(); });
+[["q", "q", "input"], ["f-dev", "dev", "change"], ["f-show", "show", "change"], ["f-sort", "sort", "change"]].forEach(function (m) {
+  $(m[0]).addEventListener(m[2], function () { S.f[m[1]] = $(m[0]).value; drawKindTabs(); drawCat(); });
 });
 $("resetf").addEventListener("click", function () {
-  S.f = { q: "", kind: "", dev: "", show: "", sort: S.f.sort }; $("q").value = ""; buildTools(); drawCat();
+  S.f = { q: "", kind: S.f.kind, dev: "", show: "", sort: S.f.sort }; $("q").value = ""; buildTools(); drawCat();
 });
 $("no").addEventListener("click", function () { $("dlg").close(); });
 function chosenDev() { return S.dev.filter(function (p) { return S.pickDev[devKey(p)] && p.known; }); }
@@ -519,10 +713,143 @@ function poll(since, log, resultEl, doneText) {
     if (j.lines.length) { log.textContent += j.lines.join("\n") + "\n"; log.scrollTop = log.scrollHeight; }
     if (j.state === "running") { setTimeout(function () { poll(j.next, log, resultEl, doneText); }, 600); return; }
     S.running = false; msg(resultEl, j.state === "done" ? doneText : j.result, j.state === "done" ? "ok" : "err");
+    if (resultEl === $("patchres") && S.connected) loadPatches();
     api("/api/state").then(function (st) { if (st.device) { S.problems = st.problems || []; S.pickDev = {}; loadCatalog(); loadDevice(); loadUnreg(); loadBackups(); } });
     refresh();
   }).catch(function (e) { setTimeout(function () { poll(since, log, resultEl, doneText); }, 1500); });
 }
+
+/* --- USB stick mode: independent of the device connection above. --- */
+var ST = { scanHandle: "", running: false, drives: [] };
+function setMode(m) {
+  S.mode2 = m;
+  $("install-mode").hidden = m !== "install"; $("stick-mode").hidden = m !== "stick";
+  $("mode-install").setAttribute("aria-selected", m === "install" ? "true" : "false");
+  $("mode-stick").setAttribute("aria-selected", m === "stick" ? "true" : "false");
+}
+$("mode-install").addEventListener("click", function () { setMode("install"); });
+$("mode-stick").addEventListener("click", function () { setMode("stick"); });
+
+var BR = { mode: "dir", target: null, dir: "" };
+function openBrowse(mode, target, start) {
+  BR.mode = mode; BR.target = target;
+  $("bdlgtitle").textContent = mode === "file" ? "Choose the firmware file" : "Choose a folder";
+  $("bdlgpick").hidden = mode === "file";
+  $("bdlg").showModal();
+  browseTo(start || "");
+}
+function browseTo(dir) {
+  msg($("bdlgmsg"), "Loading…");
+  api("/api/browse?dir=" + encodeURIComponent(dir)).then(function (r) {
+    BR.dir = r.dir; BR.parent = r.parent || "";
+    $("bdlgpath").textContent = r.dir;
+    $("bdlgup").disabled = !r.parent;
+    msg($("bdlgmsg"), "");
+    var ul = $("bdlglist"); ul.textContent = "";
+    r.entries.forEach(function (e) {
+      var li = el("li"); var b = el("button", "linkbtn", (e.isDir ? "📁 " : "") + e.name);
+      b.type = "button";
+      b.onclick = function () {
+        if (e.isDir) { browseTo(e.path); }
+        else if (BR.mode === "file") { BR.target.value = e.path; $("bdlg").close(); }
+      };
+      li.appendChild(b); ul.appendChild(li);
+    });
+  }).catch(function (e) { msg($("bdlgmsg"), e.message, "err"); });
+}
+$("bdlgup").addEventListener("click", function () { if (BR.parent) browseTo(BR.parent); });
+$("bdlgcancel").addEventListener("click", function () { $("bdlg").close(); });
+$("bdlgpick").addEventListener("click", function () { BR.target.value = BR.dir; $("bdlg").close(); });
+$("st-fw-browse").addEventListener("click", function () { openBrowse("file", $("st-fw"), $("st-fw").value.trim()); });
+$("st-out-browse").addEventListener("click", function () { openBrowse("dir", $("st-out"), $("st-out").value.trim()); });
+api("/api/drives").then(function (r) {
+  var ds = r.drives || []; ST.drives = ds; if (!ds.length) return;
+  var box = $("st-drives"); box.innerHTML = '<p class="small">Mounted drives: </p>';
+  var ul = el("ul", "list"); box.appendChild(ul);
+  ds.forEach(function (d) {
+    var li = el("li"); var b = el("button", "linkbtn", d.label + " (" + d.path + ")");
+    b.type = "button"; b.onclick = function () { $("st-out").value = d.path; };
+    li.appendChild(b); ul.appendChild(li);
+  });
+}).catch(function () {});
+
+function scanMsg(s, cls, spin) {
+  text($("st-scanmsgtext"), s || ""); $("st-scanmsg").className = "msg" + (cls ? " " + cls : "");
+  $("st-scanspin").hidden = !spin;
+}
+$("st-scan").addEventListener("click", function () {
+  var fw = $("st-fw").value.trim();
+  if (!fw) { scanMsg("Enter the path to a firmware file first.", "err"); return; }
+  ST.running = true; ST.scanHandle = ""; $("st2").classList.add("off"); $("st3").classList.add("off"); $("st4").classList.add("off");
+  scanMsg("Scanning…", null, true); var log = $("st-scanlog"); log.hidden = false; log.textContent = "";
+  api("/api/stick/scan", { Firmware: fw }).then(function () { stickPoll(0, log); })
+    .catch(function (e) { ST.running = false; scanMsg(e.message, "err"); });
+});
+function stickPoll(since, log) {
+  api("/api/stick/job?since=" + since).then(function (j) {
+    if (j.lines.length) {
+      log.textContent += j.lines.join("\n") + "\n"; log.scrollTop = log.scrollHeight;
+      scanMsg(j.lines[j.lines.length - 1], null, true); // the latest progress line, so it reads as still working, not stuck
+    }
+    if (j.state === "running") { setTimeout(function () { stickPoll(j.next, log); }, 600); return; }
+    ST.running = false;
+    if (j.state === "done") {
+      ST.scanHandle = j.result;
+      scanMsg("Found the salt. Set up SSH if you want it (most people don't need to), then build the stick below.", "ok");
+      $("st2").classList.remove("off"); $("st3").classList.remove("off"); $("st4").classList.remove("off");
+    } else {
+      scanMsg(j.result, "err");
+    }
+  }).catch(function (e) { setTimeout(function () { stickPoll(since, log); }, 1500); });
+}
+["st-ssh-none", "st-ssh-paste", "st-ssh-gen", "st-ssh-pw"].forEach(function (id) {
+  $(id).addEventListener("change", function () {
+    $("st-sshpaste-wrap").hidden = !$("st-ssh-paste").checked;
+    $("st-sshpw-wrap").hidden = !$("st-ssh-pw").checked;
+    $("st-sshgen-wrap").hidden = true;
+    if ($("st-ssh-gen").checked) {
+      api("/api/stick/keygen", {}).then(function (k) {
+        $("st-sshgen-pub").textContent = k.public.trim();
+        $("st-sshgen-priv").textContent = k.private;
+        $("st-sshgen-wrap").hidden = false;
+        ST.genPub = k.public.trim();
+      }).catch(function (e) { msg($("st-buildmsg"), e.message, "err"); $("st-ssh-none").checked = true; });
+    }
+  });
+});
+function stickSSHKey() {
+  if ($("st-ssh-paste").checked) return $("st-sshpaste").value.trim();
+  if ($("st-ssh-gen").checked) return ST.genPub || "";
+  return "";
+}
+function stickSSHPassword() {
+  return $("st-ssh-pw").checked ? $("st-sshpw").value : "";
+}
+function stickOutIsAMountedDrive(out) {
+  return ST.drives.some(function (d) { return out === d.path || out.indexOf(d.path.replace(/[\\/]+$/, "") + "/") === 0; });
+}
+$("st-build").addEventListener("click", function () {
+  if (!ST.scanHandle) { msg($("st-buildmsg"), "Scan the firmware first.", "err"); return; }
+  var out = $("st-out").value.trim();
+  if (!out) { msg($("st-buildmsg"), "Enter a folder to write the stick to.", "err"); return; }
+  var ids = $("st-install").value.split(",").map(function (s) { return s.trim(); }).filter(Boolean);
+  msg($("st-buildmsg"), "Building…");
+  api("/api/stick/build", { ScanHandle: ST.scanHandle, Out: out, Install: ids, SSHPubKey: stickSSHKey(), SSHPassword: stickSSHPassword() })
+    .then(function (r) {
+      var where = stickOutIsAMountedDrive(out)
+        ? "That's a mounted drive, so it's already on the stick -- just"
+        : "Copy everything in " + r.out + " (hidden files too) to the root of a USB stick, then";
+      msg($("st-buildmsg"), "Wrote " + r.out + ". " + where + " insert it into the MPC/Force and confirm the prompt on the device.", "ok");
+    }).catch(function (e) { msg($("st-buildmsg"), e.message, "err"); });
+});
+
+api("/api/version").then(function (v) {
+  if (!v || !v.newer) return;
+  var b = $("newver"); b.textContent = "A newer installer is available: " + v.latest + " (you have " + v.current + "). ";
+  var a = el("a", null, "Download it"); a.href = v.url; a.target = "_blank"; a.rel = "noopener"; b.appendChild(a);
+  var x = el("button", null, "Dismiss"); x.type = "button"; x.style.marginLeft = "12px"; x.onclick = function () { b.hidden = true; }; b.appendChild(x);
+  b.hidden = false;
+}).catch(function () {});
 
 api("/api/state").then(function (st) {
   S.ups = st.uploads || []; drawUps();

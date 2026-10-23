@@ -1,0 +1,18 @@
+{
+  "id": "eucalypso",
+  "name": "Eucalypso",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-eucalypso",
+  "kind": "instrument",
+  "role": "midi",
+  "style": "sequencer",
+  "tags": [
+    "euclidean",
+    "midi",
+    "polyrhythm",
+    "generative"
+  ],
+  "license": "MIT",
+  "summary": "Four-lane Euclidean sequencer that turns the notes you hold into interlocking rhythms for other tracks.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-eucalypso/v1.0.0/screenshots/page_0.png"
+}

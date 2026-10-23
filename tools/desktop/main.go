@@ -39,6 +39,7 @@ func main() {
 	port := flag.Int("port", 0, "port on 127.0.0.1 (0 = pick a free one)")
 	noBrowser := flag.Bool("no-browser", false, "do not open the browser, just print the link")
 	catalog := flag.String("catalog", defaultCatalogURL, "catalog.json address")
+	noUpdateCheck := flag.Bool("no-update-check", false, "do not look for a newer installer release on GitHub")
 	showVersion := flag.Bool("version", false, "print the version and exit")
 	flag.Parse()
 	if *showVersion {
@@ -63,6 +64,9 @@ func main() {
 		os.Exit(1)
 	}
 	app := NewApp(defaultConfig(), token, ln.Addr().String(), *catalog, work)
+	if *noUpdateCheck {
+		app.releasesURL = ""
+	}
 	link := fmt.Sprintf("http://%s/?t=%s", ln.Addr().String(), token)
 	srv := &http.Server{Handler: app.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	fmt.Println("MPC plugin installer", version, "is running. Open this link in your browser (it only works on this computer):")

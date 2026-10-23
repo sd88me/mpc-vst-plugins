@@ -1,0 +1,22 @@
+{
+  "name": "Maschine Group",
+  "vendor": "mmiroshnikov",
+  "uid": "MxGp",
+  "version": 1000,
+  "so": "maschine_group.so",
+  "params": "params.json",
+  "layout": "layout.conf",
+  "defines": {
+    "HAS_DISPLAY_REV": 1,
+    "HAS_LFO_BPM": 1,
+    "HAS_TRANSPORT": 1,
+    "PARAM_TEXT_MAX": 96,
+    "MODULE_SUBDIR": "\"groups\""
+  },
+  "build": {
+    "root": "..",
+    "sources": ["src/mxgrp.c", "src/play.c", "src/engine.c"],
+    "cflags": ["-Isrc"],
+    "libs": ["-lm", "-lpthread", "-ldl"]
+  }
+}

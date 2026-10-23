@@ -1,0 +1,5 @@
+[
+ { "key": "level", "name": "Level", "min": 0, "max": 100, "default": 0 },
+ { "key": "shape", "name": "Shape", "options": ["Sine", "Saw", "Square"], "default": "Sine" },
+ { "key": "plain", "name": "Plain", "min": 0, "max": 1, "default": 0 }
+]

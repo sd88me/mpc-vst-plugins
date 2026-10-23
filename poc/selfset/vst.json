@@ -1,0 +1,10 @@
+{
+  "name": "MPC Self Set Test",
+  "vendor": "sd88me",
+  "uid": "SlfS",
+  "version": 1000,
+  "so": "selfset.so",
+  "params": "params.json",
+  "defines": {"SELFSET_PROBE": 1},
+  "build": {"root": "../..", "sources": ["poc/selfset/engine.c"], "cflags": [], "libs": ["-lm"]}
+}

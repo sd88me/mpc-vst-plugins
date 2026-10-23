@@ -1,0 +1,11 @@
+{
+  "id": "sonix",
+  "name": "Sonix",
+  "author": "3dthc",
+  "repo": "3dthc/Sonix",
+  "kind": "instrument",
+  "license": "MIT",
+  "summary": "A melodic ROMpler instrument for standalone Akai MPC devices, built as a native ARM VST2 plugin. Includes pianos, keys, pads, strings, brass, choirs, leads, plucks, bass, bells, synth chords and effects, using redistributable sound libraries.",
+  "asset_pattern": "*-mpc-armv7.zip",
+  "screenshot": "https://raw.githubusercontent.com/3dthc/Sonix/main/docs/images/main_layers.jpg"
+}

@@ -1,4 +1,4 @@
 { "id": "sturm-tp", "name": "Sturm-TP", "author": "sd88me", "repo": "sd88me/mpc-vst-sturm",
-  "kind": "instrument", "style": "drum-machine", "tags": ["analog-modelling", "drums", "sampler", "kit"], "license": "MIT", "asset_pattern": "Sturm-TP-*-mpc-armv7.zip",
-  "summary": "Six-voice analog-style drum and synth voice modelled on a classic drum machine: two analog and two sample oscillators, 2/4-pole lowpass, highpass, five envelopes, two LFOs, eight mod paths, kit mode, distortion, compressor and a delay that plays repeated notes, with a bank browser and a touchscreen skin with Q-Links. Loads its sound and project SysEx dumps.",
+  "kind": "instrument", "style": "drum-machine", "tags": ["analog-modelling", "drums", "sampler", "kit", "tempest", "dsi"], "license": "MIT", "asset_pattern": "Sturm-TP-*-mpc-armv7.zip",
+  "summary": "Six-voice analog-style drum and synth voice modelled on the Tempest drum machine: two analog and two sample oscillators, lowpass and highpass filters, five envelopes, two LFOs, eight mod paths, kit mode, distortion, compressor and delay. Bank browser with Q-Links; loads its SysEx dumps.",
   "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-sturm/sturm-tp-v0.1.1/docs/img/sturm.png" }

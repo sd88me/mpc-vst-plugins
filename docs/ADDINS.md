@@ -2,7 +2,7 @@
 
 An addin is a library that MPC OS standalone devices (MPC Live/One/X/Key, Force) load into the MPC process through
 `LD_PRELOAD` when MPC starts, rather than a plugin that MPC's host loads on a track. Examples: a remote-control web
-server, the MPC as a USB audio interface. Addins are listed in the catalog next to plugins (kind `addin`), released as
+server, the MPC as a USB audio interface, a rolling recorder that saves the last seconds on a double press. Addins are listed in the catalog next to plugins (kind `addin`), released as
 one zip each, and installed by the same tools: the zip's own `install.sh`, `tools/mpc-store.sh` on the device, or the
 desktop app (`tools/desktop`).
 
@@ -38,8 +38,10 @@ addin). So every addin installs the same way, with the installer in `tools/relea
 MPC keeps the old `.so` mapped), installs the settings file only when the folder has none (the user's edits survive
 an upgrade), adds the `.so` to `LD_PRELOAD` and restarts MPC. `-n` leaves MPC alone: the caller stops and starts it
 once for a batch (`DEFER=1` in the script tells batch installers so). The folder also gets `uninstall.sh`,
-`addin-lib.sh` and `addin.manifest`, so `sh /data/mpc-addins/<id>/uninstall.sh` removes the addin later without the
-release; that is what `mpc-store.sh remove` and the desktop app run.
+`install.sh`, `addin-lib.sh`, `mpc-plugin.json` and `addin.manifest`, so `sh /data/mpc-addins/<id>/uninstall.sh`
+removes the addin later, and `sh /data/mpc-addins/<id>/install.sh -y -n -t /data/mpc-addins/<id>` reinstalls it
+in place, both without the release zip; `mpc-store.sh remove`/the desktop app use the former, and a device with no
+persistent `/etc` (below) needs the latter after every reboot.
 
 Before anything changes, `install.sh` checks the `.so` on the device: it must be an ELF 32-bit little-endian ARM shared
 object, since anything else in `LD_PRELOAD` stops MPC from starting. The folder (`-t`, default
@@ -62,6 +64,47 @@ silently not loaded. When a card with `MockbaMod/env.sh` and an `AddOns` folder 
 that follows loads it; `uninstall.sh` removes both. The hook adds the `.so` only if it is missing, under the same
 `/dev/shm/.LD_PRELOAD.lock` the mod's own scripts use, does it before anything else (boot.sh starts every hook in the
 background and launches MPC a second later) and does nothing on `kill`. Tests: case 12 in `tools/test_addin.sh`.
+
+### After a reboot: `/etc` is mounted after systemd reads its units
+
+On MPC OS 3.x `/etc` is an overlay (upper layer on `/data`) that systemd mounts itself, a few seconds into boot
+(`etc.mount`). By then systemd has read its units from the read-only `/etc` underneath, so it does not see the shared
+drop-in, and MPC's first start after a boot runs without the addins until something runs `systemctl daemon-reload`
+(reinstalling an addin does). Reported on a Key 37 and a Live II (mpc-addin-usb-audio #1 and #2), and seen on a Key 37
+(NOTES.md, 2026-10-11).
+
+So when the installer uses the shared drop-in and `/etc` is an overlay, it also writes
+`/usr/lib/systemd/system/mpc-addins-reload.service` on the root filesystem, linked from `acvs.service.wants/`. It runs once
+per boot after `etc.mount` and before MPC, and only runs `systemctl daemon-reload`. It does nothing while there is no
+drop-in (`ConditionPathExists`), and a failure is ignored, so MPC then starts as it did before. The root is mounted
+read-only: the installer remounts it writable for that one write and read-only again, and warns and carries on if it
+cannot. The first install writes it, later installs leave the root alone, and the last uninstall (the one that removes
+the drop-in) deletes it. A file of that name the installer did not write is never touched. A firmware update replaces the
+root filesystem, so the unit goes with it: re-run an addin's installer afterwards, as for the drop-in. Without the overlay
+(MPC OS 2.x, or a unit edited in place) nothing is written. Tests: case 14 in `tools/test_addin.sh`.
+
+A side effect: an addin that crashes MPC now does so after a reboot too. Before, a reboot happened to start MPC without
+the addins. The steps below still apply.
+
+### A device with no persistent `/etc` at all (Gen2, verity rootfs)
+
+Every device above still has *some* way to make the shared drop-in's folder persist: a plain writable root, or an
+`/etc` overlay on `/data`. Gen2's Live III (2026-10-23) has neither -- `/` is `dm-verity` (`/dev/dm-0`), and `mount
+-o remount,rw /` is refused outright ("cannot remount /dev/root read-write, is write-protected"), not just denied by
+permissions. There is no way to write under `/etc` on this device, ever.
+
+The installer falls back to `/run/systemd/system/<service>.service.d/90-mpc-addins.conf` instead (`resolve_dropin_root()`
+in `addin-lib.sh`, tried only after a plain root and an `/etc` overlay have both been ruled out). systemd merges `/run`
+drop-ins with the same priority as `/etc`'s, so this works exactly the same way once written -- but `/run` is tmpfs: it
+does not survive a reboot, and `install.sh` says so ("not persistent, reinstall after a reboot"). `/data/mpc-addins/<id>/`
+itself is unaffected (it is on `/data`, which does persist), so the fix is cheap: `sh /data/mpc-addins/<id>/install.sh -y
+-n -t /data/mpc-addins/<id>` from the folder itself, no release zip needed (the folder keeps its own copy of `install.sh`
+and `mpc-plugin.json` for exactly this). The USB stick (`docs/USB_STICK.md`) does this for every installed addin on each
+boot it is inserted for, so reinserting it restores both root/SSH access and every addin in one step.
+
+Tests: case 15 (remount succeeds, so `/etc` is used) and case 16 (remount refused, so `/run` is used) in
+`tools/test_addin.sh`; case 3c there covers the folder's own `install.sh` redoing the `/run` entry after a simulated
+reboot, without the original release.
 
 ## When an addin stops MPC from starting
 
@@ -131,7 +174,10 @@ be the installer's own. An addin finds its settings file in its own folder (the 
 ## Releasing
 
 1. Build the `.so` for armhf (an older glibc than the device's, as for plugins: `docs/RELEASING.md`) into a folder with `addin.manifest`
-   and the files it names.
+   and the files it names. For Gen2 (aarch64) too: a second build into a separate folder, same `addin.manifest` and files,
+   `arm64v8/gcc:12-bookworm` under QEMU (no older-glibc ceiling to respect: Gen2 only runs MPC OS 3.x, glibc 2.39) --
+   optional, and the only thing that changes in step 2 is a second `release_addin.py --dir` for it (named by the
+   built `.so`'s own arch, same as a plugin's zip).
 2. Package and check it:
    ```sh
    tools/release_addin.py --dir build/package --version 1.0.0 --repo owner/mpc-addin-<name> --license MIT \
@@ -161,12 +207,17 @@ jobs:
       tools_ref: <sha>                 # the same commit
       package_dir: build/package       # the build writes addin.manifest, the .so and the files it names here
       build: tools/build_armhf.sh      # run from the repo root; MPC_VST is set
+      package_dir_aarch64: build/aarch64   # optional: a Gen2 build too, same layout; omit for an armv7-only addin
+      build_aarch64: tools/build_aarch64.sh
       host_test: tools/test_host.sh    # optional; MPC_VST is set
       about: One line about the addin.
       license: MIT                     # needed to be listed in the catalog
       dry_run: ${{ inputs.dry_run }}   # optional: the zip as a run artifact only
 ```
-Re-running with the same version replaces the draft's zip; a version that is already published is refused.
+With both `package_dir_aarch64`/`build_aarch64` set, one run builds and attaches **both** zips to the same draft
+release (mpc-addin-remote and mpc-addin-commander do this; mpc-addin-skipback releases by hand instead, `tools/build_aarch64.sh`
++ `tools/release_addin.py` run directly). Re-running with the same version replaces the draft's zip(s); a version
+that is already published is refused.
 
 Addin repos are named `mpc-addin-<name>`. For a quick test without a release, unzip the package from step 2 (or copy
 the three installer files next to the build output) and run its `install.sh`.
@@ -177,8 +228,9 @@ the three installer files next to the build output) and run its `install.sh`.
   addins side by side: appending to a list, idempotency, settings kept, one uninstall leaving the other, the quoted
   form, the shared drop-in, the winning drop-in, `inmusic-mpc`, a read-only unit and a firmware update changing its
   list, the folder's own uninstaller, refusals of odd folders (`/`, `/etc`, `..`, a folder not named after the addin)
-  and bad manifests, a library that is not a 32-bit ARM shared object, a drop-in from a newer format, and an
-  uninstall that keeps a file the user added. `BUSYBOX=/path/to/busybox` runs it
+  and bad manifests, a library that is not a 32-bit ARM shared object, a drop-in from a newer format, an
+  uninstall that keeps a file the user added, MockbaMod hooks, and the reload unit for an `/etc` overlay (written once,
+  removed with the last addin, never over someone else's file, nothing without an overlay). `BUSYBOX=/path/to/busybox` runs it
   in the device's shell (the default when `busybox` is on the PATH).
 - `tools/test_catalog.py` (`AddinTest`, `StoreTest`): packaging, validation and tampering, registry and
   `catalog.tsv`, and `mpc-store.sh` installing, updating and removing an addin alongside a plugin.

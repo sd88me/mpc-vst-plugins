@@ -146,6 +146,19 @@ int main(void)
 
     usleep(10000);
     f = fopen(CONF_PATH, "w");
+    fprintf(f, "combo 10 20 b99\ncombo 11 20 b98\n");
+    fclose(f);
+    const unsigned char cmb_a[] = {0x90, 10, 0x7f, 0x90, 20, 0x7f, 0x90, 20, 0x00, 0x90, 10, 0x00};
+    const unsigned char cmb_a_out[] = {0x90, 10, 0x7f, 0x90, 99, 0x7f, 0x90, 99, 0x00, 0x90, 10, 0x00};
+    expect("combo: second hold button, first rule", cmb_a, sizeof cmb_a, cmb_a_out, sizeof cmb_a_out);
+    const unsigned char cmb_b[] = {0x90, 11, 0x7f, 0x90, 20, 0x7f, 0x90, 20, 0x00, 0x90, 11, 0x00};
+    const unsigned char cmb_b_out[] = {0x90, 11, 0x7f, 0x90, 98, 0x7f, 0x90, 98, 0x00, 0x90, 11, 0x00};
+    expect("combo: same button, other hold button", cmb_b, sizeof cmb_b, cmb_b_out, sizeof cmb_b_out);
+    const unsigned char cmb_n[] = {0x90, 20, 0x7f, 0x90, 20, 0x00};
+    expect("combo: no hold button passes", cmb_n, sizeof cmb_n, cmb_n, sizeof cmb_n);
+
+    usleep(10000);
+    f = fopen(CONF_PATH, "w");
     fprintf(f, "hold 49\n1 d49 b1 u49\nheld 1 u49 b1 d49\n");
     fclose(f);
     const unsigned char knobs[] = {0x90, 1, 0x7f, 0x90, 1, 0x00};

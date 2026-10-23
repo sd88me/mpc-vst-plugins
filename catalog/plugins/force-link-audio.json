@@ -1,0 +1,22 @@
+{
+  "id": "force-link-audio",
+  "name": "Force Link Audio",
+  "author": "Mac Digi / Rare Data",
+  "repo": "macdigi/force-link-audio",
+  "kind": "addin",
+  "style": "network-audio",
+  "tags": [
+    "link-audio",
+    "network-audio",
+    "recording",
+    "compa"
+  ],
+  "license": "GPL-2.0-or-later",
+  "summary": "Publish the Force stereo main mix to Link Audio receivers on your trusted LAN while staying standalone. Disable the legacy Force Link Audio addon first. Off until enabled in settings; no remote-control server. Other MPC hardware is unverified.",
+  "asset_pattern": "*-mpc-armv7.zip",
+  "flags_reviewed": [
+    "network",
+    "runs programs"
+  ],
+  "screenshot": "https://github.com/macdigi/force-link-audio/releases/download/v1.1.0/force-link-audio-card.png"
+}

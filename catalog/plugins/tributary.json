@@ -1,0 +1,4 @@
+{ "id": "tributary", "name": "Tributary", "author": "johnny", "repo": "stampman3000-jpg/mpc-tributary",
+  "kind": "instrument", "style": "utility", "tags": ["utility"], "license": "GPL-3.0-only",
+  "summary": "Sums chosen Elektron Overbridge outputs onto one MPC track over USB. Based on Overwitch.",
+  "screenshot": "https://raw.githubusercontent.com/stampman3000-jpg/mpc-tributary/v1.1.0/screenshots/tributary.png" }

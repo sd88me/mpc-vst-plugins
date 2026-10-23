@@ -21,19 +21,24 @@ var indexHTML []byte
 // App is the local web server. It listens on 127.0.0.1 only and every request must carry the random token the app printed, so
 // nothing else on the network, and no web page open in the browser, can drive it. Nothing about the device is written to disk.
 type App struct {
-	cfg        Config
-	token      string
-	hosts      map[string]bool // accepted Host headers
-	catalogURL string
-	patchesURL string
-	work       string
+	cfg         Config
+	token       string
+	hosts       map[string]bool // accepted Host headers
+	catalogURL  string
+	patchesURL  string
+	releasesURL string // where the version check looks; empty = no check
+	verAt       time.Time
+	verInfo     versionInfo
+	work        string
 
-	mu      sync.Mutex
-	dev     *Device
-	uploads map[string]*Package
-	cat     []CatPlugin
-	catAt   time.Time
-	job     *Job
+	mu        sync.Mutex
+	dev       *Device
+	uploads   map[string]*Package
+	cat       []CatPlugin
+	catAt     time.Time
+	job       *Job
+	stickJob  *Job                  // the USB-stick builder's own job slot: independent of a device connection
+	stickScan map[string]*stickScan // salt-scan results, by handle
 
 	patches   []Patch
 	patchesAt time.Time
@@ -43,20 +48,22 @@ type App struct {
 
 func NewApp(cfg Config, token, hostport, catalogURL, work string) *App {
 	port := hostport[strings.LastIndex(hostport, ":")+1:]
-	return &App{cfg: cfg, token: token, catalogURL: catalogURL, patchesURL: patchesURLFor(catalogURL), work: work, uploads: map[string]*Package{}, patchCode: map[string][]byte{},
-		hosts: map[string]bool{"127.0.0.1:" + port: true, "localhost:" + port: true}}
+	return &App{cfg: cfg, token: token, catalogURL: catalogURL, releasesURL: defaultReleasesURL, patchesURL: patchesURLFor(catalogURL), work: work, uploads: map[string]*Package{}, patchCode: map[string][]byte{},
+		stickScan: map[string]*stickScan{}, hosts: map[string]bool{"127.0.0.1:" + port: true, "localhost:" + port: true}}
 }
 
 func (a *App) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", a.index)
 	mux.HandleFunc("/api/state", a.state)
+	mux.HandleFunc("/api/version", a.versionAPI)
 	mux.HandleFunc("/api/connect", a.connect)
 	mux.HandleFunc("/api/disconnect", a.disconnect)
 	mux.HandleFunc("/api/catalog", a.catalog)
 	mux.HandleFunc("/api/upload", a.upload)
 	mux.HandleFunc("/api/discard", a.discard)
 	mux.HandleFunc("/api/plan", a.plan)
+	mux.HandleFunc("/api/mkroot", a.mkroot)
 	mux.HandleFunc("/api/install", a.install)
 	mux.HandleFunc("/api/device", a.devicePlugins)
 	mux.HandleFunc("/api/remove", a.remove)
@@ -66,6 +73,13 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/api/prune", a.prune)
 	mux.HandleFunc("/api/job", a.jobStatus)
 	mux.HandleFunc("/api/patches", a.patchList)
+	mux.HandleFunc("/api/patch/run", a.patchRun)
+	mux.HandleFunc("/api/stick/scan", a.stickScanStart)
+	mux.HandleFunc("/api/stick/job", a.stickJobStatus)
+	mux.HandleFunc("/api/stick/keygen", a.stickKeygen)
+	mux.HandleFunc("/api/stick/build", a.stickBuild)
+	mux.HandleFunc("/api/browse", a.browse)
+	mux.HandleFunc("/api/drives", a.drives)
 	return a.guard(mux)
 }
 
@@ -309,10 +323,40 @@ func (a *App) discard(w http.ResponseWriter, r *http.Request) {
 }
 
 type selection struct {
-	Catalog []string `json:"catalog"`
-	Uploads []string `json:"uploads"`
-	Root    string   `json:"root"` // the Synths folder to install into ("" = the internal drive)
-	Confirm bool     `json:"confirm"`
+	Catalog  []string `json:"catalog"`
+	Uploads  []string `json:"uploads"`
+	Root     string   `json:"root"`     // the Synths folder to install into ("" = the internal drive)
+	Register bool     `json:"register"` // InstallOpts.Register
+	Confirm  bool     `json:"confirm"`
+}
+
+// mkroot creates a Synths folder on a drive under /media that has none (Device.MakeRoot), so plugins can be installed there.
+func (a *App) mkroot(w http.ResponseWriter, r *http.Request) {
+	if !postOnly(w, r) {
+		return
+	}
+	var in struct{ Drive string }
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&in); err != nil {
+		fail(w, 400, "bad request")
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.dev == nil {
+		fail(w, 400, "connect to the device first")
+		return
+	}
+	if a.job != nil {
+		if st, _, _, _ := a.job.snapshot(0); st == "running" {
+			fail(w, 409, "an install is running: wait for it to finish")
+			return
+		}
+	}
+	if err := a.dev.MakeRoot(in.Drive); err != nil {
+		fail(w, 400, err.Error())
+		return
+	}
+	writeJSON(w, 200, map[string]any{"device": a.dev.Info, "problems": a.dev.Info.problems()})
 }
 
 // resolve turns a selection into install items. Caller holds a.mu.
@@ -451,7 +495,7 @@ func (a *App) install(w http.ResponseWriter, r *http.Request) {
 		if a.dev == dev {
 			dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
 		}
-	})
+	}, InstallOpts{Register: s.Register})
 	writeJSON(w, 200, map[string]string{"job": j.ID})
 }
 
@@ -775,21 +819,114 @@ func (a *App) patchList(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	a.mu.Unlock()
-	fetch := func(p Patch) ([]byte, error) {
-		a.mu.Lock()
-		data, ok := a.patchCode[p.Script.SHA256]
-		a.mu.Unlock()
-		if ok {
-			return data, nil
-		}
-		data, err := FetchPatchScript(p)
-		if err != nil {
-			return nil, err
-		}
-		a.mu.Lock()
-		a.patchCode[p.Script.SHA256] = data
-		a.mu.Unlock()
+	fetch := a.patchScript
+	writeJSON(w, 200, map[string]any{"patches": PatchRows(dev, patches, fetch), "note": note, "connected": dev != nil})
+}
+
+// patchScript returns a patch's script, downloaded once and checked against the manifest's sha256 (never an unverified copy).
+func (a *App) patchScript(p Patch) ([]byte, error) {
+	a.mu.Lock()
+	data, ok := a.patchCode[p.Script.SHA256]
+	a.mu.Unlock()
+	if ok {
 		return data, nil
 	}
-	writeJSON(w, 200, map[string]any{"patches": PatchRows(dev, patches, fetch), "note": note, "connected": dev != nil})
+	data, err := FetchPatchScript(p)
+	if err != nil {
+		return nil, err
+	}
+	a.mu.Lock()
+	a.patchCode[p.Script.SHA256] = data
+	a.mu.Unlock()
+	return data, nil
+}
+
+// patchRun applies or undoes one patch from the published manifest. The patch is found by id in the manifest the app fetched, never
+// described by the page; the user must have typed the confirmation word for that action; one job at a time. Progress is the job log.
+func (a *App) patchRun(w http.ResponseWriter, r *http.Request) {
+	if !postOnly(w, r) {
+		return
+	}
+	var in struct {
+		ID      string `json:"id"`
+		Action  string `json:"action"`
+		Confirm string `json:"confirm"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<12)).Decode(&in); err != nil {
+		fail(w, 400, "bad request")
+		return
+	}
+	word := map[string]string{"install": ConfirmApply, "uninstall": ConfirmUndo}[in.Action]
+	if word == "" {
+		fail(w, 400, "unknown action")
+		return
+	}
+	if in.Confirm != word {
+		fail(w, 400, "type "+word+" to confirm")
+		return
+	}
+	busy := func() bool {
+		if a.job != nil {
+			st, _, _, _ := a.job.snapshot(0)
+			return st == "running"
+		}
+		return false
+	}
+	a.mu.Lock()
+	var p *Patch
+	for i := range a.patches {
+		if a.patches[i].ID == in.ID {
+			p = &a.patches[i]
+		}
+	}
+	dev := a.dev
+	switch {
+	case dev == nil:
+		a.mu.Unlock()
+		fail(w, 400, "connect to the device first")
+		return
+	case p == nil:
+		a.mu.Unlock()
+		fail(w, 404, "that patch is not in the list (open the Advanced step first)")
+		return
+	case busy():
+		a.mu.Unlock()
+		fail(w, 409, "a job is already running")
+		return
+	}
+	patch := *p
+	a.mu.Unlock()
+	if dev.Info.Arch != "" && patch.Supports.Arch != dev.Info.Arch {
+		fail(w, 400, "this patch is built for "+patch.Supports.Arch+"; this device is "+dev.Info.Arch)
+		return
+	}
+	if in.Action == "uninstall" && !patch.Reversible {
+		fail(w, 400, "this patch cannot be undone from the app")
+		return
+	}
+	script, err := a.patchScript(patch)
+	if err != nil {
+		fail(w, 502, err.Error())
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.dev != dev {
+		fail(w, 409, "the device changed; try again")
+		return
+	}
+	if busy() { // the lock was released while the script was fetched
+		fail(w, 409, "a job is already running")
+		return
+	}
+	j := &Job{ID: randHex(4), State: "running"}
+	a.job = j
+	go RunPatch(dev, patch, script, in.Action, j, func() {
+		a.mu.Lock()
+		defer a.mu.Unlock()
+		if a.dev == dev {
+			dev.readInfo(dev.Info.Host, dev.Info.Fingerprint)
+		}
+	})
+	writeJSON(w, 200, map[string]string{"job": j.ID})
 }

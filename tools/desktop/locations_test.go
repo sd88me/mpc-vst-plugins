@@ -367,6 +367,8 @@ func TestReadOnlyMountsAreNeverOffered(t *testing.T) {
 
 // A drive named "SSD - Force" (the Force's SSD, mounted noexec): the mount point holds spaces, /proc/mounts writes them as \040.
 func TestNoexecMountWithSpacesInItsNameIsFlaggedAndRefused(t *testing.T) {
+	defer func(w time.Duration) { execWait = w }(execWait)
+	execWait = 0
 	fd := newFakeDevice(t)
 	card := fd.addCard("SSD - Force")
 	mp := filepath.Dir(card)
@@ -395,5 +397,90 @@ func TestNoexecMountWithSpacesInItsNameIsFlaggedAndRefused(t *testing.T) {
 	}
 	if len(fd.calls()) != 0 {
 		t.Error("MPC must not be touched when the install is refused")
+	}
+}
+
+func TestMissingInternalSynthsFolderIsCreated(t *testing.T) {
+	fd := newFakeDevice(t)
+	card := fd.addCard("CARD1")
+	internal := fd.cfg().SynthsDir
+	os.RemoveAll(internal) // an MPC One whose official plugins went to the card has no Synths folder on the internal drive
+	d, err := Dial("127.0.0.1", "secret", fd.cfg())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	if st, err := os.Stat(internal); err != nil || !st.IsDir() {
+		t.Fatalf("the internal Synths folder was not made: %v", err)
+	}
+	if len(d.Info.Roots) != 2 || d.Info.Roots[0].Path != internal || !d.Info.Roots[0].Primary || d.Info.Roots[1].Path != card {
+		t.Fatalf("the internal drive must be offered first: %+v", d.Info.Roots)
+	}
+}
+
+func TestAnExecBindMountOfTheSynthsFolderIsNotNoexec(t *testing.T) {
+	fd := newFakeDevice(t)
+	card := fd.addCard("MPC-DRIVE")
+	mp := filepath.Dir(card)
+	// BusyBox df names the drive for a bind mount of one of its folders (same device): the drive exec patch case
+	os.WriteFile(filepath.Join(fd.shims, "df"), []byte("#!/bin/sh\nfor a; do last=\"$a\"; done\ncase \"$last\" in\n\"$SSDSYNTHS\") echo 'Filesystem 1024-blocks Used Available Capacity Mounted on'; echo '/dev/sda1 1000000 1000 900000 1% '\"$SSDMP\" ;;\n*) exec /usr/bin/df \"$@\" ;;\nesac\n"), 0o755)
+	t.Setenv("SSDSYNTHS", card)
+	t.Setenv("SSDMP", mp)
+	mounts := filepath.Join(fd.dir, "mounts")
+	os.WriteFile(mounts, []byte("/dev/sda1 "+mp+" exfat rw,nosuid,nodev,noexec,relatime 0 0\n/dev/sda1 "+card+" exfat rw,nosuid,nodev,relatime 0 0\n"), 0o644)
+	cfg := fd.cfg()
+	cfg.MountsFile = mounts
+	d, err := Dial("127.0.0.1", "secret", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	root, ok := d.Info.root(card)
+	if !ok || root.FS != "exfat" || root.NoExec {
+		t.Fatalf("the patched Synths folder is exec even though its drive is noexec: %+v (found %v)", root, ok)
+	}
+	os.WriteFile(mounts, []byte("/dev/sda1 "+mp+" exfat rw,nosuid,nodev,noexec,relatime 0 0\n"), 0o644)
+	d2, err := Dial("127.0.0.1", "secret", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d2.Close()
+	if root, _ := d2.Info.root(card); !root.NoExec {
+		t.Fatalf("without the bind mount the folder is noexec: %+v", root)
+	}
+}
+
+// the auto exec patch makes a new Synths folder executable within five seconds: the app waits for that instead of refusing
+func TestInstallWaitsForAnExecMountToAppearOnANoexecDrive(t *testing.T) {
+	defer func(w time.Duration) { execWait = w }(execWait)
+	execWait = 6 * time.Second
+	fd := newFakeDevice(t)
+	card := fd.addCard("MPC-DRIVE")
+	mp := filepath.Dir(card)
+	os.WriteFile(filepath.Join(fd.shims, "df"), []byte("#!/bin/sh\nfor a; do last=\"$a\"; done\ncase \"$last\" in\n\"$SSDSYNTHS\") echo 'Filesystem 1024-blocks Used Available Capacity Mounted on'; echo '/dev/sda1 1000000 10 900000 1% '\"$SSDMP\";;\n*) echo 'Filesystem 1024-blocks Used Available Capacity Mounted on'; echo '/dev/x 1000000 10 900000 1% /';;\nesac\n"), 0o755)
+	t.Setenv("SSDSYNTHS", card)
+	t.Setenv("SSDMP", mp)
+	mounts := filepath.Join(fd.dir, "mounts")
+	noexec := "/dev/sda1 " + mp + " vfat rw,nosuid,nodev,noexec,relatime 0 0\n"
+	os.WriteFile(mounts, []byte(noexec), 0o644)
+	cfg := fd.cfg()
+	cfg.MountsFile = mounts
+	d, err := Dial("127.0.0.1", "secret", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	root, _ := d.Info.root(card)
+	if !root.NoExec {
+		t.Fatalf("setup: the folder starts noexec: %+v", root)
+	}
+	go func() {
+		time.Sleep(300 * time.Millisecond)
+		os.WriteFile(mounts, []byte(noexec+"/dev/sda1 "+card+" vfat rw,nosuid,nodev,relatime 0 0\n"), 0o644)
+	}()
+	a := installerPkg(t, "A-1", "a-plug", "me - VST - A", fakeInstaller("A", false, 0))
+	err = RunInstall(d, root, []Item{{Pkg: a}}, t.TempDir(), &Job{ID: "x", State: "running"}, nil)
+	if err != nil && strings.Contains(err.Error(), "noexec") {
+		t.Errorf("the install must wait for the executable mount, not refuse: %v", err)
 	}
 }

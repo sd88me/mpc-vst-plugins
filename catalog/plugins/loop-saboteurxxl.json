@@ -1,0 +1,4 @@
+{ "id": "loop-saboteurxxl", "name": "Loop-SaboteurXXL", "author": "L'Cronx", "repo": "sunskiefer/Loop-SaboteurXXL",
+  "kind": "effect", "style": "glitch", "tags": ["glitch", "slicer", "stutter", "beat-repeat", "sequencer", "p-lock", "lo-fi", "tape"],
+  "license": "GPL-3.0-or-later", "screenshot": "https://raw.githubusercontent.com/sunskiefer/Loop-SaboteurXXL/v0.1.0/docs/img/3-acts-seq.png",
+  "summary": "A port of Loop Saboteur by Stephen McLeod Blythe (clickysteve): a glitch / chop / beat-slicer that records the last bars and replays them on the MPC tempo as retriggered, pitched, reversed, stretched and crushed slices. Eight Acts, a 64-step sequencer with trig conditions, ratchets and p-locks, and 19 factory presets." }

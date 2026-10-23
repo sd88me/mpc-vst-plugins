@@ -1,0 +1,11 @@
+{
+  "id": "odin2",
+  "name": "Odin 2",
+  "author": "3dthc",
+  "repo": "3dthc/Odin2-MPC",
+  "kind": "instrument",
+  "license": "GPL-3.0-only",
+  "summary": "Odin 2 synthesizer ported to standalone Akai MPC devices as a native VST2 plugin. Features Odin's original engine, 261 factory patches, touchscreen pages, automatic voice management and a CPU meter. Tested on an Akai MPC Live II; unofficial port.",
+  "screenshot": "https://raw.githubusercontent.com/3dthc/Odin2-MPC/main/odin2-mpc-main.png",
+  "asset_pattern": "*-mpc-armv7.zip"
+}

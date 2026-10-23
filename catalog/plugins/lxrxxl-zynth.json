@@ -1,0 +1,5 @@
+{ "id": "lxrxxl-zynth", "name": "LXRXXL ZYNTH", "author": "L'Cronx", "repo": "sunskiefer/LXRXXL-ZYNTH",
+  "kind": "instrument", "style": "synth", "tags": ["synth", "groovebox", "fm", "wavetable", "sequencer", "experimental", "chaos", "lxr"],
+  "license": "LicenseRef-LXR02-Open", "source_available": true,
+  "screenshot": "https://raw.githubusercontent.com/sunskiefer/LXRXXL-ZYNTH/v0.2.0/docs/img/panel.png",
+  "summary": "An experimental 8-track synth with 19 voices on unconventional maths (Lorenz chaos, Hilbert frequency shifter, Euclidean rhythms) and voices coded after the DX7, CZ, Minimoog, Hammond, NES chips, Braids and Plaits. LXR-02 style sequencer with random functions, tape/digital delay, mixer and presets." }

@@ -1,0 +1,18 @@
+{
+  "id": "tinyfreaky",
+  "name": "TinyFreaky",
+  "author": "MagicStino",
+  "repo": "MagicStino/TinyFreaky",
+  "kind": "instrument",
+  "style": "synth",
+  "license": "MIT",
+  "tags": [
+    "synth",
+    "polyphonic",
+    "modulation",
+    "sequencer"
+  ],
+  "summary": "Eight-voice MicroFreak-inspired interpretation with 16 synthesis engines, a 5x7 modulation matrix, arpeggiator/swing, 64-step sequencer and sound-informed preset names. 342 playable factory slots; six engine families remain unavailable.",
+  "screenshot": "https://raw.githubusercontent.com/MagicStino/TinyFreaky/v0.4.0/assets/force-readable-preview.png",
+  "homepage": "https://github.com/MagicStino/TinyFreaky"
+}

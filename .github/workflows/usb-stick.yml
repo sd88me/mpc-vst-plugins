@@ -1,0 +1,17 @@
+# Offline tests for the no-SSH USB stick generator (docs/USB_STICK.md).
+name: USB stick
+on:
+  push:
+    branches: [main]
+    paths: ['tools/usb_stick/**', 'tools/test_usb_stick.py', 'tools/mpc-store.sh', '.github/workflows/usb-stick.yml']
+  pull_request:
+    paths: ['tools/usb_stick/**', 'tools/test_usb_stick.py', 'tools/mpc-store.sh', '.github/workflows/usb-stick.yml']
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tests
+        run: python3 -I tools/test_usb_stick.py

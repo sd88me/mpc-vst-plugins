@@ -83,7 +83,10 @@ or only on 3.x, and the catalog works this out itself:
   and the installer app shows the badge and warns when it installs a `3.x` plugin to a device that looks like 2.x (glibc 2.32 or
   less, or Buildroot 2021.02, which is a heuristic, so a warning and not a block).
 - **Say what was tested.** "Checked against 2.15.1's own skins" is not "tested on a 2.x unit". The badge says which, using the existing
-  tested-on field; a plugin shows plain "2.x" only after a 2.x device test is listed.
+  tested-on field; a plugin shows plain "2.x" only after a 2.x device test is listed. Since 2026-10-12 (offline, site only) the catalog
+  site's card badge is just **MPC OS 2.x tested**, on a 2.x + 3.x version with a 2.x device test; 3.x is treated as the standard and gets
+  no badge (the card's MPC OS row and the filter still say 2.x and 3.x / 3.x only). The installer app's list does the same (its
+  `tested_2x`, from the version's `tested[].firmware`), and still warns before putting a 3.x-only plugin on a device that looks like 2.x.
 - **Limits to state in the docs.** The table comes from one 2.x version (2.15.1); other 2.x versions are unchecked. A structural check
   cannot prove that touch behaves the same.
 

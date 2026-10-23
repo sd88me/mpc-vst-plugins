@@ -4,7 +4,8 @@
 real device before releasing anything. Numbers from a PC say nothing about an MPC.
 
 ```
-tools/bench.sh build/x.so <device-ip> [-s secs] [-v 1,4,8,16] [-p] [-j]   # on the device (armhf)
+tools/bench.sh build/x.so <device-ip> [-s secs] [-v 1,4,8,16] [-p] [-j]   # on the device (armhf Gen1, or
+                                                                        # build/aarch64/x.so on a Gen2)
 tools/bench.sh build/x-x86.so local                                     # on a PC: relative numbers only
 ```
 
@@ -18,7 +19,9 @@ can keep running.
   `-p` sweeps every parameter). Finally the **release tail** after note-off, which catches denormal slowdowns.
 - Each block is timed with the thread's own CPU clock (`CLOCK_THREAD_CPUTIME_ID`), so time MPC's real-time threads
   take from us doesn't count. The plugin's own worker threads are reported separately (`threads%`).
-- The bench runs pinned to core 1 at normal priority, so MPC's audio always wins and nothing glitches.
+- The bench runs at normal priority, so MPC's audio always wins and nothing glitches. It pins to core 1 on Gen1 and
+  to core 4 on Gen2 (the Live III's audio workers sit on its four fast cores, 4-7); `BENCH_CPUMASK=<hex>` overrides.
+  `bench.sh` asks the device for its architecture and builds the bench for it, so give it the matching `.so`.
 
 ## Verdict
 The p99 and worst block, as a percentage of one block on one core:
@@ -55,8 +58,15 @@ thread's ticks on the device during actual playback instead.
 | Crate Digger (stream player, idle) | 0.1% | 0.1% | 1.0% | 5.9% | PASS |
 
 ## Gen2 devices
-Untested: nobody on the project owns one yet. `tools/probe_device.sh` (read-only) reports the CPU, whether the
-`MPC` binary is 32- or 64-bit, the audio worker layout and which plugin formats MPC has compiled in. If the
-binary is 64-bit, ports need an aarch64 build (`arm64v8/gcc:12`) and possibly a different `pluginList-…` key, and
-`bench.c` needs building for aarch64 too. A PASS on Gen1 should be comfortable on faster Gen2 CPUs, but only a
-run on the device confirms it. Please post probe and bench output from Gen2 units.
+`bench.sh` runs on a Gen2 device the same way (aarch64 bench from `arm64v8/gcc:12-bookworm`, so the build needs
+Docker with arm64 emulation). Verified on a MPC Live III (2026-10-23): 8 cores, 0-3 Cortex-A55 @ 1.8 GHz and 4-7
+Cortex-A76 @ 2.4 GHz, MPC's `AudioWorker0-3` pinned to 4-7 under SCHED_FIFO.
+
+**Denormals.** armv7 NEON flushes denormals to zero by itself; aarch64 does not, and denormal arithmetic is far
+slower. A feedback-heavy plugin can run fine on Gen1 and spike by orders of magnitude on Gen2: Acid-303's first
+aarch64 build measured a worst block of 3870% (Q-Link sweep) and went to 17% after setting FPCR.FZ around its render
+call. If a Gen2 bench shows huge worst blocks in the release tail or the sweep, look here first.
+
+| Plugin (Gen2, Live III) | idle | 16 voices | Q-Link sweep p99 | worst block | Verdict |
+|---|---|---|---|---|---|
+| Acid-303 (HQ, 4x circuit model) | 0.8% | 8.5% | 15.1% | 17.0% | WARN (p99 over 15% by 0.1) |

@@ -1,0 +1,4 @@
+{ "id": "surgexxl", "name": "SurgeXXL", "author": "L'Cronx", "repo": "sunskiefer/SurgeXXL",
+  "kind": "instrument", "style": "synth", "tags": ["synth", "polysynth", "wavetable", "fm", "surge", "lfo", "presets", "airwindows"],
+  "license": "GPL-3.0-or-later", "screenshot": "https://raw.githubusercontent.com/sunskiefer/SurgeXXL/08c3c3eed8a3ad6792211fb1dc2351ded2383995/docs/img/osc.png",
+  "summary": "The open-source Surge XT synth engine, headless, for Gen1: 2 scenes of 3 oscillators, dual filters, 6 LFOs per scene, mod matrix, 16 FX slots and 8 macros on eight pages. Loads every factory and third-party patch (3008) and wavetable (761), plus your own. MPC OS 3.x." }

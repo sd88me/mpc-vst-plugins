@@ -43,20 +43,25 @@
   <div class="pagelist">/*GUIDES*/</div>
 
   <div class="tabs" role="tablist" aria-label="Catalog sections">
-    <button type="button" role="tab" id="tab-plugins" aria-controls="panel-plugins" aria-selected="true" data-tab="plugins">Plugins <span class="n" id="n-plugins"></span></button>
+    <button type="button" role="tab" id="tab-all" aria-controls="panel-plugins" aria-selected="true" data-tab="all">All <span class="n" id="n-all"></span></button>
+    <button type="button" role="tab" id="tab-instrument" aria-controls="panel-plugins" aria-selected="false" data-tab="instrument" tabindex="-1">Instruments <span class="n" id="n-instrument"></span></button>
+    <button type="button" role="tab" id="tab-midi" aria-controls="panel-plugins" aria-selected="false" data-tab="midi" tabindex="-1">MIDI <span class="n" id="n-midi"></span></button>
+    <button type="button" role="tab" id="tab-effect" aria-controls="panel-plugins" aria-selected="false" data-tab="effect" tabindex="-1">Effects <span class="n" id="n-effect"></span></button>
+    <button type="button" role="tab" id="tab-addin" aria-controls="panel-plugins" aria-selected="false" data-tab="addin" tabindex="-1">Addins <span class="n" id="n-addin"></span></button>
     <button type="button" role="tab" id="tab-patches" aria-controls="panel-patches" aria-selected="false" data-tab="patches" tabindex="-1">Device patches <span class="n">/*N_PATCHES*/</span></button>
     <button type="button" role="tab" id="tab-apps" aria-controls="panel-apps" aria-selected="false" data-tab="apps" tabindex="-1">Companion apps <span class="n">/*N_APPS*/</span></button>
   </div>
 
-  <div role="tabpanel" id="panel-plugins" aria-labelledby="tab-plugins">
+  <div role="tabpanel" id="panel-plugins" aria-labelledby="tab-all">
   <div class="tools">
     <label class="search">Search<input id="q" type="search" placeholder="Name, developer, style or tag"></label>
-    <label>Kind<select id="f-kind"></select></label>
     <label>Style<select id="f-style"></select></label>
     <label>Developer<select id="f-dev"></select></label>
     <label>License<select id="f-lic"></select></label>
     <label>Distribution<select id="f-dist"></select></label>
     <label>MPC OS<select id="f-os"></select></label>
+    <label>Device<select id="f-gen"></select></label>
+    <label>Tier<select id="f-tier"></select></label>
     <label>Sort by<select id="sort"></select></label>
   </div>
   <div class="status">
@@ -70,6 +75,14 @@
 
   <div class="grid" id="grid"></div>
   <p class="empty" id="empty" hidden>No plugins match these filters.</p>
+  <div class="modal" id="modal" hidden>
+    <div class="modal-in" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <button class="modal-share" type="button" id="modal-share">Copy link</button>
+      <button class="modal-x" type="button" id="modal-x" aria-label="Close">&times;</button>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+  <p class="line" id="exp" hidden><span id="exp-n"></span> experimental plugins are hidden. <button class="linkbtn" type="button" id="show-exp">Show them</button></p>
 
   <details class="install" id="inst" hidden>
     <summary><span id="inst-count"></span><span class="hint">Get the install command</span></summary>
@@ -111,7 +124,7 @@
     <p class="empty" id="a-empty" hidden>No companion apps match.</p>
   </div>
 
-  <footer>Community-provided software. Installing runs a script as root on your device: check the source and the checksum first. Not affiliated with or endorsed by Akai Professional.<br>
+  <footer>Community-provided software. Installing runs a script as root on your device: check the source and the checksum first. Not affiliated with or endorsed by Akai Professional. Use at your own risk, with no warranty: a plugin or patch can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Back up first.<br>
     Questions, testing and release news: <a href="https://discord.gg/sRRysZSgu3">Open MPC on Discord</a>.<br>
     Catalog generated <span id="gen"></span>. <a href="catalog.json">catalog.json</a></footer>
 </main>
@@ -121,13 +134,35 @@
 <script>
 var CAT = JSON.parse(document.getElementById("data").textContent);
 var P = CAT.plugins;
-var state = { tab: "plugins", q: "", kind: "", style: "", dev: "", lic: "", dist: "", os: "", sort: "updated", rev: false, beta: false, sel: [] };
+var state = { tab: "all", q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: [], open: "" };
 var STORE = JSON.parse(document.getElementById("store").textContent);
 var BY_WARNING = "The result contains firmware-derived data: build it yourself, install it on your own devices only, never share it.";
 var ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 function isBY(p) { return p.distribution === "build-yourself"; }
 function kindsOf(p) { var k = [p.kind]; (p.components || []).forEach(function (c) { if (k.indexOf(c.kind) < 0) k.push(c.kind); }); return k; }
+/* Trust tiers (tools/catalog_build.py tier_of, docs/CATALOG.md). Listed is the unlabelled middle: a card with no tier badge is in the catalog
+   and passed the release checks, nothing more. Only Verified (one badge per generation, below) and Experimental get a badge. verified = tested on a device, listed = passed the release checks,
+   experimental = new, beta-only or capped by a maintainer. The default view hides experimental; the Tier filter shows it. */
+var TIERS = { verified: { rank: 0, label: "Verified", tip: "The newest release has a recorded hardware test (see Tested on)." },
+              listed: { rank: 1, label: "Listed", tip: "Passed the catalog's release checks; no hardware test recorded for the newest release yet." },
+              experimental: { rank: 2, label: "Experimental", tip: "New, beta-only or unproven: it may not load, draw its skin or run well. Test it before relying on it." } };
+function tierOf(p) { return TIERS[p.tier] ? p.tier : "listed"; }
+/* Verified is per device generation (catalog_build.py verified_on): gen1 = a tested.json entry on a Gen1 device, gen2 = one whose device
+   names Gen2, on a version with an aarch64 build. Each gets its own badge. Catalogs built before the field: a verified plugin counts as Gen1. */
+var GENS = { gen1: { label: "Verified Gen1", tip: "The newest release has a recorded hardware test on a Gen1 device (see Tested on)." },
+             gen2: { label: "Verified Gen2", tip: "The newest release's Gen2 (aarch64) build has a recorded hardware test on a Gen2 MPC (see Tested on)." } };
+function verifiedOn(p) { return tierOf(p) !== "verified" ? [] : Array.isArray(p.verified_on) ? p.verified_on.filter(function (g) { return GENS[g]; }) : ["gen1"]; }
+var TIER_FILTERS = ["verified", "verified-gen1", "verified-gen2", "listed", "experimental", "all"];
+/* Recommended tiebreaker: the date of the newest hardware test on the newest stable release ("" when none). */
+function testedDate(p) {
+  var v = p.versions.filter(function (x) { return !x.yanked && x.channel === "stable"; })[0], d = "";
+  if (v) (v.tested || []).forEach(function (t) { if ((t.date || "") > d) d = t.date; });
+  return d;
+}
 var SORTS = {
+  /* featured, tier, Verified generations (both before one), newest test date, downloads, then name */
+  recommended: { label: "Recommended",     cmp: function (a, b) { return (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || TIERS[tierOf(a)].rank - TIERS[tierOf(b)].rank ||
+    verifiedOn(b).length - verifiedOn(a).length || testedDate(b).localeCompare(testedDate(a)) || b.downloads - a.downloads || a.name.localeCompare(b.name); }, desc: false },
   name:      { label: "Name",              cmp: function (a, b) { return a.name.localeCompare(b.name); }, desc: false },
   updated:   { label: "Recently updated",  cmp: function (a, b) { return a.updated.localeCompare(b.updated); }, desc: true },
   downloads: { label: "Downloads",         cmp: function (a, b) { return a.downloads - b.downloads; }, desc: true },
@@ -140,12 +175,15 @@ function uniq(f) { var o = {}; P.forEach(function (p) { var v = f(p); if (v) o[v
 function fillSelect(id, all, values, label) {
   $(id).innerHTML = '<option value="">' + all + '</option>' + values.map(function (v) { return '<option value="' + esc(v) + '">' + esc(label ? label(v) : v) + '</option>'; }).join("");
 }
-var KINDS = { instrument: "Instruments", effect: "Effects", addin: "Addins" };
+var PLUGIN_TABS = ["all", "instrument", "midi", "effect", "addin"];
+var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin: "Addins", all: "Plugins" };
+/* a plugin with role "midi" is listed under the MIDI tab, not Instruments */
+function inTabKind(p, k) { if (k === "all") return true; return kindsOf(p).some(function (c) { return (c === "instrument" && p.role === "midi" && c === p.kind ? "midi" : c) === k; }); }
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
-var allKinds = {}; P.forEach(function (p) { kindsOf(p).forEach(function (k) { allKinds[k] = 1; }); });
-fillSelect("f-kind", "All kinds", Object.keys(allKinds).sort(), function (v) { return KINDS[v] || v; });
 fillSelect("f-dist", "Any distribution", ["release", "build-yourself"], function (v) { return v === "release" ? "Download a release zip" : "Build it yourself"; });
+fillSelect("f-tier", "Verified and unverified", TIER_FILTERS, function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "verified-gen1" ? "Verified on Gen1" : v === "verified-gen2" ? "Verified on Gen2" : v === "listed" ? "Not yet verified" : "Experimental only"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
+fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 only"; });
 fillSelect("f-style", "All styles", uniq(function (p) { return p.style; }), title);
 fillSelect("f-dev", "All developers", uniq(function (p) { return p.author; }));
 fillSelect("f-lic", "Any license", ["open", "source-available"], function (v) { return v === "open" ? "Open source" : "Source-available (restricted use)"; });
@@ -167,10 +205,22 @@ function osWhy(v) {   /* plain words; the exact reasons stay in the tooltip */
   var w = v.os_compat_why || [], lib = w.some(function (x) { return /^needs glibc/.test(x); }), skin = w.some(function (x) { return !/^needs glibc/.test(x); });
   return (lib ? "needs a newer system library than MPC OS 2.x has" : "") + (lib && skin ? "; " : "") + (skin ? "its skin uses a newer file format than MPC OS 2.x reads" : "");
 }
+/* MPC OS 3.x is the current, standard OS, so it gets no badge: only a 2.x-capable version with a 2.x device test does. The MPC OS row and filter
+   still say 2.x and 3.x / 3.x only. */
 function osTag(v) {
-  var g = osGens(v); if (!g) return "";
-  if (g.indexOf("2.x") >= 0) return '<span class="tag ok" title="' + esc("Skin and library checked against MPC OS 2.15.1's own skins and glibc. " + (tested2x(v) ? "Tested on a 2.x unit." : "Not yet tested on a 2.x unit.")) + '">MPC OS 2.x + 3.x' + (tested2x(v) ? " &middot; tested" : "") + '</span>';
-  return '<span class="tag warn" title="' + esc("Not compatible with MPC OS 2.x" + (osWhy(v) ? ": " + osWhy(v) : "") + ((v.os_compat_why || []).length ? " (" + v.os_compat_why.join("; ") + ")" : "")) + '">MPC OS 3.x only</span>';
+  var g = osGens(v); if (!g || g.indexOf("2.x") < 0 || !tested2x(v)) return "";
+  return '<span class="tag ok" title="' + esc("Tested on an MPC OS 2.x unit; skin and library also checked against MPC OS 2.15.1's own skins and glibc. Works on MPC OS 3.x too.") + '">MPC OS 2.x tested</span>';
+}
+/* Gen2 (aarch64, MPC OS 3.x): the version also has an -mpc-aarch64.zip that passed the same checks (docs/GEN2.md). The tag always says "Gen2 build";
+   a device run is the Verified Gen2 badge. "Tested" (the hover text and the Gen2 row) needs a tested.json entry whose device says Gen2. */
+function tested2(v) { return !!(v && (v.tested || []).some(function (t) { return /gen\s*2/i.test(t.device || ""); })); }
+function genTag(v) {
+  if (!v || !v.gen2) return "";
+  if (v.gen2_only) return '<span class="tag gen" title="' + esc("Built for Gen2 (aarch64) MPC devices only: MPC Live III and kin. " + (tested2(v) ? "Tested on a Gen2 unit." : "Not yet tested on a Gen2 unit.")) + '">Gen2 only</span>';
+  return '<span class="tag gen" title="' + esc("Also built for Gen2 (aarch64) MPC devices. " + (tested2(v) ? "Tested on a Gen2 unit." : "Not yet tested on a Gen2 unit.")) + '">Gen2 build</span>';
+}
+function genRow(v) {
+  return v && v.gen2 ? '<dt>Gen2</dt><dd>' + (v.gen2_only ? "aarch64 only: no Gen1 or Force build (" : "aarch64 build available (") + (tested2(v) ? "tested on a Gen2 unit" : "not yet tested on a Gen2 unit") + ')</dd>' : "";
 }
 function osRow(v) {
   var g = osGens(v); if (!g) return "";
@@ -180,13 +230,16 @@ function osRow(v) {
 function match(p) {
   var s = state, hay = [p.name, p.author, p.style || "", (p.tags || []).join(" "), p.summary].join(" ").toLowerCase();
   if (s.q && hay.indexOf(s.q.toLowerCase()) < 0) return false;
-  if (s.kind && kindsOf(p).indexOf(s.kind) < 0) return false;
+  if (PLUGIN_TABS.indexOf(s.tab) >= 0 && !inTabKind(p, s.tab)) return false;
+  if (s.tier === "all") {} else if (/^verified-/.test(s.tier)) { if (verifiedOn(p).indexOf(s.tier.slice(9)) < 0) return false; }
+  else if (s.tier) { if (tierOf(p) !== s.tier) return false; } else if (tierOf(p) === "experimental") return false;
   if (s.dist === "build-yourself" && !isBY(p)) return false;
   if (s.dist === "release" && isBY(p)) return false;
   if (s.style && p.style !== s.style) return false;
   if (s.dev && p.author !== s.dev) return false;
   if (s.lic === "open" && p.source_available) return false;
   if (s.lic === "source-available" && !p.source_available) return false;
+  if (s.gen) { var sv = shown(p); if (!sv || !!sv.gen2 !== (s.gen === "gen2")) return false; }
   if (s.os) { var g = osGens(shown(p)); if (!g || (s.os === "2x") !== (g.indexOf("2.x") >= 0)) return false; }
   return true;
 }
@@ -196,23 +249,36 @@ function testedRow(v) {
   return '<dt>Tested on</dt><dd>' + (v.tested && v.tested.length ? v.tested.map(function (t) { return esc(t.device + (t.firmware ? " " + t.firmware : "") + (t.date ? " (" + t.date + ")" : "")); }).join(", ") : "Not reported") + '</dd>';
 }
 function safeUrl(u) { return /^https:\/\//.test(u) ? u : "#"; }
-function card(p) {
+/* "To improve": the quality-bar items a plugin does not meet yet (catalog_build.py BAR). Informational: it never hides or demotes anything. */
+function barLine(p) {
+  var m = (p.bar_missing || []).filter(function (k) { return CAT.bar && CAT.bar[k]; });
+  if (!m.length) return "";
+  return '<details class="how"><summary>To improve this listing (' + m.length + ')</summary><ul>' + m.map(function (k) { return '<li>' + esc(CAT.bar[k]) + '</li>'; }).join("") + '</ul></details>';
+}
+function card(p, big) {
   var by = isBY(p), v = shown(p), tags = [];
   if (by) tags.push('<span class="tag build" title="No download: you build it from your own files">Build it yourself</span>');
+  if (tierOf(p) === "verified") verifiedOn(p).forEach(function (g) { tags.push('<span class="tag tier-verified" data-gen="' + g + '" title="' + esc(GENS[g].tip) + '">' + GENS[g].label + '</span>'); });
+  else if (tierOf(p) !== "listed") tags.push('<span class="tag tier-' + tierOf(p) + '" title="' + esc(TIERS[tierOf(p)].tip) + '">' + TIERS[tierOf(p)].label + '</span>');
   tags.push(p.kind === "addin" ? '<span class="tag" title="Loaded into MPC when it starts (LD_PRELOAD), not a plugin on a track">addin</span>' : '<span class="tag">' + esc(p.kind) + '</span>');
   if (p.style) tags.push('<span class="tag">' + esc(title(p.style)) + '</span>');
   tags.push('<span class="tag">' + esc(p.license) + '</span>');
   if (p.source_available) tags.push('<span class="tag warn" title="Source is public but the license limits how it may be used">Restricted use</span>');
   if (!by && p.kind !== "addin" && osTag(v)) tags.push(osTag(v));
+  if (!by && p.kind !== "addin" && genTag(v)) tags.push(genTag(v));
   (p.tags || []).forEach(function (t) { if (!(by && t === "firmware-derived")) tags.push('<span class="tag">' + esc(t) + '</span>'); });
   var hist = p.versions.length ? '<details class="vers"><summary>Versions (' + p.versions.length + ')</summary><table>' + p.versions.map(function (x) {
     var cols = by ? '<td><a href="' + esc(safeUrl(x.source_url)) + '">tag ' + esc(x.tag) + '</a></td>' : '<td>' + size(x.size) + '</td><td title="sha256 ' + esc(x.sha256) + '">' + esc(x.sha256.slice(0, 10)) + '</td>';
     return '<tr class="' + (x.yanked ? "y" : "") + '"><td>v' + esc(x.version) + '</td><td>' + esc(x.date) + '</td><td>' + esc(x.channel) + (x.yanked ? ", yanked" : "") + '</td>' + cols + '</tr>';
   }).join("") + '</table></details>' : "";
-  var shot = p.screenshot && safeUrl(p.screenshot) !== "#" ? '<a class="shot" href="' + esc(p.screenshot) + '"><img src="' + esc(p.screenshot) + '" alt="' + esc(p.name) + ' screenshot" loading="lazy"></a>' : "";
-  var head = '<article class="card' + (by ? " by" : "") + '">' + shot + '<header><div><h2>' + esc(p.name) + '</h2><div class="by">by ' + esc(p.author) + '</div></div>' +
+  /* a dead image link removes its frame instead of leaving an empty box */
+  var img = '<img src="' + esc(p.screenshot) + '" alt="' + esc(p.name) + ' screenshot" loading="' + (big ? "eager" : "lazy") + '" onerror="this.parentNode.remove()">';
+  var shot = !(p.screenshot && safeUrl(p.screenshot) !== "#") ? "" : big ? '<div class="shot">' + img + '</div>'
+    : '<a class="shot" href="p/' + encodeURIComponent(p.id) + '.html" data-open="' + esc(p.id) + '" title="Open ' + esc(p.name) + '">' + img + '</a>';
+  var head = '<article class="card' + (by ? " by" : "") + (big ? " big" : "") + '" data-tier="' + tierOf(p) + '">' + shot + '<header><div><h2' + (big ? ' id="modal-title">' + esc(p.name)
+    : '><a class="open" href="p/' + encodeURIComponent(p.id) + '.html" data-open="' + esc(p.id) + '">' + esc(p.name) + '</a>') + '</h2><div class="by">by ' + esc(p.author) + '</div></div>' +
     (v ? '<span class="ver" title="Latest ' + (by ? "tag" : esc(v.channel) + " release") + '">v' + esc(v.version) + (v.channel === "beta" ? " beta" : "") + '</span>' : '<span class="ver">' + (by ? "no tag" : "no release") + '</span>') + '</header>' +
-    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>';
+    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>' + barLine(p);
   if (by) {
     var b = p.build, docs = safeUrl(b.docs_url.replace("{tag}", v ? v.tag : "HEAD"));
     var names = p.requires_user_files.map(function (f) { return esc(f.name); }).join("; ");
@@ -232,9 +298,10 @@ function card(p) {
       '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a></div>' + hist + '</article>';
   }
   return head +
-    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + (p.kind !== "addin" ? osRow(v) : "") +
+    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + (p.kind !== "addin" ? osRow(v) + genRow(v) : "") +
     (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
-    '<div class="actions">' + (v ? '<a class="btn-l primary" href="' + esc(v.url) + '">Download</a>' : '') +
+    '<div class="actions">' + (v && !v.gen2_only ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
+    (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="Gen2 MPC devices (aarch64, MPC OS 3.x)">Download (Gen2)</a>' : '') +
     '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a>' +
     (v && ID_RE.test(p.id) ? '<label class="pick"><input type="checkbox" data-pick="' + esc(p.id) + '"' + (state.sel.indexOf(p.id) >= 0 ? " checked" : "") + '> Add to install list</label>' : '') +
     '</div>' + hist + '</article>';
@@ -242,42 +309,58 @@ function card(p) {
 function render() {
   var out = P.filter(match), so = SORTS[state.sort];
   out.sort(function (a, b) { var r = so.cmp(a, b); return (so.desc ? -r : r) * (state.rev ? -1 : 1); });
-  $("grid").innerHTML = out.map(card).join("");
+  $("grid").innerHTML = out.map(function (p) { return card(p); }).join("");
   $("empty").hidden = out.length > 0;
-  $("n-plugins").textContent = P.length;
-  $("count").textContent = out.length + " of " + P.length + " plugin" + (P.length === 1 ? "" : "s");
+  var hid = !state.tier ? P.filter(function (p) { return tierOf(p) === "experimental" && (PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab)); }).length : 0;
+  $("exp").hidden = !hid; $("exp-n").textContent = hid;
+  PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return inTabKind(p, k); }).length; });
+  var inTab = P.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); }).length;
+  $("count").textContent = out.length + " of " + inTab + " " + (state.tab === "midi" ? "MIDI plugins" : state.tab === "all" ? "plugins" : (KINDS[state.tab] || "plugins").toLowerCase());
   var down = so.desc !== state.rev;
   $("dir").textContent = down ? "Z-A / high-low" : "A-Z / low-high";
   $("dir").title = "Sorted " + (down ? "descending" : "ascending");
   save();
 }
-function save() {
-  var d = { tab: state.tab === "plugins" ? "" : state.tab, q: state.q, kind: state.kind, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, sort: state.sort === "updated" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(",") }, q = [];
+function url() {
+  var d = { tab: state.tab === "all" ? "" : state.tab, q: state.q, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, gen: state.gen, tier: state.tier, sort: state.sort === "recommended" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(","), p: state.open || "" }, q = [];
   Object.keys(d).forEach(function (k) { if (d[k]) q.push(k + "=" + encodeURIComponent(d[k])); });
-  try { history.replaceState(null, "", q.length ? "#" + q.join("&") : location.pathname + location.search); } catch (e) {}
+  return q.length ? "#" + q.join("&") : location.pathname + location.search;
+}
+function save() {
+  try { history.replaceState(null, "", url()); } catch (e) {}
 }
 function load() {
+  state.open = "";
   location.hash.replace(/^#/, "").split("&").forEach(function (kv) {
     var i = kv.indexOf("="); if (i < 0) return;
     var k = kv.slice(0, i), v = decodeURIComponent(kv.slice(i + 1));
     if (k === "rev" || k === "beta") state[k] = v === "1";
+    else if (k === "p") state.open = ID_RE.test(v) && P.some(function (p) { return p.id === v; }) ? v : "";
     else if (k === "sel") state.sel = v.split(",").filter(function (id) { return ID_RE.test(id) && P.some(function (p) { return p.id === id && !isBY(p); }); });
     else if (k in state) state[k] = v;
   });
-  if (!SORTS[state.sort]) state.sort = "updated";
-  if (["plugins", "patches", "apps"].indexOf(state.tab) < 0) state.tab = "plugins";
+  if (!SORTS[state.sort]) state.sort = "recommended";
+  if (state.tier && TIER_FILTERS.indexOf(state.tier) < 0) state.tier = "";
+  if (state.tab === "plugins") state.tab = "instrument";   // links from before the split
+  if (TABS.indexOf(state.tab) < 0) state.tab = "all";
+  if (state.open && !/(^#|&)tab=/.test(location.hash)) {   /* a shared #p= link shows its plugin's own tab behind the popup */
+    var o = P.filter(function (p) { return p.id === state.open; })[0];
+    state.tab = PLUGIN_TABS.filter(function (k) { return inTabKind(o, k); })[0] || state.tab;
+  }
 }
-/* Tabs: Plugins keeps all the filters above; Device patches and Companion apps are their own panels. The tab is part of the URL hash. */
-var TABS = ["plugins", "patches", "apps"];
+/* Tabs: Instruments, Effects and Addins share the filter bar and grid (the tab is the kind); Device patches and Companion apps are their own panels. The tab is part of the URL hash. */
+var TABS = ["all", "instrument", "midi", "effect", "addin", "patches", "apps"];
 function showTab(t, focus) {
   state.tab = t;
   TABS.forEach(function (n) {
     var on = n === t;
     $("tab-" + n).setAttribute("aria-selected", on ? "true" : "false"); $("tab-" + n).tabIndex = on ? 0 : -1;
-    $("panel-" + n).hidden = !on;
+    if (n === "patches" || n === "apps") $("panel-" + n).hidden = !on;
     if (on && focus) $("tab-" + n).focus();
   });
-  save();
+  $("panel-plugins").hidden = PLUGIN_TABS.indexOf(t) < 0;
+  $("panel-plugins").setAttribute("aria-labelledby", "tab-" + (PLUGIN_TABS.indexOf(t) < 0 ? "all" : t));
+  render();
 }
 document.querySelector(".tabs").addEventListener("click", function (e) { var b = e.target.closest("[data-tab]"); if (b) showTab(b.getAttribute("data-tab")); });
 document.querySelector(".tabs").addEventListener("keydown", function (e) {
@@ -286,7 +369,48 @@ document.querySelector(".tabs").addEventListener("keydown", function (e) {
   if (d === undefined) return;
   e.preventDefault(); showTab(TABS[(i + d + TABS.length) % TABS.length], true);
 });
-addEventListener("hashchange", function () { load(); sync(); render(); showTab(state.tab); });
+addEventListener("hashchange", function () { load(); sync(); render(); showTab(state.tab); modal(); });
+/* Plugin popup: the screenshot opens the card over a dark backdrop. Its link is the page's hash plus p=<catalog id> (ids never
+   change), so it can be shared; Back, Escape, the backdrop and the close button all close it. */
+var pushed = false, returnTo = null;
+function modal() {
+  var p = state.open && P.filter(function (x) { return x.id === state.open; })[0];
+  $("modal-body").innerHTML = p ? card(p, true) : "";
+  $("modal").hidden = !p;
+  document.body.classList.toggle("modal-open", !!p);
+  if (p) $("modal-x").focus();
+  else if (returnTo) {   /* looked up by id because closing via Back redraws the grid */
+    var a = $("grid").querySelector(returnTo); if (a) a.focus({ preventScroll: true });
+    returnTo = null;
+  }
+}
+function openPlugin(id, from) {
+  state.open = id; returnTo = from ? '[data-open="' + id + '"].' + from.className.split(" ")[0] : null;
+  try { history.pushState(null, "", url()); pushed = true; } catch (e) {}
+  modal();
+}
+function closePlugin() {
+  if (!state.open) return;
+  if (pushed) { pushed = false; history.back(); return; }
+  state.open = ""; save(); modal();
+}
+addEventListener("popstate", function () { pushed = false; });   /* the hashchange that follows reloads the state */
+$("grid").addEventListener("click", function (e) {
+  var a = e.target.closest("[data-open]");
+  if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  e.preventDefault(); openPlugin(a.getAttribute("data-open"), a);
+});
+/* The link to share is p/<id>.html (catalog_site.py share_page): link previews read its Open Graph tags, which a #p= hash can't carry. */
+$("modal-share").addEventListener("click", function () {
+  var b = this, link = new URL("p/" + encodeURIComponent(state.open) + ".html", location.href).href;
+  var name = (P.filter(function (x) { return x.id === state.open; })[0] || {}).name;
+  var done = function () { b.textContent = "Link copied"; setTimeout(function () { b.textContent = "Copy link"; }, 2000); };
+  if (navigator.share && matchMedia("(pointer: coarse)").matches) navigator.share({ title: name, url: link }).catch(function () {});
+  else if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, function () { prompt("Copy this link", link); });
+  else prompt("Copy this link", link);
+});
+$("modal").addEventListener("click", function (e) { if (e.target === $("modal") || e.target.closest("#modal-x")) closePlugin(); });
+addEventListener("keydown", function (e) { if (e.key === "Escape" && state.open) closePlugin(); });
 function filterApps() {
   var q = $("a-q").value.trim().toLowerCase(), pl = $("a-plat").value, n = 0;
   Array.prototype.forEach.call($("apps").children, function (c) {
@@ -296,13 +420,14 @@ function filterApps() {
   $("a-empty").hidden = n > 0;
 }
 $("a-q").addEventListener("input", filterApps); $("a-plat").addEventListener("change", filterApps);
-var map = { "q": "q", "f-kind": "kind", "f-style": "style", "f-dev": "dev", "f-lic": "lic", "f-dist": "dist", "f-os": "os", "sort": "sort" };
+var map = { "q": "q", "f-style": "style", "f-dev": "dev", "f-lic": "lic", "f-dist": "dist", "f-os": "os", "f-gen": "gen", "f-tier": "tier", "sort": "sort" };
 Object.keys(map).forEach(function (id) { $(id).addEventListener(id === "q" ? "input" : "change", function () { state[map[id]] = $(id).value; if (id === "sort") state.rev = false; render(); }); });
+$("show-exp").addEventListener("click", function () { state.tier = "all"; sync(); render(); });
 $("beta").addEventListener("change", function () { state.beta = $("beta").checked; render(); });
 $("dir").addEventListener("click", function () { state.rev = !state.rev; render(); });
-$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", kind: "", style: "", dev: "", lic: "", dist: "", os: "", sort: "updated", rev: false, beta: false, sel: state.sel }; sync(); render(); });
+$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: state.sel, open: "" }; sync(); render(); });
 function sync() { Object.keys(map).forEach(function (id) { $(id).value = state[map[id]]; }); $("beta").checked = state.beta; }
-load(); sync(); render(); showTab(state.tab); filterApps();
+load(); sync(); render(); showTab(state.tab); filterApps(); modal();
 
 /* Install command: ssh into the device, download mpc-store.sh from this site, run it. The plugin ids are validated above and the
    address below, and everything is written with textContent, so nothing typed here can inject markup or shell syntax. */
@@ -327,12 +452,15 @@ function panel() {
   $("script-link").href = SITE + "mpc-store.sh";
   $("cmd-more").textContent = ["list", "update", "prune --keep 10", "sync"].map(function (a) { return withScript(a, a !== "list"); }).join("\n\n");
 }
-$("grid").addEventListener("change", function (e) {
+function pick(e) {
   var id = e.target.getAttribute && e.target.getAttribute("data-pick"); if (!id) return;
   var i = state.sel.indexOf(id);
   if (e.target.checked && i < 0) state.sel.push(id); else if (!e.target.checked && i >= 0) state.sel.splice(i, 1);
+  if (e.currentTarget.id === "modal-body") render();   /* keep the grid's checkbox in step */
   panel(); save();
-});
+}
+$("grid").addEventListener("change", pick);
+$("modal-body").addEventListener("change", pick);
 $("ip").addEventListener("input", panel);
 $("copy-main").addEventListener("click", function () {
   var text = $("cmd-main").textContent, done = function () { $("copied").textContent = "Copied"; setTimeout(function () { $("copied").textContent = ""; }, 2000); };

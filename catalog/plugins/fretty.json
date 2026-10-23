@@ -1,0 +1,11 @@
+{
+  "id": "fretty",
+  "name": "Fretty",
+  "author": "3dthc",
+  "repo": "3dthc/fretty-mpc",
+  "kind": "instrument",
+  "license": "MIT",
+  "summary": "A guitar instrument for Akai MPC OS standalone devices (native VST2), featuring refined selector typography, 110 presets, and a synth layer.",
+  "screenshot": "https://raw.githubusercontent.com/3dthc/fretty-mpc/main/docs/images/play_sunburst.png",
+  "asset_pattern": "*-mpc-armv7.zip"
+}

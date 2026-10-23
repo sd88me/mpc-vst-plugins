@@ -11,7 +11,11 @@
   bridge work on the engine side. The DX7 port hit this and switched to an in-process build of the same engine.
 - A port can live in its own repo next to a checkout of this one (`MPC_VST`), as mpc-vst-maze/-dx7/-acid do.
 - **MIDI generator** (sequencer/arp): MPC ignores VST MIDI out, so send through an ALSA seq port (`poc/midiport.c`).
-  Place steps from the host song position, not by counting MIDI clock pulses you synthesized: `docs/MIDI_TIMING.md`.
+  Place steps from the host song position, not by counting MIDI clock pulses you synthesized, and send each block's steps
+  at its start (look ahead one block, split at MPC's loop end): `docs/MIDI_TIMING.md`.
+  A generator on the shared wrapper (no hand-written one) sets `"defines": {"HAS_SONG_POS": 1}` and provides `song_pos()` in
+  `mpc_engine_t`: called once per block with `ppqPos`, tempo, play state and block length (`poc/songpos` is the test engine).
+  Offline only until a device port uses it.
 - **App** (network, files, child processes): allowed, see NOTES "Beyond synths". Keep the audio thread
   non-blocking, use `posix_spawn` with LD_PRELOAD stripped (never `fork()`), and use libcurl for HTTPS.
 
@@ -56,6 +60,11 @@ for the pattern). This applies to every future port, not just ones that hit the 
       `"DISPLAY_REV_NO_UPDATE": 1`: it reports only the moved values, no full `UpdateDisplay` (which closes the popup 10 times a second);
       text readouts then stop refreshing, so draw live numbers as `picture` widgets keyed on the same value (ottmpc: `vst/art/make_art.py`).
       Readouts longer than 24 characters need `"PARAM_TEXT_MAX": <n>` (NOTES.md; `poc/uiprobe` is the example).
+- [ ] Optional: an engine that sets its own parameters from something the host doesn't see (MIDI on an ALSA port of its
+      own, say) can instead define `mpc_engine_changed()` (`wrapper/engine.h`) and return each key it changed: the wrapper
+      tells the host as it does for a MIDI CC (at most every 1024 frames per control; an option list also gets an
+      UpdateDisplay), so the screen follows, and nothing is polled. Nothing to set in vst.json
+      (`poc/selfset` is the test engine).
 - [ ] Never hardcode `/sdcard/...` in an engine. Set `"defines": {"MODULE_SUBDIR": "\"engine\""}` in vst.json and
       the wrapper passes `<dir of the .so>/engine` to `create()`, found at runtime with `dladdr` (`wrapper/plugin_dir.h`,
       also usable directly via `mpc_plugin_dir()`), so the plugin works from `/sdcard/Synths`, `/media/*/Synths` or anywhere
@@ -67,13 +76,40 @@ for the pattern). This applies to every future port, not just ones that hit the 
       chosen file by NAME in the plugin state, not by position (positions shift when files are added), and re-find it by name
       if it moved; a missing file shows as not found and the audio keeps running. Users keep collections on cards, so an engine
       may also look for its data folder under `/media` (the plugin's own folder first), not only next to the `.so`.
+- [ ] No I/O in `set_param()`/`get_param()`: one lock (`w->lock`, `wrapper/vst2_wrap.c`) covers set, get, MIDI and render,
+      so a slow call on the host's thread delays audio. A port author's 50-130 ms SQLite query inside `set_param` clicked on every
+      press, and no de-click fade can hide a late audio callback. Post the work to a worker thread (`nice(10)` is fine), publish the
+      result under a short mutex of its own, and pick it up in `render()` with `pthread_mutex_trylock`.
+- [ ] Every report to the host (`audioMasterAutomate`, `UpdateDisplay`, momentary buttons springing back, readout polls) is
+      sent from `processReplacing()`. When MPC stops calling it, nothing goes out, so don't treat render as a heartbeat. A
+      status light that must move while idle needs its own timer (MM-303 runs a 50 ms ticker per instance).
+- [ ] Polled readouts cost one `get_param()` each on the audio thread (every 10 ms for `<key>_on`, every 100 ms for text).
+      The wrapper spreads them over the blocks (each block reads its share of the list, never all of it), and `gen_vst.py` leaves
+      out a text param the layout never mentions (its key, `get=`, a `when=`, a list or a `qlinks` line); `"poll": true` keeps one the
+      skin does not show but you want refreshed. A layout with a pattern in a widget value (`%`, `*`, `{`), no layout, `custom_skin` and
+      `skin_post` polls everything. Still set `"poll": false` on readouts that only change on a tap, and keep anything costly out of
+      a polled key (docs/BENCH.md).
 - [ ] State saved via chunks (`effGetChunk`/`effSetChunk`).
 - [ ] Offline x86 test: `tools/test_port.sh <port>/vst.json` prints PASSED (instances, parameter round-trip,
       options, popups, MIDI → audio, chunk restore, under ASan).
+- [ ] Gen2 (optional, proven on two ports as of 2026-10-11 — Crate Digger, Profit-08, both loaded on a real MPC Live III): `"targets":
+      ["armv7", "aarch64"]` in vst.json, `tools/build_port.sh <port>/vst.json aarch64` builds `build/aarch64/<so>` (`arm64v8/gcc:12-bookworm`),
+      `tools/test_port.sh <port>/vst.json aarch64` must print PASSED (UBSan, arm64 container), and the release carries both zips
+      (docs/RELEASING.md, docs/GEN2.md). Still say "offline only" (or name the device once it's run there) until it has loaded on a Gen2
+      device of your own. A documented root route exists for Gen2 on MPC OS 3.9.1 (the autorun USB stick, docs/USB_STICK.md — on demand,
+      not persistent across a reboot); MPC OS 3.10.0 removes it (docs/GEN2.md, docs/NOTES.md 2026-10-23), so a device already updated to
+      3.10+ has none from this project.
 
 ## 2. Parameters
 - [ ] Stable order (the VST index is what skins and projects bind to). Append only; never reorder a shipped plugin.
+      `gen_vst.py` writes `params.lock` next to `vst.json` on the first build: commit it. A build fails when an existing key
+      changes index; `GEN_VST_RELOCK=1` accepts the break (before a first release only). Rebuild the skin after any change.
 - [ ] Options: an index; nudges step one option (the wrapper does this). Triggers: `"momentary": true`, which springs back.
+- [ ] A control can't be disabled from the host side: the wrapper has no `effGetParameterProperties`, and JUCE's VST2
+      host has no "disabled" flag anyway. Hide it in the skin (`when=`). A control with nothing to do (a pager with one
+      page, "next" at the end of a list) must do nothing in the engine: clamp and ignore it there. `setParameter` still
+      arrives for a param that isn't automatable. A button with an empty on/off image draws MPC's generic "Button"
+      caption: give it real artwork.
 - [ ] Display strings are the only dynamic text channel into the skin (see NOTES on refresh behaviour).
       A param whose `get_param()` returns real text (a name, a status message), not a number, needs
       `"display": "string"` in its parameter entry -- otherwise the wrapper's default numeric
@@ -81,6 +117,9 @@ for the pattern). This applies to every future port, not just ones that hit the 
 
 ## 3. Skin
 - [ ] Design in a layout `.conf` (Force Shadow widget syntax plus `qlinks`/`rows=`), or port an existing shadow page.
+- [ ] **No other company's name or logo in the skin** (manufacturer wordmarks, logo-bearing panel artwork, trademarked
+      product art), none in the plugin name or the catalog `screenshot`. The summary and tags may say what you model
+      ("X-style") but not imply the maker's endorsement. A hardware-clone skin needs its own artwork and generic labels. See `catalog/README.md` "Skins and branding".
 - [ ] **If the app has its own `addon/shadow_page.conf`, copy its `style=`/`theme_*` lines verbatim into
       the top of the port's `layout.conf` before anything else.** Without them the skin renders in
       `shadow_art`'s generic default palette (cream knobs, dark plate, orange accent) instead of the
@@ -98,6 +137,11 @@ for the pattern). This applies to every future port, not just ones that hit the 
       draws it wrongly (misaligned half-frames); reduce the frame count or size. (Reported by another port author; not yet
       reproduced on our device. `catalog_check.py` warns about such images.)
 - [ ] Q-Links: 1–8 = knob bank 1, 9–16 = bank 2; nested pages via several `qlinks` lines.
+- [ ] Labels or unpolled text that follow another param (`dynamic_name` / `dynamic_display` reading a selector, a
+      `"poll": false` readout bound with `get=`), or a skin `when=` panel that follows a param the engine derives from another
+      (TR-MPC's `sNN_fam`, set by the voice `sNN_src`): put `"refresh_display": true` on the param that is written. A plain host write
+      no longer asks MPC for an UpdateDisplay (NOTES.md 2026-10-21). Test Q-Links on track edit → automation, not only
+      on the plugin screen: that screen takes a different host path.
 - [ ] Option lists and `"display": "int"` params step one option or whole number per Q-Link event and per data wheel
       click (`settle()`). If a short one races by under a Q-Link, `"qlink_ticks": N` on that param (opt-in, off by default)
       counts N events per step: 6 suited a 9-option list on a Key 37. It costs N wheel clicks per step too, and on a Force

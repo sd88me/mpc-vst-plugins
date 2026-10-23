@@ -1,0 +1,4 @@
+{ "id": "steprunner-8", "name": "StepRunner-8", "author": "djokenzi", "repo": "djokenzi/steprunner-8",
+  "kind": "instrument", "role": "midi", "style": "sequencer", "tags": ["midi", "step-sequencer", "drums", "step-locks"], "license": "MIT",
+  "screenshot": "https://raw.githubusercontent.com/djokenzi/steprunner-8/76285a3aa34dcdc85bf8e72e3aa18baa7f6428cd/docs/screenshots/steprunner-8.png",
+  "summary": "8-track, 64-step sequencer with step conditions, step and CC locks, patterns, states and performance effects, driving a drum program over MIDI." }

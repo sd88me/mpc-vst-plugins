@@ -32,7 +32,7 @@ def check(doc):
         seen.add(a.get("id"))
         if not set(a.get("platforms") or []) <= PLATFORMS:
             errors.append("%s: platforms must be from %s" % (where, sorted(PLATFORMS)))
-        for k in ("release",):
+        for k in ("release", "screenshot"):
             if a.get(k) and not str(a[k]).startswith("https://"):
                 errors.append("%s: %s must be an https URL" % (where, k))
         for j, dl in enumerate(a.get("downloads") or []):

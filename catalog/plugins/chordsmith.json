@@ -4,6 +4,7 @@
   "author": "jacob-sabella",
   "repo": "jacob-sabella/mpc-vst-chordsmith",
   "kind": "instrument",
+  "role": "midi",
   "style": "utility",
   "tags": [
     "chords",

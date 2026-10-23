@@ -3,6 +3,8 @@ build/
 dist/
 __pycache__/
 .scratch/
+# screenshots from local test runs (tools/catalog_site/browser_test.py and the like); keep them out of the repo root
+/*.png
 
 # local reference copy of stock skin content (never commit Akai assets)
 Assets/

@@ -1,0 +1,13 @@
+{
+  "id": "sfizz",
+  "name": "sfizz",
+  "author": "gmorb (MPC port); sfizz by sfztools",
+  "repo": "gmorb/mpc-vst-sfizz",
+  "kind": "instrument",
+  "style": "sampler",
+  "tags": ["sfz", "sf2", "soundfont", "sampler", "piano", "keyswitch", "streaming", "scala"],
+  "license": "BSD-2-Clause",
+  "asset_pattern": "sfizz-*-mpc-armv7.zip",
+  "screenshot": "https://raw.githubusercontent.com/gmorb/mpc-vst-sfizz/6d9e627281779f087898521cd27caabf9b7a75f2/docs/screen.png",
+  "summary": "The sfizz 1.2.3 sampler: plays SFZ libraries and SoundFont 2 (.sf2) files from SD cards and USB drives, streamed from disk, with key switches, the instrument's own CC controls, Scala tuning, mono/legato with glide and up to Sinc 72 interpolation, on a one-page screen modelled on sfizz's editor. Gen1 and Gen2 builds."
+}

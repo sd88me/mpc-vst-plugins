@@ -1,13 +1,17 @@
-  {
-    "id": "open303",
-    "name": "303",
-    "author": "saustin2010",
-    "repo": "saustin2010/mpc-vst-303",
-    "kind": "instrument",
-    "style": "synth",
-    "tags": ["tb-303", "acid", "bass", "monophonic"],
-    "license": "GPL-3.0-only",
-    "summary": "TB-303 bass line: Open303 with the Devilfish mods, a drive stage and 13 presets.",
-    "screenshot":
-      "https://raw.githubusercontent.com/saustin2010/mpc-vst-303/v1.0.0/screenshots/page_0.png"
-  }
+{
+  "id": "open303",
+  "name": "Open303",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-open303",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "tb-303",
+    "acid",
+    "bass",
+    "monophonic"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "TB-303 bass line: Open303 with the Devilfish mods, a drive stage and 13 presets.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-open303/v1.2.0/screenshots/page_0.png"
+}

@@ -1,0 +1,17 @@
+{
+  "id": "setbfree-organ",
+  "name": "setBfree Organ",
+  "author": "SamplingHigh",
+  "repo": "SamplingHigh/mpc-vst-setbfree",
+  "kind": "instrument",
+  "license": "GPL-2.0-or-later",
+  "summary": "Tonewheel organ with drawbars, percussion, scanner, editable Leslie and keyboard splits.",
+  "style": "organ",
+  "tags": [
+    "tonewheel",
+    "drawbar",
+    "rotary"
+  ],
+  "screenshot": "https://raw.githubusercontent.com/SamplingHigh/mpc-vst-setbfree/v0.2.1/docs/images/setbfree-organ-force.png",
+  "asset_pattern": "*-mpc-armv7.zip"
+}

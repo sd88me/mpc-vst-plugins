@@ -1,0 +1,20 @@
+{
+  "id": "incipience",
+  "name": "Incipience",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-incipience",
+  "kind": "instrument",
+  "style": "drum-machine",
+  "tags": [
+    "drums",
+    "alphabase",
+    "fm",
+    "samples",
+    "multi-out",
+    "mod-matrix"
+  ],
+  "license": "MIT",
+  "summary": "Eleven-instrument drum synth laid out like the Jomox AlphaBase Mk II (kick, MBrane, hats, clap, rim, cymbals, two sample players, 4-op FM, reverb, delay), with RANDOMISE per instrument and a mod matrix; each instrument chromatic on its own MIDI channel and on its own track with Incipience OUT; plays the AlphaBase's free samples and your own WAVs.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-incipience/v1.0.0/screenshots/page_0.png",
+  "asset_pattern": "DRUM-Incipience-[0-9]*-mpc-armv7.zip"
+}

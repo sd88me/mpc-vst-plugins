@@ -1,0 +1,4 @@
+{ "id": "model-72", "name": "Model-72", "author": "sd88me", "repo": "sd88me/mpc-vst-model72",
+  "kind": "instrument", "style": "synth", "tags": ["analog", "mono", "bass", "circuit-model", "stereo", "presets"], "license": "GPL-3.0-or-later",
+  "summary": "A port of Idle Foundry's CA-72, a circuit-modelled 1970s Minimoog Model-D: three oscillators, the ladder filter and contours, mono, poly or unison with stereo and 19 presets. LO is the fitted light model; HI runs the circuit's own filter in real time.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-model72/main/docs/img/mixer_filter.png" }

@@ -2,7 +2,7 @@
 """Validate a release zip made by tools/release.py (or, for an addin, tools/release_addin.py) against the catalog spec
 (docs/CATALOG_SPEC.md). Zips of the old layout (payload/, no "layout" field) are still accepted so the catalog can list earlier releases.
 
-  tools/catalog_check.py dist/Name-1.2.0-mpc-armv7.zip [--catalog] [--json] [--expect-id ID] [--expect-repo O/N]
+  tools/catalog_check.py dist/Name-1.2.0-mpc-armv7.zip [--catalog] [--json] [--expect-id ID] [--expect-repo O/N] [--require-portable]
 
 Errors make the zip unfit for the catalog (exit 1); warnings need a human look. --catalog additionally requires
 source_repo and license in the manifest. --json prints the version record the catalog builder stores.
@@ -21,6 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import skin_compat  # noqa: E402
 
+MAX_GLIBC_GEN2 = (2, 39)   # aarch64 (Gen2) runs MPC OS 3.x only, which has glibc 2.39, so there is no 2.x ceiling to respect
 MAX_GLIBC = (2, 36)   # the newest glibc a catalog plugin may need: MPC OS 3.x and the Force have 2.39, the catalog toolchain (arm32v7/gcc:12) is 2.36.
 # Above skin_compat.MAX_GLIBC_2X (2.32, MPC OS 2.x) it is listed as MPC OS 3.x only; it is not rejected.
 SEMVER = re.compile(r"\d+\.\d+\.\d+")
@@ -28,6 +29,18 @@ ID = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 ADDIN_KEYS = ("ADDIN_ID", "ADDIN_NAME", "ADDIN_SO", "ADDIN_CONF", "ADDIN_FILES", "ADDIN_DONE", "ADDIN_NETWORK", "ADDIN_VERSION")
 ADDIN_SCRIPTS = ("install.sh", "uninstall.sh", "addin-lib.sh")
 ADDIN_FILE = re.compile(r"[A-Za-z0-9_-][A-Za-z0-9._-]*")
+
+
+ARCHES = ("armv7", "aarch64")   # armv7 = Gen1 MPC and Force (32-bit); aarch64 = Gen2 MPC (RK3588, 64-bit; docs/GEN2.md)
+
+
+def arm64(d):
+    """Whether the bytes start an ELF file for a Gen2 device: 64-bit (EI_CLASS 2), little-endian, AArch64 (e_machine 183)."""
+    return d[:4] == b"\x7fELF" and d[4:6] == b"\x02\x01" and int.from_bytes(d[18:20], "little") == 183
+
+
+def arch_ok(d, arch):
+    return arm64(d) if arch == "aarch64" else arm32(d)
 
 
 def arm32(d):
@@ -84,6 +97,49 @@ def max_glibc(path):
     return max(found, key=lambda v: tuple(map(int, v.split(".")))) if found else None
 
 
+# Calls a synth or effect has no reason to make. Flagged for a person to look at, never rejected (docs/CATALOG.md, "Validation").
+RISKY_CALLS = {
+    "network": ("socket", "connect", "bind", "listen", "accept", "getaddrinfo", "gethostbyname", "send", "sendto", "recv", "recvfrom"),
+    "runs programs": ("system", "popen", "execl", "execlp", "execle", "execv", "execve", "execvp", "execvpe", "fork", "vfork",
+                      "posix_spawn", "posix_spawnp", "clone"),
+    "loads code at runtime": ("dlopen", "dlmopen"),
+    "changes the system": ("mount", "umount", "umount2", "reboot", "setuid", "setgid", "chroot", "ptrace", "init_module"),
+}
+
+
+def imported_symbols(d):
+    """The undefined (imported) names in an ELF file's dynamic symbol table: what it asks the system for. Empty if not ELF."""
+    if d[:4] != b"\x7fELF":
+        return set()
+    bits64, bo = d[4] == 2, ("little" if d[5] == 1 else "big")
+    n = lambda o, k: int.from_bytes(d[o:o + k], bo)
+    shoff, shentsize, shnum = (n(40, 8), n(58, 2), n(60, 2)) if bits64 else (n(32, 4), n(46, 2), n(48, 2))
+    secs = []
+    for k in range(shnum):
+        o = shoff + k * shentsize
+        secs.append((n(o + 4, 4), n(o + 24, 8), n(o + 32, 8), n(o + 40, 4)) if bits64 else
+                    (n(o + 4, 4), n(o + 16, 4), n(o + 20, 4), n(o + 24, 4)))
+    out = set()
+    for sh_type, off, size, link in secs:
+        if sh_type != 11 or link >= len(secs):   # SHT_DYNSYM, names in its linked string table
+            continue
+        stroff, ent = secs[link][1], (24 if bits64 else 16)
+        for o in range(off + ent, off + size, ent):   # entry 0 is the null symbol
+            if n(o + (6 if bits64 else 14), 2) != 0:   # defined here, not imported
+                continue
+            name_off = stroff + n(o, 4)
+            out.add(d[name_off:d.index(b"\0", name_off)].decode(errors="replace"))
+    return out
+
+
+def risky_calls(d):
+    """{category: [names]} for the RISKY_CALLS an ELF file imports. Empty when runtime code loading is the only one."""
+    imp = imported_symbols(d)
+    r = {c: sorted(imp.intersection(names)) for c, names in RISKY_CALLS.items() if imp.intersection(names)}
+    # dlopen alone is too common (toolchains and runtimes import it) to mean anything; it is kept next to other calls
+    return {} if set(r) == {"loads code at runtime"} else r
+
+
 def parse_addin_manifest(text):
     """addin.manifest -> {key: value}. install.sh sources it as root, so only plain assignments of the known keys are allowed:
     KEY=bare, KEY="text" or KEY='text' (no $, backquote or backslash), comments and blank lines. Raises ValueError."""
@@ -99,7 +155,7 @@ def parse_addin_manifest(text):
     return out
 
 
-def check(zpath, catalog=False, expect_id=None, expect_repo=None):
+def check(zpath, catalog=False, expect_id=None, expect_repo=None, require_portable=False):
     errors, warnings = [], []
     err, warn = errors.append, warnings.append
     with zipfile.ZipFile(zpath) as z:
@@ -132,6 +188,10 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
         return errors, warnings, None
     # Releases made before the portable layout (no "layout" field) keep validating so the catalog can list their history.
     legacy = m.get("layout") is None
+    if legacy:
+        # require_portable (--require-portable): a newly listed release must be the plugin folder; history keeps validating
+        (err if require_portable else warn)("old layout (payload/, installs the .so to /sdcard/vst, no \"layout\" field): "
+                                            "re-release with the current tools/release.py (docs/RELEASING.md)")
     addin = m.get("layout") == "addin"   # a library MPC preloads (tools/release_addin.py), not a plugin
     needs = (("addin.manifest",) + ADDIN_SCRIPTS if addin else ("install.sh", "uninstall.sh", "plugin_list.awk")) + ("INSTALL.md", "SHA256SUMS")
     for need in needs + (("plugin.xml",) if legacy else ()):
@@ -161,13 +221,14 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
         err("an addin's kind must be addin")
     elif not addin and m["kind"] not in ("instrument", "effect"):
         err("kind must be instrument or effect")
-    if m["arch"] != "armv7":
-        err("arch is %s, catalog is armv7 only" % m["arch"])
+    if m["arch"] not in ARCHES:
+        err("arch is %s, catalog takes %s" % (m["arch"], " or ".join(ARCHES)))
     if m.get("max_glibc"):
         need = tuple(int(x) for x in m["max_glibc"].split(".")[:2])
-        if need > MAX_GLIBC:
-            err("needs GLIBC %s, limit is %d.%d (MPC OS 3.x has 2.39)" % (m["max_glibc"], *MAX_GLIBC))
-        elif need > skin_compat.MAX_GLIBC_2X:
+        limit = MAX_GLIBC_GEN2 if m["arch"] == "aarch64" else MAX_GLIBC
+        if need > limit:
+            err("needs GLIBC %s, limit is %d.%d (MPC OS 3.x has 2.39)" % (m["max_glibc"], *limit))
+        elif need > skin_compat.MAX_GLIBC_2X and m["arch"] == "armv7":
             warn("needs GLIBC %s: listed as MPC OS 3.x only (MPC OS 2.x has about 2.32; build with arm32v7/gcc:11-bullseye to reach it)" % m["max_glibc"])
     else:
         warn("max_glibc not recorded")
@@ -248,8 +309,8 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
                 err("missing " + f)
         if files.get(m["so"], b"\x7fELF")[:4] != b"\x7fELF":
             err(m["so"] + " is not an ELF file")
-        elif m["so"] in files and not arm32(files[m["so"]]):
-            err(m["so"] + " is not a 32-bit ARM library")
+        elif m["so"] in files and not arch_ok(files[m["so"]], m["arch"]):
+            err(m["so"] + " is not a %s library (manifest arch %s)" % ("64-bit ARM" if m["arch"] == "aarch64" else "32-bit ARM", m["arch"]))
         if not m["so"].endswith(".so"):
             err("so must be a .so")
         for f in sorted(set(files) - set(needs) - set(own) - {"mpc-plugin.json"}):
@@ -278,8 +339,8 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
                     err("plugin folder is missing " + need)
             if files.get(base + m["so"], b"\x7fELF")[:4] != b"\x7fELF":
                 err(m["so"] + " is not an ELF file")
-            elif base + m["so"] in files and not arm32(files[base + m["so"]]):
-                err(m["so"] + " is not a 32-bit ARM library")
+            elif base + m["so"] in files and not arch_ok(files[base + m["so"]], m["arch"]):
+                err(m["so"] + " is not a %s library (manifest arch %s)" % ("64-bit ARM" if m["arch"] == "aarch64" else "32-bit ARM", m["arch"]))
             for e in m.get("extras", []):
                 if not any(f == base + e or f.startswith(base + e + "/") for f in files):
                     err("extra %s listed but not in the plugin folder" % e)
@@ -360,12 +421,21 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None):
     # does the installer understand -n (the caller stops and starts MPC)? An installer that does not restarts MPC by itself, so a batch
     # installer must run it separately (docs/RELEASING.md). Releases of the old layout have no -n.
     defer = (not legacy) and b"DEFER=" in files.get("install.sh", b"")
+    flags = {}
+    for name, data in sorted(files.items()):
+        r = risky_calls(data)
+        if r:
+            flags[name] = r
+            warn("%s calls %s: flagged for manual review (the author can explain why)" % (
+                name, "; ".join("%s (%s)" % (c, ", ".join(v)) for c, v in r.items())))
     record = {
         "version": m["version"], "size": os.path.getsize(zpath), "defer": defer,
         "sha256": hashlib.sha256(open(zpath, "rb").read()).hexdigest(),
         "param_compat": m["param_compat"], "max_glibc": m.get("max_glibc"), "cpu": m.get("cpu"),
         "manifest": m,
     }
+    if flags:
+        record["flags"] = flags
     if os_gens is not None:
         record["os_compat"] = os_gens
         if "2.x" not in os_gens:
@@ -380,9 +450,10 @@ def main():
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--expect-id")
     ap.add_argument("--expect-repo")
+    ap.add_argument("--require-portable", action="store_true", help="error, not a warning, for a zip of the old layout")
     a = ap.parse_args()
     try:
-        errors, warnings, record = check(a.zip, a.catalog, a.expect_id, a.expect_repo)
+        errors, warnings, record = check(a.zip, a.catalog, a.expect_id, a.expect_repo, a.require_portable)
     except zipfile.BadZipFile:
         errors, warnings, record = ["not a valid zip file"], [], None
     for w in warnings:

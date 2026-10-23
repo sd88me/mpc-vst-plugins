@@ -1,0 +1,5 @@
+{ "id": "meta4mpcxxl", "name": "Meta4MPCXXL", "author": "L'Cronx", "repo": "sunskiefer/Meta4MPCXXL",
+  "kind": "instrument", "style": "modular", "tags": ["modular", "vcv", "metamodule", "patch-player", "eurorack", "generative", "cv"],
+  "license": "GPL-3.0-or-later", "asset_pattern": "Meta4MPCXXL-[0-9]*-mpc-armv7.zip",
+  "screenshot": "https://raw.githubusercontent.com/sunskiefer/Meta4MPCXXL/v0.1.1/docs/img/meta4mpcxxl.png",
+  "summary": "Plays 4ms MetaModule-format patches (VCV Rack patches exported with the MetaModule hub) with 4ms's own open-source patch player and 215 built-in modules: every parameter on Q-Link pages, MIDI and the Force's clock into the patch, pads and keys to the hub's gate/CV inputs, patch outs 3-8 as MIDI for a CV track, and Wi-Fi patch upload from VCV Rack." }

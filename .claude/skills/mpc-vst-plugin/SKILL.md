@@ -27,6 +27,8 @@ Stop any separately attached audio engines first.
    params table from the port's parameter list (`tools/params.py`; VST index = order), the skin folder `<vendor> - VST - <name>/`
    (from vst.json's `layout`, else a studio auto-layout) and `pluginlist-entry.xml`. The compile uses
    `arm32v7/gcc:11-bullseye` (glibc 2.31; MPC OS 2.x has 2.32, so `catalog_check.py` lists anything above 2.32, up to 2.36, as MPC OS 3.x only and rejects above 2.36), `-fvisibility=hidden -shared -fPIC`, and links `wrapper/vst2_wrap.c` from this repo.
+   Gen2: vst.json `"targets": ["armv7", "aarch64"]` also builds `build/aarch64/<so>` (`arm64v8/gcc:12-bookworm`); `build_port.sh vst.json aarch64`
+   builds just that, `test_port.sh vst.json aarch64` runs the host test in an arm64 container; `release.py` once per `.so`; docs/GEN2.md.
 3. **Bench**: `tools/bench.sh build/x.so <ip>` must PASS before release (docs/BENCH.md).
 4. **Offline test first**: `tools/test_port.sh <port>/vst.json` builds `tools/host_test.c` with the port's sources and
    adapter on x86 under ASan/UBSan and must print PASSED: two instances, names, set/get, option select + nudge, stepping (wheel, Q-Link, sweep, reversal),
@@ -90,10 +92,21 @@ the plugin (`poc/midiport.c`: `snd_seq_open` → `snd_seq_create_simple_port` RE
 link `-lasound`; build needs `apt install libasound2-dev` in the arm32v7/gcc:11-bullseye container). MPC hot-detects the
 port with no restart; the user enables Track on it in Preferences → MIDI. Sync from `audioMasterGetTime` ppqPos/tempo.
 **Step timing (read `docs/MIDI_TIMING.md`):** derive every step from `ppqPos` (16th `k` at `k/4`, swing as a ppq delay on odd
-`k`, re-cover the straddling block on a loop wrap, resync on a jump, first boundary at/after the playhead is step 0). Do **not**
+`k`, resync on a jump, first boundary at/after the playhead is step 0). **Send each block's steps at its start, for
+`[ppqPos, ppqPos + blk)`** (a high-water mark of what was sent), not the block that just played: that is a block (~2.9 ms) late
+and users add track delay to compensate. MPC reports its loop (`kVstCyclePosValid`, `cycleStartPos/EndPos`) and the block
+before a wrap covers the loop end: split it there and continue from the loop start. `ppqPos` jitters up to 0.0009 beat. Do **not**
 synthesize 24-PPQN pulses and count them: the phase becomes relative and a lost pulse, mid-song start or loop wrap shifts it
-permanently. Never pace from the wall clock. Test with a block-misaligned loop and a mid-song start in `host_test`; keep file
-I/O out of `processReplacing`. Reference: `mpc-vst-acid` `feed_transport()`.
+permanently. Never pace from the wall clock. A tempo change moves `ppqPos` back a little: a backward step under 1 beat is
+not a loop wrap (hold the high-water mark). Make the **pattern position** a function of the song position too (hand the
+core the absolute 16th index; skip indices already fired), or fast tempo changes shift the pattern until Stop/Start.
+Test with a block-misaligned loop, a mid-song start and tempo lurches in `host_test`; keep file I/O out of
+`processReplacing`. Reference: `mpc-vst-acid` `feed_transport()`/`play_span()`; `transport_grid.h` (Euclidier 1.0.7). MPC's track Mute does not reach an ALSA-port
+generator: add a plugin Mute (drop note-ons, pass note-offs, keep running). A plugin that spawns an engine process
+needs a watchdog (exit/hang -> respawn with cached params + SPP), child stdio to `/dev/null`, and `steady_clock` timers
+(`mpc-vst-euclidier` 1.0.5). Details: `docs/MIDI_TIMING.md`.
+On the shared wrapper (not a hand-written one) `"defines": {"HAS_SONG_POS": 1}` hands the engine `ppqPos`, tempo and play state each block
+through `song_pos()` (`wrapper/engine.h`, test engine `poc/songpos`; offline only so far).
 Name ports plainly (e.g. client "<Plugin>", port "MIDI Out"): no "(Mockba)" suffix; the user wants MockbaMod
 references kept out of mpc-vst.
 
@@ -149,7 +162,7 @@ Parameter entries feeding `gen_vst.py` (`tools/params.py` format) can carry:
 - `vst.json`'s `"title_font"` (a `.ttf`/`.otf` path, e.g. a real downloaded font under an OFL-style licence,
   never a recreation of a manufacturer's proprietary font) overlays frame titles in that font via PIL after
   the PNGs are drawn; off by default, every other port keeps its current look.
-- Per control: `ns=`/`vs=` (name/value px, `ns=0` no name) and `bw=` (touch width) on knobs and sliders; `banks="A|B"`
+- Per control: `ns=`/`vs=` (name/value px, `ns=0` no name, `vs=0` no value text on a knob) and `bw=` (touch width) on knobs and sliders; `banks="A|B"`
   on any line keeps it to those `qlinks` sub-pages; toggles take `bw=`/`ns=0`; `knob lay=side bw= bh= vs=` is a step cell (docs/SKIN_STUDIO.md; offline only so far).
 - `scale_names=1` in `layout.conf` makes the knob and toggle names MPC draws follow `label_scale` (21 px × it,
   toggle box grown to fit); without it they stay the fixed 15-17 px / 120 px box every existing skin has.
@@ -158,7 +171,12 @@ Parameter entries feeding `gen_vst.py` (`tools/params.py` format) can carry:
   unless `talign=` says otherwise.
 - A `"display": "string"` param is polled every 10 ms for `<key>_on` (list tiles lit from MIDI) and every 100 ms
   for text changes (readouts refreshed without a tap); `"poll": false` on the param turns that off for one
-  whose text only changes on a tap or whose `get_param()` is costly.
+  whose text only changes on a tap or whose `get_param()` is costly. The wrapper spreads the polls over the blocks, and a text param
+  the layout never mentions is not polled (`"poll": true` forces it; `params.h: N text param(s) ... not polled` says how many).
+- A host write (a Q-Link, automation, a touch) sends no `audioMasterUpdateDisplay`: MPC rebuilds its parameter screen
+  on each one, which broke Q-Links on the automation screen (NOTES 2026-10-21). Polled readouts catch up within 100 ms.
+  A param that other unpolled text depends on (a machine selector behind `dynamic_name` labels, a `"poll": false`
+  readout bound with `get=`, or a `when=` panel that follows a param the engine derives from this one) takes `"refresh_display": true` to ask for one on its writes. `step_of` buttons always ask.
 - `vst.json`'s `"tile"` (a 270x110 PNG) becomes `Plugin Skins/browser_images/soundsmode.png` plus
   `Presets/0000-Default.xpl` in the skin folder (`tools/xpl.py`): the Sounds > INSTRUMENTS browser draws the
   artwork and a tap opens the plugin. MPC indexes `Presets/` at startup, so a new preset file needs a restart.
@@ -202,6 +220,12 @@ thread-safe, but a slow `set_param` holds audio. Links need `-lpthread`. host_te
 - Q-Links: one bank of 4 per tab if the target has 4 knobs (MPC Key 37 sub-pages don't cycle); nothing destructive
   on a Q-Link; `-` slots give each panel its own column; keep watched controls left of x ~1025 (Q-Link sidebar).
 - Ship `tested.json`, a `TESTING.md` (offline + numbered device table) and, for skin rework, a design-QA note.
+- **When a realistic or hardware-looking skin is requested**, follow SKIN_STUDIO "Realistic hardware skins". Draw each
+  tab at 2x and cut each control's frames from it. Light the knobs from a fixed direction: draw the round, lit body
+  once, and turn only the pointer and any non-round parts (a 303-style chamfer). Shade those parts by how they face
+  the light. Draw the plate as a bevelled slab with depth, a drop shadow and screws, with sections recessed as wells
+  and lettering engraved. Draw everything (no product photos, no maker's marks) and check min/mid/max frames side by
+  side.
 
 ## Skin studio (layout design)
 `tools/studio.py`: `auto` (params → first-pass layout.conf), `to-svg` / `from-svg` (Inkscape round trip; tabs are layers,
@@ -218,6 +242,13 @@ Always `preview` before deploying. Enum `options=` are optional in layouts (they
   thread-CPU timed, verdict PASS/WARN/FAIL against the 2902 µs block (docs/BENCH.md). Nothing installed; MPC keeps running.
 - `tools/release.py`: one shareable zip (the `portable/<skin>/` plugin folder + install.sh/uninstall.sh + generated INSTALL.md + SHA256SUMS); the
   installer stops/restarts MPC, so installing a release on the user's device needs their go-ahead (docs/RELEASING.md).
+- **Every release should include a Gen2 (aarch64) build when the port's engine allows it** (proven pilot, 2026-10-11, docs/GEN2.md):
+  add `"targets": ["armv7", "aarch64"]` to `vst.json`, `tools/build_port.sh vst.json all`, `tools/test_port.sh vst.json aarch64` must PASS,
+  run `release.py` once per arch (two zips, same tag), and wire `TARGETS="armv7 aarch64"` + `extra_aarch64` into the repo's `vst-release.yml`.
+  No catalog registry change is needed — `catalog_build.py` picks up the aarch64 sibling asset automatically. **The user has their own
+  Gen2 device (an MPC Live III) since 2026-10-22** and can test a build directly over SSH (the autorun-stick route, `docs/USB_STICK.md`,
+  works on MPC OS 3.9.1; not on 3.10.0+). Still don't claim or infer "tested" status without an actual run; add a `tested.json` entry
+  only after one (on the user's device or a tester's). Skip aarch64 only when the engine/toolchain genuinely can't build for it, and say why.
 - `tools/screenshot.sh <ssh target> out.png [--plugin]`: a screenshot of what the device shows now (read-only DRM grab; NOTES.md).
 - `tools/probe_device.sh` (read-only): arch, CPU, audio workers, plugin formats. VST3 is **not** compiled into MPC OS
   (Force, 2026-09-24): don't build VST3 ports.

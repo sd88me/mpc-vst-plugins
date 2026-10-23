@@ -24,17 +24,22 @@ vst.json (paths are relative to the vst.json's folder):
                                                  #   (both on by default; cc_lines() below)
       "custom_skin": true,                       # optional: params.h + plugin-list entry only; the port makes the skin itself
       "defines": {"HAS_LFO_BPM": 1},             # optional extra #defines in params.h
-                                                 #   (HAS_LFO_BPM: host tempo as "lfo_bpm"; HAS_TRANSPORT: play/stop as "transport")
+                                                 #   (HAS_LFO_BPM: host tempo as "lfo_bpm"; HAS_TRANSPORT: play/stop as "transport";
+                                                 #   HAS_SONG_POS: the engine's song_pos(ppq, bpm, playing, frames) every block, for a MIDI generator)
                                                  #   (HAS_DISPLAY_REV: the DSP changes values by itself; the wrapper polls its "display_rev" and
                                                  #   refreshes the host; PARAM_TEXT_MAX: readout length, default 24 -- see wrapper/vst2_wrap.c)
       "build": {"root": "..", "sources": ["src/engine.c"], "cflags": ["-Isrc"], "libs": ["-lm"]}
                                                  #   "cflags_arm": [..] -- extra flags for the armhf device build only (not the x86 host test), e.g. ["-mfpu=neon"]
+                                                 #   "cflags_aarch64": [..] -- the same for the Gen2 (aarch64) build
+      "targets": ["armv7", "aarch64"],           # optional: device builds tools/build_port.sh makes (default ["armv7"] = Gen1 MPC / Force;
+                                                 #   aarch64 = Gen2, docs/GEN2.md). `build_port.sh vst.json aarch64` builds just one.
     }
 The sources provide mpc_engine() (wrapper/engine.h). An engine from another ecosystem names its own
 parameter source instead of "params" and gets its adapter linked in (adapters/<name>/README.md).
 The VST parameter index of each key is its position in the list; skins bind to it as "Parameter N".
 A layout's popups add one hidden "<key>__open" param each, after the list.
-Keep uid and so fixed across releases, and never reorder the list (saved projects store values by index).
+Keep uid and so fixed across releases, and never reorder the list (saved projects store values by index): <port>/params.lock
+(written on the first build, commit it) fails the build when an existing key changes index (check_lock() below).
 """
 import json
 import os
@@ -81,7 +86,56 @@ def layout_warnings(cfg):
     return []
 
 
-def gen_params(cfg, params, out):
+def check_lock(here, plist):
+    """<port>/params.lock: the parameter keys in VST index order, written on the first build and extended as keys are appended.
+    Saved projects, automation and Q-Link maps store parameters by index, so an existing key that moves (a param inserted
+    mid-list, a reorder) fails the build; a key removed from the end is only a warning. GEN_VST_RELOCK=1 rewrites the file
+    (a deliberate break, before a first release). The layout's hidden popup params come after the list and are not locked."""
+    path = os.path.join(here, "params.lock")
+    keys = [p["key"] for p in plist]
+    if os.path.exists(path) and os.environ.get("GEN_VST_RELOCK") != "1":
+        locked = [k for k in open(path).read().split() if k]
+        for i, k in enumerate(locked):
+            if i >= len(keys):
+                print("warning: params.lock: %d locked key(s) from %r on are gone (removed from the end)" % (len(locked) - i, k),
+                      file=sys.stderr)
+                return
+            if keys[i] != k:
+                sys.exit("params.lock: parameter %d was %r and is now %r. Saved projects, automation and skins bind by index: "
+                         "append new params at the end, never insert or reorder (GEN_VST_RELOCK=1 to accept the break)" % (i, k, keys[i]))
+        if len(keys) == len(locked):
+            return
+    open(path, "w").write("".join(k + "\n" for k in keys))
+    print("params.lock: %d keys" % len(keys))
+
+
+def shown_keys(cfg, here, plist):
+    """The param keys the skin's layout mentions anywhere (a widget's key=, get=, when=, a list, a qlinks line), or None when that
+    can't be known (no layout: the auto-layout shows everything; custom_skin / skin_post: something else touches the skin; a widget
+    value with a pattern such as %d). A "display":"string" param outside it is never polled (gen_params), unless "poll": true."""
+    if not cfg.get("layout") or cfg.get("custom_skin") or cfg.get("skin_post"):
+        return None
+    import re
+    import shadow_skin
+    tabs, top = shadow_skin.parse_layout(os.path.join(here, cfg["layout"]))
+    texts = list(top)
+    for t in tabs:
+        for w in t["widgets"]:
+            for v in w.values():
+                texts.append(",".join(x if isinstance(x, str) else ",".join(str(y) for y in x) for x in v) if isinstance(v, list)
+                             else v if isinstance(v, str) else "")
+        for _, ks in t["qlinks"]:
+            texts.append(",".join(ks))
+    if any(c in x for x in texts for c in "%*{$"):
+        return None
+    words = set()
+    for x in texts:
+        words.update(re.findall(r"[A-Za-z0-9_]+", x))
+    # a list widget's key=bank_slot stands for bank_slot_1 .. bank_slot_N (its tiles), so a trailing _<number> counts as mentioned too
+    return {p["key"] for p in plist if p["key"] in words or re.sub(r"_\d+$", "", p["key"]) in words}
+
+
+def gen_params(cfg, params, out, shown=None):
     for w in layout_warnings(cfg):
         print("warning: " + w, file=sys.stderr)
     sn = cfg.get("short_names", {})
@@ -90,7 +144,7 @@ def gen_params(cfg, params, out):
              "typedef struct { const char *key, *name, *unit; float min, max, def; int nopts; "
              "const char *const *opts; int momentary; int string_display; int int_display; "
              "int step_target; float step_delta; int popup_of; int hold_ms; int dynamic_name; int dynamic_display; "
-             "int qlink_ticks; int no_poll; int nudge_pct; int nudge_gain; } param_t;"]
+             "int qlink_ticks; int no_poll; int nudge_pct; int nudge_gain; int refresh_display; } param_t;"]
     key_to_index = {p["key"]: i for i, p in enumerate(params)}
     rows = []
     for i, p in enumerate(params):
@@ -129,8 +183,10 @@ def gen_params(cfg, params, out):
         qticks = int(p.get("qlink_ticks", 0))
         # "poll": false -- a "display":"string" param the wrapper should not poll for "<key>_on" (every 10 ms) and
         # for text changes (every 100 ms; housekeeping in vst2_wrap.c): a readout that only changes on a tap, or
-        # one whose get_param() is costly.
-        no_poll = int(p.get("poll", True) is False)
+        # one whose get_param() is costly. Left out of the polling too, without saying so: one the layout never mentions
+        # (shown_keys); "poll": true polls it anyway (for example text the automation screen lists but the skin does not).
+        # A param the layout never mentions has nothing on screen to refresh, so it is not polled either ("poll": true keeps it).
+        no_poll = int(p.get("poll", True) is False or (is_str and "poll" not in p and shown is not None and p["key"] not in shown))
         # "nudge_pct" -- for a long "display": "int" list (a bank list of up to 998): any move up to this percent of the range
         # (a Q-Link event is 1/128 of it, a wheel click 1/100) is ONE step in its direction instead of crossing eight to ten
         # entries; a bigger move (automation, a drag) still sets the value outright. 0 = off. Combine with qlink_ticks to
@@ -140,23 +196,28 @@ def gen_params(cfg, params, out):
         # a Q-Link event 1/128) by this, so the jog wheel crosses 0-127 in fewer clicks. 0 or 1 = off; a drag or a jump (a move of 2%
         # of the range or more) is never scaled. 3 = about 40 clicks end to end.
         ngain = int(p.get("nudge_gain", 0))
+        # "refresh_display": true -- a host write of this param also asks MPC for an audioMasterUpdateDisplay, for text that
+        # depends on it and is not polled: a "poll": false readout bound with get=, another param's dynamic_name/_display.
+        # Off by default: MPC answers every UpdateDisplay by rebuilding its parameter screen, and doing that on each host
+        # write broke Q-Links on the automation screen (docs/NOTES.md, 2026-10-21). Polled readouts refresh on their own.
+        refresh = int(bool(p.get("refresh_display")))
         if opts:
             lines.append("static const char *const OPTS_%d[] = {%s};" % (i, ", ".join(c_str(o) for o in opts)))
             d = p.get("default", 0)
             if isinstance(d, str):
                 d = opts.index(d) if d in opts else 0
             norm = d / (len(opts) - 1) if len(opts) > 1 else 0
-            rows.append("    {%s, %s, \"\", 0, 0, %s, %d, OPTS_%d, %d, %d, %d, %d, %s, %d, %d, %d, %d, %d, %d, %d, %d}," % (
+            rows.append("    {%s, %s, \"\", 0, 0, %s, %d, OPTS_%d, %d, %d, %d, %d, %s, %d, %d, %d, %d, %d, %d, %d, %d, %d}," % (
                 c_str(p["key"]), name, fl(norm), len(opts), i, bool(p.get("momentary")), is_str, is_int,
-                step_target, fl(step_delta), popup_of, p.get("hold_ms", 0), dyn, dyn_disp, qticks, no_poll, nudge, ngain))
+                step_target, fl(step_delta), popup_of, p.get("hold_ms", 0), dyn, dyn_disp, qticks, no_poll, nudge, ngain, refresh))
         else:
             lo, hi = p.get("min", 0), p.get("max", 1)
             d = p.get("default", lo)
             norm = (d - lo) / (hi - lo) if hi > lo else 0
-            rows.append("    {%s, %s, %s, %s, %s, %s, 0, 0, %d, %d, %d, %d, %s, %d, %d, %d, %d, %d, %d, %d, %d}," % (
+            rows.append("    {%s, %s, %s, %s, %s, %s, 0, 0, %d, %d, %d, %d, %s, %d, %d, %d, %d, %d, %d, %d, %d, %d}," % (
                 c_str(p["key"]), name, c_str(p.get("unit", "")), fl(lo), fl(hi), fl(norm),
                 bool(p.get("momentary")), is_str, is_int, step_target, fl(step_delta), popup_of, p.get("hold_ms", 0), dyn, dyn_disp,
-                qticks, no_poll, nudge, ngain))
+                qticks, no_poll, nudge, ngain, refresh))
     lines += ["static const param_t PARAMS[] = {"] + rows + ["};", "#define NPARAMS %d" % len(params),
               "#define PLUG_NAME %s" % c_str(cfg["name"]), "#define PLUG_VENDOR %s" % c_str(cfg["vendor"]),
               "#define PLUG_UID 0x%08x /* '%s' */" % (int.from_bytes(cfg["uid"].encode(), "big"), cfg["uid"]),
@@ -279,6 +340,8 @@ def main():
         for k, v in (("ROOT", root), ("PORT", os.path.relpath(here, root)), ("SO", cfg["so"]),
                      ("SOURCES", " ".join(b.get("sources", []))), ("CFLAGS", " ".join(b.get("cflags", []))),
                      ("CFLAGS_ARM", " ".join(b.get("cflags_arm", []))),
+                     ("CFLAGS_A64", " ".join(b.get("cflags_aarch64", []))),
+                     ("TARGETS", " ".join(cfg.get("targets", ["armv7"]))),
                      ("LIBS", " ".join(b.get("libs", ["-lm"]))),
                      ("LAYOUT", "1" if cfg.get("layout") else ""),
                      ("TITLE_FONT", cfg.get("title_font", "")),
@@ -287,12 +350,15 @@ def main():
             print("%s=%s" % (k, shlex.quote(v)))
         return
     plist, sections = params.load(os.path.join(here, src))
+    check_lock(here, plist)
     import shadow_skin
     if cfg.get("layout"):
         plist = plist + shadow_skin.popup_params(os.path.join(here, cfg["layout"]), plist)
     os.makedirs(build, exist_ok=True)
-    gen_params(cfg, plist, os.path.join(build, "params.h"))
-    print("params.h: %d params" % len(plist))
+    shown = shown_keys(cfg, here, plist)
+    gen_params(cfg, plist, os.path.join(build, "params.h"), shown)
+    skipped = [p["key"] for p in plist if p.get("display") == "string" and "poll" not in p and shown is not None and p["key"] not in shown]
+    print("params.h: %d params%s" % (len(plist), "; %d text param(s) the layout never shows are not polled" % len(skipped) if skipped else ""))
     if sys.argv[2:] == ["--params-h"]:
         return
     open(os.path.join(build, "pluginlist-entry.xml"), "w").write(entry(cfg) + "\n")

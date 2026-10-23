@@ -13,5 +13,5 @@
   ],
   "license": "MIT",
   "summary": "MicroFreak-style voice on Plaits' 17 models, with a low-pass gate, filter, cycling envelope and a 6x6 mod matrix; 19 presets.",
-  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-mrhyde/v1.0.0/screenshots/page_0.png"
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-mrhyde/v1.1.0/screenshots/page_0.png"
 }

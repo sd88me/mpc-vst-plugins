@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"golang.org/x/crypto/ssh"
@@ -26,6 +27,9 @@ type fakeDevice struct {
 	shims  string
 	logMu  sync.Mutex
 	mpcLog string // systemctl calls, one per line
+	// dropOnCopy > 0 cuts the SSH connection when a copy (tar -xf) starts, that many times, like a laptop waking from sleep or a
+	// phone losing the network mid-install
+	dropOnCopy atomic.Int32
 }
 
 func newFakeDevice(t *testing.T) *fakeDevice { t.Helper(); return newFake(t, false) }
@@ -100,7 +104,7 @@ func (fd *fakeDevice) cfg() Config {
 	aliases, _ := filepath.Glob(filepath.Join(fd.dir, "Aliases", "*", "Synths"))
 	roots = append(append(roots, aliases...), cards...)
 	return Config{Port: port, User: "root", RemoteTmp: filepath.Join(fd.dir, "tmp"), SynthsDir: filepath.Join(fd.dir, "Synths"),
-		RootGlobs: strings.Join(roots, " "), MountsFile: "/proc/mounts", SettingsGlob: filepath.Join(fd.dir, "Settings", "*", "MPC.settings"),
+		RootGlobs: strings.Join(roots, " "), DriveGlob: filepath.Join(fd.dir, "Drives", "*"), MountsFile: "/proc/mounts", SettingsGlob: filepath.Join(fd.dir, "Settings", "*", "MPC.settings"),
 		AddinsDir: filepath.Join(fd.dir, "addins"), LibcPaths: filepath.Join(fd.dir, "libc.so.6")}
 }
 
@@ -137,6 +141,10 @@ func (fd *fakeDevice) serve(nc net.Conn, conf *ssh.ServerConfig) {
 				n := binary.BigEndian.Uint32(r.Payload)
 				cmd := string(r.Payload[4 : 4+n])
 				r.Reply(true, nil)
+				if strings.Contains(cmd, "tar -xf") && fd.dropOnCopy.Add(-1) >= 0 {
+					nc.Close()
+					return
+				}
 				c := exec.Command("sh", "-c", cmd)
 				// the addin installer edits systemd units under SYSTEMD_ROOT and logs its systemctl calls instead of making them
 				c.Env = append(os.Environ(), "PATH="+fd.shims+":"+os.Getenv("PATH"), "ADDIN_INSTALL_TEST=1",

@@ -66,7 +66,7 @@ a plugin folder (`portable/<skin>/`) that is missing `version.xml`, `Plugin Skin
 an extra; a `plugin-meta.xml` whose `file=` is not `%payload-path%/<skin>/<so>` or whose `uid`/`name` disagree with the manifest;
 an `os_compat` that is not `["2.x","3.x"]` or `["3.x"]`, or that claims 2.x when the check below does not confirm it;
 an unknown `layout`; with `--catalog`, no `source_repo` or `license`; with `--expect-id/--expect-repo`, a registry mismatch.
-Zips of the old layout (no `layout` field) are checked against their own rules (`payload/`, `plugin.xml`).
+Zips of the old layout (no `layout` field) are checked against their own rules (`payload/`, `plugin.xml`). `catalog_check.py` warns for each one ("old layout"); with `--require-portable` it is an error. The builder reports a problem (and `catalog_issues.py` opens an issue) when a plugin's **newest stable** release is of the old layout; older versions stay silent history. A PR that adds or changes a registry entry runs `catalog_build.py --require-portable <ids>`, so a new listing must already release the portable folder.
 
 **MPC OS compatibility (`tools/skin_compat.py`, docs/OS2_SKINS.md).** The checker works out `os_compat` itself, for every version, so releases
 made before the field existed are classified too. A version is `2.x` and `3.x` when the `.so` needs glibc 2.32 or less and every
@@ -85,7 +85,7 @@ Warnings (need a human look): `install.sh`/`uninstall.sh`/`plugin_list.awk` diff
   "style": "synth", "tags": ["poly"], "source_available": false,
   "screenshot": "optional https URL", "asset_pattern": "*-mpc-armv7.zip" }
 ```
-`style` (one slug) and `tags` (slugs) are optional and drive the site filters. `source_available: true` is required
+`style` (one slug) and `tags` (slugs) are optional and drive the site filters. `role` is optional, `"midi"` only, and only on an `instrument`: the plugin is a MIDI generator or sequencer that plays other tracks (or outboard gear) rather than making its own sound; the catalog page and the installer list it under their MIDI tab instead of Instruments. A synth with a built-in arpeggiator is not `midi`. `source_available: true` is required
 when `license` is not on the open-source list; the site shows a "Restricted use" badge.
 No version fields: they are read from the releases (or, for `build-yourself`, the git tags). `id` must equal the manifest `id`, `repo` the manifest
 `source_repo`. Stable releases are GitHub releases that are not prereleases; prereleases form the beta channel.
@@ -125,10 +125,16 @@ no valid tag, script missing at the newest tag, and (loudly, `LICENCE RISK`) a G
 
 ## `catalog.json` (generated)
 `{"schema": 1, "generated": <ISO time>, "plugins": [ <registry fields> + "versions": [ <record>, ... ], "latest",
-"latest_beta", "downloads", "updated" ]}`, versions
+"latest_beta", "downloads", "updated", "tier", "verified_on", "bar_missing", "featured" ]}`, versions
 newest first. A record is what `catalog_check.py --json` prints (`version`, `size`, `sha256` of the zip,
 `param_compat`, `max_glibc`, `os_compat`, `os_compat_why`, `cpu`, `defer`, `manifest`) plus `url`, `date`, `channel` (`stable`|`beta`), `notes`, `yanked`
-and `tested` (`[{device, firmware, date}]`), added by the builder.
+and `tested` (`[{device, firmware, date}]`), added by the builder. `tier` is `verified`|`listed`|`experimental`; `verified_on`
+(`[]`, or `gen1` and/or `gen2`) says which device generations the newest stable release was tested on: a `tested` device naming Gen2 is
+`gen2` (only on a version with an aarch64 build), any other is `gen1`. Readers must treat a missing `verified_on` on a verified plugin as `["gen1"]`.
+A version may also carry `assets.aarch64` and `gen2: true` (a Gen2 build beside the armv7 zip, docs/GEN2.md). **Gen2 only:** an entry whose `asset_pattern` names the
+aarch64 zip and no armv7 one (`"*-mpc-aarch64.zip"`) lists that zip alone: `assets: {aarch64: {...}}`, `gen2: true`, `gen2_only: true`, and `url`/`sha256`/`size` are the
+aarch64 zip (a reader that knows no `gen2_only` still parses it); in `catalog.tsv` the size, sha256 and url columns are `-`. A client on a Gen1 device or a Force must not offer a
+`gen2_only` version. The zip's manifest `arch` must be `aarch64`.
 `defer` is true when the zip's `install.sh` understands `-n` (the caller stops and starts MPC), false for an older installer that restarts MPC by
 itself; batch installers (the desktop app, `mpc-store.sh`) run such a zip separately and use the flag to say how often MPC will restart.
 
@@ -161,6 +167,11 @@ zip uses `layout: "addin"`:
 - **`catalog.tsv`, addins:** `skin` and `uid` are `-`. `mpc-store.sh` installs an addin to `/data/mpc-addins/<id>` and reads the installed
   version from the folder's `addin.manifest` (`ADDIN_VERSION`), not from `.mpc-store`.
 
+- **Share pages, `p/<id>.html`:** `catalog_site.py` writes one small page per plugin id (ids that are lowercase words joined by hyphens) next to
+  `index.html`. It carries the card's Open Graph and Twitter tags (title, summary, https screenshot) because link previews read neither the
+  `#p=<id>` hash nor scripts, then sends a browser on to `index.html#p=<id>` by script (not a meta refresh: Facebook's crawler would follow it).
+  The catalog page's popup, "Copy link" button and card links point at these pages. Not part of `catalog.json`, `catalog.tsv` or any installer.
+
 ## Companion apps (`catalog/apps.json`)
 Desktop tools that work with a standalone MPC but are not plugins. Not part of `catalog.json`, `catalog.tsv` or any installer: the site
 shows them on its Companion apps tab, and `apps.json` is published next to `catalog.json`. Checked by `tools/app_check.py` (the site build
@@ -175,6 +186,7 @@ refuses an invalid file). `{"schema": 1, "apps": [...]}`, each app:
 | `assets` | optional rules `{platform, label, pattern}` (`pattern` is an fnmatch over asset names); `tools/app_resolve.py` reads them against the newest stable release (no drafts or prereleases) and fills `downloads`, `version` and `release` |
 | `downloads` | optional list of `{platform, label, url, sha256}`, `platform` one of the app's, `url` https, `sha256` 64 lowercase hex. Written by `app_resolve.py`; when there are no `assets`, or the release can't be read, the pinned list in the file is used |
 | `version`, `needs` (list), `tested` (`{device, os}`) | optional, shown on the card |
+| `screenshot` | optional https URL of a picture for the card (as a plugin's `screenshot`: 1280×628, the plugin area's shape, fits best; the card shows it at 2:1) |
 
 `tools/app_resolve.py` runs in the Catalog build workflow (nightly, on pushes to `main` touching the catalog, and by hand) and writes `catalog/dist/apps.json`, which `catalog_site.py` prefers over `catalog/apps.json`. The sha256 is the asset's GitHub `digest`, else its line in a `SHA256SUMS` asset of the same release; an asset with neither is left out and reported. A failed read keeps the pinned `downloads`, so a bad night does not blank a card. A new release therefore appears on the next build, with no PR to this repo.
 

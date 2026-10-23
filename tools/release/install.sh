@@ -25,14 +25,25 @@ FILE="$SYNTHS/$SKIN/$SO"
 OLDFILE="$MPC_LEGACY_ROOT$LEGACY_SO"   # MPC_LEGACY_ROOT is empty on a device; tests point it at a scratch folder
 OLDROOT="$MPC_LEGACY_ROOT$(dirname "$LEGACY_SO")"   # the previous layout kept the data next to the .so, in /sdcard/vst
 LEGACY=0; [ -f "$OLDFILE" ] && LEGACY=1; MIGRATED=""
+# the package says which CPU its .so is for (mpc-plugin.json "arch"; a package from before that field is armv7): Gen1 is 32-bit ARM, Gen2 is aarch64
+PKG_ARCH=$(sed -n 's/.*"arch": *"\([a-z0-9]*\)".*/\1/p' mpc-plugin.json 2>/dev/null | head -n 1); [ -n "$PKG_ARCH" ] || PKG_ARCH=armv7
+# MPC.settings' plugin-list key: armv7 uses "pluginList-arm" (confirmed, see plugin_list.awk). aarch64 uses
+# "pluginList-arm-64bit" per unverified third-party tester feedback (2026-10-10); not yet confirmed by us on
+# hardware (see plugin_list.awk). Revisit once our own aarch64 pilot port registers and loads on a device.
+case "$PKG_ARCH" in aarch64) LISTKEY=pluginList-arm-64bit ;; *) LISTKEY=pluginList-arm ;; esac
 
 # MPC_INSTALL_TEST=1 skips the device checks so tests can run against a copy of MPC.settings.
 if [ -z "$MPC_INSTALL_TEST" ]; then
     [ "$(id -u)" = 0 ] || die "run as root"
-    case "$(uname -m)" in armv7*) ;; *) die "this build is for 32-bit ARM MPC OS devices (Gen1); this one is $(uname -m)" ;; esac
+    case "$PKG_ARCH:$(uname -m)" in
+        armv7:armv7*|aarch64:aarch64) ;;
+        armv7:aarch64) die "this build is for Gen1 (32-bit ARM) devices; this one is Gen2 (aarch64): download the -mpc-aarch64.zip" ;;
+        aarch64:*) die "this build is for Gen2 (aarch64) devices; this one is $(uname -m): download the -mpc-armv7.zip" ;;
+        *) die "this build is for $PKG_ARCH devices; this one is $(uname -m)" ;;
+    esac
     command -v systemctl >/dev/null || die "systemctl not found"
 fi
-SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
+SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
 [ -n "$SETTINGS" ] && [ -f "$SETTINGS" ] || die "MPC.settings not found (not an MPC OS device?)"
 [ -f "portable/$SKIN/plugin-meta.xml" ] || die "this package is damaged: portable/$SKIN is missing"
 sha256sum -c SHA256SUMS >/dev/null 2>&1 || die "files damaged (SHA256SUMS mismatch): copy the folder again"
@@ -40,7 +51,7 @@ mkdir -p "$SYNTHS" || die "cannot create $SYNTHS"
 # MPC cannot load a .so from a noexec mount (a Force's SSD is one): the plugin is listed but only shows "Load Plugin"
 MP=$(df -kP "$SYNTHS" 2>/dev/null | awk 'NR==2 {m = $6; for (i = 7; i <= NF; i++) m = m " " $i; print m}' | sed 's/ /\\040/g')
 if [ -n "$MP" ] && MP="$MP" awk '$2 == ENVIRON["MP"] {print $4}' /proc/mounts 2>/dev/null | grep -q '\(^\|,\)noexec\(,\|$\)'; then
-    echo "warning: $SYNTHS is on a noexec mount, so MPC will not be able to load this plugin from it. Install on the internal drive or an SD card (-t /sdcard/Synths)."
+    echo "warning: $SYNTHS is on a noexec mount, so MPC will not be able to load this plugin from it. Install on the internal drive (-t /sdcard/Synths), or on Gen1 apply the drive exec patch (tools/mpc_patch/drive_exec) and then run its verify."
 fi
 grep -q "$SYNTHS" "$SETTINGS" || echo "warning: $SYNTHS isn't in MPC's SynthContentLocations; the skin may not show"
 
@@ -107,7 +118,7 @@ rm -rf "$OLD"
 BAK="$SETTINGS.bak-$(echo "$SO" | sed 's/\.so$//')-$(date +%Y%m%d-%H%M%S)"
 cp "$SETTINGS" "$BAK"
 sed "s|%payload-path%|$SYNTHS_SED|g" "portable/$SKIN/plugin-meta.xml" > "$SETTINGS.entry"
-awk -v mode=add -v file="$FILE" -v alt="$LEGACY_SO" -v uid="$UID_HEX" -v entryfile="$SETTINGS.entry" -f plugin_list.awk "$SETTINGS" > "$SETTINGS.new"
+awk -v mode=add -v file="$FILE" -v alt="$LEGACY_SO" -v uid="$UID_HEX" -v entryfile="$SETTINGS.entry" -v listkey="$LISTKEY" -f plugin_list.awk "$SETTINGS" > "$SETTINGS.new"
 rm -f "$SETTINGS.entry"
 n=$(grep -c "file=\"$FILE\"" "$SETTINGS.new" || true)
 u=$(grep -c " uid=\"$UID_HEX\"" "$SETTINGS.new" || true)

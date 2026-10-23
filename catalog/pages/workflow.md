@@ -126,7 +126,7 @@ Add a `screenshot` field to your entry and the card shows that image at the top,
 - A release that fails is left out, your previous good version stays, and an issue is opened on the catalog repository explaining why.
 
 ### MPC OS 2.x and 3.x (optional)
-Every release is labelled on the site as **MPC OS 2.x + 3.x** or **MPC OS 3.x only**. You do not declare it: the check works it out from your zip, and a 3.x-only plugin is listed like any other.
+Every release is classed **2.x + 3.x** or **3.x only** (the card's MPC OS line and the MPC OS filter; MPC OS 3.x is the standard, so the only card badge is **MPC OS 2.x tested**, for a 2.x + 3.x release with a 2.x device test in `tested.json`). You do not declare it: the check works it out from your zip, and a 3.x-only plugin is listed like any other.
 - **2.x + 3.x** needs both: the library needs glibc 2.32 or less (the default build does), and the skin only uses the file versions MPC OS 2.15.1's own skins use. A skin written with the current tools uses newer versions, so it is labelled 3.x only, and on MPC OS 2.x it shows no touchscreen page (the Q-Links still work).
 - **To offer 2.x**, write the skin in the 2.x shape (the generator writes it when built with `SHADOW_SKIN_MPC_OS=2`; for a hand-written skin see [the table](https://github.com/sd88me/mpc-vst-plugins/blob/main/docs/OS2_SKINS.md)), run `python3 tools/skin_compat.py check "<skin>/Plugin Skins/TUI.json" "<skin>/Plugin Skins/Q-Links.json"` to see what still stops it, and publish a new release. The label updates on the next catalog build, and `tools/release.py` prints it when you build the zip.
 - A library that needs glibc 2.33 to 2.36 is still listed, as 3.x only; more than 2.36 is rejected.

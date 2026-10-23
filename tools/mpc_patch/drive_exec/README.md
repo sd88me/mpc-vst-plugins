@@ -2,6 +2,8 @@
 
 Not specific to one drive or device: it works on any drive MPC mounts `noexec` under `/media/<name>`. Its author named it "ForceHD VST Exec" after his own drive (labelled `ForceHD`); it is called **drive exec** here. It has only been tried on a Force Gen1 with MPC OS 3.9.1; nothing is known about other devices or firmware.
 
+> **Replaced by [auto exec](../auto_exec/README.md) (2026-10-14): use that.** This one stays so it can be uninstalled.
+>
 > **UNTESTED on a device by this project.** The original (0.1.3) was run by its author on one Force; this adapted version and its uninstall have only been tested offline (real mounts on a tmpfs, see below). **Testers wanted** (issue #150): a Force with a `noexec` SSD, comfortable with SSH. Report what `status`, `install`, a reboot, loading a plugin from the drive and `uninstall` printed.
 
 **Not part of any plugin release.** `drive-exec-patch.sh` is a standalone script you run on the device yourself, if you want it. The installer app lists it in its read-only "Advanced: device patches" step.
@@ -34,7 +36,11 @@ The mount logic, its checks and the rollback are **"ForceHD VST Exec 0.1.3" by t
 - the service names `acvs` or `inmusic-mpc` are both handled, like the other scripts here.
 Not changed: ordering with MPC (none), the timer, the root-bootstrap that adds the unit to the system image, the ownership and parent checks, no forced or lazy unmount.
 
+## Check that it works: `verify`
+`sh drive-exec-patch.sh verify` (also run at the end of `install`). "Installed" is not "works": it checks that the folder is an executable mount, that **MPC's own process** sees that mount (it reads `/proc/<MPC pid>/mountinfo`; a service in its own mount namespace, or one that started before the mount, would not), and lists the plugin folders in it. Its last line is `VERIFY result=ok|not-installed|not-active|mpc-blind|mpc-stopped|no-plugins`. `mpc-blind`: restart MPC with the drive in. `no-plugins`: install into this drive's `Synths` folder (the app's Install to). `ok` but a plugin still shows only "Load Plugin": register the plugin folders again (installer app step 5) and restart MPC. Offline tests only (`tools/test_drive_exec.py`); not run on a device yet.
+
 ## Known limits
+- **One drive, `/media/<name>` only, 32-bit ARM (Gen1) only.** An SD card and a USB stick at once need two installs, which the script refuses; patch the one you keep plugins on, and use the internal drive for the rest.
 - **Boot timing:** MPC does not wait for the mount. A project that opens by itself at start can open before the drive is ready; wait for the mount and reload it. MPC drops plugin-list entries whose file is missing at startup: run the app's "Register plugin folders" if entries disappear.
 - A firmware update may remove the unit in the system image. Run `status`, then `install` again.
 - The timer runs every 5 s while the drive is absent (journal noise, no other effect).

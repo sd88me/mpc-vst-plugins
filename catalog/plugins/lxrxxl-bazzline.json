@@ -1,0 +1,5 @@
+{ "id": "lxrxxl-bazzline", "name": "LXRXXL BAZZLINE", "author": "L'Cronx", "repo": "sunskiefer/LXRXXL-BAZZLINE",
+  "kind": "instrument", "style": "bass-synth", "tags": ["bass", "acid", "303", "bassline", "db-01", "lxr", "sequencer", "delay"],
+  "license": "LicenseRef-LXR02-Open", "source_available": true,
+  "screenshot": "https://raw.githubusercontent.com/sunskiefer/LXRXXL-BAZZLINE/v0.2.2/docs/img/panel.png",
+  "summary": "An 8-track bass synth: a variation of LXRXXL with bass voices inspired by the Erica Synths Bassline DB-01 on the LXR's oscillators, the LXR-02 style sequencer with the DB-01's step functions, a tape/digital delay, a MIDI gate/duck, an 8-track mixer and sound / performance presets saved on the device." }

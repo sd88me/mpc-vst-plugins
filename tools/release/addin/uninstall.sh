@@ -22,12 +22,14 @@ check_dir
 SO="$DIR/$ADDIN_SO"
 [ -n "$ADDIN_INSTALL_TEST" ] || [ "$(id -u)" = 0 ] || die "run as root"
 SVC=$(mpc_service)
+resolve_dropin_root "$SVC"
 check_lib "$SVC"
 if [ $YES = 0 ]; then
     printf "Remove %s%s? [y/N] " "$ADDIN_NAME" "$([ $RESTART = 1 ] && echo ' and restart MPC')"; read -r ok
     case "$ok" in y|Y|yes) ;; *) echo "cancelled"; exit 1 ;; esac
 fi
 preload_remove "$SVC" "$SO"
+boot_reload_remove "$SVC"
 mockba_hook_remove "$SO"
 svc daemon-reload
 if [ $RESTART = 1 ]; then svc restart "$SVC"; fi

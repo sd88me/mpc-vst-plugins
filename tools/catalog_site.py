@@ -13,6 +13,7 @@ import glob
 import hashlib
 import json
 import os
+import re
 import shutil
 import sys
 from html import escape as html_escape
@@ -99,9 +100,11 @@ def app_cards(doc):
                '<a class="btn-l primary" href="%s">Download from GitHub</a>' % e(a["release"])
         sums = ('<details class="vers"><summary>Checksums (sha256)</summary><table>%s</table></details>' %
                 "".join("<tr><td>%s</td><td><code>%s</code></td></tr>" % (e(f["label"]), e(f["sha256"])) for f in files)) if files else ""
-        cards.append('<article class="card" data-platforms="%s" data-text="%s"><header><div><h2>%s</h2><div class="by">by %s</div></div></header>'
+        shot = ('<a class="shot" href="%s"><img src="%s" alt="%s screenshot" loading="lazy"></a>' % (e(a["screenshot"]), e(a["screenshot"]), e(a["title"]))
+                if str(a.get("screenshot", "")).startswith("https://") else "")   # as on a plugin card
+        cards.append('<article class="card" data-platforms="%s" data-text="%s">%s<header><div><h2>%s</h2><div class="by">by %s</div></div></header>'
                      '<div class="tags">%s</div><p>%s</p><dl class="meta">%s</dl><div class="actions">%s<a class="btn-l" href="%s">Release page</a></div>%s</article>'
-                     % (e(" ".join(a["platforms"])), e(" ".join([a["title"], a["author"], a["summary"]]).lower()), e(a["title"]), e(a["author"]),
+                     % (e(" ".join(a["platforms"])), e(" ".join([a["title"], a["author"], a["summary"]]).lower()), shot, e(a["title"]), e(a["author"]),
                         "".join(tags), e(a["summary"]), dl, btns, e(a["release"]), sums))
     return "".join(cards)
 
@@ -165,9 +168,12 @@ def _f(x):
 def tsv(catalog, helpers):
     """catalog.tsv for shell clients (tools/mpc-store.sh, BusyBox sh has no JSON): a header, one '#file' line per helper file
     with its sha256, then one 'plugin' line per stable, non-yanked version of every downloadable (distribution 'release') plugin:
-    plugin id version latest kind name skin uid param_compat size sha256 url user_data defer os_compat max_glibc   (tab separated, '-' when
+    plugin id version latest kind name skin uid param_compat size sha256 url user_data defer os_compat max_glibc size64 sha256_64 url64
+    (tab separated, '-' when
     empty; defer is 1 when the zip's installer understands -n, 0 when it restarts MPC by itself; os_compat is "2.x,3.x" or "3.x", the MPC OS
-    generations the version works on, '-' when the catalog does not say; max_glibc is the newest glibc it needs). Clients that read fewer
+    generations the version works on, '-' when the catalog does not say; max_glibc is the newest glibc it needs; the last three are the
+    Gen2 (aarch64) zip's size, sha256 and url, '-' when the version has none, and a Gen2 device picks them; a Gen2-only version has '-' in
+    the size, sha256 and url columns above). Clients that read fewer
     columns ignore the rest. An addin (kind 'addin') has no skin or uid ('-'): it installs to /data/mpc-addins/<id>."""
     out = ["#mpc-catalog-tsv 1"]
     for name, path in helpers:
@@ -179,9 +185,13 @@ def tsv(catalog, helpers):
             if v.get("yanked") or v.get("channel", "stable") != "stable" or not v.get("url"):
                 continue
             m = v["manifest"]
+            a64 = (v.get("assets") or {}).get("aarch64") or {}
+            g2only = bool(v.get("gen2_only"))   # a Gen2-only version has no Gen1 zip: the armv7 columns are '-'
             row = ["plugin", p["id"], v["version"], "1" if v["version"] == p.get("latest") else "0", p["kind"], p["name"], m.get("skin") or "-",
-                   m.get("uid") or "-", v.get("param_compat", 1), v["size"], v["sha256"], v["url"], ",".join(m.get("user_data", [])) or "-",
-                   "1" if v.get("defer") else "0", ",".join(v.get("os_compat") or []) or "-", v.get("max_glibc") or "-"]
+                   m.get("uid") or "-", v.get("param_compat", 1), "-" if g2only else v["size"], "-" if g2only else v["sha256"],
+                   "-" if g2only else v["url"], ",".join(m.get("user_data", [])) or "-",
+                   "1" if v.get("defer") else "0", ",".join(v.get("os_compat") or []) or "-", v.get("max_glibc") or "-",
+                   a64.get("size", "-"), a64.get("sha256", "-"), a64.get("url", "-")]
             out.append("\t".join(_f(x) for x in row))
     return "\n".join(out) + "\n"
 
@@ -195,6 +205,28 @@ def redirect_page(target):
     return ('<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>Moved</title>'
             '<meta http-equiv="refresh" content="0; url=%s"><link rel="canonical" href="%s"></head>'
             '<body><p>This page moved to <a href="%s">%s</a>.</p></body></html>\n' % (t, t, t, t))
+
+
+SHARE_ID = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+
+
+def share_page(p):
+    """p/<id>.html: the plugin's link for sharing. Link previews (Telegram, Slack, X, Facebook) read only the HTML at a URL, never
+    the #p=<id> hash and never JS, so this page carries the card's title, summary and screenshot as Open Graph tags; a browser is
+    sent on to the popup by script. Not a meta refresh: Facebook's crawler follows that and would read the catalog page instead."""
+    e = lambda x: html_escape(str(x), quote=True)
+    target = "../index.html#p=" + p["id"]
+    title = "%s by %s" % (p["name"], p["author"])
+    shot = p.get("screenshot", "") if str(p.get("screenshot", "")).startswith("https://") else ""
+    meta = [("og:type", "website"), ("og:site_name", "Open MPC - Plugin Catalog"), ("og:title", title), ("og:description", p.get("summary", ""))]
+    meta += [("og:image", shot), ("og:image:alt", p["name"] + " screenshot")] if shot else []
+    tw = [("twitter:card", "summary_large_image" if shot else "summary"), ("twitter:title", title), ("twitter:description", p.get("summary", ""))]
+    tw += [("twitter:image", shot)] if shot else []
+    return ('<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>%s - Open MPC Plugin Catalog</title>'
+            '<meta name="description" content="%s">%s%s<script>location.replace(%s)</script></head>'
+            '<body><p><a href="%s">%s in the Open MPC Plugin Catalog</a></p></body></html>\n'
+            % (e(title), e(p.get("summary", "")), "".join('<meta property="%s" content="%s">' % (k, e(v)) for k, v in meta),
+               "".join('<meta name="%s" content="%s">' % (k, e(v)) for k, v in tw), json.dumps(target), e(target), e(p["name"])))
 
 
 def main():
@@ -248,6 +280,10 @@ def main():
     open(os.path.join(a.out, "catalog.tsv"), "w", encoding="utf-8", newline="\n").write(tsv(catalog, helpers))
     for old, new in MOVED_PAGES.items():   # links to pages that were merged into another still work
         open(os.path.join(a.out, old), "w", encoding="utf-8").write(redirect_page(new))
+    os.makedirs(os.path.join(a.out, "p"), exist_ok=True)
+    for p in catalog["plugins"]:
+        if SHARE_ID.match(p.get("id", "")):
+            open(os.path.join(a.out, "p", p["id"] + ".html"), "w", encoding="utf-8").write(share_page(p))
     open(os.path.join(a.out, ".nojekyll"), "w").close()
     print("%s (%d plugins, %d guide pages)" % (os.path.join(a.out, "index.html"), len(catalog["plugins"]), len([p for p in pages if not p.get("hidden")])))
 

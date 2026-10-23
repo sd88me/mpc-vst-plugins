@@ -15,6 +15,7 @@ elf() {   # elf <file> <class+data> <e_type> <e_machine>: the first 20 bytes of 
 pkg() {   # pkg <id>: a package folder for a fake addin
     rm -rf "$T/pkg-$1"; mkdir -p "$T/pkg-$1"
     cp install.sh uninstall.sh addin-lib.sh "$T/pkg-$1/"
+    printf '{"arch": "armv7"}\n' > "$T/pkg-$1/mpc-plugin.json"   # install.sh reads "arch" from this for the device check
     printf 'ADDIN_ID=%s\nADDIN_NAME="Test %s"\nADDIN_SO=lib%s.so\nADDIN_CONF=%s.conf\nADDIN_FILES="%s.dat"\nADDIN_DONE="see %s"\nADDIN_VERSION=1.2.3\n' "$1" "$1" "$1" "$1" "$1" "$1" > "$T/pkg-$1/addin.manifest"
     elf "$T/pkg-$1/lib$1.so" '\001\001' '\003\000' '\050\000'; echo "default=1" > "$T/pkg-$1/$1.conf"; echo data > "$T/pkg-$1/$1.dat"
 }
@@ -27,6 +28,7 @@ line() { grep '^Environment' "$T/root/usr/lib/systemd/system/acvs.service" || tr
 fresh() { [ ! -d "$T/root" ] || chmod -R u+w "$T/root"; rm -rf "$T/root" "$T/addins" "$T/log"; pkg a; pkg b; }
 ro() { chmod "$1" "$T/root/usr/lib/systemd/system" "$T/root/usr/lib/systemd/system/acvs.service"; }   # a-w | u+w
 DROP="$T/root/etc/systemd/system/acvs.service.d/90-mpc-addins.conf"
+printf '/dev/root / ext4 rw,relatime 0 0\n' > "$T/mounts-plain"; export ADDIN_MOUNTS="$T/mounts-plain"   # no /etc overlay unless a case says so
 
 # 1. the service already preloads two libraries (the stock layout with a mouse and a MIDI shim)
 fresh; unit 'Environment=LD_PRELOAD=/usr/lib/x.so:/usr/lib/y.so'
@@ -71,9 +73,24 @@ run b uninstall.sh
 # 3b. removing from the installed folder itself, without the release, and reinstalling from it
 fresh; unit 'Environment=LD_PRELOAD=/usr/lib/x.so'
 run a install.sh
-ADDIN_INSTALL_TEST=1 SYSTEMD_ROOT="$T/root" ADDIN_TEST_LOG="$T/log" $SH "$T/addins/a/install.sh" -y -n > "$T/out" 2>&1 && bad "the folder has an install.sh" || ok "the folder has no install.sh"
-ADDIN_INSTALL_TEST=1 SYSTEMD_ROOT="$T/root" ADDIN_TEST_LOG="$T/log" $SH "$T/addins/a/uninstall.sh" -y -n -t "$T/addins/a" > "$T/out" 2>&1 || cat "$T/out"
+selfrun() { ADDIN_INSTALL_TEST=1 SYSTEMD_ROOT="$T/root" ADDIN_TEST_LOG="$T/log" $SH "$T/addins/a/$1" -y -n -t "$T/addins/a" > "$T/out" 2>&1 || cat "$T/out"; }
+for f in addin.manifest addin-lib.sh uninstall.sh install.sh mpc-plugin.json; do [ -f "$T/addins/a/$f" ] || bad "$f not copied into the folder"; done
+selfrun uninstall.sh
 [ "$(line)" = "Environment=LD_PRELOAD=/usr/lib/x.so" ] && [ ! -e "$T/addins/a" ] && ok "the folder's own uninstall.sh removes it" || bad "self uninstall: $(line)"
+
+# 3c. the folder's own install.sh redoes the shared drop-in after a reboot wipes /run (the Live III scenario, case
+# 16 above): the installed folder is on /data, which survives, with install.sh/mpc-plugin.json/addin-lib.sh copied
+# into it, so it can redo the LD_PRELOAD entry without the original release zip. This is what the USB stick's
+# run.sh does for every installed addin on each boot it is inserted.
+printf '/dev/root / ext4 ro,relatime 0 0\n' > "$T/mounts-ro-noovl"; export ADDIN_MOUNTS="$T/mounts-ro-noovl"
+fresh; unit 'Environment=LD_PRELOAD=/usr/lib/x.so'; ro a-w
+ADDIN_REMOUNT_FAILS=1 run a install.sh
+RUNDROP="$T/root/run/systemd/system/acvs.service.d/90-mpc-addins.conf"
+grep -qx "Environment=LD_PRELOAD=/usr/lib/x.so:$A" "$RUNDROP" || bad "setup: expected the /run drop-in"
+rm -rf "$T/pkg-a" "$T/root/run"   # the release is gone and /run is wiped, as after a reboot; /data (addins/) stays
+ADDIN_REMOUNT_FAILS=1 selfrun install.sh
+grep -qx "Environment=LD_PRELOAD=/usr/lib/x.so:$A" "$RUNDROP" && ok "the folder's own install.sh redoes the /run drop-in after a reboot, without the release" || bad "self install after reboot: $(cat "$T/out")"
+export ADDIN_MOUNTS="$T/mounts-plain"
 
 # 4. a line holding only this addin: uninstall drops the assignment
 fresh; unit "Environment=LD_PRELOAD=$A"
@@ -198,5 +215,56 @@ fresh; echo 'ADDIN_NETWORK=1' >> "$T/pkg-a/addin.manifest"; echo 'bind=127.0.0.1
 printf 'y\nn\n' | ADDIN_INSTALL_TEST=1 SYSTEMD_ROOT="$T/root" ADDIN_TEST_LOG="$T/log" $SH "$T/pkg-a/install.sh" -t "$T/addins/a" > "$T/out" 2>&1
 run a install.sh
 grep -qx 'bind=127.0.0.1' "$T/addins/a/a.conf" && ok "ADDIN_NETWORK: a no, and -y, keep it local" || bad "bind: $(cat "$T/addins/a/a.conf")"
+
+# 14. /etc is an overlay that systemd mounts after reading its units (MPC OS 3.x), on a read-only root: the drop-in alone is
+# not seen at boot, so the first install adds a reload unit pulled in by MPC's service, and the last uninstall removes it
+fresh; unit 'Environment=LD_PRELOAD=/usr/lib/x.so'; ro a-w; chmod u+w "$T/root/usr/lib/systemd/system"   # the remount makes the root writable
+printf '/dev/root / ext4 ro,relatime 0 0\noverlay /etc overlay rw,lowerdir=/etc,upperdir=/data/system/etc/overlay 0 0\n' > "$T/mounts-ovl"
+export ADDIN_MOUNTS="$T/mounts-ovl"
+BU="$T/root/usr/lib/systemd/system/mpc-addins-reload.service"; BW="$T/root/usr/lib/systemd/system/acvs.service.wants/mpc-addins-reload.service"
+run a install.sh
+grep -qx "After=etc.mount" "$BU" && grep -qx "Before=acvs.service" "$BU" && grep -qx "ExecStart=-/bin/systemctl daemon-reload" "$BU" \
+  && grep -qx "ConditionPathExists=/etc/systemd/system/acvs.service.d/90-mpc-addins.conf" "$BU" && [ "$(readlink "$BW")" = "../mpc-addins-reload.service" ] \
+  && ok "overlay /etc: a reload unit, pulled in by MPC's service" || bad "boot unit: $(cat "$BU" 2>&1)"
+grep -q "mount -o remount,rw /" "$T/log" && [ "$(tail -n 3 "$T/log" | grep -c 'remount,ro /')" = 1 ] && ok "overlay /etc: the root is made writable for it, then read-only again" || bad "remount: $(cat "$T/log")"
+n=$(grep -c remount "$T/log"); run b install.sh
+[ "$(grep -c remount "$T/log")" = "$n" ] && ok "overlay /etc: a second addin leaves the root alone" || bad "second addin remounted"
+run a uninstall.sh
+[ -f "$BU" ] && [ -L "$BW" ] && ok "overlay /etc: the unit stays while an addin is left" || bad "unit removed early"
+run b uninstall.sh
+[ ! -e "$BU" ] && [ ! -e "$BW" ] && [ ! -e "$(dirname "$BW")" ] && ok "overlay /etc: the last uninstall removes the unit" || bad "unit left: $(ls "$(dirname "$BU")")"
+fresh; unit 'Environment=LD_PRELOAD=/usr/lib/x.so'; run a install.sh   # a writable unit is edited in place: no drop-in, no unit
+[ ! -e "$BU" ] && ! grep -q remount "$T/log" && ok "overlay /etc, unit edited in place: no reload unit" || bad "unit for an in-place edit"
+fresh; unit 'Restart=always'; ro a-w; chmod u+w "$T/root/usr/lib/systemd/system"
+printf '# written by someone else\n' > "$BU"; run a install.sh; cp "$T/out" "$T/out.a"; run a uninstall.sh
+[ "$(cat "$BU")" = "# written by someone else" ] && grep -q "not written by this installer" "$T/out.a" && ok "overlay /etc: a unit of the same name that is not ours is never touched" || bad "foreign unit: $(cat "$BU")"
+export ADDIN_MOUNTS="$T/mounts-plain"; fresh; unit 'Restart=always'; ro a-w; chmod u+w "$T/root/usr/lib/systemd/system"; run a install.sh
+[ ! -e "$BU" ] && ! grep -q remount "$T/log" && ok "no /etc overlay: no reload unit, no remount" || bad "unit without an overlay"
+
+# 15. a read-only root with NO /etc overlay at all (a verity rootfs, e.g. Gen2 Live III: /etc sits directly on the
+# read-only root, nothing mounts an overlay over it) -- unlike case 7's "unit is read-only", here the shared drop-in's
+# own folder needs the same remount boot_reload_add already does for its unit, which preload_add/preload_remove did
+# not do (found on a real device: install failed with "Read-only file system" writing the drop-in)
+printf '/dev/root / ext4 ro,relatime 0 0\n' > "$T/mounts-ro-noovl"; export ADDIN_MOUNTS="$T/mounts-ro-noovl"
+fresh; unit 'Environment=LD_PRELOAD=/usr/lib/x.so'; ro a-w; chmod u+w "$T/root"   # the remount makes / (so etc/) writable
+run a install.sh
+grep -qx "Environment=LD_PRELOAD=/usr/lib/x.so:$A" "$DROP" && ok "read-only root, no /etc overlay, remount works: the drop-in is written to /etc" || bad "ro/no-overlay write: $(cat "$T/out")"
+[ "$(grep -c 'mount -o remount,rw /' "$T/log")" = 2 ] && [ "$(grep -c 'mount -o remount,ro /' "$T/log")" = 2 ] \
+  && ok "remounted twice (resolving where the drop-in goes, then the real write), rw/ro paired each time" || bad "remount count: $(cat "$T/log")"
+run a uninstall.sh
+[ ! -e "$DROP" ] && grep -q "mount -o remount,rw /" "$T/log" && ok "uninstall also remounts to remove the drop-in" || bad "uninstall remount: $(cat "$T/log")"
+
+# 16. same, but the remount itself is refused outright (true dm-verity, not just a plain ro mount -- found on the
+# real Live III: "mount: /: cannot remount /dev/root read-write, is write-protected"): the drop-in goes to /run
+# (tmpfs) instead, with a clear non-persistence warning, rather than failing the install
+fresh; unit 'Environment=LD_PRELOAD=/usr/lib/x.so'; ro a-w
+RUNDROP="$T/root/run/systemd/system/acvs.service.d/90-mpc-addins.conf"
+ADDIN_REMOUNT_FAILS=1 run a install.sh
+grep -qx "Environment=LD_PRELOAD=/usr/lib/x.so:$A" "$RUNDROP" && [ ! -e "$DROP" ] && ok "remount refused: the drop-in goes to /run instead" || bad "run fallback: $(cat "$T/out")"
+grep -q "not persistent" "$T/out" && ok "remount refused: install.sh warns it needs reinstalling after a reboot" || bad "no non-persistence warning: $(cat "$T/out")"
+[ "$(grep -c remount "$T/log")" = 1 ] && grep -q "mount -o remount,rw /" "$T/log" && ok "remount refused: one failed attempt, no retry, no remount back (nothing was made writable)" || bad "remount attempts: $(cat "$T/log")"
+ADDIN_REMOUNT_FAILS=1 run a uninstall.sh
+[ ! -e "$RUNDROP" ] && ok "remount refused: uninstall removes the /run drop-in the same way" || bad "run drop-in left: $(ls "$(dirname "$RUNDROP")" 2>&1)"
+export ADDIN_MOUNTS="$T/mounts-plain"
 
 [ $fails = 0 ] && echo "installer: all passed" || { echo "installer: $fails FAILED"; exit 1; }

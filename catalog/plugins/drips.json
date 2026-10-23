@@ -1,0 +1,4 @@
+{ "id": "drips", "name": "Drips", "author": "Padbangers", "repo": "padbangers/drips",
+  "kind": "effect", "style": "granular", "tags": ["granular", "texture", "delay", "beat-slicer", "wavetable", "reverb", "tempo-sync"], "license": "MIT",
+  "summary": "Drips: a granular texture synthesizer with four recording qualities, a delay and beat slicer, tempo-synced seeding, wavetables and a modulation page, from Émilie Gillet's open-source Beads.",
+  "screenshot": "https://raw.githubusercontent.com/padbangers/drips/85683cebf7b4fcf1716ed6f32faa89041768b24e/docs/drips-main.png" }

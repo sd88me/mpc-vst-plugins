@@ -28,6 +28,14 @@ jobs:
         run: python3 tools/test_skin_compat.py
       - name: Validate the registry
         run: python3 tools/catalog_build.py --check-registry
+      - name: New or changed listings must release the portable layout
+        if: ${{ github.event_name == 'pull_request' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git fetch --depth=1 origin "${{ github.base_ref }}"
+          ids=$(git diff --name-only --diff-filter=AM "origin/${{ github.base_ref }}" -- catalog/plugins | xargs -r -n1 basename | sed 's/\.json$//')
+          [ -z "$ids" ] || python3 tools/catalog_build.py --require-portable $ids
       - name: Validate the companion apps
         run: python3 tools/app_check.py
       - name: Build the catalog

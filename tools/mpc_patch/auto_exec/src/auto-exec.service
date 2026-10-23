@@ -1,0 +1,10 @@
+[Unit]
+Description=Auto exec - scoped executable mount
+After=edisksd.service
+Wants=edisksd.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh /etc/auto-exec/auto-exec.sh apply
+TimeoutStartSec=15
+PrivateMounts=no

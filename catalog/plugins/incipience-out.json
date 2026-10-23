@@ -1,0 +1,17 @@
+{
+  "id": "incipience-out",
+  "name": "Incipience OUT",
+  "author": "saustin2010",
+  "repo": "saustin2010/mpc-vst-incipience",
+  "kind": "effect",
+  "style": "utility",
+  "tags": [
+    "routing",
+    "multi-out",
+    "drum"
+  ],
+  "license": "MIT",
+  "asset_pattern": "FX-Incipience-OUT-*-mpc-armv7.zip",
+  "summary": "Companion to Incipience: plays one of its OUT 1-11 on its own MPC track (an audio track will do), so an instrument gets that track's fader, inserts and outputs, in time with the kit. Needs Incipience 1.0.0 or later in the same project.",
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-incipience/v1.0.0/incipienceout/screenshots/page_0.png"
+}

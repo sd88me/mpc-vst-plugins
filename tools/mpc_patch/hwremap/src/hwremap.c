@@ -97,6 +97,12 @@ static char grid[16][MODE_NAME_MAX];
 static time_t settings_mtime = -1;
 static long settings_mtime_ns = -1;
 static int hold_note = -1;
+#define MAX_COMBO 32
+static struct {
+    int hold, src;
+    struct action a;
+} combo[MAX_COMBO];
+static int ncombo;
 static int log_on;
 static time_t conf_mtime = -1;
 static long conf_mtime_ns = -1;
@@ -195,6 +201,7 @@ static void reset_conf(void)
     long_ms = 400;
     hold_ms = 800;
     hold_note = -1;
+    ncombo = 0;
     log_on = 0;
     dbl_ms = 350;
     touch_ms = 150;
@@ -256,6 +263,25 @@ static void load_conf(void)
         if (!strcmp(w, "holdms")) {
             char *v = strtok_r(NULL, " \t\r\n", &save);
             hold_ms = v ? atoi(v) : 800;
+            continue;
+        }
+        if (!strcmp(w, "combo")) {
+            // combo HOLD SRC tokens: while button HOLD is held, pressing SRC runs the tokens
+            char *h = strtok_r(NULL, " \t\r\n", &save);
+            char *n = strtok_r(NULL, " \t\r\n", &save);
+            long hb = h ? strtol(h, NULL, 0) : -1, sb = n ? strtol(n, NULL, 0) : -1;
+            if (hb < 0 || hb > 127 || sb < 0 || sb > 127 || ncombo >= MAX_COMBO)
+                continue;
+            memset(&combo[ncombo], 0, sizeof combo[ncombo]);
+            combo[ncombo].hold = (int)hb;
+            combo[ncombo].src = (int)sb;
+            for (char *t = strtok_r(NULL, " \t\r\n", &save); t; t = strtok_r(NULL, " \t\r\n", &save)) {
+                if (add_tok(&combo[ncombo].a, t) != 0) {
+                    logf_("bad token '%s' for combo %ld %ld\n", t, hb, sb);
+                    break;
+                }
+            }
+            ncombo++;
             continue;
         }
         struct action *table = single;
@@ -530,6 +556,18 @@ static void handle_msg(void)
             push_btn(note, 0);
             return;
         }
+        if (press) {
+            int hit = 0;
+            for (int i = 0; i < ncombo && !hit; i++)
+                if (combo[i].src == note && held[combo[i].hold] && mapped(&combo[i].a)) {
+                    run_action(&combo[i].a);
+                    swallow_release[note] = 1;
+                    logf_("remap %d (combo with %d)\n", note, combo[i].hold);
+                    hit = 1;
+                }
+            if (hit)
+                return;
+        }
         if (press && !holding && mapped(&tapped[note])) {
             if (tap_wait[note]) {
                 tap_wait[note] = 0;
@@ -639,12 +677,30 @@ static void feed(unsigned char b)
     }
 }
 
+// The next definition of a symbol after this library, by libc's own dlsym called from here. An addin that exports its
+// dlsym (the commander addin before 1.0.1) answers RTLD_NEXT relative to itself, which skips every shim between this
+// library and it; dlvsym is a different symbol, so libc's dlsym is reachable and takes this library as the caller.
+static void *next_sym(const char *name)
+{
+    static void *(*libc_dlsym)(void *, const char *);
+    if (!libc_dlsym) {
+        // the versions of libc's dlsym: 2.34 moved it from libdl into libc
+        static const char *const vers[] = {"2.34", "2.4", "2.17", "2.2.5", "2.0"};
+        for (size_t i = 0; i < sizeof vers / sizeof *vers && !libc_dlsym; i++) {
+            char v[16] = "GLIBC_";
+            strcat(v, vers[i]);
+            libc_dlsym = (void *(*)(void *, const char *))dlvsym(RTLD_DEFAULT, "dlsym", v);
+        }
+    }
+    return (libc_dlsym ? libc_dlsym : dlsym)(RTLD_NEXT, name);
+}
+
 static void init_syms(void)
 {
     if (!real_open)
-        real_open = dlsym(RTLD_NEXT, "snd_rawmidi_open");
+        real_open = next_sym("snd_rawmidi_open");
     if (!real_read)
-        real_read = dlsym(RTLD_NEXT, "snd_rawmidi_read");
+        real_read = next_sym("snd_rawmidi_read");
 }
 
 static int is_private(snd_rawmidi_t *h, const char *name)
@@ -706,7 +762,7 @@ __attribute__((visibility("default"))) int poll(struct pollfd *fds, nfds_t nfds,
 {
     static int (*real_poll)(struct pollfd *, nfds_t, int);
     if (!real_poll)
-        real_poll = dlsym(RTLD_NEXT, "poll");
+        real_poll = next_sym("poll");
     int idx = -1;
     if (priv_fd >= 0 && wake_fd[0] >= 0 && nfds < 16)
         for (nfds_t i = 0; i < nfds; i++)
