@@ -12,6 +12,6 @@
     "drawbar",
     "rotary"
   ],
-  "screenshot": "https://raw.githubusercontent.com/SamplingHigh/mpc-vst-setbfree/v0.2.1/docs/images/setbfree-organ-force.png",
+  "screenshot": "https://raw.githubusercontent.com/SamplingHigh/mpc-vst-setbfree/v0.3.0/docs/images/setbfree-organ.png",
   "asset_pattern": "*-mpc-armv7.zip"
 }
