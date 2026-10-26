@@ -21,6 +21,15 @@ checksum and device-verification status, that stays correct without anyone editi
    download, no checksum, a build command and the user's own files it needs. This is a separate distribution type;
    the checks for normal `release` entries are unchanged.
 
+## Keeping the old address alive after a move (tools/catalog_mirror.py, 2026-10-20, offline tests only)
+After the repo changes owner the old Pages address stops answering, but installed copies of the desktop app and `mpc-store.sh` still
+read it. `tools/catalog_mirror.py` turns the built site into a copy for that address: the data files (`catalog.json`, `catalog.tsv`,
+`patches.json`, `apps.json`, `feed.xml`, `mpc-store.sh`, `sync.sh`, `plugin_list.awk`) verbatim, every HTML page as a redirect to the
+same page at the new address. The `mirror` job of `catalog.yml` commits it to the repo named in the variable `CATALOG_MIRROR_REPO`
+(for example `sd88me/sd88me.github.io`, whose Pages serves `<folder>/` at `sd88me.github.io/<folder>/`; checked with a scratch folder on
+2026-10-20). It does nothing while that variable is empty. Setup: a deploy key with write access on the hosting repo, its private
+half in the secret `MIRROR_DEPLOY_KEY`; optional variable `CATALOG_MIRROR_DIR` (default: this repo's name).
+
 ## Architecture
 ```
 plugin repo (author)            catalog repo (community)              consumers
