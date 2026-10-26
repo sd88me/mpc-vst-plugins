@@ -3,11 +3,14 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -104,5 +107,103 @@ func TestDownloadChecksTheHash(t *testing.T) {
 	plain.URL = strings.Replace(c.URL, "https://", "http://", 1)
 	if err := Download(plain, filepath.Join(t.TempDir(), "d.zip"), nil); err == nil {
 		t.Error("only https downloads are allowed")
+	}
+}
+
+// serveSite answers catalog.json and patches.json the way one catalog site does; codes are the HTTP status per path (200 = real file).
+func serveSite(t *testing.T, catalogStatus, patchesStatus int, catalogBody string) (*httptest.Server, *int32) {
+	t.Helper()
+	var hits int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		code, body := catalogStatus, catalogBody
+		if strings.HasSuffix(r.URL.Path, "patches.json") {
+			code, body = patchesStatus, fmt.Sprintf(goodPatchJSON, strings.Repeat("a", 64))
+		}
+		w.WriteHeader(code)
+		if code == 200 {
+			_, _ = w.Write([]byte(body))
+		}
+	}))
+	t.Cleanup(srv.Close)
+	return srv, &hits
+}
+
+func goodCatalog() string { return strings.NewReplacer("%s", strings.Repeat("a", 64)).Replace(catJSON) }
+
+func TestCatalogFallsBackToTheOldAddressWhenTheNewOneIsNotThereYet(t *testing.T) {
+	newSite, newHits := serveSite(t, 404, 404, "")
+	oldSite, oldHits := serveSite(t, 200, 200, goodCatalog())
+	a := NewApp(defaultConfig(), "tok", "127.0.0.1:1", newSite.URL+"/mpc-vst-plugins/catalog.json", t.TempDir())
+	a.fallbacks = []string{oldSite.URL + "/mpc-vst-plugins/catalog.json"}
+	cat, err := a.fetchCatalog()
+	if err != nil || len(cat) != 1 || cat[0].ID != "acid" {
+		t.Fatalf("fallback: %v %+v", err, cat)
+	}
+	if atomic.LoadInt32(newHits) != 1 || atomic.LoadInt32(oldHits) != 1 {
+		t.Errorf("each address should be asked once: new %d old %d", *newHits, *oldHits)
+	}
+	// patches.json is asked the same way: a 404 at the new address must not read as "no patches published".
+	ps, err := a.fetchPatches()
+	if err != nil || len(ps) != 1 {
+		t.Fatalf("patches fallback: %v %+v", err, ps)
+	}
+}
+
+func TestCatalogUsesTheNewAddressAndNeverTouchesTheOldWhenItAnswers(t *testing.T) {
+	newSite, _ := serveSite(t, 200, 200, goodCatalog())
+	oldSite, oldHits := serveSite(t, 200, 200, goodCatalog())
+	a := NewApp(defaultConfig(), "tok", "127.0.0.1:1", newSite.URL+"/c/catalog.json", t.TempDir())
+	a.fallbacks = []string{oldSite.URL + "/c/catalog.json"}
+	if _, err := a.fetchCatalog(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := a.fetchPatches(); err != nil {
+		t.Fatal(err)
+	}
+	if atomic.LoadInt32(oldHits) != 0 {
+		t.Errorf("the old address was asked %d times although the new one answered", *oldHits)
+	}
+}
+
+func TestCatalogFallsBackWhenTheNewAddressAnswersWithSomethingThatIsNotACatalog(t *testing.T) {
+	newSite, _ := serveSite(t, 200, 200, "<html>a Pages 200 page, not a catalog</html>")
+	oldSite, _ := serveSite(t, 200, 200, goodCatalog())
+	a := NewApp(defaultConfig(), "tok", "127.0.0.1:1", newSite.URL+"/c/catalog.json", t.TempDir())
+	a.fallbacks = []string{oldSite.URL + "/c/catalog.json"}
+	if cat, err := a.fetchCatalog(); err != nil || len(cat) != 1 {
+		t.Fatalf("non-catalog answer must fall back: %v %+v", err, cat)
+	}
+}
+
+func TestCatalogErrorNamesEveryAddressThatFailed(t *testing.T) {
+	newSite, _ := serveSite(t, 404, 404, "")
+	oldSite, _ := serveSite(t, 500, 500, "")
+	a := NewApp(defaultConfig(), "tok", "127.0.0.1:1", newSite.URL+"/c/catalog.json", t.TempDir())
+	a.fallbacks = []string{oldSite.URL + "/c/catalog.json"}
+	_, err := a.fetchCatalog()
+	if err == nil || !strings.Contains(err.Error(), "HTTP 404") || !strings.Contains(err.Error(), "HTTP 500") || !strings.Contains(err.Error(), newSite.URL) {
+		t.Fatalf("error should list both failures: %v", err)
+	}
+	// a custom --catalog has no fallback and keeps the plain error
+	b := NewApp(defaultConfig(), "tok", "127.0.0.1:1", oldSite.URL+"/c/catalog.json", t.TempDir())
+	if _, err := b.fetchCatalog(); err == nil || err.Error() != "catalog: HTTP 500" {
+		t.Fatalf("single address error unchanged: %v", err)
+	}
+	// a 404 at one address and a server error at the other surfaces the error, not "no patches published"
+	if _, err := a.fetchPatches(); err == nil || errors.Is(err, errNoPatches) {
+		t.Fatalf("patches: want the server error, got %v", err)
+	}
+	// 404 everywhere is still "no patches published"
+	c := NewApp(defaultConfig(), "tok", "127.0.0.1:1", newSite.URL+"/c/catalog.json", t.TempDir())
+	c.fallbacks = []string{newSite.URL + "/d/catalog.json"}
+	if _, err := c.fetchPatches(); !errors.Is(err, errNoPatches) {
+		t.Fatalf("404 everywhere: want errNoPatches, got %v", err)
+	}
+}
+
+func TestDefaultCatalogAddressesAreTheOrgThenTheOldSite(t *testing.T) {
+	if defaultCatalogURL != "https://open-mpc.github.io/mpc-vst-plugins/catalog.json" || legacyCatalogURL != "https://sd88me.github.io/mpc-vst-plugins/catalog.json" {
+		t.Fatalf("default %q legacy %q", defaultCatalogURL, legacyCatalogURL)
 	}
 }
