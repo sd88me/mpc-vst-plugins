@@ -2,36 +2,38 @@
 title: Install a plugin
 nav: Install
 order: 10
-summary: Install, update and remove plugins on your MPC or Force with the MPC plugin installer app. The manual ways are at the bottom.
+summary: Put catalog plugins on your MPC or Force from a USB stick. No SSH, no firmware modding. Other methods for people who already have SSH are below.
 ---
 
-The easiest way to put plugins from the catalog on your MPC or Force is the **MPC plugin installer**: a small app you run on your computer. You pick plugins from a list (or drop zip files into it), press Install, and it does the rest: it checks every download, copies the plugins to your device, and restarts MPC once. You do not type any commands.
+You can put plugins from the catalog on your MPC or Force **without modifying its firmware and without any technical access to the device**. You write a USB stick on your computer, plug it into the MPC, confirm one prompt, and then browse and install plugins on the MPC's own touchscreen.
 
-> Installing plugins this way is unofficial. It edits MPC's settings file, so it needs **root (SSH) access**, which stock MPC OS does not offer. These plugins are for modded units. Back up your projects first and use it at your own risk.
+> **Beta.** This way of installing is new and still being tested. It is unofficial community software, not made or supported by Akai. **Save your project first**: opening the plugin manager stops MPC, and it starts again when you return. The stick runs a small program with full rights on your MPC once you confirm a prompt on the device, and Akai could change or remove the feature this uses in a future update.
+
+## How it works
+1. **On your computer:** the *MPC plugin installer* app writes a USB stick for you. Nothing needs setting up on the MPC first.
+2. **On your MPC:** plug the stick in and confirm one prompt.
+3. **The plugin manager opens on the MPC's screen.** Browse the catalog, tap a plugin to install it, and tap *Return to MPC* when you are done. The plugins appear in MPC's normal plugin browser.
+
+The plugin manager on the stick is **Plugin Manager USB for OPEN MPC**, made by [Twisted Cable](https://github.com/Eurikon/plugin-manager-usb-for-open-mpc). It found the way to run a program from a USB stick on a stock MPC and built the on-device manager. This site adds the catalog and the installer app that sets the stick up for you.
 
 ## What you need
-- A first-generation MPC OS standalone device with a 32-bit ARM processor: Force, MPC Live and Live II, One, X and Key 61. The installer refuses anything else. Newer models are untested.
-- MPC OS 2.x (for example 2.15) ships an older system library (glibc, about 2.32) than MPC OS 3.x and the Force (2.39 where checked). A plugin built to need no newer than glibc 2.32 can work on both; one that needs more is still listed but classed 3.x only, and the catalog checks this from the plugin's files. A plugin from elsewhere, or an old build, may be listed by MPC and still not load.
-- MPC OS 3.x is the standard, so a plugin shows an MPC OS badge only when it has been tested on MPC OS 2.x: **MPC OS 2.x tested**. On MPC OS 2.x a plugin made for 3.x still loads and plays from the Q-Links, but its touchscreen page stays empty; making it work there is up to the plugin's developer, who can publish a release with a compatible skin. The catalog works out from the plugin's files whether it can work on 2.x: a check against MPC OS 2.15.1's own skins and system library, not a test on every 2.x unit. The *MPC OS* filter narrows the list. The installer app and the install script read your device's system library and warn before installing a plugin that will not load, or a 3.x-only one onto a device that looks like MPC OS 2.x; they never block.
-- Root SSH access to the device, and its IP address. The address is assigned by your router, so look it up on the device or in your router each time.
-- A Windows, Mac or Linux computer on the same network as the device.
-- Optional: an SD card or USB drive in the device, if you want plugins on it instead of on the internal drive (see "Where it goes" under step 5).
+- A **Windows, Mac or Linux computer**, for a few minutes.
+- An **empty USB stick**, formatted FAT32 or exFAT (the way most sticks come). The installer will not write to a stick that already has your files on it.
+- Your **MPC or Force, with MPC OS 3.9.1 or 3.10**, connected to the internet (Wi-Fi or Ethernet) so it can read the catalog.
 
-## Check that you can reach your device
-Find the IP address in the device's network settings, or in your router's list of connected devices. It can change, so check it each time. The app tests the connection for you when you press **Connect**, but you can try it first from a terminal (Terminal on a Mac, PowerShell on Windows 10 or later):
+You do not need an SSH login, a modded firmware, or a computer connection to the MPC.
 
-```
-ssh root@<device-ip>
-```
+## Will it work on my MPC?
+| Your device | MPC OS 3.9.1 | MPC OS 3.10 |
+|---|---|---|
+| MPC Live II (Gen 1) | Tested by Twisted Cable | Tested by Twisted Cable |
+| MPC Live III (Gen 2) | Tested here, with addins installed | Beta: opens the manager in our test, not yet confirmed on a stock 3.10 unit |
+| MPC Live, One, X, Key 61 (Gen 1), Force | Expected to work, not tested yet | Expected to work, not tested yet |
+| Other Gen 2 models (One G2, Key(s) G2) | Expected to work, not tested yet | Beta, not tested yet |
 
-Answer `yes` to the fingerprint question. You should get a shell prompt on the device; type `exit` to leave. If this does not work, fix it first, because every way of installing uses it. In an SSH app such as [Termius](https://termius.com/), the same test is adding a host with the IP and the username `root`, then connecting.
+If you try one that says "not tested yet", please [tell us how it went](https://github.com/sd88me/mpc-vst-plugins/issues). Each plugin in the catalog also shows which devices it has a build for. MPC OS 2.x is not covered by this method.
 
-| You see | Usually means |
-|---|---|
-| `ssh: connect to host ... timed out` | Wrong IP, the device is asleep, or it is on a different network. |
-| `Permission denied` | Root SSH is not enabled on this unit, or the password is wrong. |
-
-## 1. Download the app
+## 1. Download the installer app
 Open [the latest release](https://github.com/sd88me/mpc-vst-plugins/releases/latest) and download the file for your computer from **Assets**:
 
 | Your computer | Download the file that ends with |
@@ -53,17 +55,114 @@ The first time, your system warns that the program is from an unknown developer,
 - **Mac:** it will not open on a double-click. Right-click the file, choose **Open**, then **Open** again. If that does not work, run `xattr -d com.apple.quarantine mpc-installer` in a terminal.
 - **Linux:** run `chmod +x mpc-installer` if the file does not start.
 
-## 3. Connect to your device
+## 3. Write the stick
+The first tab, **Plugin install (no SSH or connection needed)**, is the one you want. Plug your empty USB stick into the computer, pick it in the list of drives (or press **Browse**), and press **Download and write**. The app downloads the plugin manager, checks it against a fixed checksum, and copies it to the stick. When it says it is done, eject the stick safely.
+
+## 4. On your MPC
+**Save your project first.**
+
+**MPC OS 3.9.1**
+1. Insert the stick.
+2. Choose **Open** on the prompt that appears.
+
+**MPC OS 3.10: one-time setup first.** 3.10 has no USB prompt, so the stick carries a small helper you load once:
+1. Insert the stick.
+2. In MPC's File Browser, navigate to your USB stick and select `Plugin Manager helper.xpa`.
+3. Choose **Load** and pick the internal **MPC Documents** folder as the destination, **not the stick**.
+4. Restart.
+5. Hold **Shift + Menu** for two seconds.
+
+After that, on 3.10, a fresh insertion of the stick offers to open the manager. If the stick was already in when you switched the MPC on, hold **Shift + Menu** for two seconds instead.
+
+## 5. Install plugins on the MPC
+The manager opens on the MPC's screen with four tabs: **Catalog** (everything in this site's catalog that works on your MPC), **Local** (plugin zip files you copied into the stick's `local-plugins` folder, which also works offline), **On MPC** (what is installed, with update and remove) and **History**. Tap a plugin, confirm, and wait for the install to finish. Install as many as you like, then tap **Return to MPC** and **wait up to a minute**. Do not switch the MPC off while it reopens.
+
+## 6. Use it
+Add the plugin to a track from the plugin browser: instruments under Instrument plugins, effects under Insert effects. Its screen appears in the plugin view, and the Q-Links follow the page. Save and reload a project once to make sure it comes back.
+
+## Update or remove a plugin
+Open the manager again (insert the stick, or on 3.10 hold **Shift + Menu** for two seconds) and use the **On MPC** tab: it shows what is installed and offers an update when the catalog has a newer version, and a remove button. If the catalog shows a higher **Compat** number for the new version, its parameters changed and projects saved with the older version will sound different, so read the release notes before updating a plugin you use in finished songs.
+
+## If something goes wrong
+- **No prompt appears when I insert the stick (MPC OS 3.9.1).** Take the stick out and put it back in while the MPC is already running. The prompt appears on a fresh insertion, not for a stick that was in during start-up. In our testing, if two USB sticks with startup programs are in, only one of them runs at start-up: take the other out.
+- **Nothing happens on MPC OS 3.10.** Check the one-time setup (step 4): the helper must be extracted into the **internal MPC Documents** folder, not onto the stick, and the MPC must have been restarted afterwards.
+- **The screen stays blank after Return to MPC.** The MPC takes up to a minute to start again. Wait, and do not switch it off.
+- **The catalog is empty or will not load.** The MPC needs internet. Check Wi-Fi or Ethernet on the MPC. Plugins you copied into the stick's `local-plugins` folder can be installed without internet.
+- **A plugin installs but does nothing.** Some plugins need files you provide, such as ROMs or banks. Check the plugin's own page in the catalog.
+
+Tell us what happened in [the issue tracker](https://github.com/sd88me/mpc-vst-plugins/issues): your device model, MPC OS version, what you saw on the screen, and the file `manager-result.txt` that the stick writes after each use.
+
+## Advanced: other ways to install
+Everything below is for people who already use **SSH**, which is a way to log in to the MPC's built-in Linux system from your computer. You do not need any of it for the way above. It is here for modded units, for developers, and for people who want more control: installing zips you built yourself, plugin patches, removing and registering plugins in bulk, and installing from a terminal.
+
+**Which one is for me?**
+
+| If you... | Use |
+|---|---|
+| Do not know what SSH is, or have a stock MPC | The USB stick above. You are done. |
+| Already have root SSH on your MPC or Force (a modded unit) | The installer app's **Install over SSH** tab, below. |
+| Want SSH on a stock MPC, to use the SSH tab or to develop | The installer's stick tab has an **Advanced: turn on SSH** section. It builds a stick that turns SSH on and puts addins back, and can also open the plugin manager. It needs your device's own stock update file (a one-time check) and works on MPC OS up to 3.9.1. On a Gen 2 device the setting is lost at every restart, so you reinsert the stick after each one. |
+
+### Install over SSH with the installer app
+The installer app's second tab, **Install over SSH**, lets you pick plugins from a list (or drop zip files into it) and press Install; it checks every download, copies the plugins to your device, and restarts MPC once. You do not type any commands, but the device needs **root SSH access**, which stock MPC OS does not offer.
+
+> Installing plugins this way is unofficial. It edits MPC's settings file, so it needs **root (SSH) access**, which stock MPC OS does not offer. It is meant for modded units. Back up your projects first and use it at your own risk.
+
+### What you need for the SSH way
+- An MPC OS standalone device: a first-generation one with a 32-bit ARM processor (Force, MPC Live and Live II, One, X and Key 61), or, since installer 0.6.0, a Gen 2 (64-bit) one such as the Live III, whose internal drive the app finds itself (tested on a Live III). A plugin needs a build for your device's generation; the catalog shows which.
+- MPC OS 2.x (for example 2.15) ships an older system library (glibc, about 2.32) than MPC OS 3.x and the Force (2.39 where checked). A plugin built to need no newer than glibc 2.32 can work on both; one that needs more is still listed but classed 3.x only, and the catalog checks this from the plugin's files. A plugin from elsewhere, or an old build, may be listed by MPC and still not load.
+- MPC OS 3.x is the standard, so a plugin shows an MPC OS badge only when it has been tested on MPC OS 2.x: **MPC OS 2.x tested**. On MPC OS 2.x a plugin made for 3.x still loads and plays from the Q-Links, but its touchscreen page stays empty; making it work there is up to the plugin's developer, who can publish a release with a compatible skin. The catalog works out from the plugin's files whether it can work on 2.x: a check against MPC OS 2.15.1's own skins and system library, not a test on every 2.x unit. The *MPC OS* filter narrows the list. The installer app and the install script read your device's system library and warn before installing a plugin that will not load, or a 3.x-only one onto a device that looks like MPC OS 2.x; they never block.
+- Root SSH access to the device, and its IP address. The address is assigned by your router, so look it up on the device or in your router each time.
+- A Windows, Mac or Linux computer on the same network as the device.
+- Optional: an SD card or USB drive in the device, if you want plugins on it instead of on the internal drive (see "Where it goes" under step 5).
+
+### Check that you can reach your device
+Find the IP address in the device's network settings, or in your router's list of connected devices. It can change, so check it each time. The app tests the connection for you when you press **Connect**, but you can try it first from a terminal (Terminal on a Mac, PowerShell on Windows 10 or later):
+
+```
+ssh root@<device-ip>
+```
+
+Answer `yes` to the fingerprint question. You should get a shell prompt on the device; type `exit` to leave. If this does not work, fix it first, because every way of installing uses it. In an SSH app such as [Termius](https://termius.com/), the same test is adding a host with the IP and the username `root`, then connecting.
+
+| You see | Usually means |
+|---|---|
+| `ssh: connect to host ... timed out` | Wrong IP, the device is asleep, or it is on a different network. |
+| `Permission denied` | Root SSH is not enabled on this unit, or the password is wrong. |
+
+### 1. Download the app
+Open [the latest release](https://github.com/sd88me/mpc-vst-plugins/releases/latest) and download the file for your computer from **Assets**:
+
+| Your computer | Download the file that ends with |
+|---|---|
+| **Windows** (almost every PC) | `-windows.zip` |
+| **Mac with an Apple chip** (M1, M2, M3, M4 or later: any Mac from late 2020 on) | `-mac-apple-silicon.tar.gz` |
+| **Mac with an Intel chip** (older Macs: Apple menu, About This Mac, says "Intel") | `-mac-intel.tar.gz` |
+| Linux | `-linux.tar.gz` |
+| Windows or Linux on an ARM chip (rare) | `-windows-arm64.zip` or `-linux-arm64.tar.gz` |
+
+Unpack it. You get one program, `mpc-installer`, and a short `README.txt`. The release also has a `SHA256SUMS` file if you want to check your download.
+
+### 2. Start it
+Double-click `mpc-installer` (or run it in a terminal). It prints a link and opens it in your browser. The page only works on your own computer.
+
+The first time, your system warns that the program is from an unknown developer, because it is not signed:
+
+- **Windows:** "Windows protected your PC": click **More info**, then **Run anyway**.
+- **Mac:** it will not open on a double-click. Right-click the file, choose **Open**, then **Open** again. If that does not work, run `xattr -d com.apple.quarantine mpc-installer` in a terminal.
+- **Linux:** run `chmod +x mpc-installer` if the file does not start.
+
+### 3. Connect to your device
 Type your device's IP address. Leave the password empty if you log in to the device with an SSH key; otherwise type the password. Press **Connect**. The page shows what it found: the device type, the plugin folders already on it, and the places plugins can go: the internal drive, and any SD card or USB drive that has a `Synths` folder, each with its free space. The password is used for that one connection and is not saved, and nothing about your device is stored on your computer.
 
-## 4. Choose plugins
+### 4. Choose plugins
 The list shows every plugin in the catalog that has a download, with its version, size and a short description. Tick the ones you want. Each plugin has a tier: **Verified** (the newest release was tested on real hardware and the test is recorded), **Listed** (it passed the catalog's automatic release checks, but no hardware test is recorded) or **Experimental** (new or unproven, hidden unless you ask for it). None of these is a security review: nobody reads each plugin's code, so stick to developers you trust. A plugin that is already on your device is marked **on the device**, and if the catalog has a newer version than the one you installed, it shows **update**.
 
 With many plugins, use the search box, the filters (kind, developer, whether it is already on the device or has an update) and the sort. What you tick stays ticked while you filter, and a bar at the bottom shows how many you have picked.
 
 You can also **drop zip files** into the box under the list: plugins you downloaded yourself, or ones you built. A plugin marked **Build it yourself** in the catalog has no download, because it contains data from your own firmware; the [Build](build.html#plugins-you-build-yourself) page shows how to make the zip. The page checks each zip before it accepts it and tells you if something is wrong with it.
 
-## 5. Install
+### 5. Install
 Press **Install…** and read the question. **Save your project on the device first**: MPC is stopped and started again. Confirm, and watch the log. The app:
 
 - downloads each zip and checks it against the checksum in the catalog, before it changes anything on your device (if a checksum does not match, nothing is installed);
@@ -74,33 +173,33 @@ Press **Install…** and read the question. **Save your project on the device fi
 
 Some older releases have an installer that restarts MPC by itself, so MPC may restart more than once; the page says so before you confirm and the log shows it. Newer releases are installed in one go.
 
-## 6. Use it
+### 6. Use it
 On the device, add the plugin to a track from the plugin browser: instruments under Instrument plugins, effects under Insert effects. Its screen appears in the plugin view, and the Q-Links follow the page. Save and reload a project once to make sure it comes back. If you turn on the manufacturer tab at the bottom of the browser, plugins are grouped by developer.
 
-## Update to a new version
+### Update to a new version
 Start the app, connect, and tick the plugin that shows **update**, then install as above. The new version replaces the old files in place and keeps the same plugin entry, so your projects still find the plugin. Files you added yourself (ROMs, kits, banks) are kept. A plugin you installed with an older release (the `.so` in `/sdcard/vst`) is replaced and your files are moved into its new folder in `/sdcard/Synths`.
 
 The catalog shows a **Compat** number for each version. If it goes up, the parameters changed, and projects saved with an older version will sound different. Read the release notes before updating a plugin you use in finished songs. If MPC still runs the old version afterwards, remove every copy of the plugin from your project and insert it again.
 
-## Remove a plugin
+### Remove a plugin
 In the app, open **Remove plugins** (step 4 on the page; click **Show**; plugins are grouped by the drive they are on), tick the plugin and press **Remove…**. MPC is stopped once, MPC's settings are backed up and the plugin is taken out of the plugin list, then its folder is deleted **except your own files** (ROMs, kits and dumps are kept), and MPC is started again. Projects that used the plugin still open, without it.
 
 The app only removes plugins it can identify: ones from the catalog, or ones whose zip you have dropped into the page. For any other plugin it cannot tell which files in the folder are yours, so it lists the plugin but does not offer to remove it. Drop that plugin's zip to manage it, or remove it by hand.
 
-## Register plugin folders
+### Register plugin folders
 A plugin only shows up in MPC once it is in MPC's plugin list. Folders you copied into a `Synths` folder yourself, plugins from other collections, or plugins MPC forgot (for example because a card was out when MPC started) are not in the list. In the app, open **Register plugin folders** (step 5 on the page; click **Show**). If something is waiting, a count appears next to the title and the list shows each folder and where it is. Press **Register…**: MPC is stopped once, its settings are backed up and the folders are added to the plugin list (entries whose plugin file is gone are dropped), and MPC is started again. Everything else in the list stays as it is.
 
-## Clean up old backups
+### Clean up old backups
 Every install, removal and sync makes a copy of MPC's settings file on the device, and nothing deletes them, so they pile up (they are small). In the app, open **Clean up old backups** (step 6 on the page; click **Show**), choose how many of the newest to keep (10 is a good number) and press **Delete older backups…**. The newest backup is never deleted, MPC is not restarted, and nothing but the backups is touched.
 
-## Advanced: device patches
+### Advanced: device patches
 At the bottom of the app, step 7 (**Advanced: device patches**, collapsed) lists community patches that change the device itself, not a plugin. An example is the 16-pad drum layout for some plugins, which changes Akai's own MPC program. **This is not for most people**, and the app only looks: open the step (or press **Check the device**) and it asks the device which patches are applied. It cannot apply or undo a patch yet; each row links to a guide for running the script yourself over SSH. The same patches, with what each one changes, its backup and its script checksum, are on the [Device patches](patches.html) page.
 
 Three patches are listed today: the 16-pad drum layout (it changes Akai's MPC program), the **drive exec patch** (it lets MPC load plugins from a drive mounted `noexec`, such as an MPC/Force's SSD, by making one folder of the drive executable; it adds a service to the device; the original was tried on one Force by its author, and this adapted version is **untested on a device so far, testers are wanted**), and the **button remap** (an LD_PRELOAD shim that turns a hardware button into other buttons, a pad or a screen tap; its author tried it on an MPC Live with Hakai and on a Force, and this installer is **untested on a device so far, testers are wanted**: it edits MPC's launcher or adds a service drop-in, remounts the root filesystem writable for a moment and restarts MPC, so keep an SSH session open and know how to run its `uninstall` before you try it). A row can also say **Installed, not active** (the patch is installed but not in effect right now, for example because a drive is not mounted, or because MPC has not loaded the remap).
 
 A row can say **This firmware is not supported**. That is the patch refusing, on purpose: it only works on one exact build of MPC OS, checked by a checksum, and the row shows your device's checksum and what the patch supports. If an earlier install left a backup of the stock program, the patch's guide explains how to restore it first.
 
-## If a plugin disappears after a restart
+### If a plugin disappears after a restart
 MPC keeps its whole plugin list in one place: the `pluginList-arm` list in its settings file, `MPC.settings`. Every way of installing plugins edits that same list, so one method can undo another. The plugin's files usually are still on the card; only its line in the list is gone. The usual causes:
 
 - **The settings file was edited while MPC was running.** MPC holds its settings in memory while it runs and saves them itself, so a change made underneath it can be overwritten. Stop MPC first (`systemctl stop acvs`; if `systemctl cat acvs` finds no such service, as on some MPC OS 2.x versions and on Hakai-enabled systems, the service is `inmusic-mpc`), edit, then start it (`systemctl start acvs`). The app and the installers do this for you.
@@ -122,9 +221,9 @@ To get plugins back:
 
 Before you paste a command you found online into the device's shell, copy the settings file to your computer: `scp "root@<device-ip>:/media/az01-internal/Settings/*/MPC.settings" .` Any command that rebuilds, restores or resets that file replaces your whole plugin list.
 
-## If something goes wrong
+### If something goes wrong
 - **The app cannot connect.** Check the IP address (it can change), that the device is on and on the same network, and that SSH is enabled. If you use a password, check it; otherwise the app only tries an SSH key in `~/.ssh` that has no passphrase.
-- **The app says it cannot install on this device.** It only installs to a 32-bit ARM MPC OS device where you are logged in as root.
+- **The app says it cannot install on this device.** It needs an MPC OS device (32-bit ARM, or Gen 2) where you are logged in as root, and a plugin with a build for that generation.
 - **MPC shows default settings after the restart.** The edited settings file was not accepted. Restore the backup the installer made, next to `MPC.settings` (see above).
 - **The plugin is not in the list.** MPC reads its plugin list at startup. Check that the app's log ended with "Done", then see "If a plugin disappears after a restart" above.
 - **My drive is "noexec" and the app will not install there.** Linux lets each drive be mounted with or without permission to run programs. MPC mounts external drives (SSD, SD card, USB stick) without it, and a plugin is a program, so MPC lists it but cannot load it. This is a device rule, not an app bug. Pick one:
@@ -137,7 +236,7 @@ Before you paste a command you found online into the device's shell, copy the se
 
 Ask in the community with the plugin's name, version, your device model and the installer's output (the log in the app).
 
-## Other ways to install
+### Other ways to install
 You do not need any of these if you use the app. They are here for people who prefer a terminal, or who cannot run the app. Each one installs the same release zips, with the same installer, so they can be mixed.
 
 ::: details One command for several plugins (no app to download)
