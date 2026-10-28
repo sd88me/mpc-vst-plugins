@@ -127,16 +127,28 @@ func TestBadPinFilesFallBackToTheCompiledInRelease(t *testing.T) {
 		body   string
 		status int
 	}{
-		"other host": {`{"version":"v1","url":"https://evil.example/x.zip","sha256":"` + good + `"}`, 200},
-		"short hash": {`{"version":"v1","url":"` + easyReleasePrefix + `v1/x.zip","sha256":"abc"}`, 200},
-		"not json":   {`nope`, 200},
-		"http error": {`{}`, 500},
-		"no version": {`{"url":"` + easyReleasePrefix + `v1/x.zip","sha256":"` + good + `"}`, 200},
+		"other host":         {`{"version":"v1","url":"https://evil.example/x.zip","sha256":"` + good + `"}`, 200},
+		"another repository": {`{"version":"v1","url":"https://github.com/someone-else/plugin-manager-usb-for-open-mpc/releases/download/v1/x.zip","sha256":"` + good + `"}`, 200},
+		"short hash":         {`{"version":"v1","url":"` + easyReleasePrefix + `v1/x.zip","sha256":"abc"}`, 200},
+		"not json":           {`nope`, 200},
+		"http error":         {`{}`, 500},
+		"no version":         {`{"url":"` + easyReleasePrefix + `v1/x.zip","sha256":"` + good + `"}`, 200},
 	} {
 		servePin(t, c.body, c.status)
 		if p := currentEasyPin(); p != builtinEasyPin() {
 			t.Errorf("%s: used %+v instead of the compiled-in pin", name, p)
 		}
+	}
+}
+
+func TestBothTheUpstreamAndTheForkReleasePrefixAreAccepted(t *testing.T) {
+	for _, prefix := range easyReleasePrefixes {
+		if !(easyPin{Version: "v1", URL: prefix + "v1/x.zip", SHA256: strings.Repeat("a", 64)}).valid() {
+			t.Errorf("%s refused", prefix)
+		}
+	}
+	if (easyPin{Version: "v1", URL: "https://github.com/sd88me/other/releases/download/v1/x.zip", SHA256: strings.Repeat("a", 64)}).valid() {
+		t.Error("a repository outside the allowlist was accepted")
 	}
 }
 

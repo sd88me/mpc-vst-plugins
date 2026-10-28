@@ -225,7 +225,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
         <li><b>MPC OS 3.10:</b> Gen1 MPC (needs a one-time setup, see the steps below).</li>
       </ul></li>
     <li><b>One stick fits every device</b> and picks the right version itself.</li>
-    <li><b>Credit:</b> the on-device manager is <a href="https://github.com/Eurikon/plugin-manager-usb-for-open-mpc" target="_blank" rel="noopener">Plugin Manager USB for OPEN MPC</a> by <b>Twisted Cable</b> (MIT). This installer downloads that project's release (<span id="es-ver"></span>, checked against a fixed checksum) and copies it to your stick.</li>
+    <li><b>Credit:</b> the on-device manager is <a href="https://github.com/Eurikon/plugin-manager-usb-for-open-mpc" target="_blank" rel="noopener">Plugin Manager USB for OPEN MPC</a> by <b>Twisted Cable</b> (MIT). This installer downloads a build of that project with a few fixes, from <a href="https://github.com/sd88me/plugin-manager-usb-for-open-mpc" target="_blank" rel="noopener">our fork</a> (<span id="es-ver"></span>, checked against a fixed checksum), and copies it to your stick.</li>
   </ul>
   <div class="callout"><b>Gen2 is a beta.</b> <i>Tested 2026-10-28 on a Live III with MPC OS 3.9.1, including with addins installed. MPC OS 3.10 on a Gen2 has a fix in this release but is not yet confirmed on a stock 3.10 device.</i></div>
   <div id="es-drives"></div>
@@ -313,7 +313,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="st3" class="off">
   <h2><span class="n">3</span>Plugin manager</h2>
   <label style="display:flex;gap:10px;align-items:flex-start;font:400 15px var(--text)"><input type="checkbox" id="st-withmgr" checked style="margin-top:4px">
-    <span>Also open the plugin manager from this stick (recommended). It is Twisted Cable's Plugin Manager USB for OPEN MPC, downloaded and
+    <span>Also open the plugin manager from this stick (recommended). It is Twisted Cable's Plugin Manager USB for OPEN MPC (our fork of it, with a few fixes), downloaded and
     checked as for the easy stick above; this stick runs it right after turning SSH on.</span></label>
 </section>
 

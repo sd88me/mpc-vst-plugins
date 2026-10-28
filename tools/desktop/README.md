@@ -13,7 +13,7 @@ The same mode opens with an **easy stick** (`tools/desktop/easystick.go`, added 
 the community "Plugin Manager USB for OPEN MPC" release by Twisted Cable (MIT; <https://github.com/Eurikon/plugin-manager-usb-for-open-mpc>),
 pinned to one reviewed version and checked against a fixed SHA-256, never "latest" (the stick runs as root). The pin is read
 at run time from `tools/desktop/easystick-pin.json` on `main` (version, URL, sha256; the URL must be under that project's
-releases), so adopting a tested release is a one-file PR with no installer release; the `easyStickVersion`/`easyStickSHA256`
+releases or this project's fork of it, `sd88me/plugin-manager-usb-for-open-mpc`), so adopting a tested release is a one-file PR with no installer release; the `easyStickVersion`/`easyStickSHA256`
 constants are the offline fallback, refreshed at the next installer release, and unpacks it onto an empty drive. It needs no firmware: the bundle carries the
 OS 3.9.1 autorun route and the OS 3.10 controller helper, and picks the Gen1 or Gen2 runtime on the device.
 

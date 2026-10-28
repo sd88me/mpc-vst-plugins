@@ -29,15 +29,15 @@ import (
 )
 
 const (
-	easyStickVersion = "v1.2.0" // rolled back from 1.2.1 (2026-10-28): a Live III on 3.10 reported the manager no longer opens with 1.2.1 and works again with the previous release; see docs/NOTES.md
+	easyStickVersion = "v1.2.2" // sd88me fork build of upstream v1.2.1 (display rotation override, helper failure log, updates from the fork); device test notes in docs/NOTES.md (2026-10-28)
 	easyStickMaxSize = 16 << 20 // the zip is ~1.8 MB; refuse anything wildly larger
 )
 
 // easyStickSHA256 is a var, like the URL, so tests can pin a fixture instead.
-var easyStickSHA256 = "f7914db2a402aa1bb650f62b44b3a57ed5fdfcbabe04b5d66e934a5cfcf13ad8"
+var easyStickSHA256 = "321d553a45ddec6567536d0c84509fb2f857beec78118223cc7a161d072c2b9b"
 
 // easyStickURL is a var so tests can point it at a local server.
-var easyStickURL = "https://github.com/Eurikon/plugin-manager-usb-for-open-mpc/releases/download/" +
+var easyStickURL = "https://github.com/sd88me/plugin-manager-usb-for-open-mpc/releases/download/" +
 	easyStickVersion + "/plugin-manager-usb-" + easyStickVersion + ".zip"
 
 // easyPin is one reviewed release of the community manager. The compiled-in one is the fallback; the installer
@@ -52,14 +52,29 @@ type easyPin struct {
 // easyPinURL is a var so tests can point it at a local server; empty means "use the compiled-in pin only".
 var easyPinURL = "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/main/tools/desktop/easystick-pin.json"
 
-// easyReleasePrefix is the only place a pin file may send the download, so a changed pin file can't point the
-// installer at an arbitrary host.
-const easyReleasePrefix = "https://github.com/Eurikon/plugin-manager-usb-for-open-mpc/releases/download/"
+// easyReleasePrefixes are the only places a pin file may send the download (the upstream project's releases and this
+// project's fork of it), so a changed pin file can't point the installer at an arbitrary host.
+var easyReleasePrefixes = []string{
+	"https://github.com/Eurikon/plugin-manager-usb-for-open-mpc/releases/download/",
+	"https://github.com/sd88me/plugin-manager-usb-for-open-mpc/releases/download/",
+}
+
+// easyReleasePrefix is the fork's, which is what the compiled-in pin uses.
+const easyReleasePrefix = "https://github.com/sd88me/plugin-manager-usb-for-open-mpc/releases/download/"
+
+func allowedEasyURL(url string) bool {
+	for _, prefix := range easyReleasePrefixes {
+		if strings.HasPrefix(url, prefix) {
+			return true
+		}
+	}
+	return false
+}
 
 var hex64 = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 func (p easyPin) valid() bool {
-	return p.Version != "" && strings.HasPrefix(p.URL, easyReleasePrefix) && !strings.ContainsAny(p.URL, " \t\r\n") && hex64.MatchString(p.SHA256)
+	return p.Version != "" && allowedEasyURL(p.URL) && !strings.ContainsAny(p.URL, " \t\r\n") && hex64.MatchString(p.SHA256)
 }
 
 func builtinEasyPin() easyPin {
