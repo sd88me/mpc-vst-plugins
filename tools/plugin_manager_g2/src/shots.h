@@ -115,6 +115,7 @@ static const char *const SHOTS[] = {
     "phyxxl",
     "pixel-walkers",
     "plateauxxl",
+    "plugin-manager-g2",
     "plugin-manager",
     "polyforce",
     "prloguexxl",
