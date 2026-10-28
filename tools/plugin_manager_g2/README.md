@@ -16,6 +16,13 @@ detached restart that survives stopping MPC, the skin and layout generation, the
 `f01948b` (1.2.0, MIT), with poloq's git history kept; nearly everything you see on screen is poloq's design. What we added is described below.
 See [Credits](#credits) for the full list and [NOTICE.md](NOTICE.md) for the licences.
 
+## Why an official OpenMPC version
+
+This is the **official OpenMPC plugin manager**. It draws on everything that came before it (poloq's manager above all, plus the ideas in
+Eurikon's tool and the reports from people using it on real devices) and is maintained inside the OpenMPC project, so that it **stays aligned with
+the project's development**: the catalog, its release rules and the official ways to install, update and remove plugins. It is built to support
+**both Gen1 and Gen2** devices: one plugin, a 32-bit (armv7) build for Gen1 and a 64-bit (aarch64) build for Gen2, released together.
+
 ## What it does
 
 **Browse**
