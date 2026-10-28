@@ -1,0 +1,5 @@
+{ "id": "plugin-manager-g2", "name": "Plugin Manager G2", "author": "sd88me", "repo": "sd88me/mpc-vst-plugins",
+  "kind": "instrument", "style": "utility", "tags": ["manager", "installer", "catalog", "gen2"], "license": "MIT",
+  "summary": "Install, update and remove catalog plugins from the MPC screen, with one MPC restart per batch. poloq's Plugin Manager (MIT) with Gen2 (aarch64) support; releases are tagged plugin-manager-g2-v<version>. Gen2 only.",
+  "flags_reviewed": ["runs programs"],
+  "asset_pattern": "Plugin-Manager-G2-*-mpc-aarch64.zip" }
