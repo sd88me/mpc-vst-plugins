@@ -87,15 +87,10 @@ Then add **OpenMPC Plugin Manager G2** to a track from the plugin browser (under
 
 On 3.9.1, **Shift + Menu** only brings the manager back while it is already open. It does not start it.
 
-**Plugin manager stick, MPC OS 3.10: one-time setup first.** 3.10 has no USB prompt, so the stick carries a small helper you load once:
-1. **Delete any old** `Plugin Manager helper` from the internal **MPC Documents** first: the helper has to match the stick you just made.
-2. Insert the stick.
-3. In MPC's File Browser, navigate to your USB stick and select `Plugin Manager helper.xpa`.
-4. Choose **Load** and pick the internal **MPC Documents** folder as the destination, **not the stick**.
-5. Restart.
-6. Hold **Shift + Menu** for two seconds.
-
-After that, on 3.10, a fresh insertion of the stick may open the manager by itself. If it doesn't, or the stick was already in when you switched the MPC on, hold **Shift + Menu** for two seconds instead.
+**Plugin manager stick, MPC OS 3.10.** 3.10 has no USB prompt like 3.9.1. In our test on a stock 3.10 Live III the manager opened by itself when the stick was inserted, so try that first:
+1. Insert the stick and wait a moment. If the manager opens, you are done with setup.
+2. If nothing happens, hold **Shift + Menu** for two seconds.
+3. If that does nothing either, do the **one-time helper setup**: delete any old `Plugin Manager helper` from the internal **MPC Documents** (the helper has to match the stick you just made). In MPC's File Browser, navigate to your USB stick and select `Plugin Manager helper.xpa`. Choose **Load** and pick the internal **MPC Documents** folder as the destination, **not the stick**. Restart, then hold **Shift + Menu** for two seconds.
 
 ## 5. Install plugins on the MPC
 The manager opens on the MPC's screen with four tabs: **Catalog** (everything in this site's catalog that works on your MPC), **Local** (plugin zip files you copied into the stick's `local-plugins` folder, which also works offline), **On MPC** (what is installed, with update and remove) and **History**. Tap a plugin, confirm, and wait for the install to finish. The welcome screen also has an **OpenMPC Plugin Manager G2** button that installs that plugin; if it says **Unavailable**, choose where plugins go under **SETUP** first (a Live III has no default), and if it says **Installed**, it is already on your MPC. Install as many as you like, then tap **Return to MPC** and **wait up to a minute**. Do not switch the MPC off while it reopens.
@@ -109,7 +104,7 @@ Open the manager again (insert the stick, or on 3.10 hold **Shift + Menu** for t
 ## If something goes wrong
 - **No prompt appears when I insert the stick (MPC OS 3.9.1).** Take the stick out and put it back in while the MPC is already running. The prompt appears on a fresh insertion, not for a stick that was in during start-up. In our testing, if two USB sticks with startup programs are in, only one of them runs at start-up: take the other out.
 - **The basic stick did nothing, or MPC didn't restart.** Open `g2-install-result.txt` on the stick: it says what it found and what it did. It needs MPC OS 3.9.1 or earlier, and one plugin folder it recognises on the MPC.
-- **Nothing happens on MPC OS 3.10.** Check the one-time setup (step 4): the helper must be extracted into the **internal MPC Documents** folder, not onto the stick, and the MPC must have been restarted afterwards.
+- **Nothing happens on MPC OS 3.10.** Hold **Shift + Menu** for two seconds. If that does nothing, check the one-time helper setup (step 4): the helper must be loaded into the **internal MPC Documents** folder, not onto the stick, and the MPC must have been restarted afterwards.
 - **The screen stays blank after Return to MPC.** The MPC takes up to a minute to start again. Wait, and do not switch it off.
 - **The catalog is empty or will not load.** The MPC needs internet. Check Wi-Fi or Ethernet on the MPC. Plugins you copied into the stick's `local-plugins` folder can be installed without internet.
 - **A plugin installs but does nothing.** Some plugins need files you provide, such as ROMs or banks. Check the plugin's own page in the catalog.
