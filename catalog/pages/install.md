@@ -16,7 +16,7 @@ The installer app writes the stick for you. It offers two kinds, and both are on
 |---|---|---|
 | Works on | MPC OS **3.9.1 and earlier** only | **Every MPC OS version, including 3.10** |
 | What you get | The **OpenMPC Plugin Manager G2** installed on your MPC. You then browse and install plugins from inside it, like any plugin. | A plugin manager that opens on the MPC's screen straight from the stick, with the whole catalog. |
-| On the MPC | Insert the stick, confirm **one prompt**, wait for MPC to restart. | Insert the stick and open the manager each time you want it (3.10 needs a one-time helper, see step 4). |
+| On the MPC | Insert the stick, confirm **one prompt**, wait for MPC to restart. | Insert the stick and open the manager each time you want it (on 3.10 it may open by itself, otherwise see step 4). |
 | Network | Not needed for the install itself. | The MPC needs internet to read the catalog. |
 
 **Not sure?** If your MPC is on OS 3.9.1 or earlier, use the **basic** stick. If it is on 3.10, use the **plugin manager** stick: 3.10 has no USB prompt, so the basic stick cannot run there. The MPC OS version is shown in the MPC's own settings or info screen.
