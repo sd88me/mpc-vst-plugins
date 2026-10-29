@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Write a USB stick folder that installs catalog plugins on an MPC/Force with no SSH, using MPC OS's own USB-script prompt.
 
-  python3 tools/usb_stick/make_stick.py --firmware <update.img | MPC executable> --out <folder> [--install plugin-manager,...]
+  python3 tools/usb_stick/make_stick.py --firmware <update.img | MPC executable> --out <folder> [--install plugin-manager-g2,...]
                                          [--ssh-key <path to a .pub file> | --ssh-password <password>]
 
 Copy the folder's contents to the root of a FAT32/exFAT USB stick (hidden files too), insert it, confirm the prompt on the device.
@@ -70,7 +70,7 @@ def build(out, salt, store, install, ssh_key=None, ssh_password=None):
         "yesButtonText": "Install", "noButtonText": "Cancel"}]}}
     (autorun / "autorun.json").write_text(json.dumps(manifest, indent=2) + "\n")
     (autorun / "autorun.check").write_bytes(autorun_check(autorun, files, salt))
-    ids = [i for i in (install or ["plugin-manager"])]
+    ids = [i for i in (install or ["plugin-manager-g2"])]
     (out / "install.txt").write_text("# one catalog plugin id per line; edit before inserting the stick\n" + "\n".join(ids) + "\n")
     if ssh_key:
         ssh_note = ("\nSSH is also enabled for the public key you gave: persistently if the device's root can be made writable, "
@@ -91,7 +91,7 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--firmware", required=True, help="the user's Akai update image, or the MPC executable")
     ap.add_argument("--out", required=True)
-    ap.add_argument("--install", default="plugin-manager", help="comma-separated catalog ids")
+    ap.add_argument("--install", default="plugin-manager-g2", help="comma-separated catalog ids")
     ap.add_argument("--store", default=str(HERE.parent / "mpc-store.sh"))
     ap.add_argument("--ssh-key", help="a public key file (e.g. ~/.ssh/id_ed25519.pub) to also enable SSH for")
     ap.add_argument("--ssh-password", help="set root's password and enable SSH password login instead of a key (advanced, less secure)")

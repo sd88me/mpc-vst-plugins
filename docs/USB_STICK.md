@@ -68,7 +68,7 @@ its position differs, and it appears twice. The scheme is gone in MPC OS 3.10.0 
   `install.sh -y -n` (2026-10-23: a no-op where its LD_PRELOAD entry persisted; on a device with no persistent `/etc` at all,
   e.g. Gen2's Live III, the entry lives on `/run` and a reboot wiped it, while `/data/mpc-addins/<id>/` itself -- including its
   own copy of `install.sh` -- survived; mpc-vst-plugins `docs/ADDINS.md`, "A device with no persistent /etc"), then copies
-  `MPC.settings` to the stick, then runs the bundled `mpc-store.sh -y install <ids>` (default `plugin-manager`; ids from
+  `MPC.settings` to the stick, then runs the bundled `mpc-store.sh -y install <ids>` (default `plugin-manager-g2`, since 2026-10-29; ids from
   `install.txt` on the stick) and writes `mpc-install-result.txt`. `mpc-store.sh` stops MPC once, starts it once, and starts it
   again on failure; when every requested id was skipped (no build for this device) MPC is never touched at all, and the run is
   not a failure. It does not touch `LD_PRELOAD` itself, so addins keep working. `mpc-store.sh` already picks the aarch64 vs
@@ -96,7 +96,7 @@ its position differs, and it appears twice. The scheme is gone in MPC OS 3.10.0 
   in a release. Do not publish a ready-made stick.
 - Anything on the stick that the check covers (`autorun.json`, `open.sh`, `runtime/*`) is fixed once the check is made;
   `install.txt` sits outside it on purpose, so the plugin list can be edited.
-- The plugin manager is `plugin-manager` from the catalog (a VST app listing the catalog on the MPC screen).
+- The plugin manager is `plugin-manager-g2` (OpenMPC Plugin Manager G2) from the catalog, a VST app listing the catalog on the MPC screen. poloq's original `plugin-manager` was removed from the catalog on 2026-10-29 at poloq's agreement (no longer maintained); the 2026-10-13 and 2026-10-23 runs above used it.
 
 ## Not known yet
 
