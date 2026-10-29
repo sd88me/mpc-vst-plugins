@@ -2,33 +2,41 @@
 title: Install a plugin
 nav: Install
 order: 10
-summary: Put catalog plugins on your MPC or Force from a USB stick. No SSH, no firmware modding. Other methods for people who already have SSH are below.
+summary: Put catalog plugins on your MPC or Force from a USB stick. No SSH, no firmware modding. Two ways, one of them a single prompt. Other methods for people who already have SSH are below.
 ---
 
-You can put plugins from the catalog on your MPC or Force **without modifying its firmware and without any technical access to the device**. You write a USB stick on your computer, plug it into the MPC, confirm one prompt, and then browse and install plugins on the MPC's own touchscreen.
+You can put plugins from the catalog on your MPC or Force **without modifying its firmware and without any technical access to the device**. You write a USB stick on your computer, plug it into the MPC, confirm one prompt, and then install plugins on the MPC itself.
 
 > **Beta.** This way of installing is new and still being tested. It is unofficial community software, not made or supported by Akai. **Save your project first**: opening the plugin manager stops MPC, and it starts again when you return. The stick runs a small program with full rights on your MPC once you confirm a prompt on the device, and Akai could change or remove the feature this uses in a future update.
 
-## How it works
-1. **On your computer:** the *MPC plugin installer* app writes a USB stick for you. Nothing needs setting up on the MPC first.
-2. **On your MPC:** plug the stick in and confirm one prompt.
-3. **The plugin manager opens on the MPC's screen.** Browse the catalog, tap a plugin to install it, and tap *Return to MPC* when you are done. The plugins appear in MPC's normal plugin browser.
+## Two ways, pick one
+The installer app writes the stick for you. It offers two kinds, and both are on its first tab:
 
-The plugin manager on the stick is **Plugin Manager USB for OPEN MPC**, made by [Twisted Cable](https://github.com/Eurikon/plugin-manager-usb-for-open-mpc). It found the way to run a program from a USB stick on a stock MPC and built the on-device manager. This site adds the catalog and the installer app that sets the stick up for you.
+| | **Basic: one-prompt install stick** | **Plugin manager stick** |
+|---|---|---|
+| Works on | MPC OS **3.9.1 and earlier** only | **Every MPC OS version, including 3.10** |
+| What you get | The **OpenMPC Plugin Manager G2** installed on your MPC. You then browse and install plugins from inside it, like any plugin. | A plugin manager that opens on the MPC's screen straight from the stick, with the whole catalog. |
+| On the MPC | Insert the stick, confirm **one prompt**, wait for MPC to restart. | Insert the stick and open the manager each time you want it (3.10 needs a one-time helper, see step 4). |
+| Network | Not needed for the install itself. | The MPC needs internet to read the catalog. |
+
+**Not sure?** If your MPC is on OS 3.9.1 or earlier, use the **basic** stick. If it is on 3.10, use the **plugin manager** stick: 3.10 has no USB prompt, so the basic stick cannot run there. The MPC OS version is shown in the MPC's own settings or info screen.
+
+The plugin manager stick is **Plugin Manager USB for OPEN MPC**, made by [Twisted Cable](https://github.com/Eurikon/plugin-manager-usb-for-open-mpc). It found the way to run a program from a USB stick on a stock MPC and built the on-device manager. This site adds the catalog, the OpenMPC Plugin Manager G2 and the installer app that sets the stick up for you.
 
 ## What you need
 - A **Windows, Mac or Linux computer**, for a few minutes.
 - An **empty USB stick**, formatted FAT32 or exFAT (the way most sticks come). The installer will not write to a stick that already has your files on it.
-- Your **MPC or Force, with MPC OS 3.9.1 or 3.10**, connected to the internet (Wi-Fi or Ethernet) so it can read the catalog.
+- Your **MPC or Force, with MPC OS 3.9.1 or 3.10**. The plugin manager stick, and browsing the catalog afterwards, need the MPC online (Wi-Fi or Ethernet).
 
 You do not need an SSH login, a modded firmware, or a computer connection to the MPC.
 
 ## Will it work on my MPC?
 | Your device | MPC OS 3.9.1 | MPC OS 3.10 |
 |---|---|---|
-| MPC Live II (Gen 1) | Tested by Twisted Cable | Tested by Twisted Cable |
-| MPC Live III (Gen 2) | Tested here, with addins installed | Beta: opens the manager in our test, not yet confirmed on a stock 3.10 unit |
-| MPC Live, One, X, Key 61 (Gen 1), Force | Expected to work, not tested yet | Expected to work, not tested yet |
+| MPC Live II (Gen 1) | Plugin manager stick tested by Twisted Cable | Plugin manager stick tested by Twisted Cable |
+| MPC Live III (Gen 2) | Both sticks tested here, with addins installed | Plugin manager stick tested here on a stock 3.10 unit. The basic stick can't run on 3.10. |
+| Force | Basic stick tested here | Expected to work with the plugin manager stick, not tested yet |
+| MPC Live, One, X, Key 61 (Gen 1) | Expected to work, not tested yet | Expected to work, not tested yet |
 | Other Gen 2 models (One G2, Key(s) G2) | Expected to work, not tested yet | Beta, not tested yet |
 
 If you try one that says "not tested yet", please [tell us how it went](https://github.com/sd88me/mpc-vst-plugins/issues). Each plugin in the catalog also shows which devices it has a build for. MPC OS 2.x is not covered by this method.
@@ -56,26 +64,41 @@ The first time, your system warns that the program is from an unknown developer,
 - **Linux:** run `chmod +x mpc-installer` if the file does not start.
 
 ## 3. Write the stick
-The first tab, **Plugin install (no SSH or connection needed)**, is the one you want. Plug your empty USB stick into the computer, pick it in the list of drives (or press **Browse**), and press **Download and write**. The app downloads the plugin manager, checks it against a fixed checksum, and copies it to the stick. When it says it is done, eject the stick safely.
+Open the first tab, **Plugin install (no SSH or connection needed)**. It has three sections, each titled with the MPC OS it works on. You want one of the first two:
+
+- **Basic user: one-prompt install stick (MPC OS 3.9.1 and earlier only).** Choose your MPC OS, leave the bundle box empty, pick your empty USB stick in the list of drives (or press **Browse**) and press **Write stick**. The app downloads the stick's contents, checks them against a fixed checksum, and copies them to the stick.
+- **Plugin manager stick (all MPC OS versions, including 3.10).** Pick the stick and press **Download and write**. The app downloads the plugin manager, checks it, and copies it to the stick.
+
+When it says it is done, eject the stick safely. (The third section, for developers, is explained further down.)
 
 ## 4. On your MPC
 **Save your project first.**
 
-**MPC OS 3.9.1**
+**Basic stick (MPC OS 3.9.1 and earlier)**
+1. Insert the stick.
+2. Choose **Open** on the prompt that appears (it asks if you have saved your project).
+3. Wait. MPC restarts with the **OpenMPC Plugin Manager G2** installed. The stick leaves a note, `g2-install-result.txt`, saying where it put it.
+
+Then add **OpenMPC Plugin Manager G2** to a track from the plugin browser (under Instrument plugins) to browse and install more plugins.
+
+**Plugin manager stick, MPC OS 3.9.1 (and earlier)**
 1. Insert the stick.
 2. Choose **Open** on the prompt that appears.
 
-**MPC OS 3.10: one-time setup first.** 3.10 has no USB prompt, so the stick carries a small helper you load once:
-1. Insert the stick.
-2. In MPC's File Browser, navigate to your USB stick and select `Plugin Manager helper.xpa`.
-3. Choose **Load** and pick the internal **MPC Documents** folder as the destination, **not the stick**.
-4. Restart.
-5. Hold **Shift + Menu** for two seconds.
+On 3.9.1, **Shift + Menu** only brings the manager back while it is already open. It does not start it.
 
-After that, on 3.10, a fresh insertion of the stick offers to open the manager. If the stick was already in when you switched the MPC on, hold **Shift + Menu** for two seconds instead.
+**Plugin manager stick, MPC OS 3.10: one-time setup first.** 3.10 has no USB prompt, so the stick carries a small helper you load once:
+1. **Delete any old** `Plugin Manager helper` from the internal **MPC Documents** first: the helper has to match the stick you just made.
+2. Insert the stick.
+3. In MPC's File Browser, navigate to your USB stick and select `Plugin Manager helper.xpa`.
+4. Choose **Load** and pick the internal **MPC Documents** folder as the destination, **not the stick**.
+5. Restart.
+6. Hold **Shift + Menu** for two seconds.
+
+After that, on 3.10, a fresh insertion of the stick may open the manager by itself. If it doesn't, or the stick was already in when you switched the MPC on, hold **Shift + Menu** for two seconds instead.
 
 ## 5. Install plugins on the MPC
-The manager opens on the MPC's screen with four tabs: **Catalog** (everything in this site's catalog that works on your MPC), **Local** (plugin zip files you copied into the stick's `local-plugins` folder, which also works offline), **On MPC** (what is installed, with update and remove) and **History**. Tap a plugin, confirm, and wait for the install to finish. Install as many as you like, then tap **Return to MPC** and **wait up to a minute**. Do not switch the MPC off while it reopens.
+The manager opens on the MPC's screen with four tabs: **Catalog** (everything in this site's catalog that works on your MPC), **Local** (plugin zip files you copied into the stick's `local-plugins` folder, which also works offline), **On MPC** (what is installed, with update and remove) and **History**. Tap a plugin, confirm, and wait for the install to finish. The welcome screen also has an **OpenMPC Plugin Manager G2** button that installs that plugin; if it says **Unavailable**, choose where plugins go under **SETUP** first (a Live III has no default), and if it says **Installed**, it is already on your MPC. Install as many as you like, then tap **Return to MPC** and **wait up to a minute**. Do not switch the MPC off while it reopens.
 
 ## 6. Use it
 Add the plugin to a track from the plugin browser: instruments under Instrument plugins, effects under Insert effects. Its screen appears in the plugin view, and the Q-Links follow the page. Save and reload a project once to make sure it comes back.
@@ -85,12 +108,13 @@ Open the manager again (insert the stick, or on 3.10 hold **Shift + Menu** for t
 
 ## If something goes wrong
 - **No prompt appears when I insert the stick (MPC OS 3.9.1).** Take the stick out and put it back in while the MPC is already running. The prompt appears on a fresh insertion, not for a stick that was in during start-up. In our testing, if two USB sticks with startup programs are in, only one of them runs at start-up: take the other out.
+- **The basic stick did nothing, or MPC didn't restart.** Open `g2-install-result.txt` on the stick: it says what it found and what it did. It needs MPC OS 3.9.1 or earlier, and one plugin folder it recognises on the MPC.
 - **Nothing happens on MPC OS 3.10.** Check the one-time setup (step 4): the helper must be extracted into the **internal MPC Documents** folder, not onto the stick, and the MPC must have been restarted afterwards.
 - **The screen stays blank after Return to MPC.** The MPC takes up to a minute to start again. Wait, and do not switch it off.
 - **The catalog is empty or will not load.** The MPC needs internet. Check Wi-Fi or Ethernet on the MPC. Plugins you copied into the stick's `local-plugins` folder can be installed without internet.
 - **A plugin installs but does nothing.** Some plugins need files you provide, such as ROMs or banks. Check the plugin's own page in the catalog.
 
-Tell us what happened in [the issue tracker](https://github.com/sd88me/mpc-vst-plugins/issues): your device model, MPC OS version, what you saw on the screen, and the file `manager-result.txt` that the stick writes after each use.
+Tell us what happened in [the issue tracker](https://github.com/sd88me/mpc-vst-plugins/issues): your device model, MPC OS version, what you saw on the screen, and the file the stick writes after each use (`g2-install-result.txt` for the basic stick, `manager-result.txt` for the plugin manager stick).
 
 ## Advanced: other ways to install
 Everything below is for people who already use **SSH**, which is a way to log in to the MPC's built-in Linux system from your computer. You do not need any of it for the way above. It is here for modded units, for developers, and for people who want more control: installing zips you built yourself, plugin patches, removing and registering plugins in bulk, and installing from a terminal.
@@ -101,7 +125,7 @@ Everything below is for people who already use **SSH**, which is a way to log in
 |---|---|
 | Do not know what SSH is, or have a stock MPC | The USB stick above. You are done. |
 | Already have root SSH on your MPC or Force (a modded unit) | The installer app's **Install over SSH** tab, below. |
-| Want SSH on a stock MPC, to use the SSH tab or to develop | The installer's stick tab has an **Advanced: turn on SSH** section. It builds a stick that turns SSH on and puts addins back, and can also open the plugin manager. It needs your device's own stock update file (a one-time check) and works on MPC OS up to 3.9.1. On a Gen 2 device the setting is lost at every restart, so you reinsert the stick after each one. |
+| Want SSH on a stock MPC, to use the SSH tab or to develop | The first tab's **For developers: turn on SSH (MPC OS 3.9.1 and earlier only)** section. It builds a stick that turns SSH on and puts addins back, and can also open the plugin manager (only the first time you use the stick). It needs your device's own stock update file (a one-time check). On a Gen 2 device use an SSH **key**: a password can't be kept there, and the setting is lost at every restart, so you reinsert the stick after each one. It can't run on 3.10. |
 
 ### Install over SSH with the installer app
 The installer app's second tab, **Install over SSH**, lets you pick plugins from a list (or drop zip files into it) and press Install; it checks every download, copies the plugins to your device, and restarts MPC once. You do not type any commands, but the device needs **root SSH access**, which stock MPC OS does not offer.
