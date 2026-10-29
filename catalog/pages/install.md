@@ -15,13 +15,13 @@ The installer app writes the stick for you. It offers two kinds, and both are on
 | | **Basic: one-prompt install stick** | **Plugin manager stick** |
 |---|---|---|
 | Works on | MPC OS **3.9.1 and earlier** only | **Every MPC OS version, including 3.10** |
-| What you get | The **OpenMPC Plugin Manager G2** installed on your MPC. You then browse and install plugins from inside it, like any plugin. | A plugin manager that opens on the MPC's screen straight from the stick, with the whole catalog. |
+| What you get | The **OpenMPC Plugin Manager VST** installed on your MPC. You then browse and install plugins from inside it, like any plugin. | A plugin manager that opens on the MPC's screen straight from the stick, with the whole catalog. |
 | On the MPC | Insert the stick, confirm **one prompt**, wait for MPC to restart. | Insert the stick and open the manager each time you want it (3.10 needs a one-time helper, see step 4). |
 | Network | Not needed for the install itself. | The MPC needs internet to read the catalog. |
 
 **Not sure?** If your MPC is on OS 3.9.1 or earlier, use the **basic** stick. If it is on 3.10, use the **plugin manager** stick: 3.10 has no USB prompt, so the basic stick cannot run there. The MPC OS version is shown in the MPC's own settings or info screen.
 
-The plugin manager stick is **Plugin Manager USB for OPEN MPC**, made by [Twisted Cable](https://github.com/Eurikon/plugin-manager-usb-for-open-mpc). It found the way to run a program from a USB stick on a stock MPC and built the on-device manager. This site adds the catalog, the OpenMPC Plugin Manager G2 and the installer app that sets the stick up for you.
+The plugin manager stick is **Plugin Manager USB for OPEN MPC**, made by [Twisted Cable](https://github.com/Eurikon/plugin-manager-usb-for-open-mpc). It found the way to run a program from a USB stick on a stock MPC and built the on-device manager. This site adds the catalog, the OpenMPC Plugin Manager VST and the installer app that sets the stick up for you.
 
 ## What you need
 - A **Windows, Mac or Linux computer**, for a few minutes.
@@ -77,9 +77,9 @@ When it says it is done, eject the stick safely. (The third section, for develop
 **Basic stick (MPC OS 3.9.1 and earlier)**
 1. Insert the stick.
 2. Choose **Open** on the prompt that appears (it asks if you have saved your project).
-3. Wait. MPC restarts with the **OpenMPC Plugin Manager G2** installed. The stick leaves a note, `g2-install-result.txt`, saying where it put it.
+3. Wait. MPC restarts with the **OpenMPC Plugin Manager VST** installed. The stick leaves a note, `g2-install-result.txt`, saying where it put it.
 
-Then add **OpenMPC Plugin Manager G2** to a track from the plugin browser (under Instrument plugins) to browse and install more plugins.
+Then add **OpenMPC Plugin Manager VST** (in the plugin list it may still read "Plugin Manager G2") to a track from the plugin browser (under Instrument plugins) to browse and install more plugins.
 
 **Plugin manager stick, MPC OS 3.9.1 (and earlier)**
 1. Insert the stick.
@@ -98,7 +98,7 @@ On 3.9.1, **Shift + Menu** only brings the manager back while it is already open
 After that, on 3.10, a fresh insertion of the stick offers to open the manager. If the stick was already in when you switched the MPC on, hold **Shift + Menu** for two seconds instead.
 
 ## 5. Install plugins on the MPC
-The manager opens on the MPC's screen with four tabs: **Catalog** (everything in this site's catalog that works on your MPC), **Local** (plugin zip files you copied into the stick's `local-plugins` folder, which also works offline), **On MPC** (what is installed, with update and remove) and **History**. Tap a plugin, confirm, and wait for the install to finish. The welcome screen also has an **OpenMPC Plugin Manager G2** button that installs that plugin; if it says **Unavailable**, choose where plugins go under **SETUP** first (a Live III has no default), and if it says **Installed**, it is already on your MPC. Install as many as you like, then tap **Return to MPC** and **wait up to a minute**. Do not switch the MPC off while it reopens.
+The manager opens on the MPC's screen with four tabs: **Catalog** (everything in this site's catalog that works on your MPC), **Local** (plugin zip files you copied into the stick's `local-plugins` folder, which also works offline), **On MPC** (what is installed, with update and remove) and **History**. Tap a plugin, confirm, and wait for the install to finish. The welcome screen also has an **OpenMPC Plugin Manager VST** button that installs that plugin; if it says **Unavailable**, choose where plugins go under **SETUP** first (a Live III has no default), and if it says **Installed**, it is already on your MPC. Install as many as you like, then tap **Return to MPC** and **wait up to a minute**. Do not switch the MPC off while it reopens.
 
 ## 6. Use it
 Add the plugin to a track from the plugin browser: instruments under Instrument plugins, effects under Insert effects. Its screen appears in the plugin view, and the Q-Links follow the page. Save and reload a project once to make sure it comes back.
