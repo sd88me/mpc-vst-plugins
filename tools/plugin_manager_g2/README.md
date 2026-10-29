@@ -34,7 +34,7 @@ the project's development**: the catalog, its release rules and the official way
 - Shows only what your device can install: each catalog version lists a zip per architecture, and the manager takes the one for your MPC (`aarch64` on Gen2, `armv7` on Gen1).
 
 **Install, update, remove**
-- **INSTALL**, **UPDATE** and **UPDATE ALL** queue changes; **REINSTALL** and **REMOVE** are in the card's ⋮ menu. Nothing changes until you press
+- **INSTALL**, **UPDATE** and **UPDATE ALL** queue changes (an update is offered only when the catalog has a newer version than yours; a newer build you installed by hand is left alone); **REINSTALL** and **REMOVE** are in the card's ⋮ menu. Nothing changes until you press
   **APPLY**, which shows what will happen and where, then restarts MPC once.
 - Updates stay where the plugin already lives. New installs go to the first **usable** content location, internal storage first. When more than one
   is usable (the user drive and an SSD or card, say) the restart prompt shows where and has a **CHANGE** button; **the place you confirm is remembered**

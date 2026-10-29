@@ -1738,8 +1738,23 @@ static void *worker(void *ud) {
 /* ---- what the screen shows: everything is computed from the state on each read ---- */
 
 static int installed(const pkg_t *p) { return p->installed[0] != 0; }
-static int has_update(const pkg_t *p) {   /* a known older version, or an old-layout install */
-    return p->url[0] && installed(p) && (p->legacy || (strcmp(p->installed, "?") && strcmp(p->installed, p->latest)));
+/* a < b as dotted numbers ("0.10.0" > "0.9.0"); equal numbers: a "-beta" style suffix is older than none, otherwise by text */
+static int ver_older(const char *a, const char *b) {
+    for (;;) {
+        char *ea, *eb;
+        long x = strtol(a, &ea, 10), y = strtol(b, &eb, 10);
+        if (ea == a || eb == b) break;   /* no number left on one side */
+        if (x != y) return x < y;
+        a = ea; b = eb;
+        if (!*a && *b == '.') a = ".0";   /* 1.2 is 1.2.0 */
+        if (!*b && *a == '.') b = ".0";
+        if (*a == '.' && *b == '.') { a++; b++; continue; }
+        break;
+    }
+    return strcmp(a, b) && (!*b ? *a != 0 : *a && strcmp(a, b) < 0);
+}
+static int has_update(const pkg_t *p) {   /* a known older version, or an old-layout install; one newer than the catalog's is not an update */
+    return p->url[0] && installed(p) && (p->legacy || (strcmp(p->installed, "?") && ver_older(p->installed, p->latest)));
 }
 
 /* the cards of the current tab and filter; build-yourself plugins (no download) are left out: not plug and play */
