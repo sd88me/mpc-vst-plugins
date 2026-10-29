@@ -36,6 +36,39 @@ else
     exit 1
 fi
 
+# Sets root's password. The Force's busybox has no chpasswd (seen on a real Force, 2026-10-29), so try, in order: chpasswd, writing a
+# crypt hash into the shadow file (hash from openssl, or busybox mkpasswd/cryptpw), then passwd fed on stdin. Succeeds only when root's
+# shadow entry really changed, so a silently failing tool is not mistaken for a set password.
+set_root_password() {
+    shadow=${ENABLE_SSH_SHADOW:-/etc/shadow}
+    before=$(grep '^root:' "$shadow" 2>/dev/null || true)
+    changed() { [ "$(grep '^root:' "$shadow" 2>/dev/null || true)" != "$before" ]; }
+    if command -v chpasswd >/dev/null 2>&1; then
+        echo "root:$1" | chpasswd 2>/dev/null || true
+        changed && return 0
+    fi
+    h=""
+    if command -v openssl >/dev/null 2>&1; then h=$(openssl passwd -6 "$1" 2>/dev/null || true)
+    elif command -v mkpasswd >/dev/null 2>&1; then h=$(mkpasswd -m sha512 "$1" 2>/dev/null || true)
+    elif command -v cryptpw >/dev/null 2>&1; then h=$(cryptpw -m sha512 "$1" 2>/dev/null || true)
+    fi
+    case "$h" in
+        '$'*)
+            cp -p "$shadow" "$shadow.mpc-usb.bak" 2>/dev/null || true
+            if awk -F: -v OFS=: -v h="$h" '$1 == "root" { $2 = h } { print }' "$shadow" > "$shadow.mpc-usb.new" 2>/dev/null \
+                && [ -s "$shadow.mpc-usb.new" ]; then
+                cat "$shadow.mpc-usb.new" > "$shadow"
+            fi
+            rm -f "$shadow.mpc-usb.new"
+            changed && return 0 ;;
+    esac
+    if command -v passwd >/dev/null 2>&1; then
+        printf '%s\n%s\n' "$1" "$1" | passwd root >/dev/null 2>&1 || true
+        changed && return 0
+    fi
+    return 1
+}
+
 was_ro=0
 if awk '$2 == "/" && $4 ~ /(^|,)ro(,|$)/ { f = 1 } END { exit !f }' /proc/mounts; then was_ro=1; fi
 writable=0
@@ -54,7 +87,10 @@ if [ $writable = 1 ]; then
         grep -qxF "$KEY" /root/.ssh/authorized_keys 2>/dev/null || echo "$KEY" >> /root/.ssh/authorized_keys
         chmod 600 /root/.ssh/authorized_keys
     else
-        echo "root:$PASSWORD" | chpasswd
+        set_root_password "$PASSWORD" || {
+            echo "error: could not set root's password (no chpasswd, openssl, mkpasswd, cryptpw or working passwd here). Use a key instead." >&2
+            exit 1
+        }
         for opt in "PasswordAuthentication yes" "PermitRootLogin yes"; do
             key=${opt%% *}
             if grep -q "^#\?$key " /etc/ssh/sshd_config 2>/dev/null; then

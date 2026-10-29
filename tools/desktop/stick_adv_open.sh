@@ -12,4 +12,12 @@ log=$(mktemp /tmp/mpc-usb-extras.XXXXXX)
 sh "$here/runtime/mpc-extras.sh" "$here/runtime" >"$log" 2>&1 || true
 cp "$log" "$usb/mpc-extras-result.txt" 2>/dev/null || true
 rm -f "$log"
-[ ! -f "$here/manager-open.sh" ] || exec sh "$here/manager-open.sh"
+[ -f "$here/manager-open.sh" ] || exit 0
+# The manager opens the first time the stick is used, then only when asked: put a file called open-plugin-manager.txt on the
+# stick (anywhere at its root) to open it again. Otherwise inserting the stick later just re-enables SSH and the addins.
+if [ -f "$usb/.plugin-manager-opened" ] && [ ! -f "$usb/open-plugin-manager.txt" ]; then
+    echo "plugin manager already opened from this stick; not opening it again (add open-plugin-manager.txt to the stick to open it)" > "$usb/mpc-extras-manager.txt" 2>/dev/null || true
+    exit 0
+fi
+: > "$usb/.plugin-manager-opened" 2>/dev/null || true
+exec sh "$here/manager-open.sh"

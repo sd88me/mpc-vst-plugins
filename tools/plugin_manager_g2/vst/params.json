@@ -1,0 +1,2989 @@
+{
+ "name": "Plugin Manager G2",
+ "params": [
+  {
+   "key": "tab",
+   "name": "View",
+   "options": [
+    "DISCOVER",
+    "INSTALLED",
+    "UPDATES"
+   ]
+  },
+  {
+   "key": "kind",
+   "name": "Filter",
+   "options": [
+    "All",
+    "Instruments",
+    "Effects",
+    "Addins"
+   ]
+  },
+  {
+   "key": "sort",
+   "name": "Sort",
+   "options": [
+    "UPDATED",
+    "NEWEST",
+    "DOWNLOADS",
+    "NAME"
+   ]
+  },
+  {
+   "key": "dd",
+   "name": "Dropdowns shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "kind_txt",
+   "name": "Filter text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "sort_txt",
+   "name": "Sort text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "kind_btn",
+   "name": "Filter menu",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "sort_btn",
+   "name": "Sort menu",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "kind_open",
+   "name": "Filter menu open",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "sort_open",
+   "name": "Sort menu open",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "menu_close",
+   "name": "Close menu",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "kind_hl",
+   "name": "Filter menu selection",
+   "options": [
+    "none",
+    "All",
+    "Instruments",
+    "Effects",
+    "Addins"
+   ]
+  },
+  {
+   "key": "sort_hl",
+   "name": "Sort menu selection",
+   "options": [
+    "none",
+    "UPDATED",
+    "NEWEST",
+    "DOWNLOADS",
+    "NAME"
+   ]
+  },
+  {
+   "key": "kind_pick1",
+   "name": "Filter 1",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "kind_pick2",
+   "name": "Filter 2",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "kind_pick3",
+   "name": "Filter 3",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "kind_pick4",
+   "name": "Filter 4",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "sort_pick1",
+   "name": "Sort 1",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "sort_pick2",
+   "name": "Sort 2",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "sort_pick3",
+   "name": "Sort 3",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "sort_pick4",
+   "name": "Sort 4",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "net",
+   "live": true,
+   "name": "Network",
+   "options": [
+    "online",
+    "offline"
+   ]
+  },
+  {
+   "key": "disk",
+   "name": "Disk used",
+   "options": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10"
+   ]
+  },
+  {
+   "key": "disk_txt",
+   "name": "Disk free",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "upd_badge",
+   "name": "Updates badge",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "upd_count",
+   "name": "Updates",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "problem",
+   "name": "Problem",
+   "options": [
+    "no",
+    "yes"
+   ]
+  },
+  {
+   "key": "problem_txt",
+   "name": "Problem text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "empty",
+   "live": true,
+   "name": "Empty",
+   "options": [
+    "no",
+    "offline",
+    "empty"
+   ]
+  },
+  {
+   "key": "empty_txt",
+   "name": "Empty text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "refresh",
+   "name": "Refresh",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "page_prev",
+   "name": "Page <",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "page_next",
+   "name": "Page >",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "nav_prev",
+   "name": "Prev page",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "nav_next",
+   "name": "Next page",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "page_txt",
+   "name": "Page",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "summary",
+   "name": "Summary",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "status",
+   "name": "Status",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "status_kind",
+   "live": true,
+   "name": "Status kind",
+   "options": [
+    "ok",
+    "warn",
+    "error"
+   ]
+  },
+  {
+   "key": "busy",
+   "name": "Downloading",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "progress",
+   "name": "Progress",
+   "options": [
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
+    "13",
+    "14",
+    "15",
+    "16",
+    "17",
+    "18",
+    "19",
+    "20"
+   ]
+  },
+  {
+   "key": "update_all",
+   "name": "Update all",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "upd_all",
+   "name": "Update all on",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "apply",
+   "name": "Apply",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "apply_state",
+   "name": "Apply state",
+   "options": [
+    "off",
+    "apply",
+    "preparing",
+    "ready",
+    "retry"
+   ]
+  },
+  {
+   "key": "card1_1",
+   "name": "Plugin 1",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "r1_vis",
+   "name": "Card 1 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r1_inst",
+   "name": "Card 1 installed",
+   "options": [
+    "no",
+    "yes"
+   ]
+  },
+  {
+   "key": "r1_init",
+   "name": "Card 1 initials",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r1_kindtxt",
+   "name": "Card 1 kind",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r1_meta",
+   "name": "Card 1 meta",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r1_chan",
+   "name": "Card 1 channel",
+   "options": [
+    "none",
+    "stable",
+    "beta"
+   ]
+  },
+  {
+   "key": "r1_cpu",
+   "name": "Card 1 CPU",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r1_old",
+   "name": "Card 1 old",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r1_tested",
+   "name": "Card 1 tested",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r1_tested_txt",
+   "name": "Card 1 tested on",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r1_ver",
+   "name": "Card 1 version",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r1_from",
+   "name": "Card 1 from",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r1_size",
+   "name": "Card 1 size",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r1_info",
+   "name": "Card 1 sorted by",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r1_state",
+   "name": "Card 1 state",
+   "options": [
+    "none",
+    "install",
+    "update",
+    "installed",
+    "q_install",
+    "q_update",
+    "q_remove",
+    "disabled",
+    "menu",
+    "register",
+    "q_register"
+   ]
+  },
+  {
+   "key": "r1_act",
+   "name": "Card 1 action",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r1_more",
+   "name": "Card 1 more",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r1_reinstall",
+   "name": "Card 1 reinstall",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r1_remove",
+   "name": "Card 1 remove",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r1_open",
+   "name": "Card 1 details",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "card2_1",
+   "name": "Plugin 2",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "r2_vis",
+   "name": "Card 2 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r2_inst",
+   "name": "Card 2 installed",
+   "options": [
+    "no",
+    "yes"
+   ]
+  },
+  {
+   "key": "r2_init",
+   "name": "Card 2 initials",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r2_kindtxt",
+   "name": "Card 2 kind",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r2_meta",
+   "name": "Card 2 meta",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r2_chan",
+   "name": "Card 2 channel",
+   "options": [
+    "none",
+    "stable",
+    "beta"
+   ]
+  },
+  {
+   "key": "r2_cpu",
+   "name": "Card 2 CPU",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r2_old",
+   "name": "Card 2 old",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r2_tested",
+   "name": "Card 2 tested",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r2_tested_txt",
+   "name": "Card 2 tested on",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r2_ver",
+   "name": "Card 2 version",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r2_from",
+   "name": "Card 2 from",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r2_size",
+   "name": "Card 2 size",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r2_info",
+   "name": "Card 2 sorted by",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r2_state",
+   "name": "Card 2 state",
+   "options": [
+    "none",
+    "install",
+    "update",
+    "installed",
+    "q_install",
+    "q_update",
+    "q_remove",
+    "disabled",
+    "menu",
+    "register",
+    "q_register"
+   ]
+  },
+  {
+   "key": "r2_act",
+   "name": "Card 2 action",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r2_more",
+   "name": "Card 2 more",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r2_reinstall",
+   "name": "Card 2 reinstall",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r2_remove",
+   "name": "Card 2 remove",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r2_open",
+   "name": "Card 2 details",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "card3_1",
+   "name": "Plugin 3",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "r3_vis",
+   "name": "Card 3 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r3_inst",
+   "name": "Card 3 installed",
+   "options": [
+    "no",
+    "yes"
+   ]
+  },
+  {
+   "key": "r3_init",
+   "name": "Card 3 initials",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r3_kindtxt",
+   "name": "Card 3 kind",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r3_meta",
+   "name": "Card 3 meta",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r3_chan",
+   "name": "Card 3 channel",
+   "options": [
+    "none",
+    "stable",
+    "beta"
+   ]
+  },
+  {
+   "key": "r3_cpu",
+   "name": "Card 3 CPU",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r3_old",
+   "name": "Card 3 old",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r3_tested",
+   "name": "Card 3 tested",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r3_tested_txt",
+   "name": "Card 3 tested on",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r3_ver",
+   "name": "Card 3 version",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r3_from",
+   "name": "Card 3 from",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r3_size",
+   "name": "Card 3 size",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r3_info",
+   "name": "Card 3 sorted by",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r3_state",
+   "name": "Card 3 state",
+   "options": [
+    "none",
+    "install",
+    "update",
+    "installed",
+    "q_install",
+    "q_update",
+    "q_remove",
+    "disabled",
+    "menu",
+    "register",
+    "q_register"
+   ]
+  },
+  {
+   "key": "r3_act",
+   "name": "Card 3 action",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r3_more",
+   "name": "Card 3 more",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r3_reinstall",
+   "name": "Card 3 reinstall",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r3_remove",
+   "name": "Card 3 remove",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r3_open",
+   "name": "Card 3 details",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "card4_1",
+   "name": "Plugin 4",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "r4_vis",
+   "name": "Card 4 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r4_inst",
+   "name": "Card 4 installed",
+   "options": [
+    "no",
+    "yes"
+   ]
+  },
+  {
+   "key": "r4_init",
+   "name": "Card 4 initials",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r4_kindtxt",
+   "name": "Card 4 kind",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r4_meta",
+   "name": "Card 4 meta",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r4_chan",
+   "name": "Card 4 channel",
+   "options": [
+    "none",
+    "stable",
+    "beta"
+   ]
+  },
+  {
+   "key": "r4_cpu",
+   "name": "Card 4 CPU",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r4_old",
+   "name": "Card 4 old",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r4_tested",
+   "name": "Card 4 tested",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r4_tested_txt",
+   "name": "Card 4 tested on",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r4_ver",
+   "name": "Card 4 version",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r4_from",
+   "name": "Card 4 from",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r4_size",
+   "name": "Card 4 size",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r4_info",
+   "name": "Card 4 sorted by",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r4_state",
+   "name": "Card 4 state",
+   "options": [
+    "none",
+    "install",
+    "update",
+    "installed",
+    "q_install",
+    "q_update",
+    "q_remove",
+    "disabled",
+    "menu",
+    "register",
+    "q_register"
+   ]
+  },
+  {
+   "key": "r4_act",
+   "name": "Card 4 action",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r4_more",
+   "name": "Card 4 more",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r4_reinstall",
+   "name": "Card 4 reinstall",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r4_remove",
+   "name": "Card 4 remove",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r4_open",
+   "name": "Card 4 details",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "card5_1",
+   "name": "Plugin 5",
+   "type": "slot",
+   "display": "string"
+  },
+  {
+   "key": "r5_vis",
+   "name": "Card 5 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r5_inst",
+   "name": "Card 5 installed",
+   "options": [
+    "no",
+    "yes"
+   ]
+  },
+  {
+   "key": "r5_init",
+   "name": "Card 5 initials",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r5_kindtxt",
+   "name": "Card 5 kind",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r5_meta",
+   "name": "Card 5 meta",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r5_chan",
+   "name": "Card 5 channel",
+   "options": [
+    "none",
+    "stable",
+    "beta"
+   ]
+  },
+  {
+   "key": "r5_cpu",
+   "name": "Card 5 CPU",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r5_old",
+   "name": "Card 5 old",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r5_tested",
+   "name": "Card 5 tested",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "r5_tested_txt",
+   "name": "Card 5 tested on",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r5_ver",
+   "name": "Card 5 version",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r5_from",
+   "name": "Card 5 from",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r5_size",
+   "name": "Card 5 size",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r5_info",
+   "name": "Card 5 sorted by",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r5_state",
+   "name": "Card 5 state",
+   "options": [
+    "none",
+    "install",
+    "update",
+    "installed",
+    "q_install",
+    "q_update",
+    "q_remove",
+    "disabled",
+    "menu",
+    "register",
+    "q_register"
+   ]
+  },
+  {
+   "key": "r5_act",
+   "name": "Card 5 action",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r5_more",
+   "name": "Card 5 more",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r5_reinstall",
+   "name": "Card 5 reinstall",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r5_remove",
+   "name": "Card 5 remove",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "r5_open",
+   "name": "Card 5 details",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "noop",
+   "name": "Badge",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "view",
+   "name": "Details shown",
+   "options": [
+    "list",
+    "detail"
+   ]
+  },
+  {
+   "key": "d_back",
+   "name": "Back",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "hdr",
+   "name": "Header",
+   "options": [
+    "search",
+    "problem",
+    "tag",
+    "query"
+   ]
+  },
+  {
+   "key": "tag_txt",
+   "name": "Tag search",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "tag_clear",
+   "name": "Clear tag search",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_name",
+   "name": "Detail name",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_init",
+   "name": "Detail initials",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_by",
+   "name": "Detail author",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_state",
+   "name": "Detail state",
+   "options": [
+    "none",
+    "install",
+    "update",
+    "installed",
+    "q_install",
+    "q_update",
+    "q_remove",
+    "disabled",
+    "menu"
+   ]
+  },
+  {
+   "key": "d_inst",
+   "name": "Detail installed",
+   "options": [
+    "no",
+    "yes"
+   ]
+  },
+  {
+   "key": "d_act",
+   "name": "Detail action",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_more",
+   "name": "Detail menu",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_reinstall",
+   "name": "Detail reinstall",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_remove",
+   "name": "Detail remove",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_f_version",
+   "name": "Detail version",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_f_channel",
+   "name": "Detail channel",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_f_size",
+   "name": "Detail size",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_f_released",
+   "name": "Detail released",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_f_downloads",
+   "name": "Detail downloads",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_f_cpu",
+   "name": "Detail cpu",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_f_tested",
+   "name": "Detail tested",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_cpuk",
+   "name": "Detail CPU verdict",
+   "options": [
+    "hidden",
+    "pass",
+    "warn",
+    "fail",
+    "none"
+   ]
+  },
+  {
+   "key": "d_testk",
+   "name": "Detail tested",
+   "options": [
+    "hidden",
+    "yes",
+    "no"
+   ]
+  },
+  {
+   "key": "d_sum1",
+   "name": "Detail summary 1",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_sum2",
+   "name": "Detail summary 2",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_sum3",
+   "name": "Detail summary 3",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_sum4",
+   "name": "Detail summary 4",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_wnk",
+   "name": "Detail whats new kind",
+   "options": [
+    "hidden",
+    "notes",
+    "none"
+   ]
+  },
+  {
+   "key": "d_tags_head",
+   "name": "Detail tags heading",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_wn_head",
+   "name": "Detail whats new heading",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_wn1",
+   "name": "Detail whats new 1",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_wn2",
+   "name": "Detail whats new 2",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_wn3",
+   "name": "Detail whats new 3",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_tag1",
+   "name": "Tag 1",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_tag1v",
+   "name": "Tag 1 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "d_tagt1",
+   "name": "Tag 1 text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_tag2",
+   "name": "Tag 2",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_tag2v",
+   "name": "Tag 2 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "d_tagt2",
+   "name": "Tag 2 text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_tag3",
+   "name": "Tag 3",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_tag3v",
+   "name": "Tag 3 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "d_tagt3",
+   "name": "Tag 3 text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_tag4",
+   "name": "Tag 4",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_tag4v",
+   "name": "Tag 4 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "d_tagt4",
+   "name": "Tag 4 text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_tag5",
+   "name": "Tag 5",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_tag5v",
+   "name": "Tag 5 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "d_tagt5",
+   "name": "Tag 5 text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_tag6",
+   "name": "Tag 6",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_tag6v",
+   "name": "Tag 6 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "d_tagt6",
+   "name": "Tag 6 text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_tag7",
+   "name": "Tag 7",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_tag7v",
+   "name": "Tag 7 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "d_tagt7",
+   "name": "Tag 7 text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "d_tag8",
+   "name": "Tag 8",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "d_tag8v",
+   "name": "Tag 8 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "d_tagt8",
+   "name": "Tag 8 text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "confirm",
+   "name": "Restart prompt",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "confirm_txt1",
+   "name": "Restart changes 1",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "confirm_txt2",
+   "name": "Restart changes 2",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "confirm_cancel",
+   "name": "Cancel restart",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "confirm_go",
+   "name": "Restart and apply",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "kb",
+   "name": "Keyboard shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "search_btn",
+   "name": "Search",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "q_clear",
+   "name": "Clear search",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "q_txt",
+   "name": "Search text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "q_chip",
+   "name": "Search chip",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "kb_count",
+   "name": "Search matches",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "k_Q",
+   "name": "Key Q",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_W",
+   "name": "Key W",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_E",
+   "name": "Key E",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_R",
+   "name": "Key R",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_T",
+   "name": "Key T",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_Y",
+   "name": "Key Y",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_U",
+   "name": "Key U",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_I",
+   "name": "Key I",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_O",
+   "name": "Key O",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_P",
+   "name": "Key P",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_A",
+   "name": "Key A",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_S",
+   "name": "Key S",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_D",
+   "name": "Key D",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_F",
+   "name": "Key F",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_G",
+   "name": "Key G",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_H",
+   "name": "Key H",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_J",
+   "name": "Key J",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_K",
+   "name": "Key K",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_L",
+   "name": "Key L",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_Z",
+   "name": "Key Z",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_X",
+   "name": "Key X",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_C",
+   "name": "Key C",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_V",
+   "name": "Key V",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_B",
+   "name": "Key B",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_N",
+   "name": "Key N",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_M",
+   "name": "Key M",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_1",
+   "name": "Key 1",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_2",
+   "name": "Key 2",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_3",
+   "name": "Key 3",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_4",
+   "name": "Key 4",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_5",
+   "name": "Key 5",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_6",
+   "name": "Key 6",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_7",
+   "name": "Key 7",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_8",
+   "name": "Key 8",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_9",
+   "name": "Key 9",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_0",
+   "name": "Key 0",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_space",
+   "name": "Key space",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_back",
+   "name": "Key back",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_clear",
+   "name": "Key clear",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_done",
+   "name": "Key done",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "k_hide",
+   "name": "Key hide",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "sr1_vis",
+   "name": "Match 1 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "sr1_init",
+   "name": "Match 1 initials",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "sr1_name",
+   "name": "Match 1 name",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "sr1_meta",
+   "name": "Match 1 meta",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "sr1_state",
+   "name": "Match 1 state",
+   "options": [
+    "none",
+    "install",
+    "update",
+    "installed",
+    "q_install",
+    "q_update",
+    "q_remove",
+    "disabled",
+    "menu"
+   ]
+  },
+  {
+   "key": "sr1_act",
+   "name": "Match 1 action",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "sr1_open",
+   "name": "Match 1 details",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "sr2_vis",
+   "name": "Match 2 shown",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "sr2_init",
+   "name": "Match 2 initials",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "sr2_name",
+   "name": "Match 2 name",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "sr2_meta",
+   "name": "Match 2 meta",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "sr2_state",
+   "name": "Match 2 state",
+   "options": [
+    "none",
+    "install",
+    "update",
+    "installed",
+    "q_install",
+    "q_update",
+    "q_remove",
+    "disabled",
+    "menu"
+   ]
+  },
+  {
+   "key": "sr2_act",
+   "name": "Match 2 action",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "sr2_open",
+   "name": "Match 2 details",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "confirm_pick",
+   "name": "Restart prompt: more than one place",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "confirm_dest",
+   "name": "Restart prompt: install to",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "target_next",
+   "name": "Install to: next place",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "theme",
+   "name": "Theme",
+   "options": [
+    "dark",
+    "light"
+   ]
+  },
+  {
+   "key": "theme_can",
+   "name": "Theme: both skins here",
+   "options": [
+    "off",
+    "on"
+   ]
+  },
+  {
+   "key": "theme_btn",
+   "name": "Theme: switch",
+   "type": "trigger",
+   "momentary": true
+  },
+  {
+   "key": "theme_txt",
+   "name": "Theme text",
+   "type": "readout",
+   "display": "string"
+  },
+  {
+   "key": "r1_shot",
+   "name": "Card 1 screenshot",
+   "options": [
+    "none",
+    "acid-303",
+    "acid",
+    "airwindows-air3",
+    "airwindows-buttercomp2",
+    "airwindows-chamber2",
+    "airwindows-chorusensemble",
+    "airwindows-console7channel",
+    "airwindows-density2",
+    "airwindows-galactic",
+    "airwindows-galactic2",
+    "airwindows-galactic3",
+    "airwindows-galacticvibe",
+    "airwindows-infinity2",
+    "airwindows-kalienspaceship",
+    "airwindows-kcathedral5",
+    "airwindows-kcosmos",
+    "airwindows-mackity",
+    "airwindows-matrixverb",
+    "airwindows-pitchdelay",
+    "airwindows-tapedelay2",
+    "airwindows-tovinyl4",
+    "airwindows-verbity2",
+    "airwindows-zacidlowpass",
+    "airwindows-zlowpass2",
+    "aphex",
+    "boris-granular",
+    "braids",
+    "chordism",
+    "chordsmith",
+    "clementine-xt",
+    "crate-digger",
+    "daemon",
+    "denis",
+    "dexed-dx7",
+    "dragonfly-early-reflections",
+    "dragonfly-hall",
+    "dragonfly-plate",
+    "dragonfly-room",
+    "drips",
+    "drloguexxl",
+    "dronexxl",
+    "dub-force-siren",
+    "dub-station",
+    "effectforce",
+    "elements",
+    "eucalypso",
+    "euclidier",
+    "evil-tuner-xxl",
+    "filebrowser",
+    "fizzik",
+    "force-link-audio",
+    "fretty",
+    "gaiaxxl",
+    "glass-spheres",
+    "grids",
+    "groove-bank",
+    "hank",
+    "helm",
+    "hera",
+    "hexachord-73",
+    "incipience-out",
+    "incipience",
+    "interzonexxl",
+    "j106",
+    "jv-880",
+    "keyscope",
+    "liminal-amp",
+    "liminal-hz",
+    "loop-saboteurxxl",
+    "lucky-dip",
+    "lxrxxl-bazzline",
+    "lxrxxl-zynth",
+    "lxrxxl",
+    "machinemodule-gen2",
+    "machinemodule-tap-gen2",
+    "machinemodule",
+    "magic-tape-echo",
+    "maschine-group",
+    "maze-sequencer",
+    "maze-voice",
+    "meowsynth",
+    "meta4mpcxxl-fx",
+    "meta4mpcxxl",
+    "midi-player",
+    "model-72",
+    "monksynth",
+    "mono-voice",
+    "monomodule-fx-gen2",
+    "monomodule-one-gen2",
+    "monomodule",
+    "monoslide",
+    "morpho-pe",
+    "mpc-dj-fx",
+    "mpc-plaits",
+    "mpc-tape-echo",
+    "mr-drums",
+    "mr-hyde",
+    "ms20xxl",
+    "mutable-vibe",
+    "nam",
+    "noisemaker",
+    "nusaw",
+    "obxd",
+    "obxdmpc",
+    "odin2",
+    "omni-sampler",
+    "open303",
+    "osirus",
+    "ottmpc",
+    "overcast",
+    "percolator-out",
+    "percolator",
+    "phyxxl",
+    "pixel-walkers",
+    "plateauxxl",
+    "plugin-manager",
+    "polyforce",
+    "prloguexxl",
+    "profit-08",
+    "profit-5",
+    "ps3100xxl",
+    "pulytek",
+    "raffosynth",
+    "rampage",
+    "remote",
+    "rings-fx",
+    "rings",
+    "rmxxxl",
+    "setbfree-organ",
+    "sfizz",
+    "shapey-5-band-eq",
+    "shapey-eq",
+    "skipback",
+    "sonix",
+    "steprunner-8",
+    "stevequencer-16",
+    "stevequencer",
+    "stompbox",
+    "stream",
+    "sturm-tp",
+    "subforce",
+    "super-arp",
+    "surgexxl",
+    "tablor",
+    "tinyfreaky",
+    "tr-6w6",
+    "tr-8w8",
+    "tr-9w9",
+    "tr-cw78",
+    "tr-mpc-tap-fx",
+    "tr-mpc",
+    "tributary",
+    "tropix",
+    "tuner",
+    "tuney",
+    "usb-audio",
+    "vader",
+    "verglas",
+    "vibe-fx",
+    "warps",
+    "wurl",
+    "xenia"
+   ]
+  },
+  {
+   "key": "r2_shot",
+   "name": "Card 2 screenshot",
+   "options": [
+    "none",
+    "acid-303",
+    "acid",
+    "airwindows-air3",
+    "airwindows-buttercomp2",
+    "airwindows-chamber2",
+    "airwindows-chorusensemble",
+    "airwindows-console7channel",
+    "airwindows-density2",
+    "airwindows-galactic",
+    "airwindows-galactic2",
+    "airwindows-galactic3",
+    "airwindows-galacticvibe",
+    "airwindows-infinity2",
+    "airwindows-kalienspaceship",
+    "airwindows-kcathedral5",
+    "airwindows-kcosmos",
+    "airwindows-mackity",
+    "airwindows-matrixverb",
+    "airwindows-pitchdelay",
+    "airwindows-tapedelay2",
+    "airwindows-tovinyl4",
+    "airwindows-verbity2",
+    "airwindows-zacidlowpass",
+    "airwindows-zlowpass2",
+    "aphex",
+    "boris-granular",
+    "braids",
+    "chordism",
+    "chordsmith",
+    "clementine-xt",
+    "crate-digger",
+    "daemon",
+    "denis",
+    "dexed-dx7",
+    "dragonfly-early-reflections",
+    "dragonfly-hall",
+    "dragonfly-plate",
+    "dragonfly-room",
+    "drips",
+    "drloguexxl",
+    "dronexxl",
+    "dub-force-siren",
+    "dub-station",
+    "effectforce",
+    "elements",
+    "eucalypso",
+    "euclidier",
+    "evil-tuner-xxl",
+    "filebrowser",
+    "fizzik",
+    "force-link-audio",
+    "fretty",
+    "gaiaxxl",
+    "glass-spheres",
+    "grids",
+    "groove-bank",
+    "hank",
+    "helm",
+    "hera",
+    "hexachord-73",
+    "incipience-out",
+    "incipience",
+    "interzonexxl",
+    "j106",
+    "jv-880",
+    "keyscope",
+    "liminal-amp",
+    "liminal-hz",
+    "loop-saboteurxxl",
+    "lucky-dip",
+    "lxrxxl-bazzline",
+    "lxrxxl-zynth",
+    "lxrxxl",
+    "machinemodule-gen2",
+    "machinemodule-tap-gen2",
+    "machinemodule",
+    "magic-tape-echo",
+    "maschine-group",
+    "maze-sequencer",
+    "maze-voice",
+    "meowsynth",
+    "meta4mpcxxl-fx",
+    "meta4mpcxxl",
+    "midi-player",
+    "model-72",
+    "monksynth",
+    "mono-voice",
+    "monomodule-fx-gen2",
+    "monomodule-one-gen2",
+    "monomodule",
+    "monoslide",
+    "morpho-pe",
+    "mpc-dj-fx",
+    "mpc-plaits",
+    "mpc-tape-echo",
+    "mr-drums",
+    "mr-hyde",
+    "ms20xxl",
+    "mutable-vibe",
+    "nam",
+    "noisemaker",
+    "nusaw",
+    "obxd",
+    "obxdmpc",
+    "odin2",
+    "omni-sampler",
+    "open303",
+    "osirus",
+    "ottmpc",
+    "overcast",
+    "percolator-out",
+    "percolator",
+    "phyxxl",
+    "pixel-walkers",
+    "plateauxxl",
+    "plugin-manager",
+    "polyforce",
+    "prloguexxl",
+    "profit-08",
+    "profit-5",
+    "ps3100xxl",
+    "pulytek",
+    "raffosynth",
+    "rampage",
+    "remote",
+    "rings-fx",
+    "rings",
+    "rmxxxl",
+    "setbfree-organ",
+    "sfizz",
+    "shapey-5-band-eq",
+    "shapey-eq",
+    "skipback",
+    "sonix",
+    "steprunner-8",
+    "stevequencer-16",
+    "stevequencer",
+    "stompbox",
+    "stream",
+    "sturm-tp",
+    "subforce",
+    "super-arp",
+    "surgexxl",
+    "tablor",
+    "tinyfreaky",
+    "tr-6w6",
+    "tr-8w8",
+    "tr-9w9",
+    "tr-cw78",
+    "tr-mpc-tap-fx",
+    "tr-mpc",
+    "tributary",
+    "tropix",
+    "tuner",
+    "tuney",
+    "usb-audio",
+    "vader",
+    "verglas",
+    "vibe-fx",
+    "warps",
+    "wurl",
+    "xenia"
+   ]
+  },
+  {
+   "key": "r3_shot",
+   "name": "Card 3 screenshot",
+   "options": [
+    "none",
+    "acid-303",
+    "acid",
+    "airwindows-air3",
+    "airwindows-buttercomp2",
+    "airwindows-chamber2",
+    "airwindows-chorusensemble",
+    "airwindows-console7channel",
+    "airwindows-density2",
+    "airwindows-galactic",
+    "airwindows-galactic2",
+    "airwindows-galactic3",
+    "airwindows-galacticvibe",
+    "airwindows-infinity2",
+    "airwindows-kalienspaceship",
+    "airwindows-kcathedral5",
+    "airwindows-kcosmos",
+    "airwindows-mackity",
+    "airwindows-matrixverb",
+    "airwindows-pitchdelay",
+    "airwindows-tapedelay2",
+    "airwindows-tovinyl4",
+    "airwindows-verbity2",
+    "airwindows-zacidlowpass",
+    "airwindows-zlowpass2",
+    "aphex",
+    "boris-granular",
+    "braids",
+    "chordism",
+    "chordsmith",
+    "clementine-xt",
+    "crate-digger",
+    "daemon",
+    "denis",
+    "dexed-dx7",
+    "dragonfly-early-reflections",
+    "dragonfly-hall",
+    "dragonfly-plate",
+    "dragonfly-room",
+    "drips",
+    "drloguexxl",
+    "dronexxl",
+    "dub-force-siren",
+    "dub-station",
+    "effectforce",
+    "elements",
+    "eucalypso",
+    "euclidier",
+    "evil-tuner-xxl",
+    "filebrowser",
+    "fizzik",
+    "force-link-audio",
+    "fretty",
+    "gaiaxxl",
+    "glass-spheres",
+    "grids",
+    "groove-bank",
+    "hank",
+    "helm",
+    "hera",
+    "hexachord-73",
+    "incipience-out",
+    "incipience",
+    "interzonexxl",
+    "j106",
+    "jv-880",
+    "keyscope",
+    "liminal-amp",
+    "liminal-hz",
+    "loop-saboteurxxl",
+    "lucky-dip",
+    "lxrxxl-bazzline",
+    "lxrxxl-zynth",
+    "lxrxxl",
+    "machinemodule-gen2",
+    "machinemodule-tap-gen2",
+    "machinemodule",
+    "magic-tape-echo",
+    "maschine-group",
+    "maze-sequencer",
+    "maze-voice",
+    "meowsynth",
+    "meta4mpcxxl-fx",
+    "meta4mpcxxl",
+    "midi-player",
+    "model-72",
+    "monksynth",
+    "mono-voice",
+    "monomodule-fx-gen2",
+    "monomodule-one-gen2",
+    "monomodule",
+    "monoslide",
+    "morpho-pe",
+    "mpc-dj-fx",
+    "mpc-plaits",
+    "mpc-tape-echo",
+    "mr-drums",
+    "mr-hyde",
+    "ms20xxl",
+    "mutable-vibe",
+    "nam",
+    "noisemaker",
+    "nusaw",
+    "obxd",
+    "obxdmpc",
+    "odin2",
+    "omni-sampler",
+    "open303",
+    "osirus",
+    "ottmpc",
+    "overcast",
+    "percolator-out",
+    "percolator",
+    "phyxxl",
+    "pixel-walkers",
+    "plateauxxl",
+    "plugin-manager",
+    "polyforce",
+    "prloguexxl",
+    "profit-08",
+    "profit-5",
+    "ps3100xxl",
+    "pulytek",
+    "raffosynth",
+    "rampage",
+    "remote",
+    "rings-fx",
+    "rings",
+    "rmxxxl",
+    "setbfree-organ",
+    "sfizz",
+    "shapey-5-band-eq",
+    "shapey-eq",
+    "skipback",
+    "sonix",
+    "steprunner-8",
+    "stevequencer-16",
+    "stevequencer",
+    "stompbox",
+    "stream",
+    "sturm-tp",
+    "subforce",
+    "super-arp",
+    "surgexxl",
+    "tablor",
+    "tinyfreaky",
+    "tr-6w6",
+    "tr-8w8",
+    "tr-9w9",
+    "tr-cw78",
+    "tr-mpc-tap-fx",
+    "tr-mpc",
+    "tributary",
+    "tropix",
+    "tuner",
+    "tuney",
+    "usb-audio",
+    "vader",
+    "verglas",
+    "vibe-fx",
+    "warps",
+    "wurl",
+    "xenia"
+   ]
+  },
+  {
+   "key": "r4_shot",
+   "name": "Card 4 screenshot",
+   "options": [
+    "none",
+    "acid-303",
+    "acid",
+    "airwindows-air3",
+    "airwindows-buttercomp2",
+    "airwindows-chamber2",
+    "airwindows-chorusensemble",
+    "airwindows-console7channel",
+    "airwindows-density2",
+    "airwindows-galactic",
+    "airwindows-galactic2",
+    "airwindows-galactic3",
+    "airwindows-galacticvibe",
+    "airwindows-infinity2",
+    "airwindows-kalienspaceship",
+    "airwindows-kcathedral5",
+    "airwindows-kcosmos",
+    "airwindows-mackity",
+    "airwindows-matrixverb",
+    "airwindows-pitchdelay",
+    "airwindows-tapedelay2",
+    "airwindows-tovinyl4",
+    "airwindows-verbity2",
+    "airwindows-zacidlowpass",
+    "airwindows-zlowpass2",
+    "aphex",
+    "boris-granular",
+    "braids",
+    "chordism",
+    "chordsmith",
+    "clementine-xt",
+    "crate-digger",
+    "daemon",
+    "denis",
+    "dexed-dx7",
+    "dragonfly-early-reflections",
+    "dragonfly-hall",
+    "dragonfly-plate",
+    "dragonfly-room",
+    "drips",
+    "drloguexxl",
+    "dronexxl",
+    "dub-force-siren",
+    "dub-station",
+    "effectforce",
+    "elements",
+    "eucalypso",
+    "euclidier",
+    "evil-tuner-xxl",
+    "filebrowser",
+    "fizzik",
+    "force-link-audio",
+    "fretty",
+    "gaiaxxl",
+    "glass-spheres",
+    "grids",
+    "groove-bank",
+    "hank",
+    "helm",
+    "hera",
+    "hexachord-73",
+    "incipience-out",
+    "incipience",
+    "interzonexxl",
+    "j106",
+    "jv-880",
+    "keyscope",
+    "liminal-amp",
+    "liminal-hz",
+    "loop-saboteurxxl",
+    "lucky-dip",
+    "lxrxxl-bazzline",
+    "lxrxxl-zynth",
+    "lxrxxl",
+    "machinemodule-gen2",
+    "machinemodule-tap-gen2",
+    "machinemodule",
+    "magic-tape-echo",
+    "maschine-group",
+    "maze-sequencer",
+    "maze-voice",
+    "meowsynth",
+    "meta4mpcxxl-fx",
+    "meta4mpcxxl",
+    "midi-player",
+    "model-72",
+    "monksynth",
+    "mono-voice",
+    "monomodule-fx-gen2",
+    "monomodule-one-gen2",
+    "monomodule",
+    "monoslide",
+    "morpho-pe",
+    "mpc-dj-fx",
+    "mpc-plaits",
+    "mpc-tape-echo",
+    "mr-drums",
+    "mr-hyde",
+    "ms20xxl",
+    "mutable-vibe",
+    "nam",
+    "noisemaker",
+    "nusaw",
+    "obxd",
+    "obxdmpc",
+    "odin2",
+    "omni-sampler",
+    "open303",
+    "osirus",
+    "ottmpc",
+    "overcast",
+    "percolator-out",
+    "percolator",
+    "phyxxl",
+    "pixel-walkers",
+    "plateauxxl",
+    "plugin-manager",
+    "polyforce",
+    "prloguexxl",
+    "profit-08",
+    "profit-5",
+    "ps3100xxl",
+    "pulytek",
+    "raffosynth",
+    "rampage",
+    "remote",
+    "rings-fx",
+    "rings",
+    "rmxxxl",
+    "setbfree-organ",
+    "sfizz",
+    "shapey-5-band-eq",
+    "shapey-eq",
+    "skipback",
+    "sonix",
+    "steprunner-8",
+    "stevequencer-16",
+    "stevequencer",
+    "stompbox",
+    "stream",
+    "sturm-tp",
+    "subforce",
+    "super-arp",
+    "surgexxl",
+    "tablor",
+    "tinyfreaky",
+    "tr-6w6",
+    "tr-8w8",
+    "tr-9w9",
+    "tr-cw78",
+    "tr-mpc-tap-fx",
+    "tr-mpc",
+    "tributary",
+    "tropix",
+    "tuner",
+    "tuney",
+    "usb-audio",
+    "vader",
+    "verglas",
+    "vibe-fx",
+    "warps",
+    "wurl",
+    "xenia"
+   ]
+  },
+  {
+   "key": "r5_shot",
+   "name": "Card 5 screenshot",
+   "options": [
+    "none",
+    "acid-303",
+    "acid",
+    "airwindows-air3",
+    "airwindows-buttercomp2",
+    "airwindows-chamber2",
+    "airwindows-chorusensemble",
+    "airwindows-console7channel",
+    "airwindows-density2",
+    "airwindows-galactic",
+    "airwindows-galactic2",
+    "airwindows-galactic3",
+    "airwindows-galacticvibe",
+    "airwindows-infinity2",
+    "airwindows-kalienspaceship",
+    "airwindows-kcathedral5",
+    "airwindows-kcosmos",
+    "airwindows-mackity",
+    "airwindows-matrixverb",
+    "airwindows-pitchdelay",
+    "airwindows-tapedelay2",
+    "airwindows-tovinyl4",
+    "airwindows-verbity2",
+    "airwindows-zacidlowpass",
+    "airwindows-zlowpass2",
+    "aphex",
+    "boris-granular",
+    "braids",
+    "chordism",
+    "chordsmith",
+    "clementine-xt",
+    "crate-digger",
+    "daemon",
+    "denis",
+    "dexed-dx7",
+    "dragonfly-early-reflections",
+    "dragonfly-hall",
+    "dragonfly-plate",
+    "dragonfly-room",
+    "drips",
+    "drloguexxl",
+    "dronexxl",
+    "dub-force-siren",
+    "dub-station",
+    "effectforce",
+    "elements",
+    "eucalypso",
+    "euclidier",
+    "evil-tuner-xxl",
+    "filebrowser",
+    "fizzik",
+    "force-link-audio",
+    "fretty",
+    "gaiaxxl",
+    "glass-spheres",
+    "grids",
+    "groove-bank",
+    "hank",
+    "helm",
+    "hera",
+    "hexachord-73",
+    "incipience-out",
+    "incipience",
+    "interzonexxl",
+    "j106",
+    "jv-880",
+    "keyscope",
+    "liminal-amp",
+    "liminal-hz",
+    "loop-saboteurxxl",
+    "lucky-dip",
+    "lxrxxl-bazzline",
+    "lxrxxl-zynth",
+    "lxrxxl",
+    "machinemodule-gen2",
+    "machinemodule-tap-gen2",
+    "machinemodule",
+    "magic-tape-echo",
+    "maschine-group",
+    "maze-sequencer",
+    "maze-voice",
+    "meowsynth",
+    "meta4mpcxxl-fx",
+    "meta4mpcxxl",
+    "midi-player",
+    "model-72",
+    "monksynth",
+    "mono-voice",
+    "monomodule-fx-gen2",
+    "monomodule-one-gen2",
+    "monomodule",
+    "monoslide",
+    "morpho-pe",
+    "mpc-dj-fx",
+    "mpc-plaits",
+    "mpc-tape-echo",
+    "mr-drums",
+    "mr-hyde",
+    "ms20xxl",
+    "mutable-vibe",
+    "nam",
+    "noisemaker",
+    "nusaw",
+    "obxd",
+    "obxdmpc",
+    "odin2",
+    "omni-sampler",
+    "open303",
+    "osirus",
+    "ottmpc",
+    "overcast",
+    "percolator-out",
+    "percolator",
+    "phyxxl",
+    "pixel-walkers",
+    "plateauxxl",
+    "plugin-manager",
+    "polyforce",
+    "prloguexxl",
+    "profit-08",
+    "profit-5",
+    "ps3100xxl",
+    "pulytek",
+    "raffosynth",
+    "rampage",
+    "remote",
+    "rings-fx",
+    "rings",
+    "rmxxxl",
+    "setbfree-organ",
+    "sfizz",
+    "shapey-5-band-eq",
+    "shapey-eq",
+    "skipback",
+    "sonix",
+    "steprunner-8",
+    "stevequencer-16",
+    "stevequencer",
+    "stompbox",
+    "stream",
+    "sturm-tp",
+    "subforce",
+    "super-arp",
+    "surgexxl",
+    "tablor",
+    "tinyfreaky",
+    "tr-6w6",
+    "tr-8w8",
+    "tr-9w9",
+    "tr-cw78",
+    "tr-mpc-tap-fx",
+    "tr-mpc",
+    "tributary",
+    "tropix",
+    "tuner",
+    "tuney",
+    "usb-audio",
+    "vader",
+    "verglas",
+    "vibe-fx",
+    "warps",
+    "wurl",
+    "xenia"
+   ]
+  },
+  {
+   "key": "d_shot",
+   "name": "Detail screenshot",
+   "options": [
+    "hidden",
+    "none",
+    "acid-303",
+    "acid",
+    "airwindows-air3",
+    "airwindows-buttercomp2",
+    "airwindows-chamber2",
+    "airwindows-chorusensemble",
+    "airwindows-console7channel",
+    "airwindows-density2",
+    "airwindows-galactic",
+    "airwindows-galactic2",
+    "airwindows-galactic3",
+    "airwindows-galacticvibe",
+    "airwindows-infinity2",
+    "airwindows-kalienspaceship",
+    "airwindows-kcathedral5",
+    "airwindows-kcosmos",
+    "airwindows-mackity",
+    "airwindows-matrixverb",
+    "airwindows-pitchdelay",
+    "airwindows-tapedelay2",
+    "airwindows-tovinyl4",
+    "airwindows-verbity2",
+    "airwindows-zacidlowpass",
+    "airwindows-zlowpass2",
+    "aphex",
+    "boris-granular",
+    "braids",
+    "chordism",
+    "chordsmith",
+    "clementine-xt",
+    "crate-digger",
+    "daemon",
+    "denis",
+    "dexed-dx7",
+    "dragonfly-early-reflections",
+    "dragonfly-hall",
+    "dragonfly-plate",
+    "dragonfly-room",
+    "drips",
+    "drloguexxl",
+    "dronexxl",
+    "dub-force-siren",
+    "dub-station",
+    "effectforce",
+    "elements",
+    "eucalypso",
+    "euclidier",
+    "evil-tuner-xxl",
+    "filebrowser",
+    "fizzik",
+    "force-link-audio",
+    "fretty",
+    "gaiaxxl",
+    "glass-spheres",
+    "grids",
+    "groove-bank",
+    "hank",
+    "helm",
+    "hera",
+    "hexachord-73",
+    "incipience-out",
+    "incipience",
+    "interzonexxl",
+    "j106",
+    "jv-880",
+    "keyscope",
+    "liminal-amp",
+    "liminal-hz",
+    "loop-saboteurxxl",
+    "lucky-dip",
+    "lxrxxl-bazzline",
+    "lxrxxl-zynth",
+    "lxrxxl",
+    "machinemodule-gen2",
+    "machinemodule-tap-gen2",
+    "machinemodule",
+    "magic-tape-echo",
+    "maschine-group",
+    "maze-sequencer",
+    "maze-voice",
+    "meowsynth",
+    "meta4mpcxxl-fx",
+    "meta4mpcxxl",
+    "midi-player",
+    "model-72",
+    "monksynth",
+    "mono-voice",
+    "monomodule-fx-gen2",
+    "monomodule-one-gen2",
+    "monomodule",
+    "monoslide",
+    "morpho-pe",
+    "mpc-dj-fx",
+    "mpc-plaits",
+    "mpc-tape-echo",
+    "mr-drums",
+    "mr-hyde",
+    "ms20xxl",
+    "mutable-vibe",
+    "nam",
+    "noisemaker",
+    "nusaw",
+    "obxd",
+    "obxdmpc",
+    "odin2",
+    "omni-sampler",
+    "open303",
+    "osirus",
+    "ottmpc",
+    "overcast",
+    "percolator-out",
+    "percolator",
+    "phyxxl",
+    "pixel-walkers",
+    "plateauxxl",
+    "plugin-manager",
+    "polyforce",
+    "prloguexxl",
+    "profit-08",
+    "profit-5",
+    "ps3100xxl",
+    "pulytek",
+    "raffosynth",
+    "rampage",
+    "remote",
+    "rings-fx",
+    "rings",
+    "rmxxxl",
+    "setbfree-organ",
+    "sfizz",
+    "shapey-5-band-eq",
+    "shapey-eq",
+    "skipback",
+    "sonix",
+    "steprunner-8",
+    "stevequencer-16",
+    "stevequencer",
+    "stompbox",
+    "stream",
+    "sturm-tp",
+    "subforce",
+    "super-arp",
+    "surgexxl",
+    "tablor",
+    "tinyfreaky",
+    "tr-6w6",
+    "tr-8w8",
+    "tr-9w9",
+    "tr-cw78",
+    "tr-mpc-tap-fx",
+    "tr-mpc",
+    "tributary",
+    "tropix",
+    "tuner",
+    "tuney",
+    "usb-audio",
+    "vader",
+    "verglas",
+    "vibe-fx",
+    "warps",
+    "wurl",
+    "xenia"
+   ]
+  }
+ ]
+}

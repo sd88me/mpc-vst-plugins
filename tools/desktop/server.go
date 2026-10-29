@@ -80,6 +80,7 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/api/stick/build", a.stickBuild)
 	mux.HandleFunc("/api/stick/easy", a.stickEasy)
 	mux.HandleFunc("/api/stick/easyinfo", a.stickEasyInfo)
+	mux.HandleFunc("/api/stick/g2", a.stickG2)
 	mux.HandleFunc("/api/browse", a.browse)
 	mux.HandleFunc("/api/drives", a.drives)
 	return a.guard(mux)

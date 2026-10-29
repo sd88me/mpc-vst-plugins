@@ -414,5 +414,60 @@ class InlinedSvgs(unittest.TestCase):
             self.assertNotRegex(part, r'(url\(\s*[\'"]?#|href="#)(g|c)\b')
 
 
+class HtmlArtBoxButton(unittest.TestCase):
+    """A layout `button ... w= h=` line becomes the `boxbtn` draw op. html_art had no branch for it, so every
+    art:html build with a sized button failed (found porting MPC DJ FX 2, 2026-10-27); these tests keep the
+    emit, the draw and the device's geometry in step."""
+
+    PARAMS = [{"key": "panic", "name": "PANIC", "min": 0, "max": 1}]
+    LAYOUT = ('[tab T]\nbutton cx=640 cy=300 w=136 h=40 key=panic label="PANIC"\nqlinks "T" = panic\n')
+
+    def tearDown(self):
+        shadow_skin.apply_theme([])
+
+    def ops(self, layout=LAYOUT):
+        """Run shadow_skin against a capture stub, so the draw script it would pipe to the art tool is readable."""
+        d = tempfile.mkdtemp()
+        lp, cap, art = os.path.join(d, "layout.conf"), os.path.join(d, "ops.txt"), os.path.join(d, "art.sh")
+        open(lp, "w").write(layout)
+        open(art, "w").write("#!/bin/sh\ncat > '%s'\n" % cap)
+        os.chmod(art, 0o755)
+        shadow_skin.build(lp, self.PARAMS, d, art, lambda a, b: None)
+        return open(cap).read().splitlines()
+
+    def svg(self, op):
+        art = html_art.Art()
+        art.run(op)
+        return "".join(art.ops)
+
+    def test_sized_button_reaches_the_browser_renderer(self):
+        box = [o for o in self.ops() if o.startswith("boxbtn|")]
+        self.assertTrue(box, "a button with w= and h= must emit boxbtn")
+        svg = self.svg(box[0])
+        self.assertIn('class="button"', svg)
+        self.assertIn('width="136"', svg)
+        self.assertIn('height="40"', svg)
+        self.assertIn('rx="8"', svg)          # h/8 = 5, clamped up to the device's minimum
+        self.assertIn("PANIC", svg)
+
+    def test_radius_follows_the_device_rule(self):
+        # shadow_art.c: fill_rr(x, y, w, h, clamp(h / 8, 8, 18))
+        self.assertIn('rx="8"', self.svg("boxbtn|10|10|400|40|aabbcc|PANIC|1"))      # 5 -> 8
+        self.assertIn('rx="15"', self.svg("boxbtn|10|10|120|120|aabbcc|PLAY|1"))     # 15, in range
+        self.assertIn('rx="18"', self.svg("boxbtn|10|10|200|200|aabbcc|PLAY|1"))     # 25 -> 18
+
+    def test_label_the_device_drops_is_dropped_here_too(self):
+        # dot_label() returns early above 16 characters, so nothing is drawn inside the box
+        svg = self.svg("boxbtn|10|10|300|60|aabbcc|ABCDEFGHIJKLMNOPQ|1")
+        self.assertIn('class="button"', svg)
+        self.assertNotIn("ABCDEFGHIJKLMNOPQ", svg)
+
+    def test_no_sheen_or_inset_on_a_sized_button(self):
+        # the device fills one rounded rectangle; the sheen belongs to the fixed-size `button` op only
+        svg = self.svg("boxbtn|10|10|136|40|aabbcc|PANIC|1")
+        self.assertNotIn("button-sheen", svg)
+        self.assertIn('<rect class="button-bg" x="10" y="10" width="136" height="40" rx="8"/>', svg)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -16,7 +16,15 @@ can keep running.
 - 44100 Hz, 128-frame blocks (the budget is 2902 µs per block), host transport playing at 120 BPM.
 - Stages: **idle**. For instruments, **N-voice chords** re-struck every half second (default 1, 4, 8 and 16 voices;
   effects get noise input instead). Then a **Q-Link sweep** (4 random parameters per block while holding 8 voices;
-  `-p` sweeps every parameter). Finally the **release tail** after note-off, which catches denormal slowdowns.
+  `-p` sweeps every parameter). Then the **release tail** after note-off, which catches denormal slowdowns.
+  Finally **trigger fire**: every one-shot parameter (`"momentary": true`) is tapped once, eight blocks apart.
+- **Triggers are not swept.** Before the stages, the bench asks the plugin which parameters are one-shot triggers
+  through the wrapper's vendor opcode `0x7F01` (`EFF_MPC_IS_MOMENTARY`). Those are excluded from the random sweep
+  and measured in **trigger fire** instead: a tap is one discrete event, a drag is a stream, and only the stream is
+  what a Q-Link can flood. A plugin built before that opcode existed answers 0 for every index, so the sweep covers
+  all parameters as it always did. The trigger stage does not decide the verdict the way a continuous stage does,
+  but a tap that reaches 90 % of a block (`TRIGGER_WARN_PCT` in `tools/bench.c`) turns a PASS into a WARN: such a
+  tap glitches the block after it.
 - Each block is timed with the thread's own CPU clock (`CLOCK_THREAD_CPUTIME_ID`), so time MPC's real-time threads
   take from us doesn't count. The plugin's own worker threads are reported separately (`threads%`).
 - The bench runs at normal priority, so MPC's audio always wins and nothing glitches. It pins to core 1 on Gen1 and
@@ -37,7 +45,8 @@ isolated) and spreads tracks across them. Stock engines, effects and other plugi
 2902 µs windows, so a single plugin should take a small slice, and never a spike near a whole block.
 
 Exit code is 1 on FAIL, so the bench can gate a release script. `-j` adds a JSON line; `tools/release.py --bench`
-puts it into the release's INSTALL.md.
+puts it into the release's INSTALL.md. When triggers were found, the JSON also carries `triggers` and
+`trigger_max_pct`, so the trigger cost is recorded next to the verdict instead of hiding inside it.
 
 Limits: the bench drives the audio path only. App-style plugins (e.g. Crate Digger) do their real work in worker
 threads and child processes that the bench doesn't trigger. Watch `top` on the device while using them instead.

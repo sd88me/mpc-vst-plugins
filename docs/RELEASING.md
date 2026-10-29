@@ -42,6 +42,14 @@ you do to the draft's zip before publishing it, so the zip you tested is the zip
 If the port's build also leaves `build/aarch64/<so>` (vst.json `targets`), the workflow packages and attaches the `-mpc-aarch64.zip` (Gen2) too;
 the CPU result is Gen1's, so that zip has none. Offline only until run on a Gen2 device (docs/GEN2.md).
 
+A port with only a Gen2 build (no 32-bit `.so`) passes `gen2_only: true`: the workflow then packages only `build/aarch64/<so>` as the `-mpc-aarch64.zip`
+(the default, false, is unchanged for every other port).
+
+`.github/workflows/plugin-manager-g2.yml` calls it for `tools/plugin_manager_g2` (a manager that lives in this repo): "Run workflow" with a version (start with `dry_run`)
+builds the Gen2 zip into a draft release tagged `plugin-manager-g2-v<version>`. Listing the manager in the catalog (for its self-update) needs no tool change: a registry entry with `repo: sd88me/mpc-vst-plugins` and
+`asset_pattern: Plugin-Manager-G2-*-mpc-aarch64.zip` (the Gen2-only form, docs/GEN2.md) picks its zip, and the catalog already skips this repo's other
+products' releases (`desktop-v...`). Add that entry in a PR once the first release exists.
+
 A port calls it from its own repo with a `workflow_dispatch` workflow that takes the version. Pin this repo to one
 commit in both places:
 ```yaml

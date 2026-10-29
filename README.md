@@ -247,6 +247,7 @@ screen shows. If you are comfortable in a terminal and on 2.x, the output of thi
 - `tools/bench.sh` + `tools/bench.c`: a CPU stress test run on the device, with a PASS/WARN/FAIL verdict for Gen1
   hardware. See [docs/BENCH.md](docs/BENCH.md).
 - `tools/desktop/`: the MPC plugin installer app (Go; a local web page that installs, updates and removes plugins over SSH).
+- `tools/plugin_manager_g2/`: the OpenMPC Plugin Manager G2, a VST that browses the catalog and installs, updates and removes plugins on the MPC itself (Gen2 first, with rollback; a fork of poloq's MIT `mpc-vst-manager`). See [its README](tools/plugin_manager_g2/README.md) and `DESIGN.md`.
 - `tools/mpc-store.sh`: the same install, update, remove, prune and sync from a shell on the device, for the catalog's one-line command.
 - `tools/release.py`: packages a plugin as one shareable zip with an installer, an uninstaller and generated
   INSTALL.md. See [docs/RELEASING.md](docs/RELEASING.md).

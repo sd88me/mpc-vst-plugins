@@ -1,0 +1,4 @@
+location: /media/MPC/Synths  (usable)
+location: /storage/Synths  (usable)
+install target: /storage/Synths  (from SynthContentLocations)
+problem: none

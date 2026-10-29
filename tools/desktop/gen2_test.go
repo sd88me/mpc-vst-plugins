@@ -184,6 +184,56 @@ func TestGen2InternalDriveIsNvmeWhenSdcardAbsent(t *testing.T) {
 	}
 }
 
+// An MPC One (Gen2) has no NVMe: its user storage is the loopback image mounted at /storage (a Key 37 is the same), and
+// an MPC One's own report showed /storage with ~17 GB free and no /nvme. With /sdcard and /nvme/Synths both absent, the
+// next alternative, /storage/Synths, is the primary internal drive.
+func TestGen2InternalDriveIsStorageOnAMpcOne(t *testing.T) {
+	fd := newFakeDevice(t)
+	storage := filepath.Join(fd.dir, "storage", "Synths")
+	if err := os.MkdirAll(storage, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := fd.cfg()
+	cfg.SynthsDir = filepath.Join(fd.dir, "sdcard", "Synths") // never created
+	nvme := filepath.Join(fd.dir, "nvme", "Synths")           // never created: an MPC One has no NVMe
+	cfg.SynthsAlt = nvme + " " + storage
+	cfg.RootGlobs = shQuote(cfg.SynthsDir) + " " + shQuote(nvme) + " " + shQuote(storage)
+
+	d, err := Dial("127.0.0.1", "secret", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	if len(d.Info.Roots) != 1 || d.Info.Roots[0].Path != storage || !d.Info.Roots[0].Primary || d.Info.Roots[0].Label != "Internal drive" {
+		t.Fatalf("/storage/Synths must be the primary internal drive: %+v", d.Info.Roots)
+	}
+	if d.Info.Synths != storage {
+		t.Errorf("DeviceInfo.Synths should be /storage/Synths, got %q", d.Info.Synths)
+	}
+}
+
+// If more than one alternative exists, the first in the list wins (the order says which is the internal drive).
+func TestTheFirstFoundSynthsAltWins(t *testing.T) {
+	fd := newFakeDevice(t)
+	nvme := filepath.Join(fd.dir, "nvme", "Synths")
+	storage := filepath.Join(fd.dir, "storage", "Synths")
+	os.MkdirAll(nvme, 0o755)
+	os.MkdirAll(storage, 0o755)
+	cfg := fd.cfg()
+	cfg.SynthsDir = filepath.Join(fd.dir, "sdcard", "Synths")
+	cfg.SynthsAlt = nvme + " " + storage
+	cfg.RootGlobs = shQuote(cfg.SynthsDir) + " " + shQuote(nvme) + " " + shQuote(storage)
+
+	d, err := Dial("127.0.0.1", "secret", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	if d.Info.Synths != nvme {
+		t.Errorf("the first alternative found must win: got %q", d.Info.Synths)
+	}
+}
+
 // When SynthsDir itself is present (Gen1/Force), SynthsAlt is ignored even if it also exists.
 func TestSynthsAltIsIgnoredWhenTheConfiguredPrimaryExists(t *testing.T) {
 	fd := newFakeDevice(t)

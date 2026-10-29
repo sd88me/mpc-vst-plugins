@@ -1,0 +1,4 @@
+vst/build/
+dist/
+__pycache__/
+vst/params.lock

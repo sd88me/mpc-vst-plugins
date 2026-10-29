@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -97,5 +98,67 @@ func TestFetchEasyStickAcceptsTheMatchingHash(t *testing.T) {
 	serveEasy(t, good, hex.EncodeToString(sum[:]))
 	if _, err := fetchEasyStick(); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func init() { easyPinURL = "" } // tests never reach the network; the pin-file tests set their own server
+
+func servePin(t *testing.T, body string, status int) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(status)
+		w.Write([]byte(body))
+	}))
+	old := easyPinURL
+	easyPinURL = srv.URL
+	t.Cleanup(func() { srv.Close(); easyPinURL = old })
+}
+
+func TestPinFileOverridesTheCompiledInRelease(t *testing.T) {
+	servePin(t, `{"version":"v9.9.9","url":"`+easyReleasePrefix+`v9.9.9/x.zip","sha256":"`+strings.Repeat("a", 64)+`"}`, 200)
+	if p := currentEasyPin(); p.Version != "v9.9.9" || p.SHA256 != strings.Repeat("a", 64) {
+		t.Fatalf("pin file ignored: %+v", p)
+	}
+}
+
+func TestBadPinFilesFallBackToTheCompiledInRelease(t *testing.T) {
+	good := strings.Repeat("a", 64)
+	for name, c := range map[string]struct {
+		body   string
+		status int
+	}{
+		"other host":         {`{"version":"v1","url":"https://evil.example/x.zip","sha256":"` + good + `"}`, 200},
+		"another repository": {`{"version":"v1","url":"https://github.com/someone-else/plugin-manager-usb-for-open-mpc/releases/download/v1/x.zip","sha256":"` + good + `"}`, 200},
+		"short hash":         {`{"version":"v1","url":"` + easyReleasePrefix + `v1/x.zip","sha256":"abc"}`, 200},
+		"not json":           {`nope`, 200},
+		"http error":         {`{}`, 500},
+		"no version":         {`{"url":"` + easyReleasePrefix + `v1/x.zip","sha256":"` + good + `"}`, 200},
+	} {
+		servePin(t, c.body, c.status)
+		if p := currentEasyPin(); p != builtinEasyPin() {
+			t.Errorf("%s: used %+v instead of the compiled-in pin", name, p)
+		}
+	}
+}
+
+func TestBothTheUpstreamAndTheForkReleasePrefixAreAccepted(t *testing.T) {
+	for _, prefix := range easyReleasePrefixes {
+		if !(easyPin{Version: "v1", URL: prefix + "v1/x.zip", SHA256: strings.Repeat("a", 64)}).valid() {
+			t.Errorf("%s refused", prefix)
+		}
+	}
+	if (easyPin{Version: "v1", URL: "https://github.com/sd88me/other/releases/download/v1/x.zip", SHA256: strings.Repeat("a", 64)}).valid() {
+		t.Error("a repository outside the allowlist was accepted")
+	}
+}
+
+func TestShippedPinFileIsValid(t *testing.T) {
+	b, err := os.ReadFile("easystick-pin.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var p easyPin
+	if err := json.Unmarshal(b, &p); err != nil || !p.valid() {
+		t.Fatalf("easystick-pin.json invalid: %v %+v", err, p)
 	}
 }

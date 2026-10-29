@@ -19,7 +19,9 @@ checksum and device-verification status, that stays correct without anyone editi
 6. **The catalog never hosts or links a build that contains someone else's firmware.** A port whose DSP is compiled
    from the user's own firmware cannot publish a zip, so it lists as **build-yourself** (below): open source, no
    download, no checksum, a build command and the user's own files it needs. This is a separate distribution type;
-   the checks for normal `release` entries are unchanged.
+   the checks for normal `release` entries are unchanged. Build-yourself is only for ports of **discontinued**
+   products (2026-10-29). A port of firmware from a product still on sale is not listed in either form without the
+   manufacturer's written permission; the author can write an independent engine instead (see #612).
 
 ## Architecture
 ```
@@ -46,7 +48,8 @@ readable. Put the full feature list in the repo README. Maintainers may edit a s
 change claims about testing or safety without the author.
 
 ### Distribution types
-`distribution` in the registry entry: `release` (default; everything above) or `build-yourself`.
+`distribution` in the registry entry: `release` (default; everything above) or `build-yourself`. `build-yourself` is limited to
+ports of discontinued products (rule 6 above); today's two entries, Monomodule and Machinemodule, are discontinued Elektron hardware.
 
 A **build-yourself** plugin's build embeds firmware-derived code or data (for example the DSP statically recompiled from
 the user's own Elektron OS file, plus ROM samples), so the built `.so` and its installer zip can never be published

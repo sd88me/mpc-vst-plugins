@@ -19,6 +19,23 @@ feature on our side). Both plugins' `tested.json` carry the device. This settles
   are at `/data/Settings/MPC/MPC.settings`. JV-880 1.0.8 aarch64 installed there (`install.sh -t /nvme/Synths`) loads, draws its
   skin, browses expansions and makes sound — `pluginList-arm-64bit` confirmed again. The installer now handles this: `mpc-store.sh`
   defaults to `/nvme/Synths` when `/sdcard` is absent, and `tools/desktop` scans `/nvme/Synths` and makes it the "internal drive".
+- **MPC One (Gen2), MPC OS 3.9.1 (2026-10-28, a user's `mount`/`df -h` over SSH plus the stock firmware's mount units, offline):
+  no NVMe.** `/` is a 624 MB dm-verity root (96% used); `/synths` is eMMC `mmcblk0p11` (17.8 GB, 91% used, 1.5 GB free);
+  `/data` is `mmcblk0p12` (33 GB, shown 100% used: it holds the user-storage image); **`/storage` is a 31 GB loopback
+  (`loop0p1`, 17 GB free)**, the Key 37's layout; the SD card is `/media/MPC`. The firmware mounts `/nvme`, `/content`,
+  `/sdcard` or `/storage` depending on device tree flags under `/sys/firmware/devicetree/base/chosen/` (`inmusic,nvme-fitted`,
+  `inmusic,emmc-content`, `inmusic,internal-sd-fitted`, `inmusic,acvs-loopback-content`), so the internal drive is not
+  `/nvme/Synths` everywhere. `tools/desktop` now tries `/nvme/Synths` then `/storage/Synths` as the internal drive and lists
+  `/storage` as a drive that can be given a Synths folder; `mpc-store.sh` falls back the same way. **Confirmed by the same
+  user's follow-up (2026-10-28, `mount` and `grep` over SSH):** `/storage` is `exfat (rw,relatime,fmask=0022,dmask=0022,...)`,
+  no `noexec`; `/synths` is `ext4 (ro)`; `/data` is `ext4 (rw)`. Their `MPC.settings` `SynthContentLocations` lists
+  `/media/MPC/Synths` and `/storage/Synths`, and eight plugins (including Acid-303) are already installed and registered under
+  `/storage/Synths`, so that folder exists, is executable and is what MPC scans; the full `/data` did not stop earlier
+  settings edits. Their `Content.Manager.Directory` is `/media/MPC/` (the SD card, `mmcblk1p1`), so the community manager 1.2.1's
+  "automatic" plugin location would be `/media/MPC/Synths` (also registered with MPC), not `/storage/Synths`; whether that SD
+  mount permits executables was not shown (the manager refuses a `noexec` drive and then wants SETUP > Plugin location).
+  `tools/release.py` used to print `-t /nvme/Synths` for every Gen2 build, wrong on a One: since 2026-10-28 a Gen2 `INSTALL.md` says
+  `<your Synths folder>` and tells the reader to take it from `SynthContentLocations` (`/nvme/Synths` Live III, `/storage/Synths` One).
 - `vst.json` `targets: ["armv7", "aarch64"]` + `tools/build_port.sh ... all` is now proven end to end on a second, ordinary port
   (Profit-08: no custom build script, just the generic path) — any future port can follow the same checklist (docs/PORTING.md).
 
@@ -30,7 +47,7 @@ Gen2 unit's stock MPC OS 3.9.1 as on Gen1/Force: inserting a stick with a signed
 on demand (not persistent across reboot; see `docs/USB_STICK.md` for the generator, offline-tested, not yet run by us on Gen2
 hardware). **MPC OS 3.10.0 removes this mechanism** — confirmed by a static diff of the stock update images: the `.check`/`open.sh`
 strings and the salt bytes are gone from 3.10.0's `MPC` binary, replaced by a `*.scriptpkg`/`az01-signed-fs` signed-package scheme.
-A device already updated to 3.10+ has no documented root route from this project. (One unverified community report says a live
+A device already updated to 3.10+ has no documented root route from this project, but Eurikon's plugin manager stick works there through his `Plugin Manager helper.xpa` (confirmed on a Live III running stock 3.10, 2026-10-29, device); it runs only his manager, not our SSH or addin steps (his helper copies a fixed, hash-checked file list and never runs the stick's `open.sh`, read from its `bootstrap.sh` v1.2.2). (One unverified community report says a live
 OTA update to "3.10.0" left a device's rootfs still reporting "3.9.1" underneath — if real, that specific device might still take
 an old-scheme stick; not something to rely on.)
 

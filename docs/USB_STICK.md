@@ -18,7 +18,7 @@ updated to 3.10+;** it still works on any device still on 3.9.1 (or an earlier G
 ## Easy stick: Eurikon's prebuilt release (2026-10-27, offline-tested only)
 
 The desktop app's no-SSH mode now leads with Eurikon's own stick (`Eurikon/plugin-manager-usb-for-open-mpc`, MIT, pinned to
-`v1.2.0-beta.2`, sha256 checked, see `tools/desktop/easystick.go`). Why: it needs no user firmware, and it is the only route that
+`v1.2.3` of the `sd88me/plugin-manager-usb-for-open-mpc` fork (upstream v1.2.2 plus the OpenMPC Plugin Manager G2 welcome-screen option), sha256 checked, see `tools/desktop/easystick.go`). Why: it needs no user firmware, and it is the only route that
 covers MPC OS 3.10, where our salted-hash stick (below) no longer works. One zip serves every device: `open.sh` picks the armv7 or
 aarch64 runtime by `uname -m`; on 3.9.1 the stock prompt launches it, on 3.10 the user first imports `Plugin Manager helper.xpa`
 (a controller profile) once. v1.2.0-beta.1 adds the Gen2 runtime; its author has only Gen1 hardware, so Gen2 is a beta until
@@ -28,6 +28,23 @@ tested on a Live III. Not done: SSH and addin reapply on his stick. His `open.sh
 (SSH, addin reapply, one MPC restart if the addins' `LD_PRELOAD` differs) plus his bundle unmodified, with his `open.sh` kept as
 `autorun/manager-open.sh` and the check computed over all of it from the user's firmware. Untested on a device: whether his manager's
 "Install to SD" and update still accept the rewritten `USB-SHA256.json`.
+
+## Installer sections and the Level 1 stick (2026-10-29)
+
+The desktop installer's stick page has three sections, each titled with the MPC OS it supports:
+1. **Basic user: one-prompt install stick (MPC OS 3.9.1 and earlier only).** The "Level 1" stick, `tools/usb_g2`: our own `open.sh` and
+   `runtime/run.sh` install the OpenMPC Plugin Manager G2 for the device it runs on (armv7 or aarch64 package, folder chosen per device). The
+   installer downloads the pinned bundle (`tools/desktop/g2stick-pin.json`, hash-checked; a local file is optional). Device-verified on a
+   Force and a Live III (G2 0.2.1). The stock check covers `open.sh`, `run.sh` and `payload.sha256`, which pins the packages, so each G2
+   release needs a rebuilt bundle (`tools/usb_g2/build_stick.py`, from the user's own firmware; only the derived check ships).
+2. **Plugin manager stick (all MPC OS versions, including 3.10).** Eurikon's stick (our fork build, pinned); the 3.10 route is his helper,
+   which must match the stick release (delete any old helper first). Confirmed on a Live III running stock 3.10, 2026-10-29: it opened from
+   the stick (also on insertion, not understood) and with Shift + Menu; on 3.9.1 Shift + Menu only reopens an armed session.
+3. **For developers: turn on SSH (MPC OS 3.9.1 and earlier only).** Our SSH and addin stick, optionally with his manager bundled. It cannot
+   run on 3.10: the helper never runs the stick's `open.sh`. Findings (device, 2026-10-29): a Gen2 root is read-only, so a password cannot
+   be kept and the installer now blocks it (use a key; SSH then lasts until reboot); a Force's busybox has no `chpasswd`, so the password
+   falls back to a hash written into the shadow file (openssl on the Force). The bundled manager opens only the first time; put
+   `open-plugin-manager.txt` on the stick to open it again.
 
 ## How the route works
 
@@ -68,7 +85,7 @@ its position differs, and it appears twice. The scheme is gone in MPC OS 3.10.0 
   `install.sh -y -n` (2026-10-23: a no-op where its LD_PRELOAD entry persisted; on a device with no persistent `/etc` at all,
   e.g. Gen2's Live III, the entry lives on `/run` and a reboot wiped it, while `/data/mpc-addins/<id>/` itself -- including its
   own copy of `install.sh` -- survived; mpc-vst-plugins `docs/ADDINS.md`, "A device with no persistent /etc"), then copies
-  `MPC.settings` to the stick, then runs the bundled `mpc-store.sh -y install <ids>` (default `plugin-manager`; ids from
+  `MPC.settings` to the stick, then runs the bundled `mpc-store.sh -y install <ids>` (default `plugin-manager-g2`, since 2026-10-29; ids from
   `install.txt` on the stick) and writes `mpc-install-result.txt`. `mpc-store.sh` stops MPC once, starts it once, and starts it
   again on failure; when every requested id was skipped (no build for this device) MPC is never touched at all, and the run is
   not a failure. It does not touch `LD_PRELOAD` itself, so addins keep working. `mpc-store.sh` already picks the aarch64 vs
@@ -96,7 +113,7 @@ its position differs, and it appears twice. The scheme is gone in MPC OS 3.10.0 
   in a release. Do not publish a ready-made stick.
 - Anything on the stick that the check covers (`autorun.json`, `open.sh`, `runtime/*`) is fixed once the check is made;
   `install.txt` sits outside it on purpose, so the plugin list can be edited.
-- The plugin manager is `plugin-manager` from the catalog (a VST app listing the catalog on the MPC screen).
+- The plugin manager is `plugin-manager-g2` (OpenMPC Plugin Manager G2) from the catalog, a VST app listing the catalog on the MPC screen. poloq's original `plugin-manager` was removed from the catalog on 2026-10-29 at poloq's agreement (no longer maintained); the 2026-10-13 and 2026-10-23 runs above used it.
 
 ## Not known yet
 

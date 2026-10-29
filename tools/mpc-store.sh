@@ -46,6 +46,8 @@ fi
 # Gen2 (the Live III, MPC OS 3.x aarch64): /sdcard isn't mounted, so the writable internal drive is /nvme/Synths.
 # Fall back to it when the /sdcard default is in effect and absent (harmless on Gen1/Force).
 [ "$SYNTHS" = /sdcard/Synths ] && [ ! -d /sdcard/Synths ] && [ -d /nvme ] && SYNTHS=/nvme/Synths
+# A Gen2 unit without NVMe (an MPC One, a Key 37) keeps user content on the loopback image mounted at /storage.
+[ "$SYNTHS" = /sdcard/Synths ] && [ ! -d /sdcard/Synths ] && [ -d /storage/Synths ] && SYNTHS=/storage/Synths
 SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
 W="${MPC_STORE_TMP:-/tmp}/mpc-store.$$"; mkdir -p "$W" || die "cannot create $W"
 trap 'rm -rf "$W"' EXIT

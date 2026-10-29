@@ -1,0 +1,45 @@
+# Tests tools/plugin_manager_g2 (the OpenMPC Plugin Manager G2, a VST that installs plugins on the MPC itself) on every change;
+# "Run workflow" builds the Gen1 (armv7) and Gen2 (aarch64) zips into a DRAFT release (plugin-manager-g2-v<version>) with vst-release.yml, for a person to
+# install on a device and then publish (docs/RELEASING.md "Releasing from CI"). Start with dry_run: the zip comes as a run artifact.
+name: Plugin Manager G2
+on:
+  push:
+    branches: [main]
+    paths: ['tools/plugin_manager_g2/**', '.github/workflows/plugin-manager-g2.yml']
+  pull_request:
+    paths: ['tools/plugin_manager_g2/**', '.github/workflows/plugin-manager-g2.yml']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version, e.g. 0.1.5
+        required: true
+      dry_run:
+        description: Build and package only (the zip as a run artifact), no draft release
+        type: boolean
+        default: true
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Offline tests (host test under ASan, every fake device, the fixture flows; they read the live catalog)
+        run: tools/plugin_manager_g2/tests/run.sh
+  release:
+    needs: test
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    permissions:
+      contents: write
+    uses: ./.github/workflows/vst-release.yml
+    with:
+      tag: plugin-manager-g2-v${{ inputs.version }}
+      version: ${{ inputs.version }}
+      tools_ref: ${{ github.sha }}
+      vst_dir: tools/plugin_manager_g2/vst
+      build: tools/plugin_manager_g2/vst/build_themes.sh all
+      about: Browse the OpenMPC catalog and install, update and remove plugins on the MPC itself, with rollback; for Gen1 and Gen2.
+      plugin_id: plugin-manager-g2
+      license: MIT
+      dry_run: ${{ inputs.dry_run }}

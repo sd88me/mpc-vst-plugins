@@ -10,8 +10,8 @@
     "early-reflections",
     "dragonfly"
   ],
-  "license": "GPL-3.0-only",
+  "license": "GPL-3.0-or-later",
   "summary": "Dragonfly Early Reflections as a native insert effect, with a touchscreen skin and Q-Links.",
-  "asset_pattern": "Early-Refl-*-mpc-armv7.zip",
+  "asset_pattern": "Early-Reflections-*-mpc-armv7.zip",
   "screenshot": "https://raw.githubusercontent.com/gmorb/mpc-vst-dragonfly-early-reflections/2044beed9f510a3963df7b61da6a4c19c6c7e7b3/docs/banners/early.png"
 }

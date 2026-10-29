@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/crypto/ssh"
 )
@@ -24,7 +25,28 @@ type stickScan struct {
 	Firmware string
 	Salt     []byte
 	Hits     int
+	Gen2     bool // the firmware looks like a Gen2 (aarch64) one: its root is read-only, so no SSH password can be kept
 }
+
+// looksGen2 is a hint from the firmware's name (Akai's Gen2 images say so) or, for the raw MPC executable, its ELF
+// machine type (aarch64). An update image with a renamed file isn't recognised, so the page also says it up front.
+func looksGen2(path string) bool {
+	if strings.Contains(strings.ToLower(filepath.Base(path)), "gen2") {
+		return true
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer f.Close()
+	var h [20]byte
+	if _, err := io.ReadFull(f, h[:]); err != nil {
+		return false
+	}
+	return string(h[:4]) == "\x7fELF" && h[18] == 183 && h[19] == 0 // EM_AARCH64, little endian
+}
+
+var errGen2Password = "a Gen2 (Live III, One G2, Key G2) can't keep an SSH password: its root is read-only. Use a key; the stick's SSH then lasts until the next reboot"
 
 func (a *App) stickScanStart(w http.ResponseWriter, r *http.Request) {
 	if !postOnly(w, r) {
@@ -65,7 +87,7 @@ func (a *App) stickScanStart(w http.ResponseWriter, r *http.Request) {
 		}
 		a.mu.Lock()
 		handle := randHex(6)
-		a.stickScan[handle] = &stickScan{Firmware: in.Firmware, Salt: salt, Hits: hits}
+		a.stickScan[handle] = &stickScan{Firmware: in.Firmware, Salt: salt, Hits: hits, Gen2: looksGen2(in.Firmware)}
 		a.mu.Unlock()
 		j.log("Found it (%d match%s). The salt itself is never shown or stored anywhere but this run.", hits, plural(hits))
 		j.finishWithResult(handle) // the page's only handle on the result; never the salt bytes
@@ -91,7 +113,15 @@ func (a *App) stickJobStatus(w http.ResponseWriter, r *http.Request) {
 	since := 0
 	fmt.Sscanf(r.URL.Query().Get("since"), "%d", &since)
 	st, lines, next, result := j.snapshot(since)
-	writeJSON(w, 200, map[string]any{"id": j.ID, "state": st, "lines": lines, "next": next, "result": result})
+	gen2 := false
+	if st == "done" {
+		a.mu.Lock()
+		if sc := a.stickScan[result]; sc != nil {
+			gen2 = sc.Gen2
+		}
+		a.mu.Unlock()
+	}
+	writeJSON(w, 200, map[string]any{"id": j.ID, "state": st, "lines": lines, "next": next, "result": result, "gen2": gen2})
 }
 
 // stickKeygen makes a fresh ed25519 keypair for a user with no key of their own: the public half goes on the stick,
@@ -145,6 +175,10 @@ func (a *App) stickBuild(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "choose a folder to write the stick to")
 		return
 	}
+	if in.SSHPassword != "" && scan.Gen2 {
+		fail(w, 400, errGen2Password)
+		return
+	}
 	out := filepath.Clean(in.Out)
 	var pub []byte
 	if in.SSHPubKey != "" {
@@ -186,7 +220,8 @@ func (a *App) stickEasy(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	data, err := fetchEasyStick()
+	pin := currentEasyPin()
+	data, err := fetchEasyStickPin(pin)
 	if err != nil {
 		fail(w, 502, err.Error())
 		return
@@ -195,10 +230,10 @@ func (a *App) stickEasy(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, err.Error())
 		return
 	}
-	writeJSON(w, 200, map[string]any{"out": out, "version": easyStickVersion})
+	writeJSON(w, 200, map[string]any{"out": out, "version": pin.Version})
 }
 
 // stickEasyInfo tells the page which release the easy stick will download, so the page never hardcodes it.
 func (a *App) stickEasyInfo(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, 200, map[string]string{"version": easyStickVersion})
+	writeJSON(w, 200, map[string]string{"version": currentEasyPin().Version})
 }

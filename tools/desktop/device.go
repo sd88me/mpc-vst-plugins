@@ -22,7 +22,7 @@ type Config struct {
 	User         string // "root"
 	RemoteTmp    string // where packages are unpacked on the device, "/tmp"
 	SynthsDir    string // "/sdcard/Synths": the internal drive, the default place to install
-	SynthsAlt    string // the internal drive on a device where SynthsDir is absent (Gen2/Live III: "/nvme/Synths"); promoted to primary when found and SynthsDir is not
+	SynthsAlt    string // the internal drive on a device where SynthsDir is absent, shell words in order of preference (Gen2: "/nvme/Synths" on a Live III, "/storage/Synths" on a loopback-storage unit such as the MPC One and Key 37); the first one found is promoted to primary when SynthsDir is not
 	DriveGlob    string // drives that can be given a Synths folder (so RootGlobs finds them): "/media/*"
 	RootGlobs    string // where to look for plugin locations, shell words (globs allowed): "/sdcard/Synths /media/*/Synths"
 	SettingsGlob string // where MPC.settings is
@@ -32,10 +32,12 @@ type Config struct {
 }
 
 func defaultConfig() Config {
-	// Gen2 (aarch64, MPC OS 3.x; e.g. the Live III): /sdcard isn't mounted and /synths is read-only, so the writable
-	// internal drive is /nvme/Synths. The extra /nvme entries are harmless on Gen1/Force (no /nvme); SettingsGlob already
-	// finds /data. SynthsAlt (/nvme/Synths) is promoted to the primary "internal drive" when /sdcard is absent (see readInfo).
-	return Config{Port: "22", User: "root", RemoteTmp: "/tmp", SynthsDir: "/sdcard/Synths", SynthsAlt: "/nvme/Synths", RootGlobs: "/sdcard/Synths /nvme/Synths /media/*/Synths", DriveGlob: "/media/* /nvme", MountsFile: "/proc/mounts", SettingsGlob: "/media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings", AddinsDir: "/data/mpc-addins",
+	// Gen2 (aarch64, MPC OS 3.x): /sdcard isn't mounted and /synths is read-only or nearly full, so the writable internal
+	// drive is /nvme/Synths on a Live III (NVMe fitted) and /storage/Synths on a unit with loopback user storage (an MPC
+	// One, a Key 37; the firmware mounts /nvme or /storage from device tree flags). The extra entries are harmless on
+	// Gen1/Force (neither exists); SettingsGlob already finds /data. The first SynthsAlt found is promoted to the primary
+	// "internal drive" when /sdcard is absent (see readInfo).
+	return Config{Port: "22", User: "root", RemoteTmp: "/tmp", SynthsDir: "/sdcard/Synths", SynthsAlt: "/nvme/Synths /storage/Synths", RootGlobs: "/sdcard/Synths /nvme/Synths /storage/Synths /media/*/Synths", DriveGlob: "/media/* /nvme /storage", MountsFile: "/proc/mounts", SettingsGlob: "/media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings", AddinsDir: "/data/mpc-addins",
 		LibcPaths: "/lib/libc.so.6 /lib/arm-linux-gnueabihf/libc.so.6 /usr/lib/libc.so.6 /lib/libc-*.so /usr/lib/libc-*.so"}
 }
 
@@ -158,10 +160,22 @@ var (
 	keepaliveMaxFails = 2
 )
 
+// keepaliveSettings is a snapshot of the three vars above, taken by Dial on its own goroutine and handed to the keepalive
+// goroutine by value: that goroutine never reads the package vars, so a test that changes them cannot race with a keepalive
+// left running by an earlier test.
+type keepaliveSettings struct {
+	interval, timeout time.Duration
+	maxFails          int
+}
+
+func currentKeepalive() keepaliveSettings {
+	return keepaliveSettings{keepaliveInterval, keepaliveTimeout, keepaliveMaxFails}
+}
+
 // keepalive runs until Close(). Each tick it asks the current connection for a reply; if several pings in a row get no
 // reply, the transport is treated as dead and closed so a stuck Run returns (the next Run reconnects on its own).
-func (d *Device) keepalive() {
-	t := time.NewTicker(keepaliveInterval)
+func (d *Device) keepalive(k keepaliveSettings) {
+	t := time.NewTicker(k.interval)
 	defer t.Stop()
 	fails := 0
 	for {
@@ -178,13 +192,13 @@ func (d *Device) keepalive() {
 			var err error
 			select {
 			case err = <-res:
-			case <-time.After(keepaliveTimeout):
+			case <-time.After(k.timeout):
 				err = errors.New("keepalive timed out")
 			case <-d.done:
 				return
 			}
 			if err != nil {
-				if fails++; fails >= keepaliveMaxFails {
+				if fails++; fails >= k.maxFails {
 					c.Close() // unblocks any in-flight Run on this client; its next Run reconnects
 					fails = 0
 				}
@@ -255,7 +269,7 @@ func Dial(host, password string, cfg Config) (*Device, error) {
 		c.Close()
 		return nil, err
 	}
-	go d.keepalive()
+	go d.keepalive(currentKeepalive())
 	return d, nil
 }
 
@@ -504,23 +518,21 @@ true`, shQuote(d.cfg.SynthsDir), d.cfg.SettingsGlob, shQuote(d.cfg.RemoteTmp), d
 			}
 		}
 	}
-	// Which location is the "internal drive": SynthsDir (/sdcard/Synths) on Gen1/Force. On a Gen2 unit (the Live III)
-	// /sdcard isn't mounted, so when SynthsDir isn't among the found roots but SynthsAlt (/nvme/Synths) is, that is the
-	// fixed internal drive and becomes primary.
+	// Which location is the "internal drive": SynthsDir (/sdcard/Synths) on Gen1/Force. On a Gen2 unit /sdcard isn't
+	// mounted, so when SynthsDir isn't among the found roots the first SynthsAlt that is (/nvme/Synths on a Live III,
+	// /storage/Synths on an MPC One) is the fixed internal drive and becomes primary.
 	primary := d.cfg.SynthsDir
-	if d.cfg.SynthsAlt != "" {
-		hasPrimary, hasAlt := false, false
-		for _, r := range cands {
-			switch r.Path {
-			case primary:
-				hasPrimary = true
-			case d.cfg.SynthsAlt:
-				hasAlt = true
+	found := map[string]bool{}
+	for _, r := range cands {
+		found[r.Path] = true
+	}
+	if !found[primary] {
+		for _, alt := range strings.Fields(d.cfg.SynthsAlt) {
+			if found[alt] {
+				primary = alt
+				info.Synths = primary
+				break
 			}
-		}
-		if !hasPrimary && hasAlt {
-			primary = d.cfg.SynthsAlt
-			info.Synths = primary
 		}
 	}
 	// the same storage through two paths is one location; the first path wins (the internal drive is listed first)

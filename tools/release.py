@@ -111,7 +111,7 @@ def elf_machine(path):
 
 # INSTALL.md
 gen2 = elf_machine(a.so) == "aarch64"   # a Gen2 (64-bit) build: its INSTALL.md names the Gen2 device class, drive and plugin-list key
-SYNTHS = "/nvme/Synths" if gen2 else "/sdcard/Synths"
+SYNTHS = "<your Synths folder>" if gen2 else "/sdcard/Synths"   # Gen2: /nvme/Synths on a Live III, /storage/Synths on a One (docs/GEN2.md)
 kind = "instrument" if attr.get("isInstrument") == "1" else "effect"
 b = ""
 if bench:
@@ -130,7 +130,10 @@ REQ_GEN1 = """- A first-generation MPC OS standalone device (32-bit ARM, like th
 REQ_GEN2 = """- A Gen2 MPC OS standalone device (64-bit ARM, aarch64: MPC Live III and the other 64-bit models) on MPC OS 3.x.
   The installer refuses anything else (the 32-bit Force, MPC Live / Live II, One, X and Key 61 need the `-mpc-armv7.zip` build).
 - **Root shell access** (SSH) to the device. Stock MPC OS doesn't offer this; you need a modded unit.
-- On a Live III the internal drive's Synths folder is `/nvme/Synths`, so the install command below ends with `-t /nvme/Synths`.
+- Gen2 devices keep plugins in the internal drive's Synths folder, and the folder differs: **`/nvme/Synths`** on a Live III, **`/storage/Synths`**
+  on an MPC One. It must be one of the folders listed under `SynthContentLocations` in `/data/Settings/MPC/MPC.settings` (MPC draws a plugin's
+  skin only from a listed folder): `grep -A6 SynthContentLocations /data/Settings/MPC/MPC.settings`. Use that folder wherever this guide says
+  `<your Synths folder>`.
   Tested on an MPC Live III. Installing plugins this way is unofficial: back up first, use at your own risk."""
 install_md = """# {name} {ver}
 
@@ -184,7 +187,7 @@ rebuild the whole plugin list from the plugin folders in `Synths` keep this plug
 See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins).
 """.format(name=name, ver=a.version, about=(a.about + "\n\n") if a.about else "", kind=kind, top=top, so=so_name,
            skin=skin_name, extra_md=extra_md, bench=b, user_md=user_md, synths=SYNTHS, listkey="pluginList-arm-64bit" if gen2 else "pluginList-arm",
-           install_args=" -t /nvme/Synths" if gen2 else "", requirements=REQ_GEN2 if gen2 else REQ_GEN1,
+           install_args=" -t '<your Synths folder>'" if gen2 else "", requirements=REQ_GEN2 if gen2 else REQ_GEN1,
            where="Instrument plugins" if kind == "instrument" else "Insert effects")
 open(os.path.join(root, "INSTALL.md"), "w").write(install_md)
 

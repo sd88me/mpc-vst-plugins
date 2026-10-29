@@ -78,6 +78,8 @@ details.collapse > summary .hint { font:600 12px/1 var(--display); letter-spacin
 details.collapse[open] > summary .hint { font-size:0; }
 details.collapse[open] > summary .hint::after { content:"Hide"; font-size:12px; }
 details.collapse[open] > summary { margin-bottom:6px; }
+#stick-mode > details.collapse { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:16px 18px; margin-bottom:16px; }
+#stick-mode > details.collapse > section { background:none; border:0; border-radius:0; padding:0; margin:0 0 12px; }
 .row input[type=number] { width:100%; font:400 15px var(--text); color:var(--fg); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:10px 12px; }
 ul.list li.grp { display:block; padding:12px 2px 6px; font:700 12px/1 var(--display); letter-spacing:.12em; text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--line); }
 #drivelist li { flex-wrap:wrap; align-items:center; } #drivelist .t { flex:1 1 180px; min-width:0; } #drivelist button { flex:none; }
@@ -105,19 +107,18 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 <section id="which" class="guide">
   <h2>Which one do I need?</h2>
   <ul>
-    <li><b>Plugin install stick (no SSH needed)</b>: <i>the easy one. Pick this if you are not sure.</i>
+    <li><b>Basic user: one-prompt install stick (MPC OS 3.9.1 and earlier only)</b>: <i>the simplest. Pick this if you are on 3.9.1 or earlier.</i>
       <ul>
-        <li>Nothing to set up on your MPC and no computer connection.</li>
-        <li>You write a USB stick here, plug it in, confirm <b>one prompt</b>, then browse and install plugins on the MPC's own screen.</li>
-        <li>Needs the MPC online (Wi-Fi or Ethernet).</li>
-        <li><i>Suits:</i> most people.</li>
+        <li>Plug it in, confirm <b>one prompt</b>, and MPC restarts with the OpenMPC Plugin Manager G2 installed. No network needed for the install.</li>
       </ul></li>
-    <li><b>Install over SSH</b>: <i>for modded units that already have root SSH.</i>
+    <li><b>Plugin manager stick (all MPC OS versions, including 3.10)</b>: <i>browse and install plugins on the MPC's own screen. Pick this if you are on 3.10 or want the full catalog.</i>
       <ul>
-        <li>Installs plugins, addins, your own zips and patches from this computer, with remove, update and backup tools.</li>
-        <li><i>Suits:</i> people who already use SSH, or run a modded MPC or Force.</li>
+        <li>Nothing to set up on your MPC and no computer connection. Needs the MPC online (Wi-Fi or Ethernet).</li>
       </ul></li>
-    <li><b>Want SSH on a stock unit?</b> Use the stick tab's <b>Advanced</b> section: it turns SSH on from a stick (MPC OS up to 3.9.1). Then the SSH tab works.</li>
+    <li><b>For developers: SSH (turning it on from a stick: MPC OS 3.9.1 and earlier only)</b>: <i>for modded units that already have root SSH, or to turn SSH on from a stick.</i>
+      <ul>
+        <li>The <b>Install over SSH</b> tab installs plugins, addins, your own zips and patches from this computer, with remove, update and backup tools.</li>
+      </ul></li>
   </ul>
 </section>
 
@@ -215,19 +216,58 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 </div>
 
 <div id="stick-mode">
+<details id="l1" class="collapse" open>
+<summary><h2>Basic user: one-prompt install stick (MPC OS 3.9.1 and earlier only)</h2><span class="hint">Show</span></summary>
+<section class="guide">
+  <ul>
+    <li><b>What it is:</b> the simplest way. A stick that installs the <b>OpenMPC Plugin Manager G2</b> for you. Confirm one prompt and MPC restarts with it installed. No SSH, no network, no manager screens to learn. <i>Private beta.</i></li>
+    <li><b>Which MPC OS are you on?</b>
+      <label><input type="radio" name="l1-os" value="old"> 3.9.1 or earlier</label>
+      <label><input type="radio" name="l1-os" value="new"> 3.10</label>
+      <label><input type="radio" name="l1-os" value="unsure"> Not sure</label></li>
+  </ul>
+  <p class="msg" id="l1-os-msg" role="status" aria-live="polite"></p>
+  <div id="l1-form" hidden>
+    <div id="l1-drives"></div>
+    <div class="row">
+      <label class="f">Bundle (optional: leave empty to download the latest)<input id="l1-bundle" type="text" placeholder="leave empty, or choose a bundle .zip from your computer" spellcheck="false"></label>
+      <button id="l1-bundle-browse" type="button">Browse…</button>
+    </div>
+    <div class="row">
+      <label class="f">Empty USB stick or folder<input id="l1-out" type="text" placeholder="a mounted stick, or Browse" spellcheck="false"></label>
+      <button id="l1-out-browse" type="button">Browse…</button>
+      <button class="primary" id="l1-build" type="button">Write stick…</button>
+    </div>
+    <p class="msg" id="l1-msg" role="status" aria-live="polite"></p>
+    <ol>
+      <li>Save your project. The install stops MPC.</li>
+      <li>Insert the stick and choose <b>Open</b> on the prompt.</li>
+      <li>Wait for MPC to restart. A <code>g2-install-result.txt</code> on the stick says what happened.</li>
+    </ol>
+  </div>
+</section>
+</details>
+<details id="esd" class="collapse">
+<summary><h2>Plugin manager stick (all MPC OS versions, including 3.10)</h2><span class="hint">Show</span></summary>
 <section id="es" class="guide">
-  <h2>Plugin install stick (no SSH or connection needed)</h2>
   <ul>
     <li><b>What it is:</b> browse and install community plugins on the MPC's own screen, with no computer connection, password or setup. This writes a ready-made USB stick; you plug it into the MPC and confirm one prompt.</li>
     <li><b>Works on:</b>
       <ul>
         <li><b>MPC OS 3.9.1:</b> Gen1 MPC (Live, One, X, Key), Force and Gen2 (Live III, One G2, Key(s) G2).</li>
-        <li><b>MPC OS 3.10:</b> Gen1 MPC (needs a one-time setup, see the steps below).</li>
+        <li><b>MPC OS 3.10:</b> Gen1 MPC and Gen2 (a Live III on stock 3.10 is confirmed). Needs a one-time setup, see the steps below.</li>
+      </ul></li>
+    <li><b>Why use this one instead of the basic stick:</b>
+      <ul>
+        <li>Works on <b>MPC OS 3.10</b> too (the basic stick can't, 3.10 has no USB prompt).</li>
+        <li>Browse the whole plugin catalog on the MPC's screen and install, update or remove plugins, instead of only installing the G2 manager.</li>
+        <li>Choose where plugins go (internal drive, SD card, NVMe), and see what is already installed.</li>
+        <li>It also has an <b>OpenMPC Plugin Manager G2</b> button, so you can still get G2 from it.</li>
       </ul></li>
     <li><b>One stick fits every device</b> and picks the right version itself.</li>
-    <li><b>Credit:</b> the on-device manager is <a href="https://github.com/Eurikon/plugin-manager-usb-for-open-mpc" target="_blank" rel="noopener">Plugin Manager USB for OPEN MPC</a> by <b>Twisted Cable</b> (MIT). This installer downloads that project's release (<span id="es-ver"></span>, checked against a fixed checksum) and copies it to your stick.</li>
+    <li><b>Credit:</b> the on-device manager is <a href="https://github.com/Eurikon/plugin-manager-usb-for-open-mpc" target="_blank" rel="noopener">Plugin Manager USB for OPEN MPC</a> by <b>Twisted Cable</b> (MIT). This installer downloads a build of that project with the OpenMPC Plugin Manager G2 option added, from <a href="https://github.com/sd88me/plugin-manager-usb-for-open-mpc" target="_blank" rel="noopener">our fork</a> (<span id="es-ver"></span>, checked against a fixed checksum), and copies it to your stick.</li>
   </ul>
-  <div class="callout"><b>Gen2 is a beta.</b> <i>Tested 2026-10-28 on a Live III with MPC OS 3.9.1, including with addins installed. MPC OS 3.10 on a Gen2 has a fix in this release but is not yet confirmed on a stock 3.10 device.</i></div>
+  <div class="callout"><b>Gen2 is a beta.</b> <i>Tested on a Live III: on MPC OS 3.9.1 (2026-10-28, including with addins installed) and on stock MPC OS 3.10 (2026-10-29, the manager opened from the stick and with Shift + Menu).</i></div>
   <div id="es-drives"></div>
   <div class="row">
     <label class="f">Empty USB stick or folder<input id="es-out" type="text" placeholder="pick a mounted stick below, or Browse" spellcheck="false"></label>
@@ -242,19 +282,22 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
       <li><b>Insert</b> the stick.</li>
       <li>Choose <b>Open</b> on the prompt that appears.</li>
     </ol>
+    <p class="small">On 3.9.1, <b>Shift + Menu</b> only brings the manager back while it is already open. It does not start it.</p>
     <p class="lead"><b>MPC OS 3.10: one-time setup first.</b> <i>3.10 has no USB prompt, so the stick carries a small helper you load once.</i></p>
     <ol>
+      <li><b>Delete any old</b> <code>Plugin Manager helper</code> from the internal <b>MPC Documents</b> first: the helper has to match the stick you just made.</li>
       <li><b>Insert</b> the stick.</li>
       <li>In MPC's <b>File Browser</b>, navigate to your USB stick and select <code>Plugin Manager helper.xpa</code>.</li>
       <li>Choose <b>Load</b> and pick the internal <b>MPC Documents</b> folder as the destination, <b>not the stick</b>.</li>
       <li><b>Restart.</b></li>
-      <li>Hold <b>Shift + Menu</b> for two seconds.</li>
+      <li>Hold <b>Shift + Menu</b> for two seconds. The manager may also open by itself when you insert the stick.</li>
     </ol>
     <p class="lead"><b>Either way:</b> when you are done, tap <b>Return to MPC</b> and wait up to a minute. <i>Do not power off.</i></p>
   </div>
 </section>
+</details>
 <details id="dadv" class="collapse">
-<summary><h2>Advanced: turn on SSH (for developers)</h2><span class="hint">Show</span></summary>
+<summary><h2>For developers: turn on SSH (MPC OS 3.9.1 and earlier only)</h2><span class="hint">Show</span></summary>
 <section id="st-intro" class="guide">
   <ul>
     <li><b>What this is for:</b> developers who want an ordinary <b>SSH login</b> on their device, to install plugins and addins with this installer's SSH tab or by hand.</li>
@@ -262,7 +305,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
       <ul>
         <li>Turns <b>SSH</b> on (a key you give, or a password).</li>
         <li>Puts back any <b>addins</b> you already installed.</li>
-        <li>Optionally opens the <b>plugin manager</b>, exactly like the easy stick above (tick the box below).</li>
+        <li>Optionally also opens the <b>plugin manager</b>, as in the section above (tick the box below). A stick holds only one autorun, so a stick that turns on SSH has to carry the manager itself if you want both.</li>
       </ul></li>
     <li><b>How it works:</b> MPC OS has its own stock "USB script" reader, built in by Akai (not a security hole). A stick with the right files on it makes MPC ask one on-screen question, then run a script as root. <i>Nothing happens until you confirm that prompt on the device's own screen.</i> The check the reader needs depends on your device's firmware, so this reads your own stock update image once (nothing from it is kept or sent anywhere).</li>
     <li><b>Works on:</b> Gen1 MPC (Live, One, X, Key), Force and Gen2 (Live III, One G2, Key(s) G2), <b>but only on MPC OS up to 3.9.1</b>.
@@ -304,17 +347,19 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
   <div id="st-sshpw-wrap" hidden>
     <p class="msg err"><b>Not recommended.</b> A password can be guessed or intercepted; a key can't. This also turns on
     password login for root over SSH, where before only a key would have worked: anyone who learns this password gets a
-    root shell on your device. Only works on a device whose root can be made writable (most Gen1/Force units); refused
-    outright on most Gen2 units, which have no writable place to keep it.</p>
+    root shell on your device. Only works on a device whose root can be made writable (most Gen1/Force units).
+    <b>Gen2 needs a key</b> (Live III, One G2, Key G2): their root is read-only, so a password can't be kept and the
+    stick's SSH step fails.</p>
+    <p class="msg err" id="st-gen2-warn" hidden><b>This firmware looks like a Gen2 one.</b> A password stick can't work on it, so the installer won't build one. Use a key.</p>
     <label class="f">Password<input id="st-sshpw" type="password" autocomplete="new-password" spellcheck="false"></label>
   </div>
 </section>
 
 <section id="st3" class="off">
-  <h2><span class="n">3</span>Plugin manager</h2>
+  <h2><span class="n">3</span>Also include the plugin manager</h2>
   <label style="display:flex;gap:10px;align-items:flex-start;font:400 15px var(--text)"><input type="checkbox" id="st-withmgr" checked style="margin-top:4px">
-    <span>Also open the plugin manager from this stick (recommended). It is Twisted Cable's Plugin Manager USB for OPEN MPC, downloaded and
-    checked as for the easy stick above; this stick runs it right after turning SSH on.</span></label>
+    <span>Also open the plugin manager from this stick (recommended). It is Twisted Cable's Plugin Manager USB for OPEN MPC (our fork of it, with the OpenMPC Plugin Manager G2 option), downloaded and
+    checked as for the easy stick above. It opens the <b>first time</b> you use the stick, right after SSH is turned on. After that, inserting the stick only re-enables SSH and your addins; put a file called <code>open-plugin-manager.txt</code> on the stick to open the manager again.</span></label>
 </section>
 
 <section id="st4" class="off">
@@ -345,6 +390,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
   <h3 id="bdlgtitle">Choose a folder</h3>
   <p class="small" id="bdlgpath" style="word-break:break-all"></p>
   <p class="msg" id="bdlgmsg" role="status" aria-live="polite"></p>
+  <div id="bdlgdrives" class="small" hidden></div>
   <ul class="list" id="bdlglist" style="max-height:320px;overflow:auto"></ul>
   <div class="actions"><button id="bdlgcancel">Cancel</button><button id="bdlgup">Up a level</button><button class="primary" id="bdlgpick">Use this folder</button></div>
 </dialog>
@@ -856,7 +902,8 @@ function stickPoll(since, log) {
     if (j.state === "running") { setTimeout(function () { stickPoll(j.next, log); }, 600); return; }
     ST.running = false;
     if (j.state === "done") {
-      ST.scanHandle = j.result;
+      ST.scanHandle = j.result; ST.gen2 = !!j.gen2;
+      $("st-gen2-warn").hidden = !ST.gen2;
       scanMsg("Found the salt. Now choose how you want to log in over SSH, then build the stick below.", "ok");
       $("st2").classList.remove("off"); $("st3").classList.remove("off"); $("st4").classList.remove("off");
     } else {
@@ -896,6 +943,7 @@ $("st-build").addEventListener("click", function () {
   if (!out) { msg($("st-buildmsg"), "Enter a folder to write the stick to.", "err"); return; }
   var key = stickSSHKey(), pw = stickSSHPassword();
   if (!key && !pw) { msg($("st-buildmsg"), "Give a public key, generate one, or set a password: SSH is what this stick is for.", "err"); return; }
+  if (pw && ST.gen2) { msg($("st-buildmsg"), "This firmware looks like a Gen2 one, which can't keep an SSH password. Use a key instead.", "err"); return; }
   var withMgr = $("st-withmgr").checked;
   msg($("st-buildmsg"), withMgr ? "Downloading the plugin manager and building…" : "Building…");
   api("/api/stick/build", { ScanHandle: ST.scanHandle, Out: out, SSHPubKey: key, SSHPassword: pw, WithManager: withMgr })
@@ -910,14 +958,23 @@ $("st-build").addEventListener("click", function () {
 /* Easy stick: download the pinned community manager stick and write it to a drive. */
 api("/api/stick/easyinfo").then(function (r) { $("es-ver").textContent = r.version; }).catch(function () { $("es-ver").textContent = "a pinned release"; });
 $("es-out-browse").addEventListener("click", function () { openBrowse("dir", $("es-out"), $("es-out").value.trim()); });
+/* Mounted drives, as buttons that fill a path field (and, in the folder dialog, jump to a drive: the dialog can't otherwise go above C:\ on Windows). */
 api("/api/drives").then(function (r) {
   var ds = r.drives || []; if (!ds.length) return;
-  var box = $("es-drives"); box.innerHTML = '<p class="small">Mounted drives: </p>';
-  var ul = el("ul", "list"); box.appendChild(ul);
+  [["es-drives", "es-out"], ["l1-drives", "l1-out"]].forEach(function (p) {
+    var box = $(p[0]); box.innerHTML = '<p class="small">Mounted drives: </p>';
+    var ul = el("ul", "list"); box.appendChild(ul);
+    ds.forEach(function (d) {
+      var li = el("li"); var b = el("button", "linkbtn", d.label + " (" + d.path + ")");
+      b.type = "button"; b.onclick = function () { $(p[1]).value = d.path; };
+      li.appendChild(b); ul.appendChild(li);
+    });
+  });
+  var bd = $("bdlgdrives"); bd.hidden = false; bd.appendChild(document.createTextNode("Drives: "));
   ds.forEach(function (d) {
-    var li = el("li"); var b = el("button", "linkbtn", d.label + " (" + d.path + ")");
-    b.type = "button"; b.onclick = function () { $("es-out").value = d.path; };
-    li.appendChild(b); ul.appendChild(li);
+    var b = el("button", "linkbtn", d.label); b.type = "button"; b.style.marginRight = "12px";
+    b.onclick = function () { browseTo(d.path); };
+    bd.appendChild(b);
   });
 }).catch(function () {});
 $("es-build").addEventListener("click", function () {
@@ -928,6 +985,30 @@ $("es-build").addEventListener("click", function () {
     var where = stickOutIsAMountedDrive(out) ? "That's a mounted drive, so it's already on the stick." : "Copy everything in " + r.out + " (hidden files too) to the root of a FAT32 or exFAT USB stick.";
     msg($("es-msg"), "Wrote " + r.version + " to " + r.out + ". " + where + " Eject it safely, then follow the steps below for your MPC OS.", "ok");
   }).catch(function (e) { msg($("es-msg"), e.message, "err"); });
+});
+
+/* Level 1 (beta) stick: ask the MPC OS first, since the stock USB prompt exists only up to 3.9.1. */
+var L1_OS = {
+  "new": "MPC OS 3.10 has no USB prompt, so this stick can't run there. Use the plugin install stick above: its 3.10 steps load a helper once, then the manager's welcome screen has an OpenMPC Plugin Manager G2 button.",
+  unsure: "Check Menu, Preferences, About (or Settings, Info) on the MPC. If it says 3.9.1 or earlier, choose that. If it says 3.10, use the plugin install stick above."
+};
+Array.prototype.forEach.call(document.getElementsByName("l1-os"), function (r) {
+  r.addEventListener("change", function () {
+    var old = r.value === "old";
+    $("l1-form").hidden = !old;
+    msg($("l1-os-msg"), old ? "" : L1_OS[r.value], old ? "" : "err");
+  });
+});
+$("l1-bundle-browse").addEventListener("click", function () { openBrowse("file", $("l1-bundle"), $("l1-bundle").value.trim()); });
+$("l1-out-browse").addEventListener("click", function () { openBrowse("dir", $("l1-out"), $("l1-out").value.trim()); });
+$("l1-build").addEventListener("click", function () {
+  var out = $("l1-out").value.trim();
+  if (!out) { msg($("l1-msg"), "Pick an empty USB stick or folder first.", "err"); return; }
+  msg($("l1-msg"), "Checking and writing…");
+  api("/api/stick/g2", { Out: out, Bundle: $("l1-bundle").value.trim() }).then(function (r) {
+    var where = stickOutIsAMountedDrive(out) ? "That's a mounted drive, so it's already on the stick." : "Copy everything in " + r.out + " (hidden files too) to the root of a FAT32 or exFAT USB stick.";
+    msg($("l1-msg"), "Wrote the Level 1 stick (" + r.version + ") to " + r.out + ". " + where + " Eject it safely, then follow the steps below.", "ok");
+  }).catch(function (e) { msg($("l1-msg"), e.message, "err"); });
 });
 
 api("/api/version").then(function (v) {

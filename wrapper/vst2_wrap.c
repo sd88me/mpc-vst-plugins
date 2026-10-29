@@ -730,11 +730,18 @@ static void program_name(wrap_t *w, int idx, char *out) {
 #endif
 }
 
+/* Vendor opcode answered only by the framework's own bench (tools/bench.c): 1 when parameter idx is a
+ * one-shot trigger ("momentary": true), 0 otherwise. MPC never sends it, and a plugin built before
+ * this existed returns 0 from the default branch, which the bench reads as "no triggers known". */
+#define EFF_MPC_IS_MOMENTARY 0x7F01
+
 static intptr_t dispatcher(AEffect *e, int32_t op, int32_t idx, intptr_t v, void *p, float o) {
     wrap_t *w = e->object;
     (void)o;
     switch (op) {
     case effOpen: return 1;
+    case EFF_MPC_IS_MOMENTARY:
+        return (idx >= 0 && idx < NPARAMS && PARAMS[idx].momentary) ? 1 : 0;
     case effClose:
         g_api->destroy(w->dsp);
         pthread_mutex_destroy(&w->lock);

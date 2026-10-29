@@ -1,0 +1,4 @@
+location: /media/az01-internal/Synths  (/media/az01-internal is ext4, read-only)
+location: /sdcard/Synths  (usable)
+install target: /sdcard/Synths  (from SynthContentLocations)
+problem: none
