@@ -2055,3 +2055,37 @@ Fixes (offline-tested; not yet on a device): the manager's keys get the same 250
 - **"Last apply: 1 done, 2 failed" + garbage after a successful uninstall (Live III, device):** the result file held one `ok` line. MPC
   creates the plugin more than once and each instance refreshes; two instances parsing the file with `strtok` at the same moment corrupt
   each other. `show_result` now claims the file by renaming it (one instance reports it) and result/history parsing use `strtok_r`.
+
+## 2026-10-30: desktop VST3 build of a port (offline only; no device involved)
+
+- **What:** `tools/build_vst3.sh` builds a generic-wrapper port as a Linux VST3 (`wrapper/vst3_wrap.c`); docs/DESKTOP_VST3.md. MPC OS
+  still loads only VST2 (2026-09-24 above), so this is for desktop DAWs only.
+- **ABI:** the hand-written structs in `wrapper/vst3_abi.h` have the same sizes and offsets as the VST3 SDK's headers (3.8, x86_64
+  Linux, checked with a scratch build against the SDK; now `_Static_assert`s). Linux IIDs are plain big-endian bytes and
+  `kNoInterface` is -1 (no COM compatibility).
+- **Steinberg `validator -e`** (built from the SDK outside the repo, `validator` target only): Keyscope 537 passed, 0 failed, including
+  rates from 1234.5678 Hz to 1234567.8 Hz. It wants a bypass parameter that survives state (now added) and readout text it can read back.
+- **Resampling:** Keyscope (passes audio unchanged) gives its input back at exactly the reported latency (128 / 179 / 355 frames at
+  44.1 / 48 / 96 kHz); error -86 dB at 44.1 kHz (the engine's int16), -85 / -84 dB at 48 / 96 kHz.
+- **Engines report option values as indices:** an option named "0" (a list "-1, 0, +1") must not be read as the option named "0".
+  Engine values parse index first; text a person types parses option names first.
+- **Not yet:** any DAW by hand (only the validator and `tools/vst3_host_test.c` have loaded it).
+
+## 2026-10-30: the desktop VST3 editor draws the MPC skin (offline only; no device involved)
+
+- **What:** `wrapper/vst3_editor.c` draws the port's built skin (flattened by `tools/desktop_skin.py`) in the plugin window as an
+  X11 view, with live values, mouse input and a tab strip; docs/DESKTOP_VST3.md.
+- **Tests:** `tools/test_vst3.sh` opens it in an X11 window that is never mapped, with a fake host run loop. It passed for
+  Keyscope, Chordsmith, Groover, Tuner, DrumGizmo and Stompbox under ASan. Steinberg `validator -e` gives 537/537 for each.
+- **cairo:** an image painted onto an Xlib surface keeps an uploaded copy cached on the image. That copy holds the X connection
+  open after the window closes (6 device references at `removed()`, LeakSanitizer reports in libcairo). Drawing into one image
+  backbuffer, freed before the connection closes, fixes it.
+- **Name labels:** studio.py preview shows a component's name. On MPC a Name label shows the parameter's name, which a
+  `dynamic_name` parameter takes from the engine (Stompbox's per-model knob names). The editor does the same.
+- **Reaper 7.82 (Linux, Hyprland, Reaper under Xwayland), 2026-10-30, desktop only:** all six ports loaded from `~/.vst3`, and
+  their editors opened and drew their skins. Reaper gives the view an `IRunLoop`, and a tiled window scaled the page. Not
+  clicked in Reaper. Screenshots: docs/images/desktop-vst3/.
+- **Groover's map (skin order, open):** in Groover's `TUI.json` the five full-page per-style images (`art ... when=style:`)
+  come after the 25 map pictures (`picture key=mapdot`). They are opaque, so drawn in file order they hide the map dot; the
+  editor and studio.py both show no dot. On a device this is not checked (Groover TESTING.md row 5). If the dot shows
+  there, MPC does not stack in file order. If not, the per-style images should come before the picture in the layout.

@@ -58,6 +58,8 @@ Building on parameter-driven visibility (`IndexedEnabling`, NOTES "Conditional v
       and whole numbers"), which is quick on a short range; the data wheel is right. Three prototypes of slowing it failed (NOTES). First
       thing to try: how the stock plugins (AIR, Akai) respond to the same Q-Link on a stepped param, by logging what MPC sends them
       and what they read back, then match that.
+- [ ] **Desktop VST3, next:** use the editor's mouse input in a DAW by hand (it loads and draws in Reaper), ship engine data (DrumGizmo kits) inside the bundle for
+      `MODULE_SUBDIR` ports, keyboard input for text fields, Windows/macOS views (docs/DESKTOP_VST3.md).
 - [ ] **A reference port on `engine.h` + `params.json`** (e.g. `poc/synth.c` turned into a full example), so
       the repo shows a port that needs no adapter.
 
@@ -95,6 +97,9 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
       and `tools/probe_device.sh` after firmware updates. Needs the hardware.
 
 ## Done
+- [x] **Desktop VST3 build** (2026-10-30, offline): `tools/build_vst3.sh` builds any generic-wrapper port as a Linux VST3
+      (`wrapper/vst3_wrap.c`, resampling, latency, bypass, presets, MIDI CC mapping, state), `tools/test_vst3.sh` tests it. Its editor
+      (`wrapper/vst3_editor.c`) draws the port's MPC skin in the plugin window on Linux/X11, with mouse input. docs/DESKTOP_VST3.md.
 - [x] Community catalog and installer (2026-10-02): https://sd88me.github.io/mpc-vst-plugins/ lists the community's plugins
       (registry in `catalog/plugins/`, releases read from GitHub nightly, every zip checked, per-version "Tested on", all-time
       downloads, Atom feed), with guides and a one-line shell install (`mpc-store.sh`). The MPC plugin installer app

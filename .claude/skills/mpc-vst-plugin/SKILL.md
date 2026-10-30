@@ -41,6 +41,12 @@ Stop any separately attached audio engines first.
    → start the service again → check force_shadow.so is still in MPC's environ. An `.so` update alone (same path) needs no settings
    edit and no restart: remove every instance of the plugin, then insert it again (verified 2026-09-24). A changed skin is **not** reloaded by re-inserting the plugin (MPC keeps skins in memory; verified 2026-10-04): it needs an MPC restart, so ask first. MPC finds a skin by folder name (`<vendor> - VST - <product>`), even when the `.so` loads from another folder.
 7. The user tests on the device: plugin list → insert → play → edit screen → Q-Links → save/reload project.
+8. **Desktop VST3 (optional, local use):** `tools/build_vst3.sh <port>/vst.json [--install]` builds the same engine as a VST3 for a
+   Linux DAW (`wrapper/vst3_wrap.c`, hand-written ABI `wrapper/vst3_abi.h`, 44.1 kHz engine resampled to any host rate);
+   `tools/test_vst3.sh <port>/vst.json [--passthrough] [--shots <dir>]` tests it under ASan (`VST3_VALIDATOR=<Steinberg validator>`
+   adds `validator -e`; `--shots` writes each skin page as a PNG). The plugin window draws the port's built skin
+   (`wrapper/vst3_editor.c`, X11 + cairo), so run `build_port.sh` first or set `VST3_SKIN`. Never for the device (MPC OS has no
+   VST3). docs/DESKTOP_VST3.md.
 
 ## Gotchas
 - Integer DSP params: set `"display": "int"`. The wrapper then rounds, and `settle()` moves an option list or a whole-number
@@ -286,7 +292,7 @@ A change is not done until the docs it touches are updated in the same PR (CLAUD
 |---|---|
 | a verified device fact, measurement or bug | `docs/NOTES.md`: dated section, device, MPC OS version, "offline only" if it is |
 | a vst.json key, `defines` option, `params.json` field or layout.conf widget | `tools/gen_vst.py` / `tools/shadow_skin.py` docstring, `docs/PORTING.md` checklist, this skill |
-| the wrapper or the engine contract (`wrapper/`) | `wrapper/engine.h` comment, `docs/NOTES.md`, README "What's possible" / limitations, PORTING if ports must act |
+| the wrapper or the engine contract (`wrapper/`) | `wrapper/engine.h` comment, `docs/NOTES.md`, README "What's possible" / limitations, PORTING if ports must act; a change to what `vst2_wrap.c` does for ports (a new `defines` option, param field) also asks whether `vst3_wrap.c` needs it (docs/DESKTOP_VST3.md) |
 | a build, toolchain, release or installer step | `docs/RELEASING.md`, `docs/PORTING.md`, `tools/*.sh` header comments, this skill's Pipeline |
 | the catalog, a registry field or a release check | `docs/CATALOG.md`, `docs/CATALOG_SPEC.md`, `catalog/README.md`, `docs/ROADMAP.md` |
 | a feature shipped or a limitation fixed | `docs/ROADMAP.md` (Done), README, and remove the now-false limitation line |

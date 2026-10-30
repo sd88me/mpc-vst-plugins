@@ -98,6 +98,9 @@ for the pattern). This applies to every future port, not just ones that hit the 
 - [ ] State saved via chunks (`effGetChunk`/`effSetChunk`).
 - [ ] Offline x86 test: `tools/test_port.sh <port>/vst.json` prints PASSED (instances, parameter round-trip,
       options, popups, MIDI → audio, chunk restore, under ASan).
+- [ ] Desktop VST3 (optional, local use only, never shipped to a device): `tools/test_vst3.sh <port>/vst.json` prints "all passed";
+      `tools/build_vst3.sh <port>/vst.json --install` puts it in `~/.vst3` (docs/DESKTOP_VST3.md). Run it after `build_port.sh`, so
+      the plugin window has the skin; `--shots <dir>` on the test writes each page to look over.
 - [ ] Gen2 (optional, proven on two ports as of 2026-10-11 — Crate Digger, Profit-08, both loaded on a real MPC Live III): `"targets":
       ["armv7", "aarch64"]` in vst.json, `tools/build_port.sh <port>/vst.json aarch64` builds `build/aarch64/<so>` (`arm64v8/gcc:12-bookworm`),
       `tools/test_port.sh <port>/vst.json aarch64` must print PASSED (UBSan, arm64 container), and the release carries both zips
