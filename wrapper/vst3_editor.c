@@ -51,7 +51,6 @@ typedef struct {
     char *imgname[MAX_IMAGES];
     cairo_surface_t *img[MAX_IMAGES];
     int nimg;
-    FT_Library ft;
     cairo_font_face_t *font[3];   /* Regular, SemiBold, Bold */
     double font_ratio[3];         /* em size for a font height (MPC's height is ascent + descent) */
 } skin_t;
@@ -70,20 +69,35 @@ static int skin_image(skin_t *s, const char *dir, const char *name) {
     return s->nimg++;
 }
 
-static void ft_done(void *face) { FT_Done_Face((FT_Face)face); }
+/* Each face has a FreeType library of its own, freed with it. cairo keeps font faces alive in its caches after
+ * cairo_font_face_destroy() and frees them later, from any thread, so a library shared by the skin could be gone by then. */
+typedef struct { FT_Library lib; FT_Face face; } ft_font_t;
+static void ft_done(void *p) {
+    ft_font_t *f = p;
+    FT_Done_Face(f->face);
+    FT_Done_FreeType(f->lib);
+    free(f);
+}
 
 static void skin_fonts(skin_t *s, const char *dir) {
     static const char *files[3] = { "TitilliumWeb-Regular.ttf", "TitilliumWeb-SemiBold.ttf", "TitilliumWeb-Bold.ttf" };
-    if (FT_Init_FreeType(&s->ft)) { s->ft = NULL; return; }
+    static cairo_user_data_key_t key;
     for (int k = 0; k < 3; k++) {
         char path[1024];
-        FT_Face face;
         s->font_ratio[k] = 1.0;
         snprintf(path, sizeof path, "%s/%s", dir, files[k]);
-        if (FT_New_Face(s->ft, path, 0, &face)) continue;
+        ft_font_t *f = calloc(1, sizeof *f);
+        if (!f) continue;
+        if (FT_Init_FreeType(&f->lib)) { free(f); continue; }
+        if (FT_New_Face(f->lib, path, 0, &f->face)) { FT_Done_FreeType(f->lib); free(f); continue; }
+        FT_Face face = f->face;
         s->font[k] = cairo_ft_font_face_create_for_ft_face(face, 0);
-        static cairo_user_data_key_t key;
-        cairo_font_face_set_user_data(s->font[k], &key, face, ft_done);
+        if (cairo_font_face_set_user_data(s->font[k], &key, f, ft_done) != CAIRO_STATUS_SUCCESS) {
+            cairo_font_face_destroy(s->font[k]);
+            s->font[k] = NULL;
+            ft_done(f);
+            continue;
+        }
         if (face->ascender - face->descender > 0) s->font_ratio[k] = (double)face->units_per_EM / (face->ascender - face->descender);
     }
 }
@@ -93,8 +107,7 @@ static void skin_free(skin_t *s) {
     for (int i = 0; i < s->nitems; i++) free(s->items[i].text);
     free(s->items);
     for (int i = 0; i < s->nimg; i++) { free(s->imgname[i]); if (s->img[i]) cairo_surface_destroy(s->img[i]); }
-    for (int k = 0; k < 3; k++) if (s->font[k]) cairo_font_face_destroy(s->font[k]);
-    if (s->ft) FT_Done_FreeType(s->ft);   /* faces are freed with their cairo font faces, before this */
+    for (int k = 0; k < 3; k++) if (s->font[k]) cairo_font_face_destroy(s->font[k]);   /* FreeType goes with them (ft_done) */
     free(s);
 }
 
@@ -322,6 +335,7 @@ typedef struct {
     void *frame;
     void *loop;            /* IRunLoop, or NULL: our own thread */
     pthread_t thread;
+    pthread_mutex_t lock;  /* the window and its size: our own thread's tick() against the host's onSize() */
     volatile int stop;
     int thread_on;
     Display *dpy;
@@ -367,7 +381,6 @@ static void redraw(view_t *v) {
     cairo_destroy(cr);
     cairo_surface_flush(v->xs);
     XFlush(v->dpy);
-    v->last_hash = page_hash(v->skin, v->w, v->tab);
     v->dirty = 0;
 }
 
@@ -485,8 +498,11 @@ static void handle_events(view_t *v) {
 }
 
 static void tick(view_t *v) {
+    pthread_mutex_lock(&v->lock);
     handle_events(v);
-    if (v->dirty || page_hash(v->skin, v->w, v->tab) != v->last_hash) redraw(v);
+    uint64_t h = page_hash(v->skin, v->w, v->tab);   /* once a tick: each one reads every value under the engine lock */
+    if (v->dirty || h != v->last_hash) { redraw(v); v->last_hash = h; }
+    pthread_mutex_unlock(&v->lock);
 }
 
 /* An edit from the window. phase: 0 begins a gesture, 1 moves it, 2 ends it, 3 is a whole one-shot edit. Parameters the host
@@ -531,6 +547,7 @@ static uint32_t view_release(view_t *v) {
         view_detach(v);
         skin_free(v->skin);
         release(v->w);
+        pthread_mutex_destroy(&v->lock);
         free(v);
     }
     return r;
@@ -563,7 +580,9 @@ static tresult pv_platform(void *s, const char *type) { (void)s; return type && 
 static tresult pv_attached(void *s, void *parent, const char *type) {
     view_t *v = VIEW(s, vt);
     if (!type || strcmp(type, "X11EmbedWindowID") || v->dpy) return kResultFalse;
-    XInitThreads();   /* before any connection: without a host run loop, our own thread uses it */
+    /* Our connection is only ever used under v->lock, so it needs no Xlib locking of its own. XInitThreads() is for Xlib's
+     * shared state; libX11 1.8 and later call it when it loads, which makes this a no-op there. */
+    XInitThreads();
     v->dpy = XOpenDisplay(NULL);
     if (!v->dpy) return kResultFalse;
     int scr = DefaultScreen(v->dpy);
@@ -620,6 +639,7 @@ static tresult pv_get_size(void *s, ViewRect *r) {
 }
 static tresult pv_on_size(void *s, ViewRect *r) {
     view_t *v = VIEW(s, vt);
+    pthread_mutex_lock(&v->lock);
     v->width = r->right - r->left;
     v->height = r->bottom - r->top;
     if (v->dpy) {
@@ -628,6 +648,7 @@ static tresult pv_on_size(void *s, ViewRect *r) {
         v->dirty = 1;
         XFlush(v->dpy);
     }
+    pthread_mutex_unlock(&v->lock);
     return kResultOk;
 }
 static tresult pv_focus(void *s, uint8_t f) { (void)s; (void)f; return kResultOk; }
@@ -651,6 +672,12 @@ static void *editor_create(v3_t *w, const char *name) {
     skin_t *s = skin_load();
     if (!s) return NULL;
     view_t *v = calloc(1, sizeof *v);
+    if (!v) { skin_free(s); return NULL; }
+    pthread_mutexattr_t ma;   /* recursive: a host may call onSize() back from inside an edit made in tick() */
+    pthread_mutexattr_init(&ma);
+    pthread_mutexattr_settype(&ma, PTHREAD_MUTEX_RECURSIVE);
+    pthread_mutex_init(&v->lock, &ma);
+    pthread_mutexattr_destroy(&ma);
     v->vt = &pv_vtbl; v->ev = &ev_vtbl; v->tm = &tm_vtbl;
     v->refs = 1;
     v->w = w;
