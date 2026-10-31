@@ -20,6 +20,7 @@ import zipfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import skin_compat  # noqa: E402
+from user_files import user_files_problems  # noqa: E402
 
 MAX_GLIBC_GEN2 = (2, 39)   # aarch64 (Gen2) runs MPC OS 3.x only, which has glibc 2.39, so there is no 2.x ceiling to respect
 MAX_GLIBC = (2, 36)   # the newest glibc a catalog plugin may need: MPC OS 3.x and the Force have 2.39, the catalog toolchain (arm32v7/gcc:12) is 2.36.
@@ -365,6 +366,8 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None, require_portab
     for d in m.get("user_data", []):
         if not re.fullmatch(r"[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*", d) or ".." in d.split("/"):
             err("bad user_data path %r" % d)
+    for p in user_files_problems(m.get("user_files", []), m.get("user_data", [])):
+        err("user_files: " + p)
     # checksums: every file listed and matching, nothing unlisted
     listed = {}
     for line in files.get("SHA256SUMS", b"").decode().splitlines():

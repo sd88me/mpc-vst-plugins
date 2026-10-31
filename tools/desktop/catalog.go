@@ -26,28 +26,29 @@ type Asset struct {
 
 // CatPlugin is what the app offers from the catalog: the newest stable, non-yanked version of every downloadable plugin.
 type CatPlugin struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Author      string   `json:"author"`
-	Kind        string   `json:"kind"`
-	Role        string   `json:"role,omitempty"` // "midi": a MIDI generator or sequencer (listed under its own tab)
-	Summary     string   `json:"summary"`
-	Version     string   `json:"version"`
-	Size        int64    `json:"size"`
-	SHA256      string   `json:"sha256"`
-	URL         string   `json:"url"`
-	Skin        string   `json:"skin"`
-	ParamCompat int      `json:"param_compat"`
-	UID         string   `json:"uid"`
-	UserData    []string `json:"user_data"`
-	Defer       *bool    `json:"defer"`         // true: the installer understands -n (one MPC restart for a batch); false: it restarts MPC itself; null: the catalog does not say
-	OSCompat    []string `json:"os_compat"`     // the MPC OS generations it works on ("2.x", "3.x"); empty when the catalog does not say
-	OSWhy       []string `json:"os_compat_why"` // why it is not 2.x, when it is not
-	MaxGlibc    string   `json:"max_glibc"`     // the newest glibc its library needs; empty when the catalog does not say
-	Tested2x    bool     `json:"tested_2x"`     // the version has a tested.json entry on MPC OS 2.x firmware
-	Gen2        bool     `json:"gen2"`          // the version also has a Gen2 (aarch64) zip; SHA256/URL/Size above are the Gen1 (armv7) one
-	Aarch64     *Asset   `json:"aarch64,omitempty"`
-	Gen2Only    bool     `json:"gen2_only"` // the version has no Gen1 zip at all: SHA256/URL/Size above are the Gen2 (aarch64) one
+	ID          string          `json:"id"`
+	Name        string          `json:"name"`
+	Author      string          `json:"author"`
+	Kind        string          `json:"kind"`
+	Role        string          `json:"role,omitempty"` // "midi": a MIDI generator or sequencer (listed under its own tab)
+	Summary     string          `json:"summary"`
+	Version     string          `json:"version"`
+	Size        int64           `json:"size"`
+	SHA256      string          `json:"sha256"`
+	URL         string          `json:"url"`
+	Skin        string          `json:"skin"`
+	ParamCompat int             `json:"param_compat"`
+	UID         string          `json:"uid"`
+	UserData    []string        `json:"user_data"`
+	UserFiles   []UserFileGroup `json:"user_files,omitempty"`
+	Defer       *bool           `json:"defer"`         // true: the installer understands -n (one MPC restart for a batch); false: it restarts MPC itself; null: the catalog does not say
+	OSCompat    []string        `json:"os_compat"`     // the MPC OS generations it works on ("2.x", "3.x"); empty when the catalog does not say
+	OSWhy       []string        `json:"os_compat_why"` // why it is not 2.x, when it is not
+	MaxGlibc    string          `json:"max_glibc"`     // the newest glibc its library needs; empty when the catalog does not say
+	Tested2x    bool            `json:"tested_2x"`     // the version has a tested.json entry on MPC OS 2.x firmware
+	Gen2        bool            `json:"gen2"`          // the version also has a Gen2 (aarch64) zip; SHA256/URL/Size above are the Gen1 (armv7) one
+	Aarch64     *Asset          `json:"aarch64,omitempty"`
+	Gen2Only    bool            `json:"gen2_only"` // the version has no Gen1 zip at all: SHA256/URL/Size above are the Gen2 (aarch64) one
 }
 
 // ForArch returns the plugin with the zip that fits a device whose `uname -m` is arch: the armv7 zip on Gen1 and Force, the aarch64
@@ -92,9 +93,10 @@ type rawCatalog struct {
 			Gen2Only    bool             `json:"gen2_only"`
 			ParamCompat int              `json:"param_compat"`
 			Manifest    struct {
-				Skin     string   `json:"skin"`
-				UID      string   `json:"uid"`
-				UserData []string `json:"user_data"`
+				Skin      string          `json:"skin"`
+				UID       string          `json:"uid"`
+				UserData  []string        `json:"user_data"`
+				UserFiles []UserFileGroup `json:"user_files"`
 			} `json:"manifest"`
 			Tested []struct {
 				Firmware string `json:"firmware"`
@@ -129,7 +131,7 @@ func parseCatalog(data []byte) ([]CatPlugin, error) {
 				tested2x = tested2x || strings.HasPrefix(t.Firmware, "2.")
 			}
 			out = append(out, CatPlugin{ID: p.ID, Name: p.Name, Author: p.Author, Kind: p.Kind, Role: p.Role, Summary: p.Summary, Version: v.Version,
-				Size: v.Size, SHA256: v.SHA256, URL: v.URL, Skin: v.Manifest.Skin, ParamCompat: v.ParamCompat, UID: v.Manifest.UID, UserData: v.Manifest.UserData, Defer: v.Defer,
+				Size: v.Size, SHA256: v.SHA256, URL: v.URL, Skin: v.Manifest.Skin, ParamCompat: v.ParamCompat, UID: v.Manifest.UID, UserData: v.Manifest.UserData, UserFiles: v.Manifest.UserFiles, Defer: v.Defer,
 				OSCompat: v.OSCompat, OSWhy: v.OSWhy, MaxGlibc: v.MaxGlibc, Tested2x: tested2x, Gen2: a64 != nil, Aarch64: a64, Gen2Only: v.Gen2Only && a64 != nil})
 			break
 		}

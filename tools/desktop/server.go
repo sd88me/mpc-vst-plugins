@@ -67,6 +67,9 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/api/install", a.install)
 	mux.HandleFunc("/api/device", a.devicePlugins)
 	mux.HandleFunc("/api/remove", a.remove)
+	mux.HandleFunc("/api/userfiles", a.userFilesList)
+	mux.HandleFunc("/api/userfiles/upload", a.userFilesUpload)
+	mux.HandleFunc("/api/userfiles/delete", a.userFilesDelete)
 	mux.HandleFunc("/api/unregistered", a.unregistered)
 	mux.HandleFunc("/api/register", a.register)
 	mux.HandleFunc("/api/backups", a.backups)
@@ -520,13 +523,14 @@ func (a *App) jobStatus(w http.ResponseWriter, r *http.Request) {
 // plugins from the catalog and for zips dropped into this session, so those are the ones it will remove.
 type knownPlugin struct {
 	DevPlugin
-	ID        string   `json:"id"`
-	Version   string   `json:"version,omitempty"`
-	RootLabel string   `json:"rootLabel"`
-	Known     bool     `json:"known"`
-	Keep      []string `json:"keep"`
-	Source    string   `json:"source,omitempty"`
-	Addin     bool     `json:"addin"`
+	ID        string          `json:"id"`
+	Version   string          `json:"version,omitempty"`
+	RootLabel string          `json:"rootLabel"`
+	Known     bool            `json:"known"`
+	Keep      []string        `json:"keep"`
+	UserFiles []UserFileGroup `json:"userFiles"` // the user's own files this plugin needs (ROMs), from its manifest
+	Source    string          `json:"source,omitempty"`
+	Addin     bool            `json:"addin"`
 }
 
 // classify matches the device's plugin folders to the catalog and to the dropped zips. Caller holds a.mu and a.dev != nil.
@@ -540,6 +544,7 @@ func (a *App) classify() []knownPlugin {
 				if c.UserData != nil {
 					kp.Keep = c.UserData
 				}
+				kp.UserFiles = c.UserFiles
 			}
 		}
 		if !kp.Known {
@@ -550,6 +555,7 @@ func (a *App) classify() []knownPlugin {
 						if m.UserData != nil {
 							kp.Keep = m.UserData
 						}
+						kp.UserFiles = m.UserFiles
 					}
 				}
 			}

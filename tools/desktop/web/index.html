@@ -43,6 +43,10 @@ ul.list .t { flex:1; min-width:0; } ul.list .t b { font:700 16px var(--display);
 ul.list .t .d { display:block; color:var(--muted); font-size:13px; }
 .tag { display:inline-block; vertical-align:middle; font:600 11px var(--display); letter-spacing:.08em; text-transform:uppercase; border:1px solid var(--line); border-radius:4px; padding:2px 6px; margin-left:8px; color:var(--muted); }
 .tag.ok { color:var(--ok); border-color:var(--ok); }
+.uf { margin:14px 0 18px; } .uf h3 { font:700 16px var(--display); letter-spacing:.04em; text-transform:uppercase; margin:0 0 4px; }
+.uf .tag.maybe { color:var(--accent); border-color:var(--accent); } .uf .tag.bad { color:var(--err, #d44); border-color:var(--err, #d44); }
+.uf input[type=file] { max-width:100%; } .uf .row button { margin-left:8px; }
+
 .drop { border:2px dashed var(--line); border-radius:6px; padding:22px; text-align:center; color:var(--muted); margin-top:14px; cursor:pointer; background:var(--bg); }
 .drop.over { border-color:var(--accent); color:var(--fg); }
 .log { background:var(--lcd); color:var(--lcd-fg); border-radius:6px; padding:12px; font:500 12.5px/1.5 ui-monospace,Menlo,Consolas,monospace; white-space:pre-wrap; overflow-wrap:anywhere; max-height:340px; overflow:auto; margin:12px 0 0; }
@@ -168,9 +172,17 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
   <pre class="log" id="log" hidden></pre>
 </section>
 
+<section id="sf" class="off" hidden>
+<details id="df" class="collapse" open>
+  <summary><h2><span class="n">4</span>Your ROMs and files</h2><span class="hint">Show</span></summary>
+  <p class="sub">Some plugins need files you own and that cannot be shared, such as a synth's ROM. Choose them here: the app checks each file, tells you what it is or why it is wrong, and copies the good ones into the plugin's folder on the device. The plugin reads them the next time it loads, so MPC does not restart.</p>
+  <div id="ufbody"></div>
+</details>
+</section>
+
 <section id="s4" class="off">
 <details id="d4" class="collapse">
-  <summary><h2><span class="n">4</span>Remove plugins</h2><span class="hint">Show</span></summary>
+  <summary><h2><span class="n">5</span>Remove plugins</h2><span class="hint">Show</span></summary>
   <p class="sub">The plugins on your device. Removing deletes the plugin's folder and its entry in MPC's plugin list (MPC's settings are backed up first). Your own files inside it, such as ROMs, kits and dumps, are kept. Addins (libraries MPC loads when it starts) are listed last: removing one runs its own uninstaller, which takes it out of MPC's start-up list and deletes its folder, settings included.</p>
   <ul class="list" id="dev"><li class="small">Connect to see what is on the device.</li></ul>
   <button id="rm" disabled>Remove…</button>
@@ -181,7 +193,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 
 <section id="s5" class="off">
 <details id="d5" class="collapse">
-  <summary><h2><span class="n">5</span>Register plugin folders</h2><span class="badge" id="regbadge" hidden></span><span class="hint">Show</span></summary>
+  <summary><h2><span class="n">6</span>Register plugin folders</h2><span class="badge" id="regbadge" hidden></span><span class="hint">Show</span></summary>
   <p class="sub">A plugin folder only shows up in MPC once it is in MPC's plugin list. Folders you copied in yourself, or that MPC forgot (for example because a card was out when MPC started), are not. This adds them, and drops entries whose plugin file is gone. Everything else in the list is left alone. MPC's settings are backed up first and MPC restarts once.</p>
   <ul class="list" id="reglist"><li class="small">Connect to check.</li></ul>
   <button id="reg" disabled>Register…</button>
@@ -192,7 +204,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 
 <section id="s6" class="off">
 <details id="d6" class="collapse">
-  <summary><h2><span class="n">6</span>Clean up old backups</h2><span class="hint">Show</span></summary>
+  <summary><h2><span class="n">7</span>Clean up old backups</h2><span class="hint">Show</span></summary>
   <p class="sub">Every install, removal and sync leaves a copy of MPC's settings file on the device. They are small, but they pile up. This keeps the newest ones and deletes the older ones. The newest backup is never deleted, and MPC is not restarted.</p>
   <p class="small" id="bkinfo">Connect to see them.</p>
   <div class="row"><label class="f">Keep the newest<input id="keepn" type="number" min="1" max="1000" value="10" inputmode="numeric"></label><button id="prune" disabled>Delete older backups…</button></div>
@@ -202,7 +214,7 @@ footer { color:var(--muted); font-size:12.5px; margin-top:24px; }
 
 <section id="s7" class="off">
 <details id="d7" class="collapse">
-  <summary><h2><span class="n">7</span>Advanced: device patches</h2><span class="hint">Show</span></summary>
+  <summary><h2><span class="n">8</span>Advanced: device patches</h2><span class="hint">Show</span></summary>
   <p class="sub"><b>Not for most people.</b> A patch changes the device itself (for example Akai's own MPC program), not a plugin. If it goes wrong, MPC may not start until you Undo it or reinstall the OS. Checking only <b>looks</b>: it asks the device which patches are applied and changes nothing. <b>Apply</b> and <b>Undo</b> run the patch's own script on the device, with its default settings, and only after you type a confirmation word. Read the patch's guide first; one patch at a time; never as part of a plugin install. For options (such as which buttons to remap), run the script yourself over SSH as its guide says.</p>
   <div class="row"><button id="patchcheck" type="button" disabled>Check the device</button></div>
   <p class="small" id="patchinfo">Connect, then open this step to check.</p>
@@ -415,7 +427,7 @@ function el(tag, cls, t) { var e = document.createElement(tag); if (cls) e.class
 
 function setConnected(c, info, problems) {
   S.connected = c; S.problems = problems || []; S.libc = c && info ? (info.libc || "") : ""; S.arch = c && info ? (info.arch || "") : "";
-  $("s2").classList.toggle("off", !c); $("s3").classList.toggle("off", !c); $("s4").classList.toggle("off", !c); $("s5").classList.toggle("off", !c); $("s6").classList.toggle("off", !c); $("s7").classList.toggle("off", !c);
+  $("s2").classList.toggle("off", !c); $("s3").classList.toggle("off", !c); $("s4").classList.toggle("off", !c); $("s5").classList.toggle("off", !c); $("s6").classList.toggle("off", !c); $("s7").classList.toggle("off", !c); $("sf").classList.toggle("off", !c);
   S.patches = null; drawPatches();
   if (c) {
     var n = (info.installed || []).length;
@@ -596,7 +608,61 @@ function drawUnreg() {
   $("regbadge").hidden = !n; text($("regbadge"), n + " waiting");
 }
 function loadDevice() {
-  return api("/api/device").then(function (j) { S.dev = j.plugins; if (j.roots) { S.roots = j.roots; } drawDev(); refresh(); }).catch(function (e) { S.dev = []; drawDev(); msg($("rmresult"), e.message, "err"); });
+  return api("/api/device").then(function (j) { S.dev = j.plugins; if (j.roots) { S.roots = j.roots; } drawDev(); drawFiles(); refresh(); }).catch(function (e) { S.dev = []; drawDev(); drawFiles(); msg($("rmresult"), e.message, "err"); });
+}
+
+var UF_TAG = { ok: "OK", maybe: "Looks right", bad: "Not usable", ignored: "Ignored" };
+function ufGroups() {
+  var out = [];
+  S.dev.forEach(function (p) { (p.userFiles || []).forEach(function (g) { if (p.known) out.push({ p: p, g: g }); }); });
+  return out;
+}
+function drawFiles() {
+  var gs = ufGroups(), sec = $("sf"), body = $("ufbody");
+  sec.hidden = !gs.length || !S.connected;
+  body.textContent = "";
+  gs.forEach(function (x) {
+    var box = el("div", "uf"), q = "root=" + encodeURIComponent(x.p.root) + "&folder=" + encodeURIComponent(x.p.folder) + "&group=" + encodeURIComponent(x.g.path);
+    box.appendChild(el("h3", null, (x.p.name || x.p.folder) + " · " + x.g.label));
+    if (x.g.description) box.appendChild(el("p", "small", x.g.description));
+    if (x.g.hint) box.appendChild(el("p", "small", x.g.hint));
+    var ul = el("ul", "list"), status = el("p", "msg"), pick = document.createElement("input");
+    pick.type = "file"; pick.multiple = true;
+    var up = el("button", "primary", "Check and copy to the device");
+    function list() {
+      text(status, "Reading the folder on the device…");
+      api("/api/userfiles?" + q).then(function (j) {
+        ul.textContent = "";
+        (j.files || []).filter(function (f) { return f.status !== "ignored"; }).forEach(function (f) {
+          var li = el("li"), t = el("div", "t"), b = el("b", null, f.name);
+          b.appendChild(el("span", "tag " + f.status, (f.label ? f.label + " · " : "") + UF_TAG[f.status]));
+          t.appendChild(b); t.appendChild(el("span", "d", mb(f.size) + (f.message ? " · " + f.message : "")));
+          var del = el("button", null, "Delete");
+          del.addEventListener("click", function () {
+            if (!confirm("Delete " + f.name + " from the device?")) return;
+            api("/api/userfiles/delete", { root: x.p.root, folder: x.p.folder, group: x.g.path, name: f.name }).then(list).catch(function (e) { msg(status, e.message, "err"); });
+          });
+          li.appendChild(t); li.appendChild(del); ul.appendChild(li);
+        });
+        if (!ul.children.length) ul.appendChild(el("li", "small", "Nothing here yet."));
+        msg(status, j.ok + j.maybe ? "" : "No usable file yet: " + x.p.name + " will say so on its screen until you add one.", j.ok + j.maybe ? "" : "err");
+      }).catch(function (e) { msg(status, e.message, "err"); });
+    }
+    up.addEventListener("click", function () {
+      if (!pick.files.length) { msg(status, "Choose one or more files first.", "err"); return; }
+      var fd = new FormData(); fd.append("root", x.p.root); fd.append("folder", x.p.folder); fd.append("group", x.g.path);
+      for (var i = 0; i < pick.files.length; i++) fd.append("file", pick.files[i], pick.files[i].name);
+      up.disabled = true; msg(status, "Checking and copying…");
+      api("/api/userfiles/upload", fd, true).then(function (j) {
+        up.disabled = false; pick.value = "";
+        var bad = (j.files || []).filter(function (f) { return f.status === "bad" || f.status === "ignored"; });
+        list();
+        setTimeout(function () { msg(status, (j.files || []).map(function (f) { return f.name + ": " + (UF_TAG[f.status] || f.status) + (f.label ? " (" + f.label + ")" : "") + (f.message ? ". " + f.message : ""); }).join("\n"), bad.length ? "err" : "ok"); }, 600);
+      }).catch(function (e) { up.disabled = false; msg(status, e.message, "err"); });
+    });
+    box.appendChild(ul); box.appendChild(pick); var row = el("div", "row"); row.appendChild(up); box.appendChild(row); box.appendChild(status);
+    body.appendChild(box); list();
+  });
 }
 function devKey(p) { return p.root + "\u0000" + p.folder; }
 function drawDev() {

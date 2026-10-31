@@ -26,6 +26,7 @@ import tempfile
 import zipfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from user_files import user_files_problems  # noqa: E402
 from catalog_check import max_glibc  # noqa: E402
 import skin_compat  # noqa: E402
 
@@ -45,6 +46,9 @@ ap.add_argument("--license", help="SPDX license id of the plugin (for the catalo
 ap.add_argument("--requires", default="", help="extra requirements, one line (e.g. 'MockbaMod firmware')")
 ap.add_argument("--user-data", action="append", default=[], metavar="REL",
                 help="path inside the plugin folder where the USER puts their own files (ROMs, kits); the installer keeps it on upgrade and moves it in from the old /sdcard/vst layout")
+ap.add_argument("--user-files", metavar="JSON",
+                help="a JSON file describing the user's own files the plugin needs (ROMs): per folder, rules for what a good file is (docs/CATALOG_SPEC.md, user_files). "
+                     "The desktop installer checks and uploads them. Each folder must be inside a --user-data folder")
 ap.add_argument("-o", "--out", default="dist")
 a = ap.parse_args()
 
@@ -90,6 +94,12 @@ shutil.copy2(os.path.join(HERE, "release", "plugin_list.awk"), root)
 for d in a.user_data:
     if not re.fullmatch(r"[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*", d) or ".." in d.split("/"):
         raise SystemExit("--user-data must be a relative path of letters, digits, . _ - and / (no spaces or ..): %r" % d)
+user_files = []
+if a.user_files:
+    user_files = json.load(open(a.user_files))
+    problems = user_files_problems(user_files, a.user_data)
+    if problems:
+        raise SystemExit("--user-files: " + "; ".join(problems))
 legacy_so = "/sdcard/vst/" + so_name   # where the previous layout installed the .so (and its data, next to it)
 sub = {"@NAME@": name, "@SO_NAME@": so_name, "@SKIN@": skin_name,
        "@EXTRAS@": " ".join("'%s'" % e for e in extras), "@VERSION@": a.version,
@@ -232,6 +242,7 @@ manifest = {
     "folder": folder,
     "extras": extras,
     "user_data": a.user_data,
+    "user_files": user_files,
     "arch": elf_machine(a.so),
     "max_glibc": max_glibc(a.so),
     "os_compat": os_compat,

@@ -115,6 +115,10 @@ show an empty touchscreen page". It warns and never blocks. Tests: `catalog_test
 
 What was installed is written to `<Synths>/.mpc-store` on the device, so `mpc-store.sh update` (the on-device script) knows about it.
 
+## Your ROMs and files
+
+A plugin whose manifest has `user_files` (docs/CATALOG_SPEC.md) gets a step after Install. Pick the files; the app checks each one against the plugin's rules (extension, size, an identification text inside it) and says what it is ("Virus C: OK") or why it is wrong, before copying the good ones into the plugin's folder on the device. The folder lists what is there, checked the same way, with a Delete button. Names are reduced to their last part and limited to letters, digits, spaces and `. _ - ( ) + , ' &`; a file is copied under a `.part` name and moved into place. The plugin reads these files when it loads, so MPC is not restarted. Code: `userfiles.go`, tests in `userfiles_test.go` (rules, and upload/list/delete against the fake device).
+
 ## Safety
 
 - The page is served on `127.0.0.1` only, behind a random token in the link the app prints. Every request must carry the token, the
