@@ -602,6 +602,22 @@ int main(void) {
         a->pr(a, 0, o0, 128); a->pr(a, 0, o0, 100);
         CHECK(1, "effect survives processReplacing with a NULL input");
     }
+    if (a->ni >= 2) {   /* MPC passes the same buffers as input and output: at any block size the result must match separate buffers */
+        static const int bs[] = {32, 64, 96, 128, 192, 256};
+        for (unsigned k = 0; k < sizeof bs / sizeof bs[0]; k++) {
+            AEffect *s1 = VSTPluginMain(host), *s2 = VSTPluginMain(host);
+            static float SI0[256], SI1[256], SO0[256], SO1[256], P0[256], P1[256];
+            float *sin_[2] = {SI0, SI1}, *sout[2] = {SO0, SO1}, *pio[2] = {P0, P1};
+            int n = bs[k], same = 1; long t = 0;
+            for (int blk = 0; blk < 4096 / n; blk++) {
+                for (int i = 0; i < n; i++, t++) P0[i] = P1[i] = SI0[i] = SI1[i] = 0.25f * sinf(2.0f * 3.14159265f * 440.0f * t / 44100.0f);
+                s1->pr(s1, sin_, sout, n); s2->pr(s2, pio, pio, n);
+                for (int i = 0; i < n; i++) same &= fabsf(SO0[i] - P0[i]) < 1e-6f && fabsf(SO1[i] - P1[i]) < 1e-6f;
+            }
+            CHECK(same, "in-place processing (in == out) matches separate buffers at %d frames", n);
+            s1->d(s1, 1, 0, 0, 0, 0); s2->d(s2, 1, 0, 0, 0, 0);
+        }
+    }
     {   /* instance b never got a note (nor audio): process() must add silence, leaving 1.0 */
         float L1[128], R1[128], Z0[128] = {0}, Z1[128] = {0}, *o1[2] = {L1, R1}, *zin[2] = {Z0, Z1}; int kept = 1;
         for (int i = 0; i < 128; i++) L1[i] = R1[i] = 1.0f;
