@@ -1,0 +1,19 @@
+{
+  "id": "mpc-multihead-echo",
+  "name": "MPC Multihead Echo",
+  "author": "mitchoster",
+  "repo": "mitchoster/mpc-vst-multihead-echo",
+  "kind": "effect",
+  "license": "GPL-3.0-only",
+  "summary": "Three-head tape echo with three preamp characters, chorus, tape wear, tempo sync with drift, a spring reverb and a companion screen in the browser.",
+  "screenshot": "https://raw.githubusercontent.com/mitchoster/mpc-vst-multihead-echo/c31c3ef479ce87083ab87fbef14c2fe92a6bb83b/docs/companion-panel-echo.png",
+  "style": "delay",
+  "tags": [
+    "tape-echo",
+    "delay",
+    "saturation",
+    "spring-reverb",
+    "tempo-sync",
+    "companion-app"
+  ]
+}
