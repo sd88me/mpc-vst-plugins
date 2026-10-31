@@ -2089,3 +2089,18 @@ Fixes (offline-tested; not yet on a device): the manager's keys get the same 250
   come after the 25 map pictures (`picture key=mapdot`). They are opaque, so drawn in file order they hide the map dot; the
   editor and studio.py both show no dot. On a device this is not checked (Groover TESTING.md row 5). If the dot shows
   there, MPC does not stack in file order. If not, the per-style images should come before the picture in the layout.
+
+## 2026-10-31: desktop VST3 review fixes (offline only; no device involved)
+
+- **Big host blocks:** the output FIFOs held 9216 frames plus the latency, so a host block larger than that (16384, an offline
+  render) hung an instrument in `fill_out()` and dropped part of an effect's output (Keyscope's passthrough error went from
+  -86 dB to -2 dB in `vst3_host_test.c` with one 16384-frame block). `process()` now runs a host block in pieces of 4096.
+- **Repeated controller values:** a CC with the same value as the last one was dropped, which lost NRPN data entry (CC 6 = 64
+  for two parameters in a row). Every controller move is sent now.
+- **Also fixed:** a half-failed `init_audio` left buffers behind that `process()` then used; engine-side changes were cleared
+  when the host passed no `outputParameterChanges`; program 0 could not be picked on a fresh instance; FreeType was shut down
+  while cairo's font cache still held faces (each face now owns its library); without an `IRunLoop`, the editor's thread and
+  the host's `onSize()` drew and resized the same window unlocked; each redraw read every value from the engine twice.
+- **Tests:** `test_vst3.sh` passes for Keyscope (`--passthrough`), Chordsmith, Tuner, Groover, DrumGizmo and Stompbox
+  (`build/gen/vst.json`, with `alloc_dealloc_mismatch=0` for guitarix's generated chorus code) under ASan/UBSan, editor
+  window included. Steinberg's `validator` was not rerun (not built on this machine).

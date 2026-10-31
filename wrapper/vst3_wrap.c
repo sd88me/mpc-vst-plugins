@@ -20,7 +20,8 @@
  * - A bypass parameter: an effect then outputs its input, delayed by the same latency; an instrument goes silent. The
  *   engine keeps running either way, so switching back is seamless.
  * - State: the engine's "state" text when it has one, else every parameter as key=value lines.
- * No editor yet: hosts show their generic parameter view.
+ * - Editor: with -DVST3_EDITOR, vst3_editor.c draws the port's MPC skin in the plugin window; without it, hosts show their
+ *   generic parameter view.
  *
  * The VST3 ABI is hand-written (wrapper/vst3_abi.h); no Steinberg SDK in this repository.
  * ========================================================================== */
@@ -72,6 +73,7 @@
 #define MIDI_ID 0x40000000u  /* + channel * 130 + controller (0-127 CC, 128 channel pressure, 129 pitch bend) */
 #define MIDI_CTRLS 130
 #define MIDI_PARAMS (16 * MIDI_CTRLS)
+#define CHUNK 4096           /* host frames per pass through the FIFOs: a bigger host block is processed in pieces */
 
 #include "vst3_abi.h"
 
@@ -86,7 +88,6 @@ typedef struct {
     const MidiMappingVtbl *midimap;
     const CtxReqVtbl *ctxreq;
     uint32_t refs;
-    int inits;
     void *dsp;
     pthread_mutex_t lock;             /* one engine call at a time (vst2_wrap.c eng_set) */
     IComponentHandler *handler;
@@ -99,7 +100,7 @@ typedef struct {
     float fl[DSP_BLOCK], fr[DSP_BLOCK];
     float *ofifo[2];                  /* effect: host-rate output waiting to go out (latency-padded) */
     int olen, ocap;
-    int prog;                         /* NPRESETS: the program last picked */
+    int prog;                         /* NPRESETS: the program last picked (-1: none yet, so picking 0 loads it) */
     int bypass;                       /* the host's bypass: an effect passes its input through, delayed like its output */
     float *dry[2];                    /* effect: the input, delayed by the latency (a ring of `latency` frames) */
     int drypos;
@@ -114,7 +115,6 @@ typedef struct {
     midi_ev_t ev[MAX_EVENTS];
     int nev;
     int nrpn;                         /* HAS_NRPN: the parameter CC 99/98 selected (-1: none) */
-    uint8_t ccv[16][MIDI_CTRLS];      /* last controller value sent, to send only changes */
     char state[STATE_MAX];
 #ifdef VST3_EDITOR
     double open[NPARAMS > 0 ? NPARAMS : 1];      /* the editor's popup flags (screen-only, never the host's) */
@@ -260,8 +260,9 @@ static void apply_param(v3_t *w, int i, double n) {
     eng_set(w, p->key, buf);
 }
 
-/* A controller parameter (hidden, IMidiMapping) moved: the MIDI bytes it stands for, unless unchanged. */
-static int controller_msg(v3_t *w, uint32_t id, double v, uint8_t *msg) {
+/* A controller parameter (hidden, IMidiMapping) moved: the MIDI bytes it stands for. A repeated value is sent too: it is a
+ * message of its own (NRPN data entry sends CC 6 = 64 for two parameters in a row). */
+static int controller_msg(uint32_t id, double v, uint8_t *msg) {
     int k = (int)(id - MIDI_ID), ch = k / MIDI_CTRLS, c = k % MIDI_CTRLS;
     if (c == 129) {
         int b = (int)lround(clamp01(v) * 16383);
@@ -269,8 +270,6 @@ static int controller_msg(v3_t *w, uint32_t id, double v, uint8_t *msg) {
         return 3;
     }
     int val = (int)lround(clamp01(v) * 127);
-    if (w->ccv[ch][c] == val + 1) return 0;
-    w->ccv[ch][c] = (uint8_t)(val + 1);
     if (c == 128) { msg[0] = 0xD0 | ch; msg[1] = (uint8_t)val; msg[2] = 0; return 2; }
     msg[0] = 0xB0 | ch; msg[1] = (uint8_t)c; msg[2] = (uint8_t)val;
     return 3;
@@ -352,9 +351,9 @@ static void free_audio(v3_t *w) {
     w->ofifo[0] = w->ofifo[1] = w->dry[0] = w->dry[1] = NULL;
 }
 
-/* Set up converters and FIFOs for the host rate (setupProcessing / setActive: never on the audio thread). */
-static int init_audio(v3_t *w) {
-    free_audio(w);
+/* Set up converters and FIFOs for the host rate (setupProcessing / setActive: never on the audio thread). The FIFOs hold a
+ * CHUNK of host frames plus the latency and a margin over one engine block at the host rate (1115 frames at 384 kHz). */
+static int init_audio_bufs(v3_t *w) {
     w->rs_out = malloc(sizeof *w->rs_out);
     if (!w->rs_out || !rs_init(w->rs_out, ENGINE_RATE, w->rate)) return 0;
     w->inpos = 0;
@@ -381,6 +380,12 @@ static int init_audio(v3_t *w) {
     if (!w->ofifo[0] || !w->ofifo[1]) return 0;
     w->olen = (int)w->latency;   /* silence first */
     return 1;
+}
+static int init_audio(v3_t *w) {   /* all or nothing: a failure leaves no buffer behind (process() checks rs_out) */
+    free_audio(w);
+    if (init_audio_bufs(w)) return 1;
+    free_audio(w);
+    return 0;
 }
 
 /* engine output (int16 block) -> output converter -> output FIFO */
@@ -477,10 +482,11 @@ static void report(v3_t *w, ProcessData *d) {
         pthread_mutex_unlock(&w->lock);
     }
     IParameterChanges *out = d->outputParameterChanges;
+    if (!out) return;   /* no list this call: the changes wait for one */
     for (int i = 0; i < NPARAMS; i++) {
         if (!w->changed[i]) continue;
         w->changed[i] = 0;
-        if (!is_param(i) || !out) continue;
+        if (!is_param(i)) continue;
         double v = get_norm(w, i);
         if (fabs(v - w->reported[i]) < 1e-9) continue;
         w->reported[i] = v;
@@ -607,7 +613,7 @@ UNKNOWN_FUNCS(ctrl, ctrl)
 UNKNOWN_FUNCS(mm, midimap)
 UNKNOWN_FUNCS(cr, ctxreq)
 
-static tresult base_initialize(void *s, FUnknown *ctx) { (void)ctx; FROM(s, comp)->inits++; return kResultOk; }
+static tresult base_initialize(void *s, FUnknown *ctx) { (void)s; (void)ctx; return kResultOk; }
 static tresult base_terminate(void *s) { (void)s; return kResultOk; }
 
 /* ---- IComponent ------------------------------------------------------------------ */
@@ -703,13 +709,13 @@ static tresult proc_process(void *s, ProcessData *d) {
             if (q->v->getPoint(q, j, &off, &v) != kResultOk) continue;
             if (id >= MIDI_ID && id < MIDI_ID + MIDI_PARAMS) {
                 uint8_t msg[3] = {0, 0, 0};
-                if (controller_msg(w, id, v, msg)) queue_midi(w, off, msg);
+                if (controller_msg(id, v, msg)) queue_midi(w, off, msg);
             } else if (id == BYPASS_ID) {
                 w->bypass = v > 0.5;
             } else if (id == PROG_ID && has_programs()) {
 #ifdef NPRESETS
                 int idx = (int)lround(clamp01(v) * (NPRESETS > 1 ? NPRESETS - 1 : 0));
-                if (idx != w->prog) set_program(w, idx);
+                if (idx != w->prog) set_program(w, idx);   /* a re-pick of the current one keeps any edits (vst2_wrap.c) */
 #endif
             } else if (is_param(id)) {
                 apply_param(w, (int)id, clamp01(v));
@@ -750,9 +756,12 @@ static tresult proc_process(void *s, ProcessData *d) {
     const float *il = in ? in[0] : NULL, *ir = in ? (d->inputs[0].numChannels >= 2 ? in[1] : in[0]) : NULL;
     if (n > 0) {
         /* MIDI for an effect applies before the engine block that holds its frame (one block's precision) */
-        run_effect(w, il, ir, 0, n, &evk);
+        for (int from = 0; from < n; from += CHUNK) {
+            int to = n - from > CHUNK ? from + CHUNK : n;
+            run_effect(w, il, ir, from, to, &evk);
+            pop_out(w, out ? out[0] + from : NULL, out ? out[1] + from : NULL, to - from);
+        }
         while (evk < w->nev) send_midi(w, w->ev[evk++].msg);
-        pop_out(w, out ? out[0] : NULL, out ? out[1] : NULL, n);
         for (int j = 0; j < n; j++) {   /* the dry signal, delayed as the output is: what bypass plays */
             float dl = w->dry[0][w->drypos], dr = w->dry[1][w->drypos];
             w->dry[0][w->drypos] = il ? il[j] : 0;
@@ -770,6 +779,7 @@ static tresult proc_process(void *s, ProcessData *d) {
     while (pos < n) {
         while (evk < w->nev && w->ev[evk].frame <= pos) send_midi(w, w->ev[evk++].msg);
         int end = evk < w->nev && w->ev[evk].frame < n ? w->ev[evk].frame : n;
+        if (end - pos > CHUNK) end = pos + CHUNK;
         fill_out(w, end - pos);
         pop_out(w, out ? out[0] + pos : NULL, out ? out[1] + pos : NULL, end - pos);
         pos = end;
@@ -796,7 +806,7 @@ static const ProcessorVtbl proc_vtbl = {
 };
 
 /* ---- IEditController ----------------------------------------------------------------- */
-static tresult ctrl_initialize(void *s, FUnknown *ctx) { (void)ctx; FROM(s, ctrl)->inits++; return kResultOk; }
+static tresult ctrl_initialize(void *s, FUnknown *ctx) { (void)s; (void)ctx; return kResultOk; }
 static tresult ctrl_terminate(void *s) {
     v3_t *w = FROM(s, ctrl);
     if (w->handler) { w->handler->v->release(w->handler); w->handler = NULL; }
@@ -938,7 +948,7 @@ static double ctrl_get_norm(void *s, uint32_t id) {
     if (is_param(id)) return get_norm(w, (int)id);
     if (id == BYPASS_ID) return w->bypass;
 #ifdef NPRESETS
-    if (id == PROG_ID) return NPRESETS > 1 ? (double)w->prog / (NPRESETS - 1) : 0;
+    if (id == PROG_ID) return NPRESETS > 1 && w->prog > 0 ? (double)w->prog / (NPRESETS - 1) : 0;
 #endif
     if (id >= MIDI_ID && id < MIDI_ID + MIDI_PARAMS) return (id - MIDI_ID) % MIDI_CTRLS == 129 ? 0.5 : 0;
     return 0;
@@ -1024,6 +1034,7 @@ static v3_t *create(void) {
     w->refs = 1;
     w->rate = ENGINE_RATE;
     w->nrpn = -1;
+    w->prog = -1;
     for (int i = 0; i < NPARAMS; i++) { w->hostval[i] = PARAMS[i].momentary ? 0 : clamp01(PARAMS[i].def); w->reported[i] = -1; }
     return w;
 }

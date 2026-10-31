@@ -213,13 +213,14 @@ static void test_audio(plug_t *pl, double rate, int passthrough) {
     int lat = (int)pl->p->getLatencySamples(pl->proc), N = (int)rate * 2;
     float *inl = calloc(N, 4), *inr = calloc(N, 4), *outl = calloc(N, 4), *outr = calloc(N, 4);
     for (int i = 0; i < N; i++) { inl[i] = 0.25f * sinf(2 * (float)M_PI * 440 * i / (float)rate); inr[i] = 0.25f * sinf(2 * (float)M_PI * 660 * i / (float)rate); }
-    static const int sizes[] = { 37, 128, 512, 1, 1000, 255, 64, 1024 };
+    /* uneven sizes, and one past the wrapper's 4096-frame chunk and FIFO size (a DAW rendering offline in big blocks) */
+    static const int sizes[] = { 37, 128, 512, 1, 1000, 255, 64, 1024, 16384 };
     events_t ev = { &ev_vtbl, 0, {{0}} };
     changes_t pc, out_pc;
     uint32_t bypass_id = 0x7FFF0001u;
     int bypass_from = N / 2;   /* effect: second half bypassed */
     for (int pos = 0, k = 0; pos < N; k++) {
-        int n = sizes[k % 8];
+        int n = sizes[k % (int)(sizeof sizes / sizeof *sizes)];
         if (n > N - pos) n = N - pos;
         changes_init(&pc); changes_init(&out_pc);
         ev.n = 0;

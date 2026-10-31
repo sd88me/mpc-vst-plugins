@@ -53,7 +53,8 @@ repository.
   parameter.
 - **MIDI.** Notes arrive as events. VST3 hosts send CCs, pitch bend and channel pressure only as parameters, so hidden
   parameters (one per controller per channel, through IMidiMapping) turn them back into MIDI bytes for the engine. The CC
-  20-35 and NRPN control of `vst2_wrap.c` works the same.
+  20-35 and NRPN control of `vst2_wrap.c` works the same. Every controller move becomes a message, a repeated value too,
+  so NRPN data entry can set two parameters to the same value in a row.
 - **Transport.** `HAS_LFO_BPM`, `HAS_TRANSPORT` and `HAS_SONG_POS` read the host's tempo, play state and song position.
 - **State.** The engine's `"state"` text when it has one. Otherwise every setting is saved as `key=value` lines, leaving
   out `"live"` values. Program and bypass come after them.
@@ -105,7 +106,8 @@ X11 are installed (`pkg-config cairo freetype2 x11`).
 
 - the factory, and one object answering all three interfaces
 - every parameter's info, text and text-to-value round trip
-- audio at 44.1, 48 and 96 kHz in uneven block sizes
+- audio at 44.1, 48 and 96 kHz in uneven block sizes, one of them 16384 frames (an offline render's size: the wrapper
+  processes a host block in pieces of 4096)
 - that a bypassed effect is its input delayed by exactly the reported latency
 - that picking a program reads back and moves parameters
 - that CC 1 and pitch bend are mapped, and the readouts after them are printed
