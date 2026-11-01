@@ -196,6 +196,11 @@ rm -rf /tmp/openmpc-pm; /tmp/drive_addins one Mine-1.0.0 1 > /tmp/safe-local.out
 grep -q "apply_state 3" /tmp/safe-local.out || { cat /tmp/safe-local.out; ls -la "$LD"; exit 1; }
 sh /tmp/openmpc-pm/apply.sh
 grep -q "^local-Mine-1.0.0|ok|install local" /tmp/openmpc-pm/result
+# the main catalog address unreachable: the fallback address serves it, and catalog packages still show and plan
+gcc $SAN -DFS_ANY=1 -DCATALOG_URL=\"file:///nonexistent/catalog.json\" -DCATALOG_URL_FALLBACK=\"file:///p/vst/build/tests/catalog.json\" -std=gnu11 -w src/manager.c tests/drive.c -lpthread -ldl -o /tmp/drive_fallback
+rm -rf /tmp/openmpc-pm; /tmp/drive_fallback one Newlib > /tmp/safe-fallback.out
+grep -qF "Newlib: needs glibc 9.99 or newer, this MPC has" /tmp/safe-fallback.out || { cat /tmp/safe-fallback.out; echo "FAIL: the fallback catalog address was not used"; exit 1; }
+grep -qF "trying file:///p/vst/build/tests/catalog.json" /tmp/openmpc-pm/manager.log || { echo "FAIL: no log line for the fallback"; exit 1; }
 # the same with no catalog at all (no network): the zip is still a card, the status says so, and it still installs
 gcc $SAN -DFS_ANY=1 -DCATALOG_URL=\"file:///nonexistent/catalog.json\" -std=gnu11 -w src/manager.c tests/drive.c -lpthread -ldl -o /tmp/drive_offline
 rm -rf /tmp/openmpc-pm; /tmp/drive_offline status > /tmp/safe-offline-status.out

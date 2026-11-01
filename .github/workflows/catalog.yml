@@ -81,3 +81,31 @@ jobs:
     steps:
       - id: deploy
         uses: actions/deploy-pages@v4
+  mirror-org:
+    # The same catalog files at https://open-mpc.github.io/ (repo open-mpc/open-mpc.github.io), the address the Plugin Manager reads
+    # first (docs/CATALOG.md). Needs the secret OPENMPC_PAGES_TOKEN: a fine-grained token with Contents read/write on that repo
+    # only. Skipped while the secret is missing.
+    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      TOKEN: ${{ secrets.OPENMPC_PAGES_TOKEN }}
+    steps:
+      - if: ${{ env.TOKEN != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: catalog
+          path: dist
+      - name: Push catalog files to open-mpc.github.io
+        if: ${{ env.TOKEN != '' }}
+        run: |
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/open-mpc/open-mpc.github.io.git" org
+          for f in catalog.json catalog.tsv patches.json; do
+            if [ -f "dist/site/$f" ]; then cp "dist/site/$f" "org/$f"; fi
+          done
+          cd org
+          git add -A
+          if git diff --cached --quiet; then echo "no change"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -q -m "Catalog update from sd88me/mpc-vst-plugins@${GITHUB_SHA::7}"
+          git push -q origin HEAD:main

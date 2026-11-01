@@ -5,6 +5,10 @@ checksum and device-verification status, that stays correct without anyone editi
 
 ## Principles (what keeps it low maintenance)
 1. **No server, no database, no accounts.** A static site on GitHub Pages, built from one generated `catalog.json`.
+   Addresses (2026-11-01): the Plugin Manager reads `https://open-mpc.github.io/catalog.json` (the OpenMPC org's Pages repo
+   `open-mpc/open-mpc.github.io`) and falls back to `https://sd88me.github.io/mpc-vst-plugins/catalog.json`. Older managers
+   only know the second, so both must serve the same file. The `mirror-org` job in `.github/workflows/catalog.yml` copies each
+   build there (needs the `OPENMPC_PAGES_TOKEN` secret; skipped without it).
 2. **Authors register once, never per release.** A plugin's catalog entry is a tiny file pointing at its GitHub repo.
    Versions, URLs and checksums are *discovered* from the repo's Releases by a scheduled job.
 3. **The zip is the source of truth, not the registry.** Every release zip carries a machine-readable manifest

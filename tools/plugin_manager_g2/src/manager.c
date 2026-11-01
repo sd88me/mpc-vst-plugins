@@ -49,8 +49,17 @@ typedef struct {
     void (*process)(void *inst, const int16_t *in_lr, int16_t *out_lr, int frames);
 } mpc_engine_t;
 
+/* The catalog lives at the OpenMPC org's Pages site; the old address keeps serving the same file for managers that only know it,
+ * and is the fallback here when the new one can't be reached or read. Tests set CATALOG_URL to a file:// fixture, and then get no
+ * fallback unless they set CATALOG_URL_FALLBACK too (so an offline test never reaches the network). */
 #ifndef CATALOG_URL
-#define CATALOG_URL "https://sd88me.github.io/mpc-vst-plugins/catalog.json"   /* tests: a file:// fixture */
+#define CATALOG_URL "https://open-mpc.github.io/catalog.json"
+#ifndef CATALOG_URL_FALLBACK
+#define CATALOG_URL_FALLBACK "https://sd88me.github.io/mpc-vst-plugins/catalog.json"
+#endif
+#endif
+#ifndef CATALOG_URL_FALLBACK
+#define CATALOG_URL_FALLBACK ""
 #endif
 #define WORK "/tmp/openmpc-pm"
 #define MAXPKG 256
@@ -1440,6 +1449,16 @@ static void do_refresh(mgr_t *m) {
     int got = fetch(m, CATALOG_URL, &s) == 0;
     pkg_t *tmp = calloc(MAXPKG, sizeof *tmp);
     list_t l = {tmp, 0};
+    int parsed = tmp && got && jobject(s.buf, top_member, &l);
+    if (tmp && !parsed && CATALOG_URL_FALLBACK[0]) {
+        logf_("catalog: %s %s, trying %s", CATALOG_URL, got ? "unreadable" : "unreachable", CATALOG_URL_FALLBACK);
+        free(s.buf);
+        memset(&s, 0, sizeof s);
+        l.n = 0;
+        memset(tmp, 0, MAXPKG * sizeof *tmp);
+        got = fetch(m, CATALOG_URL_FALLBACK, &s) == 0;
+        parsed = got && jobject(s.buf, top_member, &l);
+    }
     int offline = 0;   /* 1: the catalog could not be reached, 2: it could not be read */
     if (!tmp) {
         free(s.buf);
@@ -1449,7 +1468,7 @@ static void do_refresh(mgr_t *m) {
         pthread_mutex_unlock(&m->mu);
         return;
     }
-    if (!got || !jobject(s.buf, top_member, &l)) {
+    if (!parsed) {
         /* No catalog: carry on with what is on the MPC (zips in local-plugins, installed plugins, folders to register), so a zip can be
          * installed with no network. Nothing from a half-read catalog is kept. */
         offline = got ? 2 : 1;

@@ -28,7 +28,7 @@ the project's development**: the catalog, its release rules and the official way
 ## What it does
 
 **Browse**
-- Reads the live catalog (`sd88me.github.io/mpc-vst-plugins/catalog.json`) over the device's network: tabs **Discover**, **Installed** and
+- Reads the live catalog (`open-mpc.github.io/catalog.json`, falling back to the old `sd88me.github.io/mpc-vst-plugins/catalog.json`, which serves the same file) over the device's network: tabs **Discover**, **Installed** and
   **Updates** (with a count), a search box with an on-screen keyboard, a filter (All, Instruments, Effects, Addins) and a sort (Updated, Newest,
   Most downloaded, Name).
 - Five plugins per page, each with a thumbnail, its version, a Stable or Beta badge, a *High CPU* warning when the catalog measured one, an *Old
