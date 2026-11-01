@@ -28,7 +28,7 @@ section first, then "Sequence" and "Facts to verify", and check each PR below wi
 | Copy each build to the org repo (`mirror-org` job in `catalog.yml`, secret `OPENMPC_PAGES_TOKEN`) | #677 | **merged** 2026-11-01; first run green 2026-11-01 |
 | Plugin Manager: org address first, old one as fallback | #677 | **merged** 2026-11-01 (offline tests); ships in the next Manager release |
 | Desktop installer + `mpc-store.sh`: org address first, old one as fallback | #484 | **merged** 2026-11-01 (offline tests); ships in the next installer release |
-| Whole site at the root (mirror job copies the site, `mpc-store.sh`, `SITE` fallback) | to do | small PR |
+| Whole site at the root (mirror job copies the site, `mpc-store.sh`, `SITE` fallback) | #679 | open; offline check only |
 | Old address after the transfer (`tools/catalog_mirror.py`, `mirror` job into `sd88me/sd88me.github.io`) | draft #485 | offline tests only; must land before or at the transfer |
 | Owner change `sd88me` to `open-mpc` in workflows, `patch_check.py`, `patches.json`, links | draft #483 | **do not merge before the transfer**; rebase on main first (it predates #484/#677) |
 | `POLICY.md` | this branch | draft; open items listed in it |
@@ -36,7 +36,7 @@ section first, then "Sequence" and "Facts to verify", and check each PR below wi
 **The plan, with status.**
 1. [x] Client fallbacks merged: installer and `mpc-store.sh` (#484), Plugin Manager (#677), 2026-11-01.
 2. [x] Org address live and kept up to date by the catalog build (#677 `mirror-org`), 2026-11-01.
-3. [ ] Whole site at `open-mpc.github.io/` (small PR, see the table).
+3. [ ] Whole site at `open-mpc.github.io/`: PR #679 (mirror-org copies the whole site; `SITE` fallback).
 4. [ ] Release the clients with the fallback (Plugin Manager, desktop installer) and give people time to update. Old installs cannot
        be updated after the old address dies, so this goes well before the transfer.
 5. [ ] Rebase #485; make it copy into `sd88me/sd88me.github.io` under `mpc-vst-plugins/`; deploy key with write access on that repo in
