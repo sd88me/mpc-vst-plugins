@@ -7,6 +7,8 @@
 For every registry entry with distribution "release" (the default): list the repo's releases, download the asset
 matching asset_pattern, validate it with tools/catalog_check.py (--catalog, id and repo must match the entry), and record
 it. A release that fails is left out and reported in <out>/problems.json (the previous good versions stay listed).
+Addins whose newest versions define the same functions, where one shows no sign of passing calls on, are listed in <out>/overlaps.json
+and on each addin as shares_hooks; risky calls in <out>/flags.json.
 Downloads are cached by asset id.
 
 An entry with distribution "build-yourself" (a plugin that must never publish a built zip, because the build embeds
@@ -31,6 +33,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import catalog_check  # noqa: E402
+import deps  # noqa: E402
 
 ID = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 REPO = re.compile(r"[\w.-]+/[\w.-]+")
@@ -96,6 +99,9 @@ def check_entry(e, fname=None):
         p.append("tags must be a list of lowercase slugs")
     elif len(e.get("tags", [])) > MAX_TAGS:
         p.append("%d tags, the limit is %d: keep the ones people would filter by" % (len(e["tags"]), MAX_TAGS))
+    p += deps.check_lists(e.get("depends"), e.get("conflicts"), e["id"])
+    if e.get("distribution", "release") != "release" and ("depends" in e or "conflicts" in e):
+        p.append("depends and conflicts apply to release entries (the installers can't install a build-yourself plugin)")
     dist = e.get("distribution", "release")
     if dist not in DISTRIBUTIONS:
         p.append("distribution must be one of %s" % ", ".join(DISTRIBUTIONS))
@@ -500,6 +506,10 @@ def build(entries, src, cache, yanked, keep=10, now=None, require_portable=(), a
                     rec["gen2"] = True
                     for f, r in rec64.get("flags", {}).items():
                         rec.setdefault("flags", {})["aarch64: " + f] = r
+                    if "hooks" in rec64:
+                        rec["hooks"] = sorted(set(rec.get("hooks", [])) | set(rec64["hooks"]))
+                    if "chains" in rec64:   # passes calls on only when both builds do
+                        rec["chains"] = rec.get("chains", True) and rec64["chains"]
             elif len(a64) > 1:
                 failed.append(({"id": e["id"], "tag": tag, "error": "expected one asset matching %s, found %d" % (pat64, len(a64))}, pub))
             rec.update({
@@ -512,6 +522,13 @@ def build(entries, src, cache, yanked, keep=10, now=None, require_portable=(), a
                 "downloads": asset.get("download_count", 0),
             })
             rec["_published"] = pub
+            rec["_tag"] = tag
+            # dependencies and conflicts: the zip's manifest when it says, else the registry entry (a maintainer's fallback for releases
+            # made before the field); "same" becomes this version. apply_dependencies() checks them against the whole catalog.
+            m = rec["manifest"]
+            rec["depends"] = [dict(zip(("id", "rules"), deps.resolve(d, rec["version"]))) for d in
+                              (m["depends"] if "depends" in m else e.get("depends", []))]
+            rec["conflicts"] = list(m["conflicts"] if "conflicts" in m else e.get("conflicts", []))
             rec["tested"] = [{k: t.get(k, "") for k in ("device", "firmware", "date")} for t in tested
                              if str(t["version"]).lstrip("v") == rec["version"]]
             versions.append(rec)
@@ -523,8 +540,7 @@ def build(entries, src, cache, yanked, keep=10, now=None, require_portable=(), a
             problems.append(prob)
         for v in versions:
             v.pop("_published", None)
-        vkey = lambda v: tuple(int(x) for x in v["version"].split("."))
-        versions.sort(key=vkey, reverse=True)
+        versions.sort(key=lambda v: deps.key(v["version"]), reverse=True)
         versions = versions[:keep]
         item = {k: e[k] for k in ("id", "name", "author", "repo", "kind", "license", "summary") }
         for k in ("screenshot", "homepage", "style", "role"):
@@ -539,31 +555,135 @@ def build(entries, src, cache, yanked, keep=10, now=None, require_portable=(), a
                     item[k] = json.loads(json.dumps(e[k]))   # a copy: the registry entry stays untouched
             item["build"].setdefault("needs", [])
         item["versions"] = versions
-        item["tier"] = tier_of(e, versions)
-        item["verified_on"] = verified_on(versions) if item["tier"] == "verified" else []
-        item["bar_missing"] = bar_of(e, versions)
-        item["featured"] = bool(e.get("featured")) and item["tier"] != "experimental"
-        item["latest"] = next((v["version"] for v in versions if v["channel"] == "stable" and not v["yanked"]), None)
-        latest = next((v for v in versions if v["version"] == item["latest"]), None)
-        if latest and "manifest" in latest and latest["manifest"].get("layout") is None:
-            problems.append({"id": e["id"], "tag": "v" + latest["version"], "superseded": False,
-                             "error": "the newest release uses the old /sdcard/vst layout (no portable folder): MPC plugin managers "
-                                      "and Synths-folder scanners will not list it; re-release with the current tools/release.py"})
-        item["latest_beta"] = next((v["version"] for v in versions if v["channel"] == "beta" and not v["yanked"]), None)
+        derive(item, e, added)
         item["downloads"] = all_time
-        item["updated"] = max((v["date"] for v in versions if not v["yanked"]), default="")
-        # when the entry joined the catalog (the site's "Newest in catalog" sort): catalog/added.json, else the oldest release
-        item["added"] = (added or {}).get(e["id"]) or min((v["date"] for v in versions if not v["yanked"] and v.get("date")), default="")
         plugins.append(item)
     plugins.sort(key=lambda p: p["name"].lower())
+    if apply_dependencies(plugins, problems):   # some versions were hidden: latest, tier and the rest follow what is left
+        by_id = {e["id"]: e for e in entries}
+        for p in plugins:
+            derive(p, by_id[p["id"]], added)
+    for p in plugins:   # after apply_dependencies: the newest version clients will install
+        latest = next((v for v in p["versions"] if v["version"] == p.get("latest")), None)
+        if latest and "manifest" in latest and latest["manifest"].get("layout") is None:
+            problems.append({"id": p["id"], "tag": "v" + latest["version"], "superseded": False,
+                             "error": "the newest release uses the old /sdcard/vst layout (no portable folder): MPC plugin managers "
+                                      "and Synths-folder scanners will not list it; re-release with the current tools/release.py"})
+        for v in p["versions"]:
+            v.pop("_tag", None)
+    hook_overlaps_of(plugins)
     catalog = {"schema": 1, "generated": (now or datetime.datetime.now(datetime.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ"),
                "bar": BAR, "plugins": plugins}
     return catalog, problems
 
 
+def derive(item, e, added=None):
+    """The fields worked out from a plugin's listed versions: tier, latest, updated and the rest."""
+    versions = item["versions"]
+    item["tier"] = tier_of(e, versions)
+    item["verified_on"] = verified_on(versions) if item["tier"] == "verified" else []
+    item["bar_missing"] = bar_of(e, versions)
+    item["featured"] = bool(e.get("featured")) and item["tier"] != "experimental"
+    item["latest"] = next((v["version"] for v in versions if v["channel"] == "stable" and not v["yanked"]), None)
+    item["latest_beta"] = next((v["version"] for v in versions if v["channel"] == "beta" and not v["yanked"]), None)
+    item["updated"] = max((v["date"] for v in versions if not v["yanked"]), default="")
+    # when the entry joined the catalog (the site's "Newest in catalog" sort): catalog/added.json, else the oldest release
+    item["added"] = (added or {}).get(e["id"]) or min((v["date"] for v in versions if not v["yanked"] and v.get("date")), default="")
+
+
+ARCHES = ("armv7", "aarch64")
+
+
+def apply_dependencies(plugins, problems):
+    """Keep only what can be installed whole: a version is listed for a device generation (armv7, aarch64) only when every one of its
+    dependencies has a listed, unyanked version in the catalog that meets its rules and has a build for that generation (a stable
+    version needs a stable one). A version left with no generation is hidden; one that loses its Gen2 or Gen1 build keeps the other.
+    Each dependency gets "pick": {arch: version}, the newest that fits, which the installers fetch when the device has none that fits.
+    Repeated until nothing changes, since hiding one version can break another. Each hidden version or build is a problem (superseded
+    when a newer version of the same plugin stays listed). -> True when anything was hidden."""
+    by = {p["id"]: p for p in plugins}
+    why = {}   # (plugin id, version) -> {arch: reason}
+    absent = {}   # (plugin id, version) -> dependency ids not in the catalog at all
+    changed, any_change = True, False
+    while changed:
+        changed = False
+        for p in plugins:
+            for v in list(p["versions"]):
+                if v.get("yanked") or not v.get("depends") or "assets" not in v:
+                    continue
+                lost = {}
+                for arch in [a for a in ARCHES if a in v["assets"]]:
+                    for d in v["depends"]:
+                        t = by.get(d["id"])
+                        fits = [w for w in (t["versions"] if t and t.get("distribution") == "release" else [])
+                                if not w.get("yanked") and arch in (w.get("assets") or {}) and deps.satisfies(w["version"], d["rules"])
+                                and (v["channel"] == "beta" or w["channel"] == "stable")]
+                        if fits:
+                            d.setdefault("pick", {})[arch] = max(fits, key=lambda w: deps.key(w["version"]))["version"]
+                        else:
+                            d.get("pick", {}).pop(arch, None)
+                            if not t:
+                                absent.setdefault((p["id"], v["version"]), set()).add(d["id"])
+                            has = ", ".join(w["version"] for w in (t or {}).get("versions", []) if not w.get("yanked")) or "none"
+                            lost[arch] = "needs %s%s, which the catalog doesn't list%s (listed: %s)" % (
+                                d["id"], deps.text(d["rules"]), "" if arch == "armv7" else " for Gen2", has if t else "not in the catalog")
+                            break
+                if not lost:
+                    continue
+                changed = any_change = True
+                why[(p["id"], v["version"])] = dict(why.get((p["id"], v["version"]), {}), **lost)
+                left = [a for a in ARCHES if a in v["assets"] and a not in lost]
+                if not left:
+                    p["versions"].remove(v)
+                elif "aarch64" in lost:
+                    del v["assets"]["aarch64"]
+                    v["gen2"] = False
+                else:   # only the Gen2 build is installable: it becomes the version's one zip (as a Gen2-only release)
+                    del v["assets"]["armv7"]
+                    v.update({k: v["assets"]["aarch64"][k] for k in ("url", "sha256", "size") if k in v["assets"]["aarch64"]})
+                    v["gen2"] = v["gen2_only"] = True
+                v["_lost"] = sorted(set(v.get("_lost", [])) | set(lost))
+                p.setdefault("_hidden", {})[v["version"]] = (v, left)
+    for p in plugins:
+        for ver, (v, left) in sorted(p.pop("_hidden", {}).items()):
+            reasons = why[(p["id"], ver)]
+            newer = any(not w.get("yanked") and deps.key(w["version"]) > deps.key(ver) for w in p["versions"])
+            what = "hidden" if not left else "%s build hidden" % ("Gen2" if "aarch64" in reasons else "Gen1")
+            problems.append({"id": p["id"], "tag": v.get("_tag") or "v" + ver, "superseded": newer,
+                             "error": "%s: %s" % (what, "; ".join(sorted(set(reasons.values())))),
+                             "absent": sorted(absent.get((p["id"], ver), ()))})
+            v.pop("_lost", None)
+    return any_change
+
+
 def tag_prefix(tag):
     """The part of a tag before its version: "desktop-" for "desktop-v0.5.2", "" for "v1.0.0"."""
     return re.sub(r"v?\d+(\.\d+)*.*$", "", tag or "")
+
+
+def hook_overlaps_of(plugins):
+    """[{ids, versions, symbols, unchained}] for each pair of addins whose newest versions (stable, else beta) define the same functions
+    while at least one of them shows no sign of passing calls on (catalog_check.passes_calls_on): in LD_PRELOAD the first definition wins,
+    so the other addin would never see those calls. Two addins that both pass calls on work together and are not listed. Each addin item
+    gets shares_hooks [{id, name, symbols, unchained}] (docs/CATALOG.md, "Addins that hook the same calls")."""
+    shown = []
+    for p in plugins:
+        if p["kind"] != "addin":
+            continue
+        p["shares_hooks"] = []
+        v = next((v for want in (p.get("latest"), p.get("latest_beta")) for v in p["versions"] if want and v["version"] == want), None)
+        if v and v.get("hooks"):
+            shown.append((p, v))
+    out = []
+    for i, (a, va) in enumerate(shown):
+        for b, vb in shown[i + 1:]:
+            both = sorted(set(va["hooks"]) & set(vb["hooks"]))
+            unchained = [p["id"] for p, v in ((a, va), (b, vb)) if not v.get("chains", True)]   # records before the field: no noise
+            if both and unchained:
+                a["shares_hooks"].append({"id": b["id"], "name": b["name"], "symbols": both, "unchained": unchained})
+                b["shares_hooks"].append({"id": a["id"], "name": a["name"], "symbols": both, "unchained": unchained})
+                out.append({"ids": [a["id"], b["id"]], "versions": [va["version"], vb["version"]], "symbols": both, "unchained": unchained})
+    return out
 
 
 def flagged_of(catalog, entries=()):
@@ -606,12 +726,20 @@ def main():
         sys.exit(1 if reg_problems else 0)
     yanked = set(json.load(open(a.yanked))) if os.path.exists(a.yanked) else set()
     if a.require_portable:
-        sel = [e for e in entries if e["id"] in a.require_portable]
-        catalog, problems = build(sel, GitHub(os.environ.get("GITHUB_TOKEN")), a.cache, yanked, a.keep, require_portable=set(a.require_portable), added=added)
-        bad = [p for p in problems if not p.get("superseded")]
+        # The plugins they depend on are built too (not judged), so a dependency isn't "missing" just because only these were built.
+        by_id, ids = {e["id"]: e for e in entries}, set(a.require_portable)
+        while True:
+            sel = [e for e in entries if e["id"] in ids]
+            catalog, problems = build(sel, GitHub(os.environ.get("GITHUB_TOKEN")), a.cache, yanked, a.keep, require_portable=set(a.require_portable), added=added)
+            more = {d for p in problems for d in p.get("absent", ())} & set(by_id) - ids
+            if not more:
+                break
+            ids |= more
+        bad = [p for p in problems if not p.get("superseded") and p["id"] in a.require_portable]
         for p in bad:
             print("error: %(id)s %(tag)s: %(error)s" % p, file=sys.stderr)
-        print("%d entries checked for the portable layout, %d problems" % (len(sel), len(bad)))
+        print("%d entries checked for the portable layout (%d more built for their dependencies), %d problems"
+              % (len(a.require_portable), len(sel) - len(a.require_portable), len(bad)))
         sys.exit(1 if bad or reg_problems else 0)
     catalog, problems = build(entries, GitHub(os.environ.get("GITHUB_TOKEN")), a.cache, yanked, a.keep, added=added)
     os.makedirs(a.out, exist_ok=True)
@@ -619,6 +747,11 @@ def main():
     json.dump(problems, open(os.path.join(a.out, "problems.json"), "w"), indent=1)
     flagged = flagged_of(catalog, entries)
     json.dump(flagged, open(os.path.join(a.out, "flags.json"), "w"), indent=1)
+    overlaps = hook_overlaps_of(catalog["plugins"])
+    json.dump(overlaps, open(os.path.join(a.out, "overlaps.json"), "w"), indent=1)
+    for o in overlaps:
+        print("addins hook the same calls, %s may not pass them on: %s %s and %s %s: %s" % (" and ".join(o["unchained"]), o["ids"][0], o["versions"][0],
+              o["ids"][1], o["versions"][1], ", ".join(o["symbols"])))
     for fl in flagged:
         for f, r in fl["flags"].items():
             print("flagged for review: %s %s: %s calls %s" % (fl["id"], fl["version"], f,

@@ -14,13 +14,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import app_check  # noqa: E402
 import catalog_check  # noqa: E402
+import deps  # noqa: E402
 
 ENTRY = ('<PLUGIN name="Test Synth" format="VST" category="Synth" manufacturer="Acme" version="1.0" '
          'file="/sdcard/vst/test_synth.so" uid="1a2b3c4d" isInstrument="1" fileTime="0" infoUpdateTime="0" '
          'numInputs="0" numOutputs="2" isShell="0" hasARAExtension="0" uniqueId="0"/>')
 
 
-def fake_so(path, machine=40, glibc=b"GLIBC_2.30", elf_class=1, imports=()):
+def fake_so(path, machine=40, glibc=b"GLIBC_2.30", elf_class=1, imports=(), exports=()):
     """A 32-bit little-endian ELF with just a string table and a version-needs section naming glibc (one need of
     libc.so.6 with one version), the shape the release tools read the glibc requirement from."""
     strtab = b"\0libc.so.6\0" + glibc + b"\0"
@@ -46,6 +47,9 @@ def fake_so(path, machine=40, glibc=b"GLIBC_2.30", elf_class=1, imports=()):
     dynstr, dynsym = b"\0", bytes(16)
     for name in imports:
         dynsym += len(dynstr).to_bytes(4, "little") + bytes(8) + bytes([0x12, 0]) + (0).to_bytes(2, "little")
+        dynstr += name.encode() + b"\0"
+    for name in exports:   # defined here (section index 1): what a preloaded library replaces
+        dynsym += len(dynstr).to_bytes(4, "little") + bytes(8) + bytes([0x12, 0]) + (1).to_bytes(2, "little")
         dynstr += name.encode() + b"\0"
     p0 = len(body)
     shdrs = shdr(0, 0, 0, 0) + shdr(3, 52, len(strtab), 0) + shdr(0x6FFFFFFE, 52 + len(strtab), len(verneed), 1) \
@@ -458,13 +462,13 @@ class AddinTest(Base):
     MANIFEST = ('# a test addin\nADDIN_ID=test-addin\nADDIN_NAME="Test addin"   # shown\nADDIN_SO=libtest.so\n'
                 'ADDIN_CONF=test.conf\nADDIN_FILES="helper"\nADDIN_DONE="Open it."\n')
 
-    def build_addin(self, manifest=None, machine=40, version="1.2.0", repo="acme/mpc-addin-test", elf_class=1, glibc=b"GLIBC_2.30"):
+    def build_addin(self, manifest=None, machine=40, version="1.2.0", repo="acme/mpc-addin-test", elf_class=1, glibc=b"GLIBC_2.30", exports=(), helper=b"data\n", imports=()):
         d = os.path.join(self.tmp, "pkg")
         os.makedirs(d, exist_ok=True)
         open(os.path.join(d, "addin.manifest"), "w").write(manifest or self.MANIFEST)
-        fake_so(os.path.join(d, "libtest.so"), machine, glibc=glibc, elf_class=elf_class)
+        fake_so(os.path.join(d, "libtest.so"), machine, glibc=glibc, elf_class=elf_class, exports=exports, imports=imports)
         open(os.path.join(d, "test.conf"), "w").write("x=1\n")
-        open(os.path.join(d, "helper"), "w").write("data\n")
+        open(os.path.join(d, "helper"), "wb").write(helper)
         out = os.path.join(self.tmp, "dist")
         r = subprocess.run([sys.executable, os.path.join(HERE, "release_addin.py"), "--dir", d, "--version", version,
                             "--repo", repo, "--license", "MIT", "-o", out], capture_output=True, text=True)
@@ -521,8 +525,8 @@ class AddinTest(Base):
         """catalog_build.py's aarch64-sibling check compared manifest["uid"] unconditionally, which only a VST
         plugin's manifest has -- an addin's aarch64 sibling always failed with 'download/validate failed: uid'
         (found 2026-10-23, mpc-addin-commander's real release, catalog issue #515)."""
-        z32 = self.build_addin()
-        z64 = self.build_addin(machine=183, elf_class=2)
+        z32 = self.build_addin(exports=("snd_pcm_writei",), imports=("dlsym",))
+        z64 = self.build_addin(machine=183, elf_class=2)   # fake_so's tables are 32-bit-shaped: this one reads as importing no dlsym
         entry = {"id": "test-addin", "name": "Test addin", "author": "A", "repo": "acme/mpc-addin-test",
                   "kind": "addin", "license": "MIT", "summary": "s"}
         rel = {"tag_name": "v1.2.3", "prerelease": False, "draft": False, "published_at": "2026-10-23T00:00:00Z", "body": "",
@@ -534,6 +538,60 @@ class AddinTest(Base):
         v = cat["plugins"][0]["versions"][0]
         self.assertTrue(v["gen2"])
         self.assertEqual(set(v["assets"]), {"armv7", "aarch64"})
+        self.assertEqual(v["hooks"], ["snd_pcm_writei"])
+        self.assertFalse(v["chains"])   # the armv7 build passes calls on, the Gen2 one doesn't: both must
+
+    def test_hooks_are_what_the_preloaded_library_defines(self):
+        """An addin's version record lists the functions its ADDIN_SO defines (what it replaces in MPC); a helper program in the zip
+        does not count (the remote addin's helper exports stderr, 2026-10-26), and a plugin has no hooks."""
+        helper = os.path.join(self.tmp, "helper.elf")
+        fake_so(helper, exports=("stderr", "snd_pcm_open"))
+        z = self.build_addin(exports=("snd_pcm_writei", "snd_pcm_hw_params", "_init"), helper=open(helper, "rb").read())
+        errors, _, rec = catalog_check.check(z, catalog=True, expect_id="test-addin", expect_repo="acme/mpc-addin-test")
+        self.assertEqual(errors, [])
+        self.assertEqual(rec["hooks"], ["snd_pcm_hw_params", "snd_pcm_writei"])
+        self.assertEqual(rec["requires"], "")
+        self.assertFalse(rec["chains"])   # no dlsym or dlvsym: it can't be looking up the next definition
+
+    def test_a_bundled_cxx_runtime_is_not_counted_as_hooks(self):
+        so = os.path.join(self.tmp, "x.so")
+        fake_so(so, exports=("snd_pcm_writei", "_ZNSt6vectorIiSaIiEE9push_backEv", "__cxa_throw", "_Unwind_Resume", "__aeabi_idiv",
+                             "_ZN4juce12AudioBufferIfE5clearEv"))
+        self.assertEqual(catalog_check.exported_functions(open(so, "rb").read()), {"snd_pcm_writei", "_ZN4juce12AudioBufferIfE5clearEv"})
+
+    def test_passing_calls_on_is_read_from_the_imports(self):
+        so = os.path.join(self.tmp, "x.so")
+        for imports, extra, want in ((("dlsym",), b"", True), (("dlvsym", "dlsym"), b"", True), ((), b"", False),
+                                     (("dlsym", "dlopen"), b"libasound.so.2\0", False),   # opens the real library itself
+                                     (("dlsym", "dlopen"), b"", True), (("dlsym",), b"libasound.so.2\0", True)):
+            fake_so(so, imports=imports)
+            self.assertEqual(catalog_check.passes_calls_on(open(so, "rb").read() + extra), want, (imports, extra))
+
+    def test_addins_that_define_the_same_functions_are_paired_only_when_one_may_not_pass_them_on(self):
+        import catalog_build
+        add = lambda i, hooks, chains=True, ch="stable": {"id": i, "name": i.title(), "kind": "addin", "latest": "1.0.0" if ch == "stable" else None,
+                                                          "latest_beta": "1.0.0" if ch == "beta" else None,
+                                                          "versions": [{"version": "1.0.0", "channel": ch, "hooks": hooks, "chains": chains}]}
+        plugins = [add("usb", ["snd_pcm_open", "snd_pcm_writei", "usbg_enable_gadget"]), add("skip", ["snd_pcm_writei", "snd_rawmidi_read"]),
+                   add("link", ["snd_pcm_writei"], chains=False, ch="beta"), add("files", ["files_start"], chains=False),
+                   {"id": "synth", "name": "Synth", "kind": "instrument", "latest": "1.0.0", "versions": [{"version": "1.0.0", "channel": "stable"}]}]
+        got = catalog_build.hook_overlaps_of(plugins)
+        # usb and skip share snd_pcm_writei but both pass it on: not listed; files shares nothing
+        self.assertEqual(got, [{"ids": ["usb", "link"], "versions": ["1.0.0", "1.0.0"], "symbols": ["snd_pcm_writei"], "unchained": ["link"]},
+                               {"ids": ["skip", "link"], "versions": ["1.0.0", "1.0.0"], "symbols": ["snd_pcm_writei"], "unchained": ["link"]}])
+        by = {p["id"]: p for p in plugins}
+        self.assertEqual([o["id"] for o in by["usb"]["shares_hooks"]], ["link"])
+        self.assertEqual([o["id"] for o in by["link"]["shares_hooks"]], ["usb", "skip"])
+        self.assertEqual(by["files"]["shares_hooks"], [])
+        self.assertNotIn("shares_hooks", by["synth"])   # a plugin is loaded by MPC's plugin host, not preloaded
+        self.assertEqual(catalog_build.hook_overlaps_of(plugins), got)   # idempotent: build() and main() both call it
+        del plugins[2]["versions"][0]["chains"]   # a record from before the field counts as passing calls on
+        self.assertEqual(catalog_build.hook_overlaps_of(plugins), [])
+        # the stable version is compared, not a newer beta: the installers install stable
+        two = add("two", ["snd_pcm_writei"])
+        two["versions"].insert(0, {"version": "1.1.0", "channel": "beta", "hooks": ["snd_pcm_writei"], "chains": False})
+        two["latest_beta"] = "1.1.0"
+        self.assertEqual(catalog_build.hook_overlaps_of([add("usb", ["snd_pcm_writei"]), two]), [])
 
     def test_release_refuses_bad_input(self):
         for bad in ("ADDIN_ID=Test_Addin\nADDIN_SO=libtest.so\n", "ADDIN_ID=t\nADDIN_SO=libtest.so\nADDIN_FILES=missing\n",
@@ -590,6 +648,7 @@ class AddinTest(Base):
         self.assertEqual(row[:8], ["plugin", "test-addin", "1.2.0", "1", "addin", "Test addin", "-", "-"])
         self.assertEqual((row[12], row[13]), ("test.conf", "1"))
         self.assertEqual(row[14:16], ["-", row[15]])   # an addin has no skin, so no os_compat; max_glibc is whatever its library needs
+        self.assertEqual(row[19:21], ["-", "-"])        # no extra requirements, no other addin replaces the same functions
         # an addin release listed under an instrument entry (or the reverse) is refused
         cat, problems = catalog_build.build([dict(entry, kind="instrument")], gh, os.path.join(self.tmp, "cache"), set())
         self.assertEqual(cat["plugins"][0]["versions"], [])
@@ -896,6 +955,61 @@ class BuildTest(Base):
         self.assertTrue(catalog_build.check_entry({**self.ENTRY, "tier": "verified"}))
         self.assertTrue(catalog_build.check_entry({**self.ENTRY, "featured": "yes"}))
 
+    def test_dependencies_come_from_the_manifest_else_the_registry_and_unmet_ones_hide_the_version(self):
+        dep = self.build("2.0.0", extra=("--id", "other-plugin"))
+        old = self.build("1.0.0")                                                    # no depends in its manifest: the registry's apply
+        new = self.build("1.1.0", extra=("--depends", "other-plugin>=2.0.0", "--conflicts", "foo"))
+        rel = lambda tag, aid, n: self.rel(tag, aid, name=n)
+        synth = dict(self.ENTRY, asset_pattern="a-*-mpc-armv7.zip", depends=["other-plugin>=3.0.0"])
+        other = dict(self.ENTRY, id="other-plugin", name="Other", asset_pattern="b-*-mpc-armv7.zip")
+        gh = FakeGitHub({"acme/test-synth": [rel("v1.1.0", 2, "a-1.1.0-mpc-armv7.zip"), rel("v1.0.0", 1, "a-1.0.0-mpc-armv7.zip"),
+                                              rel("v2.0.0", 3, "b-2.0.0-mpc-armv7.zip")]}, {1: old, 2: new, 3: dep})
+        cat, problems = catalog_build.build([synth, other], gh, os.path.join(self.tmp, "cache"), set())
+        p = next(x for x in cat["plugins"] if x["id"] == "test-synth")
+        self.assertEqual([v["version"] for v in p["versions"]], ["1.1.0"])
+        v = json.loads(json.dumps(p["versions"][0]))
+        self.assertEqual(v["depends"], [{"id": "other-plugin", "rules": [[">=", "2.0.0"]], "pick": {"armv7": "2.0.0"}}])
+        self.assertEqual(v["conflicts"], ["foo"])
+        self.assertEqual([(x["tag"], x["superseded"]) for x in problems], [("v1.0.0", True)])
+        self.assertIn("hidden: needs other-plugin>=3.0.0, which the catalog doesn't list (listed: 2.0.0)", problems[0]["error"])
+        row = [l.split("\t") for l in catalog_site.tsv(cat, []).splitlines()[1:] if l.split("\t")[1] == "test-synth"][0]
+        self.assertEqual(row[21:23], ["other-plugin:>=2.0.0:2.0.0:-", "foo"])
+
+    def test_apply_dependencies_drops_a_generation_cascades_and_keeps_stable_to_stable(self):
+        v = lambda ver, arches=("armv7",), ch="stable", dep=None: {"version": ver, "channel": ch, "yanked": False, "url": "u32", "sha256": "s32", "size": 1,
+                                                                  "assets": {a: {"url": "u-" + a, "sha256": "s-" + a, "size": 2} for a in arches},
+                                                                  "depends": [dict(zip(("id", "rules"), deps.resolve(dep, ver)))] if dep else []}
+        P = lambda i, *vs: {"id": i, "name": i, "distribution": "release", "versions": list(vs)}
+        plugins = [P("base", v("1.0.0"), v("1.1.0", ch="beta")),
+                   P("tap", v("1.0.0", ("armv7", "aarch64"), dep="base=same"), v("1.1.0", dep="base=same"), v("1.1.1", ch="beta", dep="base>=1.1.0")),
+                   P("tap-tap", v("1.0.0", dep="tap>=1.1.0"))]
+        problems = []
+        self.assertTrue(catalog_build.apply_dependencies(plugins, problems))
+        tap = plugins[1]["versions"]
+        self.assertEqual([x["version"] for x in tap], ["1.0.0", "1.1.1"])        # 1.1.0 (stable) needs base 1.1.0, which is a beta: hidden
+        self.assertEqual(set(tap[0]["assets"]), {"armv7"})                       # base has no Gen2 build: the tap loses its own
+        self.assertFalse(tap[0]["gen2"])
+        self.assertEqual(tap[1]["depends"][0]["pick"], {"armv7": "1.1.0"})        # a beta may take a beta
+        self.assertEqual(plugins[2]["versions"], [])                             # needed tap 1.1.0 (stable): cascades
+        self.assertEqual(sorted((x["id"], x["error"].split(":")[0]) for x in problems),
+                         [("tap", "Gen2 build hidden"), ("tap", "hidden"), ("tap-tap", "hidden")])
+        plugins = [P("base", v("1.0.0", ("aarch64",))), P("tap", v("1.0.0", ("armv7", "aarch64"), dep="base"))]
+        catalog_build.apply_dependencies(plugins, [])
+        t = plugins[1]["versions"][0]                                             # only Gen2 can be met: it becomes a Gen2-only version
+        self.assertEqual((set(t["assets"]), t["gen2_only"], t["url"]), ({"aarch64"}, True, "u-aarch64"))
+
+    def test_registry_and_manifest_dependency_checks(self):
+        self.assertEqual(catalog_build.check_entry(dict(self.ENTRY, depends=["tr-mpc=same", "p>=2.0.0,<3.0.0"], conflicts=["x"])), [])
+        for bad in ({"depends": "tr-mpc"}, {"depends": ["Bad"]}, {"depends": ["a", "a>=1.0.0"]}, {"conflicts": ["test-synth"]},
+                    {"depends": ["a"], "conflicts": ["a"]}, {"depends": ["a>=same"]}):
+            self.assertTrue(catalog_build.check_entry(dict(self.ENTRY, **bad)), bad)
+        r = subprocess.run([sys.executable, os.path.join(HERE, "release.py"), "--so", "x", "--skin", "x", "--entry", "x", "--version", "1.0.0",
+                            "--depends", "Bad"], capture_output=True, text=True)
+        self.assertNotEqual(r.returncode, 0)
+        z = self.build("1.0.0")
+        bad = self.resum(z, "mpc-plugin.json", lambda d: d.replace(b'"requires": ""', b'"requires": "", "depends": ["x>=1"]'))
+        self.assertTrue(any("bad dependency" in e for e in catalog_check.check(bad, catalog=True)[0]))
+
     def test_stray_json_beside_the_registry(self):
         os.makedirs(os.path.join(self.tmp, "plugins"))
         for n in ("added.json", "apps.json", "patches.json", "yanked.json", "plugins/test-synth.json", "test-synth.json", "README.md"):
@@ -922,6 +1036,18 @@ class IssuesTest(unittest.TestCase):
         self.assertIn("network (send)", got[0][1])
         self.assertEqual([n for n, _ in catalog_issues.close_old_flags(issues)], [4])
         self.assertEqual(catalog_issues.plan([], issues), ([], []))   # flag issues are never closed by the problems plan
+
+    def test_overlaps_open_one_issue_per_pair_and_call_set_and_never_reopen(self):
+        ov = [{"ids": ["skip", "usb"], "versions": ["0.6.0", "1.1.0"], "symbols": ["snd_pcm_writei"], "unchained": ["skip"]},
+              {"ids": ["link", "usb"], "versions": ["1.1.0", "1.1.0"], "symbols": ["snd_pcm_hw_params", "snd_pcm_writei"], "unchained": ["link"]},
+              {"ids": ["a", "b"], "versions": ["1", "1"], "symbols": ["snd_pcm_%s_with_a_long_name" % n for n in range(8)], "unchained": ["a", "b"]}]
+        issues = [{"number": 1, "title": "Catalog: skip and usb hook the same calls (snd_pcm_writei)", "state": "CLOSED"}]   # reviewed
+        got = catalog_issues.plan_overlaps(ov, issues)
+        self.assertEqual([t for t, _ in got][:1], ["Catalog: link and usb hook the same calls (snd_pcm_hw_params, snd_pcm_writei)"])
+        self.assertTrue(got[1][0].endswith("snd_pcm_3_with_a_long_name, 4 more)"), got[1][0])
+        self.assertIn("- `snd_pcm_hw_params`", got[0][1])
+        self.assertIn("`link` shows no sign of doing that", got[0][1])
+        self.assertEqual(catalog_issues.plan([], [{"number": 2, "title": got[0][0], "state": "OPEN"}]), ([], []))   # not closed by the problems plan
 
     def test_plan_dedupes_and_skips_known_titles(self):
         pr = [{"id": "a", "tag": "v1", "error": "x"}, {"id": "a", "tag": "v1", "error": "y"},
@@ -1610,7 +1736,8 @@ class StoreTest(Base):
         open(self.settings_path, "w").write(SyncTest.ONLY_OTHER)
         self.log = os.path.join(self.tmp, "mpc_ctl.log")
 
-    def write_catalog(self, published, addins=(), gen2=None, gen2_only=False):
+    def write_catalog(self, published, addins=(), gen2=None, gen2_only=False, requires="", shares_hooks=(), depends=None, conflicts=()):
+        """depends: {synth version: [{id, rules, pick}]} as catalog_build.py resolves them; conflicts: the synth's, on every version."""
         vs = []
         for v, path in self.versions:
             if v not in published:
@@ -1639,7 +1766,11 @@ class StoreTest(Base):
                            "channel": "stable", "yanked": False, "defer": True, "url": "http://127.0.0.1:%d/%s" % (self.port, os.path.basename(path))})
         if avs:
             cat["plugins"].append({"id": "test-addin", "name": "Test addin", "kind": "addin", "distribution": "release",
-                                   "latest": avs[0]["version"], "versions": avs})
+                                   "latest": avs[0]["version"], "versions": avs, "shares_hooks": list(shares_hooks)})
+        for v in vs:
+            v["requires"] = requires
+            v["depends"] = (depends or {}).get(v["version"], [])
+            v["conflicts"] = list(conflicts)
         helpers = [(n, os.path.join(self.web, n)) for n in ("sync.sh", "plugin_list.awk")]
         open(os.path.join(self.web, "catalog.tsv"), "w").write(self.catalog_site.tsv(cat, helpers))
 
@@ -1824,6 +1955,121 @@ class StoreTest(Base):
         self.assertFalse([n for n in os.listdir(self.tmp) if ".bak-store" in n])
         self.assertEqual(self.calls()[-2:], ["stop", "start"])
         self.assertNotEqual(self.store("remove", "test-addin").returncode, 0)         # not installed any more
+
+    def test_install_shows_requirements_and_addins_that_hook_the_same_calls(self):
+        self.addin_unit()
+        a = AddinTest.build_addin(self)
+        self.write_catalog(["1.2.0"], addins=[("1.2.0", a)], requires="Your own ROMs in the plugin folder",
+                           shares_hooks=[{"id": "other-addin", "name": "Other", "symbols": ["snd_pcm_writei"], "unchained": ["other-addin"]}])
+        r = self.store("--dry-run", "install", "test-synth", "test-addin")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("NEEDS: Test Synth 1.2.0: Your own ROMs in the plugin folder", r.stdout)
+        self.assertNotIn("same MPC functions", r.stdout)                              # the other addin is not on the device
+        os.makedirs(os.path.join(self.tmp, "addins", "other-addin"))
+        r = self.store("--dry-run", "install", "test-addin")
+        self.assertIn("NOTE: Test addin and other-addin replace some of the same MPC functions, and one of them may not pass the calls on", r.stdout)
+
+    DEP = staticmethod(lambda rules, pick="1.2.0": [{"id": "test-addin", "rules": rules, "pick": {"armv7": pick} if pick else {}}])
+
+    def test_install_brings_a_dependency_and_remove_keeps_it(self):
+        folder = self.addin_unit()
+        self.write_catalog(["1.2.0"], addins=[("1.2.0", AddinTest.build_addin(self))], depends={"1.2.0": self.DEP([[">=", "1.2.0"]])})
+        r = self.store("install", "test-synth")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("test-addin 1.2.0: needed by Test Synth", r.stdout)
+        self.assertTrue(os.path.exists(os.path.join(folder, "libtest.so")))
+        self.assertEqual(self.calls(), ["stop", "start"])                         # one restart for both
+        r = self.store("remove", "test-addin")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("test-synth is installed and needs test-addin", r.stderr)
+        self.assertTrue(os.path.exists(folder))
+        r = self.store("--force", "remove", "test-addin")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("WARNING (--force)", r.stdout)
+        self.assertFalse(os.path.exists(folder))
+        r = self.store("install", "test-synth@1.2.0")                               # reinstalling it brings the addin back
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(os.path.exists(folder))
+
+    def test_an_installed_dependency_that_fits_is_left_alone(self):
+        self.addin_unit()
+        self.write_catalog(["1.2.0"], addins=[("1.2.0", AddinTest.build_addin(self))])
+        self.assertEqual(self.store("install", "test-addin").returncode, 0)
+        self.write_catalog(["1.2.0"], addins=[("1.2.0", AddinTest.build_addin(self))], depends={"1.2.0": self.DEP([])})
+        r = self.store("--dry-run", "install", "test-synth")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("needed by", r.stdout)
+
+    def test_unmet_dependencies_and_downgrades_are_refused(self):
+        self.addin_unit()
+        a = AddinTest.build_addin(self)
+        self.write_catalog(["1.2.0"], addins=[("1.2.0", a)], depends={"1.2.0": self.DEP([[">=", "1.2.0"]], pick=None)})
+        r = self.store("install", "test-synth")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("needs test-addin (>=1.2.0), and the catalog has no build of it for this device", r.stderr)
+        self.assertEqual(self.calls(), [])                                          # nothing touched
+        self.assertEqual(self.store("install", "test-addin").returncode, 0)        # 1.2.0 installed
+        self.write_catalog(["1.2.0"], addins=[("1.2.0", a)], depends={"1.2.0": self.DEP([["<", "1.2.0"]], pick="1.1.0")})
+        r = self.store("install", "test-synth")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("that would take test-addin back from 1.2.0 to 1.1.0", r.stderr)
+
+    def test_conflicts_are_refused_unless_forced(self):
+        self.addin_unit()
+        self.write_catalog(["1.2.0"], addins=[("1.2.0", AddinTest.build_addin(self))], conflicts=["test-addin"])
+        self.assertEqual(self.store("install", "test-addin").returncode, 0)
+        r = self.store("install", "test-synth")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Test Synth conflicts with test-addin", r.stderr)
+        self.assertEqual(self.state(), [])
+        r = self.store("--force", "install", "test-synth")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual([x[0] for x in self.state()], ["test-synth"])
+
+    def test_updating_a_dependency_updates_what_needs_the_old_one(self):
+        self.addin_unit()
+        a1, a2 = AddinTest.build_addin(self, version="1.2.0"), AddinTest.build_addin(self, version="1.3.0")
+        same = {"1.2.0": self.DEP([["=", "1.2.0"]]), "1.3.0": self.DEP([["=", "1.3.0"]], pick="1.3.0")}
+        self.write_catalog(["1.2.0"], addins=[("1.2.0", a1)], depends=same)
+        self.assertEqual(self.store("install", "test-synth").returncode, 0)
+        self.write_catalog(["1.2.0", "1.3.0"], addins=[("1.2.0", a1), ("1.3.0", a2)], depends=same)
+        r = self.store("install", "test-addin")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("test-synth 1.3.0: updated, because Test Synth 1.2.0 needs test-addin =1.2.0", r.stdout)
+        self.assertEqual([x[:2] for x in self.state()], [["test-synth", "1.3.0"]])
+        # no version of the dependent fits: refused
+        self.write_catalog(["1.2.0"], addins=[("1.2.0", a1), ("1.3.0", a2)], depends={"1.2.0": self.DEP([["=", "1.2.0"]])})
+        self.assertEqual(self.store("--force", "install", "test-synth@1.2.0", "test-addin@1.2.0").returncode, 0)
+        r = self.store("install", "test-addin@1.3.0")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Test Synth 1.2.0 is installed and needs test-addin =1.2.0, but this batch installs test-addin 1.3.0", r.stderr)
+
+    def test_a_gen2_only_plugin_with_a_dependency_is_skipped_on_gen1_and_the_rest_installs(self):
+        folder = self.addin_unit()
+        z64 = self.build(version="1.2.0", machine=183, elf_class=2)
+        shutil.copy(z64, self.web)
+        dep = [{"id": "test-addin", "rules": [[">=", "1.2.0"]], "pick": {"aarch64": "1.2.0"}}]   # no Gen1 pick, as for a Gen2-only version
+        self.write_catalog(["1.2.0"], addins=[("1.2.0", AddinTest.build_addin(self))], gen2=os.path.join(self.web, os.path.basename(z64)),
+                           gen2_only=True, depends={"1.2.0": dep})
+        r = self.store("install", "test-synth", "test-addin", env_extra={"MPC_STORE_ARCH": "armv7l"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("skipping test-synth", r.stdout)
+        self.assertTrue(os.path.exists(os.path.join(folder, "libtest.so")))
+
+    def test_a_dependency_that_needs_a_major_update_is_held_back_without_major(self):
+        self.addin_unit()
+        a1, a2 = AddinTest.build_addin(self, version="1.2.0"), AddinTest.build_addin(self, version="1.3.0")
+        same = {"1.2.0": self.DEP([["=", "1.2.0"]]), "2.0.0": self.DEP([["=", "1.3.0"]], pick="1.3.0")}
+        self.write_catalog(["1.2.0"], addins=[("1.2.0", a1)], depends=same)
+        self.assertEqual(self.store("install", "test-synth").returncode, 0)
+        self.write_catalog(["1.2.0", "2.0.0"], addins=[("1.2.0", a1), ("1.3.0", a2)], depends=same)
+        r = self.store("install", "test-addin")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("would update test-synth to 2.0.0, a major change", r.stderr)
+        self.assertEqual([x[:2] for x in self.state()], [["test-synth", "1.2.0"]])
+        r = self.store("--major", "install", "test-addin")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual([x[:2] for x in self.state()], [["test-synth", "2.0.0"]])
 
     def test_an_addin_folder_without_a_version_is_manual(self):
         folder = self.addin_unit()

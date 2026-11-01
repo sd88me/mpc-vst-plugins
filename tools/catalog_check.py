@@ -21,6 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import skin_compat  # noqa: E402
 from user_files import user_files_problems  # noqa: E402
+import deps  # noqa: E402
 
 MAX_GLIBC_GEN2 = (2, 39)   # aarch64 (Gen2) runs MPC OS 3.x only, which has glibc 2.39, so there is no 2.x ceiling to respect
 MAX_GLIBC = (2, 36)   # the newest glibc a catalog plugin may need: MPC OS 3.x and the Force have 2.39, the catalog toolchain (arm32v7/gcc:12) is 2.36.
@@ -108,10 +109,10 @@ RISKY_CALLS = {
 }
 
 
-def imported_symbols(d):
-    """The undefined (imported) names in an ELF file's dynamic symbol table: what it asks the system for. Empty if not ELF."""
+def dynamic_symbols(d):
+    """[(name, defined, bind, type)] from an ELF file's dynamic symbol table. Empty if not ELF."""
     if d[:4] != b"\x7fELF":
-        return set()
+        return []
     bits64, bo = d[4] == 2, ("little" if d[5] == 1 else "big")
     n = lambda o, k: int.from_bytes(d[o:o + k], bo)
     shoff, shentsize, shnum = (n(40, 8), n(58, 2), n(60, 2)) if bits64 else (n(32, 4), n(46, 2), n(48, 2))
@@ -120,17 +121,46 @@ def imported_symbols(d):
         o = shoff + k * shentsize
         secs.append((n(o + 4, 4), n(o + 24, 8), n(o + 32, 8), n(o + 40, 4)) if bits64 else
                     (n(o + 4, 4), n(o + 16, 4), n(o + 20, 4), n(o + 24, 4)))
-    out = set()
+    out = []
     for sh_type, off, size, link in secs:
         if sh_type != 11 or link >= len(secs):   # SHT_DYNSYM, names in its linked string table
             continue
         stroff, ent = secs[link][1], (24 if bits64 else 16)
         for o in range(off + ent, off + size, ent):   # entry 0 is the null symbol
-            if n(o + (6 if bits64 else 14), 2) != 0:   # defined here, not imported
-                continue
+            info = d[o + (4 if bits64 else 12)]
             name_off = stroff + n(o, 4)
-            out.add(d[name_off:d.index(b"\0", name_off)].decode(errors="replace"))
+            out.append((d[name_off:d.index(b"\0", name_off)].decode(errors="replace"),
+                        n(o + (6 if bits64 else 14), 2) != 0, info >> 4, info & 0xf))
     return out
+
+
+def imported_symbols(d):
+    """The undefined (imported) names in an ELF file's dynamic symbol table: what it asks the system for. Empty if not ELF."""
+    return {name for name, defined, _, _ in dynamic_symbols(d) if not defined}
+
+
+# What a statically linked C/C++ runtime exports from a library built without -fvisibility=hidden: never something MPC's own code is
+# being replaced with, and shared by every such addin, so not a hook.
+RUNTIME_PREFIXES = ("_ZNSt", "_ZNKSt", "_ZSt", "_ZNSs", "_ZNKSs", "_ZNSi", "_ZNSo", "_ZN9__gnu_cxx", "_ZNK9__gnu_cxx", "_ZN10__cxxabiv1",
+                    "_ZNK10__cxxabiv1", "_ZdlPv", "_ZdaPv", "_Znwj", "_Znwm", "_Znaj", "_Znam",
+                    "__cxa_", "__gxx_", "__gnu_", "_Unwind_", "__aeabi_", "__gcc_", "__cxx")
+
+
+def exported_functions(d):
+    """The functions an ELF file defines for others (global or weak; not the linker's _init/_fini, data, or a bundled C++ runtime's
+    RUNTIME_PREFIXES). For a library MPC preloads these are what it replaces in MPC: a name another preloaded library also defines
+    resolves to whichever comes first in LD_PRELOAD."""
+    return {name for name, defined, bind, typ in dynamic_symbols(d)
+            if defined and bind in (1, 2) and typ in (2, 10) and name not in ("_init", "_fini")   # GLOBAL/WEAK; FUNC/IFUNC
+            and not name.startswith(RUNTIME_PREFIXES)}
+
+
+def passes_calls_on(d):
+    """Does a preloaded library look like it hands a hooked call on to the next definition? It must look the next one up (dlsym or
+    dlvsym, as dlsym(RTLD_NEXT, ...) does), and not open libasound itself (dlopen plus the library's name: it would call the real
+    library and skip any addin between). A heuristic from the imports: it says nothing about how each hook is written."""
+    imp = imported_symbols(d)
+    return bool(imp & {"dlsym", "dlvsym"}) and not ("dlopen" in imp and b"libasound.so" in d)
 
 
 def risky_calls(d):
@@ -242,6 +272,8 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None, require_portab
             (err if catalog else warn)("manifest has no " + k)
     if m.get("source_repo") and not re.fullmatch(r"[\w.-]+/[\w.-]+", m["source_repo"]):
         err("source_repo must be owner/name")
+    for problem in deps.check_lists(m.get("depends"), m.get("conflicts"), m["id"]):   # absent = the registry entry decides (catalog_build.py)
+        err("manifest " + problem)
 
     # payload
     entry = None
@@ -435,10 +467,15 @@ def check(zpath, catalog=False, expect_id=None, expect_repo=None, require_portab
         "version": m["version"], "size": os.path.getsize(zpath), "defer": defer,
         "sha256": hashlib.sha256(open(zpath, "rb").read()).hexdigest(),
         "param_compat": m["param_compat"], "max_glibc": m.get("max_glibc"), "cpu": m.get("cpu"),
+        "requires": (m.get("requires") or "").strip(),   # the author's one line of extra requirements (release.py --requires)
         "manifest": m,
     }
     if flags:
         record["flags"] = flags
+    if addin:   # what its preloaded library replaces in MPC (its helper programs don't count); catalog_build.py compares these (hook_overlaps_of)
+        lib = files.get(m.get("so") or "", b"")
+        record["hooks"] = sorted(exported_functions(lib))
+        record["chains"] = passes_calls_on(lib)
     if os_gens is not None:
         record["os_compat"] = os_gens
         if "2.x" not in os_gens:

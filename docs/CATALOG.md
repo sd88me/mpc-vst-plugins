@@ -127,6 +127,30 @@ categories ("Catalog: <id> flagged for review (network, runs programs)"). Closin
 version with the same categories opens nothing, new categories open a new issue (2026-10-11, offline tests only; the first run
 opened one issue per version, 70 in all, which this replaced).
 
+### Dependencies, requirements and addins that may break each other (2026-10-26, offline: unit tests, Go tests, the desktop addin UI test, the site browser test)
+- **Dependencies and conflicts** (declared, CATALOG_SPEC.md "Dependencies"): a version can need other catalog plugins
+  (`percolator>=2.0.0`, `machinemodule-gen2=same`) or conflict with some. The author declares them in the zip (`release.py --depends/--conflicts`),
+  or a maintainer in the registry entry when the zips don't. The builder hides a version, per device generation, whose dependencies the catalog
+  can't satisfy, and gives each dependency a version to install. Both installers add what is missing (or update what is too old) to the batch and
+  say why, and refuse a conflict, a downgrade, a major update brought in for a dependency (`mpc-store.sh --major` allows it), or removing what
+  an installed plugin needs, unless forced. The site's popup has a "Depends on" row
+  linking to the other entry, and a "Conflicts" row. Registry entries carry five today: Incipience Out, Percolator Out, Machinemodule Tap (Gen2),
+  TR-MPC Tap FX and Daemon Listen each need their host plugin (found by reading every catalog summary and README, 2026-10-26).
+- **`requires`**, the author's one line from `release.py --requires`, was in every zip manifest but shown nowhere. It is now on each version
+  record, a "Needs" row on the card, and printed by `mpc-store.sh` (`NEEDS:`) and the desktop app before installing. Some say another plugin must
+  be in the same project; those are now also declared as dependencies (above), and `requires` stays for what isn't a catalog plugin.
+- **Addins that may break each other**, computed, never declared: `catalog_check.py` records the functions each addin's library defines
+  (`hooks`) and whether it looks like it passes a hooked call on (`chains`: it imports `dlsym` or `dlvsym`, and doesn't both import
+  `dlopen` and name `libasound.so`). In `LD_PRELOAD` the first definition wins, so two addins that define the same function work together
+  only if the first hands the call on, which is how the remote addin once hid hwremap's hooks (NOTES.md, 2026-10-12/13).
+  `catalog_build.py` (`hook_overlaps_of`) lists a pair (`shares_hooks`, `overlaps.json`) only when they share a function **and** one of them
+  doesn't chain. Such a pair is shown on both cards, warned about by both installers when the other is installed or chosen, and gets one
+  catalog issue (closing it is the review). The import check is a heuristic: it can't see how each hook is written. A name overlap between
+  two addins that both chain is not shown: usb-audio, skipback and force-link-audio all replace `snd_pcm_writei` and all chain, so on the
+  published releases (2026-10-26) nothing is listed. A first version that warned on every overlap was dropped the same day as noise.
+  Not caught: a conflict with something outside the catalog (a firmware or launcher addon), and an addin that replaces `dlsym` itself, which changes
+  how every other addin finds the next function (commander, fixed 2026-10-13).
+
 ### Site
 Generated static HTML (`tools/catalog_site.py`, no JS framework): searchable/filterable grid, a page per plugin
 (screenshot, description, version history, install steps, source link, checksum, tested-on), a "recently updated"

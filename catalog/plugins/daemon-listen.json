@@ -11,6 +11,7 @@
     "ai"
   ],
   "license": "GPL-3.0-or-later",
+  "depends": ["daemon"],
   "summary": "Companion to Daemon: insert it on the audio track that carries your mic, and Daemon's TALK button hears you. Passes audio through unchanged. Needs Daemon in the same project.",
   "asset_pattern": "Daemon-Listen-*-mpc-armv7.zip"
 }

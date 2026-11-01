@@ -60,6 +60,7 @@ func (j *Job) snapshot(since int) (state string, lines []string, next int, resul
 type Item struct {
 	Catalog *CatPlugin // to download first, or nil for a package the user dropped in
 	Pkg     *Package   // set for dropped zips; filled in after the download for catalog ones
+	Why     string     // set when the dependency check added it (resolveDeps)
 }
 
 func randHex(n int) string {
@@ -102,6 +103,9 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 				return err
 			}
 			dest := filepath.Join(workDir, c.ID+"-"+c.Version+".zip")
+			if it.Why != "" {
+				j.log("%s %s: %s", c.Name, c.Version, it.Why)
+			}
 			j.log("Downloading %s %s (%d KB)", c.Name, c.Version, c.Size/1024)
 			next := int64(0)
 			if err := Download(c, dest, func(done, total int64) {

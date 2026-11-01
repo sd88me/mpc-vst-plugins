@@ -169,11 +169,15 @@ def tsv(catalog, helpers):
     """catalog.tsv for shell clients (tools/mpc-store.sh, BusyBox sh has no JSON): a header, one '#file' line per helper file
     with its sha256, then one 'plugin' line per stable, non-yanked version of every downloadable (distribution 'release') plugin:
     plugin id version latest kind name skin uid param_compat size sha256 url user_data defer os_compat max_glibc size64 sha256_64 url64
+    requires shares_hooks depends conflicts
     (tab separated, '-' when
     empty; defer is 1 when the zip's installer understands -n, 0 when it restarts MPC by itself; os_compat is "2.x,3.x" or "3.x", the MPC OS
     generations the version works on, '-' when the catalog does not say; max_glibc is the newest glibc it needs; the last three are the
     Gen2 (aarch64) zip's size, sha256 and url, '-' when the version has none, and a Gen2 device picks them; a Gen2-only version has '-' in
-    the size, sha256 and url columns above). Clients that read fewer
+    the size, sha256 and url columns above; requires is the author's one line of extra requirements; shares_hooks lists, comma separated, the
+    addins whose newest versions replace some of the same MPC functions as this one where one of the two may not pass the calls on;
+    depends is ';'-joined id:rules:pick:pick64 ("percolator:>=2.0.0:2.1.0:-": rules comma-joined, '*' for any version, pick the version
+    to install when the device has none that fits, per arch, '-' when none; tools/deps.py), conflicts a comma list of ids). Clients that read fewer
     columns ignore the rest. An addin (kind 'addin') has no skin or uid ('-'): it installs to /data/mpc-addins/<id>."""
     out = ["#mpc-catalog-tsv 1"]
     for name, path in helpers:
@@ -191,7 +195,11 @@ def tsv(catalog, helpers):
                    m.get("uid") or "-", v.get("param_compat", 1), "-" if g2only else v["size"], "-" if g2only else v["sha256"],
                    "-" if g2only else v["url"], ",".join(m.get("user_data", [])) or "-",
                    "1" if v.get("defer") else "0", ",".join(v.get("os_compat") or []) or "-", v.get("max_glibc") or "-",
-                   a64.get("size", "-"), a64.get("sha256", "-"), a64.get("url", "-")]
+                   a64.get("size", "-"), a64.get("sha256", "-"), a64.get("url", "-"),
+                   v.get("requires") or m.get("requires") or "-", ",".join(o["id"] for o in p.get("shares_hooks", [])) or "-",
+                   ";".join("%s:%s:%s:%s" % (d["id"], ",".join(op + x for op, x in d["rules"]) or "*", (d.get("pick") or {}).get("armv7", "-"),
+                                             (d.get("pick") or {}).get("aarch64", "-")) for d in v.get("depends", [])) or "-",
+                   ",".join(v.get("conflicts", [])) or "-"]
             out.append("\t".join(_f(x) for x in row))
     return "\n".join(out) + "\n"
 

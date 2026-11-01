@@ -48,7 +48,23 @@ type CatPlugin struct {
 	Tested2x    bool            `json:"tested_2x"`     // the version has a tested.json entry on MPC OS 2.x firmware
 	Gen2        bool            `json:"gen2"`          // the version also has a Gen2 (aarch64) zip; SHA256/URL/Size above are the Gen1 (armv7) one
 	Aarch64     *Asset          `json:"aarch64,omitempty"`
-	Gen2Only    bool            `json:"gen2_only"` // the version has no Gen1 zip at all: SHA256/URL/Size above are the Gen2 (aarch64) one
+	Gen2Only    bool            `json:"gen2_only"`          // the version has no Gen1 zip at all: SHA256/URL/Size above are the Gen2 (aarch64) one
+	Requires    string          `json:"requires,omitempty"` // the author's one line of extra requirements (ROMs, a network connection), shown before install
+	// for an addin: the other addins whose newest versions replace some of the same MPC functions where one of the two may not pass
+	// the calls on (catalog_build.py hook_overlaps_of)
+	SharesHooks []SharedHooks `json:"shares_hooks,omitempty"`
+	Depends     []Dep         `json:"depends,omitempty"`   // the other plugins this version needs (deps.go)
+	Conflicts   []string      `json:"conflicts,omitempty"` // catalog ids it must not be installed with
+	versions    []CatPlugin   // every other listed stable version, newest first: dependency picks and installed versions' rules
+}
+
+// SharedHooks is another addin that defines some of the same functions, where Unchained (catalog ids) may not pass the calls on: in
+// LD_PRELOAD the first wins, so one of the two may stop working. The app warns when both would be on the device; it never blocks.
+type SharedHooks struct {
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	Symbols   []string `json:"symbols"`
+	Unchained []string `json:"unchained"`
 }
 
 // ForArch returns the plugin with the zip that fits a device whose `uname -m` is arch: the armv7 zip on Gen1 and Force, the aarch64
@@ -70,14 +86,15 @@ func (c CatPlugin) ForArch(arch string) (CatPlugin, error) {
 type rawCatalog struct {
 	Schema  int `json:"schema"`
 	Plugins []struct {
-		ID           string `json:"id"`
-		Name         string `json:"name"`
-		Author       string `json:"author"`
-		Kind         string `json:"kind"`
-		Role         string `json:"role"`
-		Summary      string `json:"summary"`
-		Distribution string `json:"distribution"`
-		Latest       string `json:"latest"`
+		ID           string        `json:"id"`
+		Name         string        `json:"name"`
+		Author       string        `json:"author"`
+		Kind         string        `json:"kind"`
+		Role         string        `json:"role"`
+		Summary      string        `json:"summary"`
+		Distribution string        `json:"distribution"`
+		Latest       string        `json:"latest"`
+		SharesHooks  []SharedHooks `json:"shares_hooks"`
 		Versions     []struct {
 			Version     string           `json:"version"`
 			Size        int64            `json:"size"`
@@ -92,7 +109,11 @@ type rawCatalog struct {
 			Assets      map[string]Asset `json:"assets"`
 			Gen2Only    bool             `json:"gen2_only"`
 			ParamCompat int              `json:"param_compat"`
+			Requires    string           `json:"requires"`
+			Depends     []Dep            `json:"depends"`
+			Conflicts   []string         `json:"conflicts"`
 			Manifest    struct {
+				Requires  string          `json:"requires"` // catalogs built before the version-level field
 				Skin      string          `json:"skin"`
 				UID       string          `json:"uid"`
 				UserData  []string        `json:"user_data"`
@@ -118,8 +139,10 @@ func parseCatalog(data []byte) ([]CatPlugin, error) {
 		if p.Distribution != "release" || !idRe.MatchString(p.ID) {
 			continue
 		}
+		var vs []CatPlugin
+		latest := -1
 		for _, v := range p.Versions {
-			if v.Yanked || v.Channel != "stable" || v.Version != p.Latest || !isHTTPS(v.URL) || len(v.SHA256) != 64 {
+			if v.Yanked || v.Channel != "stable" || !isHTTPS(v.URL) || len(v.SHA256) != 64 {
 				continue
 			}
 			var a64 *Asset
@@ -130,11 +153,29 @@ func parseCatalog(data []byte) ([]CatPlugin, error) {
 			for _, t := range v.Tested {
 				tested2x = tested2x || strings.HasPrefix(t.Firmware, "2.")
 			}
-			out = append(out, CatPlugin{ID: p.ID, Name: p.Name, Author: p.Author, Kind: p.Kind, Role: p.Role, Summary: p.Summary, Version: v.Version,
+			req := v.Requires
+			if req == "" {
+				req = strings.TrimSpace(v.Manifest.Requires)
+			}
+			if v.Version == p.Latest {
+				latest = len(vs)
+			}
+			vs = append(vs, CatPlugin{ID: p.ID, Name: p.Name, Author: p.Author, Kind: p.Kind, Role: p.Role, Summary: p.Summary, Version: v.Version,
 				Size: v.Size, SHA256: v.SHA256, URL: v.URL, Skin: v.Manifest.Skin, ParamCompat: v.ParamCompat, UID: v.Manifest.UID, UserData: v.Manifest.UserData, UserFiles: v.Manifest.UserFiles, Defer: v.Defer,
-				OSCompat: v.OSCompat, OSWhy: v.OSWhy, MaxGlibc: v.MaxGlibc, Tested2x: tested2x, Gen2: a64 != nil, Aarch64: a64, Gen2Only: v.Gen2Only && a64 != nil})
-			break
+				OSCompat: v.OSCompat, OSWhy: v.OSWhy, MaxGlibc: v.MaxGlibc, Tested2x: tested2x, Gen2: a64 != nil, Aarch64: a64, Gen2Only: v.Gen2Only && a64 != nil,
+				Requires: req, SharesHooks: p.SharesHooks, Depends: v.Depends, Conflicts: v.Conflicts})
 		}
+		if latest < 0 {
+			continue
+		}
+		c := vs[latest]
+		for i, o := range vs {
+			if i != latest {
+				c.versions = append(c.versions, o)
+			}
+		}
+		sort.Slice(c.versions, func(i, j int) bool { return vcmp(c.versions[i].Version, c.versions[j].Version) > 0 })
+		out = append(out, c)
 	}
 	sort.Slice(out, func(i, j int) bool { return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name) })
 	return out, nil

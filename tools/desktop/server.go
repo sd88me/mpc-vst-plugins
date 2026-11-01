@@ -334,6 +334,7 @@ type selection struct {
 	Root     string   `json:"root"`     // the Synths folder to install into ("" = the internal drive)
 	Register bool     `json:"register"` // InstallOpts.Register
 	Confirm  bool     `json:"confirm"`
+	Force    bool     `json:"force"` // install even what the dependency check refuses (Resolution.Refused)
 }
 
 // mkroot creates a Synths folder on a drive under /media that has none (Device.MakeRoot), so plugins can be installed there.
@@ -365,9 +366,38 @@ func (a *App) mkroot(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, map[string]any{"device": a.dev.Info, "problems": a.dev.Info.problems()})
 }
 
-// resolve turns a selection into install items. Caller holds a.mu.
-func (a *App) resolve(s selection) ([]Item, error) {
+// installedVersions says which catalog plugins the device has: id -> version, "?" when the folder is there but no version was
+// recorded. Caller holds a.mu.
+func (a *App) installedVersions() map[string]string {
+	out := map[string]string{}
+	if a.dev == nil {
+		return out
+	}
+	for _, dp := range a.dev.Info.Plugins {
+		for _, c := range a.cat {
+			if c.Kind != "addin" && c.Skin == dp.Folder {
+				if v := a.dev.Info.Stores[dp.Root][c.ID]; v != "" {
+					out[c.ID] = v
+				} else if out[c.ID] == "" {
+					out[c.ID] = "?"
+				}
+			}
+		}
+	}
+	for _, da := range a.dev.Info.Addins {
+		if da.Version != "" {
+			out[da.ID] = da.Version
+		} else {
+			out[da.ID] = "?"
+		}
+	}
+	return out
+}
+
+// resolve turns a selection into install items, adding the catalog plugins they need (resolveDeps). Caller holds a.mu.
+func (a *App) resolve(s selection) ([]Item, Resolution, error) {
 	var items []Item
+	var want []CatPlugin
 	seen := map[string]bool{}
 	for _, id := range s.Catalog {
 		if seen["c"+id] {
@@ -382,9 +412,10 @@ func (a *App) resolve(s selection) ([]Item, error) {
 			}
 		}
 		if found == nil {
-			return nil, fmt.Errorf("%q is not in the catalog", id)
+			return nil, Resolution{}, fmt.Errorf("%q is not in the catalog", id)
 		}
 		items = append(items, Item{Catalog: found})
+		want = append(want, *found)
 	}
 	for _, h := range s.Uploads {
 		if seen["u"+h] {
@@ -393,14 +424,23 @@ func (a *App) resolve(s selection) ([]Item, error) {
 		seen["u"+h] = true
 		p, ok := a.uploads[h]
 		if !ok {
-			return nil, errors.New("a zip you added is no longer there: add it again")
+			return nil, Resolution{}, errors.New("a zip you added is no longer there: add it again")
 		}
 		items = append(items, Item{Pkg: p})
 	}
 	if len(items) == 0 {
-		return nil, errors.New("nothing selected")
+		return nil, Resolution{}, errors.New("nothing selected")
 	}
-	return items, nil
+	arch := ""
+	if a.dev != nil {
+		arch = a.dev.Info.Arch
+	}
+	res := resolveDeps(a.cat, a.installedVersions(), want, arch)
+	for _, c := range res.Items[len(want):] {
+		c := c
+		items = append(items, Item{Catalog: &c, Why: res.Added[c.ID]})
+	}
+	return items, res, nil
 }
 
 func (a *App) plan(w http.ResponseWriter, r *http.Request) {
@@ -414,7 +454,7 @@ func (a *App) plan(w http.ResponseWriter, r *http.Request) {
 	}
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	items, err := a.resolve(s)
+	items, res, err := a.resolve(s)
 	if err != nil {
 		fail(w, 400, err.Error())
 		return
@@ -424,13 +464,14 @@ func (a *App) plan(w http.ResponseWriter, r *http.Request) {
 		Version string `json:"version"`
 		Source  string `json:"source"`
 		MB      int64  `json:"mb"`
+		Why     string `json:"why,omitempty"` // set when the dependency check added it
 	}
 	var lines []line
 	restarts := 0
 	anyDefer, fromCatalog := false, false
 	for _, it := range items {
 		if it.Catalog != nil {
-			lines = append(lines, line{it.Catalog.Name, it.Catalog.Version, "catalog", it.Catalog.Size >> 20})
+			lines = append(lines, line{it.Catalog.Name, it.Catalog.Version, "catalog", it.Catalog.Size >> 20, it.Why})
 			switch {
 			case it.Catalog.Defer == nil:
 				anyDefer, fromCatalog = true, true // an older catalog does not say: only known once the zip is downloaded
@@ -440,7 +481,7 @@ func (a *App) plan(w http.ResponseWriter, r *http.Request) {
 				restarts++ // its installer restarts MPC by itself
 			}
 		} else {
-			lines = append(lines, line{it.Pkg.Title, it.Pkg.Version, "your zip", it.Pkg.Size >> 20})
+			lines = append(lines, line{it.Pkg.Title, it.Pkg.Version, "your zip", it.Pkg.Size >> 20, ""})
 			if it.Pkg.Defer {
 				anyDefer = true
 			} else {
@@ -451,7 +492,8 @@ func (a *App) plan(w http.ResponseWriter, r *http.Request) {
 	if anyDefer {
 		restarts++
 	}
-	writeJSON(w, 200, map[string]any{"items": lines, "restarts": restarts, "maybeMore": fromCatalog})
+	writeJSON(w, 200, map[string]any{"items": lines, "restarts": restarts, "maybeMore": fromCatalog,
+		"refused": nonNil(res.Refused), "notes": nonNil(res.Notes)})
 }
 
 func (a *App) install(w http.ResponseWriter, r *http.Request) {
@@ -479,9 +521,13 @@ func (a *App) install(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	items, err := a.resolve(s)
+	items, res, err := a.resolve(s)
 	if err != nil {
 		fail(w, 400, err.Error())
+		return
+	}
+	if len(res.Refused) > 0 && !s.Force {
+		fail(w, 409, strings.Join(res.Refused, "; ")+". Nothing was changed (install anyway to do it regardless)")
 		return
 	}
 	root := a.dev.Info.primaryRoot()
@@ -609,6 +655,7 @@ func (a *App) remove(w http.ResponseWriter, r *http.Request) {
 			Folder string `json:"folder"`
 		} `json:"items"`
 		Confirm bool `json:"confirm"`
+		Force   bool `json:"force"` // remove even what an installed plugin still needs
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&in); err != nil {
 		fail(w, 400, "bad request")
@@ -660,6 +707,16 @@ func (a *App) remove(w http.ResponseWriter, r *http.Request) {
 	}
 	if len(plans) == 0 {
 		fail(w, 400, "nothing selected")
+		return
+	}
+	removing := map[string]bool{}
+	for _, p := range plans {
+		if p.ID != "" {
+			removing[p.ID] = true
+		}
+	}
+	if refused := removalRefusals(a.cat, a.installedVersions(), removing); len(refused) > 0 && !in.Force {
+		fail(w, 409, strings.Join(refused, "; ")+". Nothing was changed (remove anyway to do it regardless)")
 		return
 	}
 	j := &Job{ID: randHex(4), State: "running"}
@@ -938,4 +995,12 @@ func (a *App) patchRun(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 	writeJSON(w, 200, map[string]string{"job": j.ID})
+}
+
+// nonNil makes an empty list encode as [] rather than null.
+func nonNil(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
 }

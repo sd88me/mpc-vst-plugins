@@ -73,8 +73,8 @@ with sync_playwright() as p:
         cards = pg.locator("#grid article.card")
         wrong = [i for i in range(cards.count()) if row not in (cards.nth(i).locator("dl.meta").text_content() or "")]
         check("filter %s shows only cards whose MPC OS row matches" % val, cards.count() >= 1 and not wrong, "%d cards, wrong %s" % (cards.count(), wrong))
-    pg.select_option("#f-os", index=0)
-    pg.select_option("#f-tier", index=0)
+    pg.select_option("#f-os", "")
+    pg.select_option("#f-tier", "")
     os_tags = pg.locator("#grid .tag").filter(has_text="MPC OS")
     check("no 3.x badge; the only MPC OS badge is '2.x tested'", os_tags.count() >= 1 and set(os_tags.all_text_contents()) == {"MPC OS 2.x tested"},
           str(os_tags.all_text_contents()))
@@ -92,7 +92,7 @@ with sync_playwright() as p:
             if cards.count():
                 check("a Gen2 card has both download buttons",
                       cards.first.locator("a.btn-l:has-text('Gen1')").count() == 1 and cards.first.locator("a.btn-l:has-text('Gen2')").count() == 1)
-    pg.select_option("#f-gen", index=0)
+    pg.select_option("#f-gen", "")
     # Trust tiers: experimental is hidden by default, shown by the Tier filter or "Show them"; Recommended puts featured, then Verified, first.
     pg.goto(URL); pg.reload()
     pg.select_option("#f-tier", "all")
@@ -110,7 +110,7 @@ with sync_playwright() as p:
     pg.select_option("#sort", "added")
     got = [t.upper() for t in pg.locator("#grid article.card h2").all_inner_texts()]
     check("Newest in catalog sorts by date added, newest first", got == want, "%s vs %s" % (got, want))
-    pg.select_option("#sort", index=0)
+    pg.select_option("#sort", "recommended")
     # Verified is split by device generation: one badge per generation, and a Tier filter option for each
     both = pg.locator("#grid article:has(h2:has-text('Tested Two')) .tag.tier-verified").all_text_contents()
     check("a plugin tested on both generations has two Verified badges", both == ["Verified Gen1", "Verified Gen2"], str(both))
@@ -119,12 +119,12 @@ with sync_playwright() as p:
         cards = pg.locator("#grid article.card")
         wrong = [i for i in range(cards.count()) if cards.nth(i).locator(".tag.tier-verified[data-gen=%s]" % gen).count() != 1]
         check("Tier filter %s shows only cards with that badge" % val, cards.count() >= 1 and not wrong, "%d cards, wrong %s" % (cards.count(), wrong))
-    pg.select_option("#f-tier", index=0)
+    pg.select_option("#f-tier", "")
     check("experimental plugins are hidden by default", pg.locator(".tag.tier-experimental").count() == 0)
     check("the hidden-experimental note offers them", pg.locator("#exp").is_visible())
     pg.click("#show-exp")
     check("Show them reveals experimental plugins", pg.locator(".tag.tier-experimental").count() >= 1)
-    pg.select_option("#f-tier", index=0)
+    pg.select_option("#f-tier", "")
     check("only a plugin missing something shows 'To improve'", pg.locator("#grid details.how:has-text('To improve')").count() == 1)
     # Screenshot popup: the image opens the whole card over a dark backdrop, with its own link (#...&p=<id>)
     pg.goto(URL); pg.reload()
@@ -185,6 +185,12 @@ with sync_playwright() as p:
     pg.goto("file://" + os.path.join(site, "p", "test-synth.html"))
     pg.wait_for_url(re.compile(r"index\.html#p=test-synth$"))
     check("the share page opens the popup", pg.locator("#modal").is_visible() and pg.locator("#modal h2").text_content() == "Test Synth")
+    pg.goto(URL + "#p=tested-two"); pg.reload()
+    dd = pg.locator("#modal dl.meta").text_content()
+    check("the popup lists what the version depends on and conflicts with", "Depends onTest Synth \u22651.1.0 (added for you by the installers)" in dd and "ConflictsThree Only" in dd, dd)
+    pg.locator("#modal dd a[href='#p=test-synth']").click()
+    pg.wait_for_function("document.querySelector('#modal h2').textContent === 'Test Synth'")
+    check("a dependency links to its own popup", "p=test-synth" in pg.evaluate("location.hash"))
     check("no script errors", not errors, str(errors))
     m = b.new_page(viewport={"width": 390, "height": 800}, device_scale_factor=2)
     m.goto(URL + "#sel=" + ids[0]); m.reload()

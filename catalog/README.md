@@ -5,7 +5,14 @@ Design: `docs/CATALOG.md`. Formats: `docs/CATALOG_SPEC.md`.
 
 ## Add your plugin
 1. Make a release zip with `tools/release.py` (or the `vst-release.yml` workflow) with `--repo owner/name --license <SPDX>`,
-   and check it: `tools/catalog_check.py <zip> --catalog`. Publish it as a GitHub release on your repo.
+   and check it: `tools/catalog_check.py <zip> --catalog`. Publish it as a GitHub release on your repo. If it needs something
+   else (your own ROMs, a network connection, another plugin in the same project), say so in one line with `--requires`: the
+   site shows it as "Needs" and the installers print it before installing. If it needs another catalog plugin (an Out that plays
+   its host plugin's outputs), declare it with `--depends percolator>=2.0.0` (or `--depends tr-mpc=same` for the same version; repeat
+   the flag for more), and a plugin it must not be installed with with `--conflicts <id>` (workflow inputs `depends`, `conflicts`,
+   space separated). The installers then add the dependency for the user and refuse the conflict; the catalog hides a version whose
+   dependency it can't offer. An entry can also carry `"depends": [...]` / `"conflicts": [...]` itself, used when the zip has none
+   (docs/CATALOG_SPEC.md, "Dependencies").
 2. Open a PR adding `catalog/plugins/<id>.json` (the `<id>` in your manifest; a file directly in `catalog/` is never read, and
    `--check-registry` fails on it):
    ```json
@@ -34,7 +41,8 @@ skin and screenshot are clean, re-add the entry with a new PR (the same one-file
 
 ## Addins
 An addin (a library MPC loads when it starts, through `LD_PRELOAD`) is listed the same way, with `"kind": "addin"` in its
-entry. Package it with `tools/release_addin.py` instead of `release.py`: see `docs/ADDINS.md`.
+entry. Package it with `tools/release_addin.py` instead of `release.py`: see `docs/ADDINS.md`. If your library replaces a function
+another addin also replaces and either of you doesn't pass the call on (no `dlsym`/`dlvsym` lookup), both cards say so: docs/ADDINS.md.
 
 ## Companion apps
 A desktop tool that works with a standalone MPC but is not a plugin (for example MPC Link) is listed on the site's **Companion apps**

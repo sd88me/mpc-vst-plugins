@@ -256,6 +256,30 @@ function barLine(p) {
   if (!m.length) return "";
   return '<details class="how"><summary>To improve this listing (' + m.length + ')</summary><ul>' + m.map(function (k) { return '<li>' + esc(CAT.bar[k]) + '</li>'; }).join("") + '</ul></details>';
 }
+/* The author's one line of extra requirements (release.py --requires: ROMs, a network connection, root SSH), from the shown version. */
+function needsRow(v) { return v && v.requires ? '<dt>Needs</dt><dd>' + esc(v.requires) + '</dd>' : ""; }
+/* Other catalog plugins this version needs or must not be installed with (catalog_build.py: depends, rules resolved, and conflicts).
+   The installers add what is missing and refuse a conflict unless forced. */
+function depsRow(v) {
+  if (!v) return "";
+  var nm = function (id) { var o = P.filter(function (x) { return x.id === id; })[0]; return '<a href="#p=' + encodeURIComponent(id) + '">' + esc(o ? o.name : id) + '</a>'; };
+  var rule = function (r) { return { ">=": "\u2265", "<=": "\u2264", ">": ">", "<": "<", "=": "" }[r[0]] + r[1]; };
+  var d = (v.depends || []).map(function (x) { return nm(x.id) + (x.rules && x.rules.length ? " " + esc(x.rules.map(rule).join(", ")) : ""); });
+  var c = (v.conflicts || []).map(nm);
+  return (d.length ? '<dt>Depends on</dt><dd>' + d.join("; ") + ' (added for you by the installers)</dd>' : "") +
+    (c.length ? '<dt>Conflicts</dt><dd>' + c.join(", ") + ' (not installed together)</dd>' : "");
+}
+/* Addins that define the same functions as this one while one of the two shows no sign of passing calls on (catalog_build.py
+   hook_overlaps_of): in LD_PRELOAD the first one wins, so the other may never see those calls. A heuristic to check, not a verdict. */
+function hooksLine(p) {
+  var h = p.kind === "addin" ? p.shares_hooks || [] : [];
+  if (!h.length) return "";
+  var nm = function (id) { return id === p.id ? p.name : (h.filter(function (o) { return o.id === id; })[0] || { name: id }).name; };
+  return '<details class="how"><summary>May not work with ' + h.map(function (o) { return esc(o.name); }).join(", ") + '</summary><ul>' +
+    h.map(function (o) { return '<li><strong>' + esc(o.name) + '</strong>: both replace ' + o.symbols.map(function (x) { return '<code>' + esc(x) + '</code>'; }).join(", ") +
+      '; ' + esc((o.unchained || []).map(nm).join(" and ")) + ' may not pass ' + (o.symbols.length > 1 ? "them" : "it") + ' on.</li>'; }).join("") +
+    '</ul><p class="also">In MPC the first addin to replace a function gets the call; the other sees it only if the first hands it on. Installed together, one of them may stop working: install one at a time if it does.</p></details>';
+}
 function card(p, big) {
   var by = isBY(p), v = shown(p), tags = [];
   if (by) tags.push('<span class="tag build" title="No download: you build it from your own files">Build it yourself</span>');
@@ -279,7 +303,7 @@ function card(p, big) {
   var head = '<article class="card' + (by ? " by" : "") + (big ? " big" : "") + '" data-tier="' + tierOf(p) + '">' + shot + '<header><div><h2' + (big ? ' id="modal-title">' + esc(p.name)
     : '><a class="open" href="p/' + encodeURIComponent(p.id) + '.html" data-open="' + esc(p.id) + '">' + esc(p.name) + '</a>') + '</h2><div class="by">by ' + esc(p.author) + '</div></div>' +
     (v ? '<span class="ver" title="Latest ' + (by ? "tag" : esc(v.channel) + " release") + '">v' + esc(v.version) + (v.channel === "beta" ? " beta" : "") + '</span>' : '<span class="ver">' + (by ? "no tag" : "no release") + '</span>') + '</header>' +
-    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>' + barLine(p);
+    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>' + hooksLine(p) + barLine(p);
   if (by) {
     var b = p.build, docs = safeUrl(b.docs_url.replace("{tag}", v ? v.tag : "HEAD"));
     var names = p.requires_user_files.map(function (f) { return esc(f.name); }).join("; ");
@@ -299,7 +323,7 @@ function card(p, big) {
       '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a></div>' + hist + '</article>';
   }
   return head +
-    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + (p.kind !== "addin" ? osRow(v) + genRow(v) : "") +
+    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + needsRow(v) + depsRow(v) + (p.kind !== "addin" ? osRow(v) + genRow(v) : "") +
     (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
     '<div class="actions">' + (v && !v.gen2_only ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
     (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="Gen2 MPC devices (aarch64, MPC OS 3.x)">Download (Gen2)</a>' : '') +

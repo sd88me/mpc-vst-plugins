@@ -206,7 +206,7 @@ for the pattern). This applies to every future port, not just ones that hit the 
 Every port is meant to be listed in the plugin catalog (`docs/CATALOG.md`, `catalog/README.md`). Nothing to type per release
 if you do this once:
 - [ ] Repo is public with an SPDX `LICENSE` file (MAME-style or other non-open licences need `source_available`, see `catalog/README.md`). No closed binaries or copyrighted ROMs in the repo or zip.
-- [ ] Release only through `tools/release.py` / the reusable `vst-release.yml` workflow **with** `--repo owner/name --license <SPDX> [--id kebab-id] [--requires "..."]` (workflow inputs `plugin_id`, `license`, `requires`). That writes `mpc-plugin.json`; a zip without it is not listable.
+- [ ] Release only through `tools/release.py` / the reusable `vst-release.yml` workflow **with** `--repo owner/name --license <SPDX> [--id kebab-id] [--requires "..."] [--depends <id>[>=X.Y.Z] ...] [--conflicts <id> ...]` (workflow inputs `plugin_id`, `license`, `requires`, `depends`, `conflicts`; docs/CATALOG_SPEC.md "Dependencies"). That writes `mpc-plugin.json`; a zip without it is not listable.
 - [ ] Gate: `tools/catalog_check.py dist/<zip> --catalog --expect-id <id> --expect-repo owner/name` must print OK.
 - [ ] Optional `tested.json` at the repo root (`[{version, device, firmware, date}]`) after each device test: shown as "Tested on".
 - [ ] One PR adding `catalog/plugins/<id>.json` to mpc-vst-plugins (first release only). Never put versions or checksums in it.

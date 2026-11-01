@@ -57,6 +57,7 @@ anywhere, engines must find their data next to it (`wrapper/plugin_dir.h`, `MODU
 | `max_glibc` | highest `GLIBC_x.y` symbol version needed. Up to 2.32 (MPC OS 2.x) it can be 2.x-compatible; above that and up to 2.36 it is listed as MPC OS 3.x only (a warning); above 2.36 is an error (MPC OS 3.x has 2.39, the catalog toolchain 2.36) |
 | `os_compat` | `["2.x", "3.x"]` or `["3.x"]`: the MPC OS generations the plugin works on. `release.py` computes it (`tools/skin_compat.py`); a developer may narrow `["2.x", "3.x"]` to `["3.x"]` by hand, never widen it |
 | `about`, `requires` | one-line description; extra requirements |
+| `depends`, `conflicts` | optional: the other catalog plugins this version needs, and the ones it must not be installed with ("Dependencies" below). Written only when the release passes `--depends` / `--conflicts` |
 | `source_repo`, `license` | `owner/name` on GitHub; SPDX id. **Required for the catalog** |
 | `cpu` | `{p99_pct, max_pct, verdict}` from `tools/bench.sh -j`, or null |
 
@@ -67,7 +68,9 @@ a plugin folder (`portable/<skin>/`) that is missing `version.xml`, `Plugin Skin
 an extra; a `plugin-meta.xml` whose `file=` is not `%payload-path%/<skin>/<so>` or whose `uid`/`name` disagree with the manifest;
 an `os_compat` that is not `["2.x","3.x"]` or `["3.x"]`, or that claims 2.x when the check below does not confirm it;
 an unknown `layout`; with `--catalog`, no `source_repo` or `license`; with `--expect-id/--expect-repo`, a registry mismatch.
-Zips of the old layout (no `layout` field) are checked against their own rules (`payload/`, `plugin.xml`). `catalog_check.py` warns for each one ("old layout"); with `--require-portable` it is an error. The builder reports a problem (and `catalog_issues.py` opens an issue) when a plugin's **newest stable** release is of the old layout; older versions stay silent history. A PR that adds or changes a registry entry runs `catalog_build.py --require-portable <ids>`, so a new listing must already release the portable folder.
+Zips of the old layout (no `layout` field) are checked against their own rules (`payload/`, `plugin.xml`). `catalog_check.py` warns for each one ("old layout"); with `--require-portable` it is an error. The builder reports a problem (and `catalog_issues.py` opens an issue) when a plugin's **newest stable** release is of the old layout; older versions stay silent history. A PR that adds or changes a registry entry runs `catalog_build.py --require-portable <ids>`, so a new listing must already release the portable folder. The plugins those entries depend on are built
+too, so the dependency check sees them, but only the named entries are judged (2026-10-31: before this, every dependent's PR failed with its
+host "not in the catalog").
 
 **MPC OS compatibility (`tools/skin_compat.py`, docs/OS2_SKINS.md).** The checker works out `os_compat` itself, for every version, so releases
 made before the field existed are classified too. A version is `2.x` and `3.x` when the `.so` needs glibc 2.32 or less and every
@@ -90,6 +93,8 @@ Warnings (need a human look): `install.sh`/`uninstall.sh`/`plugin_list.awk` diff
 when `license` is not on the open-source list; the site shows a "Restricted use" badge.
 No version fields: they are read from the releases (or, for `build-yourself`, the git tags). `id` must equal the manifest `id`, `repo` the manifest
 `source_repo`. Stable releases are GitHub releases that are not prereleases; prereleases form the beta channel.
+`depends` and `conflicts` (optional, release entries only) are the fallback for releases whose manifest has no such key: a maintainer can
+declare a dependency the author's zips don't, without a new release ("Dependencies" below).
 
 ### Build-yourself entries
 For a plugin that cannot publish a zip because the build embeds the user's own firmware. Schema 1 is unchanged: the
@@ -128,7 +133,7 @@ no valid tag, script missing at the newest tag, and (loudly, `LICENCE RISK`) a G
 `{"schema": 1, "generated": <ISO time>, "plugins": [ <registry fields> + "versions": [ <record>, ... ], "latest",
 "latest_beta", "downloads", "updated", "tier", "verified_on", "bar_missing", "featured" ]}`, versions
 newest first. A record is what `catalog_check.py --json` prints (`version`, `size`, `sha256` of the zip,
-`param_compat`, `max_glibc`, `os_compat`, `os_compat_why`, `cpu`, `defer`, `manifest`) plus `url`, `date`, `channel` (`stable`|`beta`), `notes`, `yanked`
+`param_compat`, `max_glibc`, `os_compat`, `os_compat_why`, `cpu`, `defer`, `requires`, `manifest`, and for an addin `hooks`) plus `url`, `date`, `channel` (`stable`|`beta`), `notes`, `yanked`
 and `tested` (`[{device, firmware, date}]`), added by the builder. `tier` is `verified`|`listed`|`experimental`; `verified_on`
 (`[]`, or `gen1` and/or `gen2`) says which device generations the newest stable release was tested on: a `tested` device naming Gen2 is
 `gen2` (only on a version with an aarch64 build), any other is `gen1`. Readers must treat a missing `verified_on` on a verified plugin as `["gen1"]`.
@@ -138,6 +143,44 @@ aarch64 zip (a reader that knows no `gen2_only` still parses it); in `catalog.ts
 `gen2_only` version. The zip's manifest `arch` must be `aarch64`.
 `defer` is true when the zip's `install.sh` understands `-n` (the caller stops and starts MPC), false for an older installer that restarts MPC by
 itself; batch installers (the desktop app, `mpc-store.sh`) run such a zip separately and use the flag to say how often MPC will restart.
+`requires` (2026-10-26) is the manifest's one line of extra requirements, trimmed (`""` when none): ROMs, a network connection, another
+plugin in the same project. The site shows it as a "Needs" row and both installers print it before installing. Older catalogs have it only
+in `manifest.requires`; readers fall back to that.
+**Addins that may break each other (2026-10-26):** an addin's record has `hooks`, the functions its `so` defines (global or weak functions
+in its dynamic symbol table, less `_init`/`_fini` and a bundled C/C++ runtime's names, `catalog_check.RUNTIME_PREFIXES`; data and its helper programs
+don't count; 2026-10-31), and `chains`, true when that library looks like it passes a hooked call on (it imports `dlsym` or `dlvsym`, and doesn't
+both import `dlopen` and contain `libasound.so`; a record without it counts as true). A version with a Gen2 zip has both builds' hooks, and chains
+only when both builds do (2026-10-31).
+Each addin plugin gets `shares_hooks: [{id, name, symbols, unchained}]`: the other addins whose newest version (stable, else beta) defines some of the
+same names, listed only when at least one of the two doesn't chain (`unchained`, their ids). The builder writes the same pairs to `overlaps.json`
+(`[{ids: [a, b], versions: [va, vb], symbols, unchained}]`). In `LD_PRELOAD` the first definition wins, so such a pair may stop one of them
+working. It is information, never a rejection: the site shows it on the card, `mpc-store.sh` and the desktop app warn when the other addin is
+installed or chosen too, and `catalog_issues.py` opens one issue per pair and set of functions.
+
+### Dependencies (2026-10-26)
+A version may need another catalog plugin (an Out or Tap that only works with its host plugin), or be unable to live beside one.
+
+- **Syntax** (`tools/deps.py`, the one parser): a dependency is a catalog id with optional rules, joined by commas, all of which must hold:
+  `tr-mpc`, `incipience>=1.0.0`, `percolator>=2.0.0,<3.0.0`, `tr-mpc=1.2.0`, or `machinemodule-gen2=same` (the declaring version's own version;
+  `same` stands alone after `=`). Operators: `>=`, `<=`, `>`, `<`, `=`. A conflict is a bare catalog id; either side declaring it counts.
+  An id is listed once, never as both a dependency and a conflict, and never the plugin's own.
+- **Where they come from:** the manifest's `depends` / `conflicts` (`release.py` / `release_addin.py --depends ... --conflicts ...`) when the key is
+  there, else the registry entry's. `catalog_check.py` and `catalog_build.py --check-registry` reject bad specs.
+- **In `catalog.json`:** each version record has `depends: [{id, rules: [[op, X.Y.Z], ...], pick: {armv7, aarch64}}]` (`same` resolved) and
+  `conflicts: [ids]`. `pick` is the newest listed version of the dependency that meets the rules and has a build for that device generation
+  (`null` when none).
+- **Hiding:** a version is listed for a device generation only when every dependency has a listed, unyanked version that meets the rules and has
+  that generation's build; a stable version needs a stable one. The builder repeats this until nothing changes (hiding one version can hide
+  what depends on it). A version that loses its Gen2 build loses `assets.aarch64` and `gen2`; one that loses its Gen1 build becomes `gen2_only`;
+  one that loses both is dropped. Each hidden build is a problem the builder reports (`catalog_issues.py` opens an issue).
+- **Installers** (`mpc-store.sh`, the desktop app, the same rules): a batch's plugins with no build for the device are skipped first
+  (`mpc-store.sh`; the app doesn't offer them), then it gains each missing dependency at its `pick`, or the update of an
+  installed one that is too old, with the reason shown. They refuse, with nothing changed, unless forced (`mpc-store.sh --force`, the app's
+  "Install anyway" / "Remove anyway"): a dependency with no build for the device, one that would have to go back to an older version, a batch
+  that doesn't fit what it needs, an install that breaks an installed plugin's dependency (when a newer version of that plugin fits, it is
+  updated instead), a dependency update or such an update that is a major change (`param_compat`; `mpc-store.sh --major` allows it, as for
+  `update`; 2026-10-31), a conflict either way, and removing a plugin that an installed one needs. An installed plugin whose version wasn't
+  recorded is left as it is, but still counts as installed for conflicts and for what it needs (2026-10-31: both installers).
 
 Every plugin also has `distribution`. For `build-yourself` plugins the record carries the entry's `requires_user_files`,
 `build` and `components`, and each version is `{version, tag, date, channel: "stable", source_url, yanked, downloads: 0,
@@ -162,8 +205,10 @@ zip uses `layout: "addin"`:
   under a plugin entry, or the reverse.
 - **`catalog.tsv` columns** (tab separated, `-` when empty; clients read the ones they know and ignore extra ones): `plugin`, `id`, `version`, `latest`
   (1 for the newest stable), `kind`, `name`, `skin`, `uid`, `param_compat`, `size`, `sha256`, `url`, `user_data` (comma list), `defer` (1 when the
-  installer understands `-n`), `os_compat` (`2.x,3.x`, `3.x` or `-`), `max_glibc` (the newest glibc the library needs, or `-`). `mpc-store.sh` and the
-  desktop app use the last two to warn about a plugin that will not load on the device (it needs a newer glibc than the device has) or is 3.x only on
+  installer understands `-n`), `os_compat` (`2.x,3.x`, `3.x` or `-`), `max_glibc` (the newest glibc the library needs, or `-`), `size64`, `sha256_64`,
+  `url64` (the Gen2 zip), `requires` (the version's `requires`), `shares_hooks` (comma list of the addin ids in `shares_hooks`, 2026-10-26), `depends` (`id:rules:pick:pick64`
+  joined by `;`, rules as `>=1.0.0,<2.0.0` or `*` for any version, a missing pick `-`) and `conflicts` (comma list of ids). `mpc-store.sh` and the
+  desktop app use `os_compat` and `max_glibc` to warn about a plugin that will not load on the device (it needs a newer glibc than the device has) or is 3.x only on
   a device that looks like MPC OS 2.x (glibc below 2.34); they warn and never block.
 - **`catalog.tsv`, addins:** `skin` and `uid` are `-`. `mpc-store.sh` installs an addin to `/data/mpc-addins/<id>` and reads the installed
   version from the folder's `addin.manifest` (`ADDIN_VERSION`), not from `.mpc-store`.

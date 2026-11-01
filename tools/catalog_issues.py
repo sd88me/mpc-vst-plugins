@@ -18,6 +18,8 @@ Risky-call flags (flags.json, also from catalog_build.py: the newest stable vers
 and set of call categories, "Catalog: <id> flagged for review (network, runs programs)". Closing it is the review: it is never
 reopened, and a later version with the same categories opens nothing; new categories open a new issue. Open issues in the old
 per-version form ("Catalog: <id> <version> flagged for review") are closed.
+Addins that hook the same calls (overlaps.json: two addins' newest versions define the same function and one of them shows no sign of
+passing calls on) get one issue per pair and set of functions, "Catalog: <a> and <b> hook the same calls (snd_pcm_writei, ...)"; closing it is the review, as for flags.
 Needs the `gh` CLI (GITHUB_TOKEN with issues: write in Actions). Standard library only.
 """
 import argparse
@@ -109,10 +111,34 @@ def plan_flags(flagged, issues):
     return list(out.items())
 
 
+def overlap_title(o):
+    syms = o["symbols"] if len(", ".join(o["symbols"])) <= 120 else o["symbols"][:4] + ["%d more" % (len(o["symbols"]) - 4)]
+    return "Catalog: %s and %s hook the same calls (%s)" % (o["ids"][0], o["ids"][1], ", ".join(syms))
+
+
+def plan_overlaps(overlaps, issues):
+    """overlaps: overlaps.json; issues as in plan(). -> to_open [(title, body)] for pairs and call sets with no issue in any state."""
+    known = {i["title"] for i in issues}
+    out = {}
+    for o in overlaps:
+        t = overlap_title(o)
+        if t in known or t in out:
+            continue
+        out[t] = ("The newest releases of the addins `%s` (%s) and `%s` (%s) both define these functions, so both replace them in MPC:\n\n%s\n\n"
+                  "In `LD_PRELOAD` the first library that defines a name wins, and the other sees the call only if the first passes it on. "
+                  "%s shows no sign of doing that: its library imports neither `dlsym` nor `dlvsym`, or opens libasound itself "
+                  "(`catalog_check.passes_calls_on`, a heuristic from the imports). Check the source, or test the pair on a device, then "
+                  "close this issue. A closed issue is not reopened; a later version with the same calls opens nothing."
+                  % (o["ids"][0], o["versions"][0], o["ids"][1], o["versions"][1], "\n".join("- `%s`" % x for x in o["symbols"]),
+                     " and ".join("`%s`" % x for x in o.get("unchained", []))))
+    return list(out.items())
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--problems", default="catalog/dist/problems.json")
     ap.add_argument("--flags", default="catalog/dist/flags.json")
+    ap.add_argument("--overlaps", default="catalog/dist/overlaps.json")
     ap.add_argument("--repo", help="owner/name (default: the current repo)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
@@ -137,6 +163,11 @@ def main():
             to_close += close_old_flags(listing)
         except (OSError, json.JSONDecodeError) as e:
             print(f"No flags read from {a.flags}: {e}", file=sys.stderr)
+        try:
+            with open(a.overlaps) as f:
+                to_open += plan_overlaps(json.load(f), listing)
+        except (OSError, json.JSONDecodeError) as e:
+            print(f"No overlaps read from {a.overlaps}: {e}", file=sys.stderr)
         for t, body in to_open:
             print("open:", t)
             if not a.dry_run:

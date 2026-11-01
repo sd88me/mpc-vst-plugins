@@ -106,3 +106,30 @@ func TestDownloadChecksTheHash(t *testing.T) {
 		t.Error("only https downloads are allowed")
 	}
 }
+
+// A version's requires (or, in catalogs built before that field, its manifest's) and an addin's shares_hooks reach the row.
+func TestParseCatalogCarriesRequiresAndSharedHooks(t *testing.T) {
+	h := strings.Repeat("a", 64)
+	raw := `{"schema":1,"plugins":[
+ {"id":"rom","name":"Rom","author":"me","kind":"instrument","summary":"s","distribution":"release","latest":"1.0.0","versions":[
+   {"version":"1.0.0","size":1,"sha256":"` + h + `","url":"https://example.com/r.zip","channel":"stable","yanked":false,"requires":"Your own ROMs","manifest":{"skin":"x"}}]},
+ {"id":"old","name":"Old","author":"me","kind":"instrument","summary":"s","distribution":"release","latest":"1.0.0","versions":[
+   {"version":"1.0.0","size":1,"sha256":"` + h + `","url":"https://example.com/o.zip","channel":"stable","yanked":false,"manifest":{"skin":"y","requires":" A network connection "}}]},
+ {"id":"tap","name":"Tap","author":"me","kind":"addin","summary":"s","distribution":"release","latest":"1.0.0",
+  "shares_hooks":[{"id":"rec","name":"Rec","symbols":["snd_pcm_writei"],"unchained":["rec"]}],"versions":[
+   {"version":"1.0.0","size":1,"sha256":"` + h + `","url":"https://example.com/t.zip","channel":"stable","yanked":false,"manifest":{}}]}]}`
+	got, err := parseCatalog([]byte(raw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	by := map[string]CatPlugin{}
+	for _, c := range got {
+		by[c.ID] = c
+	}
+	if by["rom"].Requires != "Your own ROMs" || by["old"].Requires != "A network connection" {
+		t.Errorf("requires not carried: %q, %q", by["rom"].Requires, by["old"].Requires)
+	}
+	if s := by["tap"].SharesHooks; len(s) != 1 || s[0].ID != "rec" || s[0].Symbols[0] != "snd_pcm_writei" || s[0].Unchained[0] != "rec" || by["rom"].SharesHooks != nil {
+		t.Errorf("shares_hooks not carried: %+v", by["tap"].SharesHooks)
+	}
+}

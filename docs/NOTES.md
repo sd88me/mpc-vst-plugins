@@ -2055,3 +2055,49 @@ Fixes (offline-tested; not yet on a device): the manager's keys get the same 250
 - **"Last apply: 1 done, 2 failed" + garbage after a successful uninstall (Live III, device):** the result file held one `ok` line. MPC
   creates the plugin more than once and each instance refreshes; two instances parsing the file with `strtok` at the same moment corrupt
   each other. `show_result` now claims the file by renaming it (one instance reports it) and result/history parsing use `strtok_r`.
+
+## 2026-10-26: published addins that replace the same functions (offline, read from the release zips)
+Read from the zips the catalog serves (catalog.json of 2026-10-27T02:32Z, sha256 checked; armv7, and aarch64 where there is one), with
+`catalog_check.py` on this branch. What each addin's library defines, and whether it looks up the next definition (`chains`):
+- usb-audio 1.1.0: `snd_pcm_open`, `_close`, `_hw_params`, `_writei`, `_writen`, `_readi`, `_readn`, `usbg_enable_gadget`; chains (imports
+  `dlsym`; its source uses `dlsym(RTLD_NEXT)`, `src/addin.c`).
+- skipback 0.6.0: `snd_pcm_open`, `_close`, `_hw_params`, `_writei`, `_writen`, `snd_rawmidi_open`, `_close`, `_read`, `_write`; chains
+  (imports `dlvsym` and `dlsym`, the 2026-10-13 fix).
+- force-link-audio 1.1.0: `snd_pcm_hw_params`, `_writei`, `_writen`; chains (imports `dlsym`, no `libasound` in the binary; source not read).
+- commander 1.1.0 (both builds): `dlsym` and its start function. remote 1.0.3: its start function only (the `snd_rawmidi_*` and `poll` it
+  defined on 2026-10-12 are gone). filebrowser 1.0.0 (both builds): its start function only. Commander and remote open `libasound.so.2`
+  themselves, so the check says they don't chain, but they share no name with another addin.
+So the three audio addins replace the same `snd_pcm_*` calls and all three hand them on: not a known conflict, and the catalog lists no pair
+(docs/CATALOG.md). None of the three has been run together with another of them on a device as far as these notes record. The one
+multi-addin device test is 2026-10-23 on a Live III: remote 1.0.1, skipback 0.6.1 and commander together. filebrowser and usb-audio
+were not part of it.
+
+## 2026-10-26: plugins that need another catalog plugin (offline, read from catalog summaries, READMEs and source)
+Read every catalog entry's summary and README for "needs", "companion", "with X in the project" and the like; five need their host plugin, and
+are declared in their registry entries (`depends`, docs/CATALOG_SPEC.md "Dependencies"):
+- incipience-out: `incipience>=1.0.0`; percolator-out: `percolator>=2.0.0` (its summary says 2.0.0 or later).
+- machinemodule-tap-gen2: `machinemodule-gen2=same` (its README asks for the same version).
+- tr-mpc-tap-fx: `tr-mpc`, any version: `trkit_tap.h`, the shared tap layout, is byte for byte the same in every TR-MPC tag, so a same-version
+  rule would only force needless downgrades (TR-MPC is at 1.0.2, the tap at an older number).
+- daemon-listen: `daemon`.
+Not a dependency: Monomodule FX processes any audio and only mentions Monomodule as a pairing. Simulated against the live catalog
+(2026-10-27T02:32Z): nothing is hidden and every dependency has a build for each generation its dependent ships.
+- **`mpc-store.sh` on a Key 37 (Gen1, MPC OS 3.9.1.2), 2026-10-31, device:** this branch's script and a catalog built by this branch's
+  `catalog_build.py` and `catalog_site.py` from the four Gen1 dependent pairs (machinemodule-tap-gen2 is Gen2 only), served to the device. Dry runs: installing each of incipience-out,
+  percolator-out, daemon-listen and tr-mpc-tap-fx alone adds its host plugin to the batch; `install percolator@1.2.0 percolator-out` is
+  refused (needs >=2.0.0), nothing changed. For real: `install incipience-out` installed it and incipience 1.1.1 with one MPC stop and
+  start (journal), both registered; `remove incipience` was refused while incipience-out was installed; `remove incipience
+  incipience-out` removed both with one restart and left `MPC.settings` identical to its copy from before the test. Not tried on a
+  device then: the desktop app's dependency handling (done below), and anything on Gen2.
+- **The code-review fixes, same Key 37, 2026-10-31, device (dry runs into a scratch Synths folder: MPC not restarted, nothing installed):**
+  the catalog rebuilt by this branch with the Machinemodule pair added. `install machinemodule-tap-gen2 incipience-out` skips the Gen2-only tap
+  (its dependency has no Gen1 pick) and plans incipience-out plus incipience, exit 0 (before the fix the dependency check refused the whole
+  batch). With percolator 1.2.0 recorded, `install percolator-out` is refused ("would update percolator to 2.1.0, a major change"), and with
+  `--major` plans percolator 2.1.0 "(replaces 1.2.0)". With Incipience OUT's folder there but no recorded version, `remove incipience` is
+  refused (it now counts as installed), and removing both is planned.
+- **The desktop app's dependency handling, same Key 37, 2026-10-31, device:** this branch's app (driven through its HTTP API, not the page)
+  with the same test catalog. Plans: Percolator OUT adds Percolator 2.1.0, Incipience OUT adds Incipience 1.1.1, Daemon Listen plus TR-MPC
+  Tap FX adds both hosts, Percolator plus Percolator OUT adds nothing; Machinemodule Tap (Gen2) is refused (its dependency has no Gen1
+  build) and installing it anyway without force gets 409, nothing changed. For real: installing Incipience OUT installed and registered it
+  and Incipience with one MPC stop and start (journal); removing Incipience alone got 409 while OUT was installed; removing both took one
+  restart and left `MPC.settings` byte-identical to its copy from before the test. Not tried on a device: anything on Gen2.

@@ -28,6 +28,7 @@ import zipfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from catalog_check import ADDIN_FILE, ADDIN_SCRIPTS, ID, SEMVER, max_glibc, parse_addin_manifest  # noqa: E402
+import deps  # noqa: E402
 
 
 def elf_machine(path):
@@ -46,6 +47,10 @@ def main():
     ap.add_argument("--license", help="SPDX license id (for the catalog manifest)")
     ap.add_argument("--about", default="", help="one-line description")
     ap.add_argument("--requires", default="", help="extra requirements, one line")
+    ap.add_argument("--depends", action="append", default=None, metavar="DEP",
+                    help="another catalog plugin or addin this one needs, with optional version rules: commander>=1.1.0 (repeat for more)")
+    ap.add_argument("--conflicts", action="append", default=None, metavar="ID",
+                    help="a catalog plugin or addin that must not be installed beside this one (repeat for more)")
     ap.add_argument("-o", "--out", default="dist")
     a = ap.parse_args()
 
@@ -60,6 +65,8 @@ def main():
     aid, so = am.get("ADDIN_ID", ""), am.get("ADDIN_SO", "")
     if not ID.fullmatch(aid):
         raise SystemExit("ADDIN_ID %r: the catalog needs lowercase letters, digits and hyphens" % aid)
+    for problem in deps.check_lists(a.depends, a.conflicts, aid):
+        raise SystemExit("--depends/--conflicts: " + problem)
     conf, files = am.get("ADDIN_CONF", ""), am.get("ADDIN_FILES", "").split()
     for f in [so] + ([conf] if conf else []) + files:
         if not ADDIN_FILE.fullmatch(f) or f in ADDIN_SCRIPTS + ("addin.manifest",):
@@ -131,6 +138,7 @@ See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-
         "so": so, "conf": conf or None, "files": files, "user_data": [conf] if conf else [],
         "arch": arch, "max_glibc": max_glibc(os.path.join(root, so)),
         "param_compat": int(a.version.split(".")[0]), "about": a.about, "requires": a.requires,
+        **({"depends": a.depends} if a.depends is not None else {}), **({"conflicts": a.conflicts} if a.conflicts is not None else {}),
         "source_repo": a.repo, "license": a.license, "cpu": None,
     }
     open(os.path.join(root, "mpc-plugin.json"), "w").write(json.dumps(manifest, indent=2) + "\n")

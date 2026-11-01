@@ -68,6 +68,10 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
       catalog-ready from its first commit.
 - [ ] **Update notices honour `param_compat`** (a major bump warns that saved projects will change).
 - [ ] **Catalog quality plan** (trust tiers, a visible bar, new entries start Experimental, trusted verifiers): steps in `docs/CATALOG_QUALITY.md`.
+- [x] **Declared conflicts and dependencies** (2026-10-26, offline; docs/CATALOG_SPEC.md "Dependencies"): `depends` / `conflicts` in the
+      manifest or the registry entry; the builder hides what can't be satisfied, both installers resolve and refuse, the site links them.
+      Still prose: conflicts with things outside the catalog ("disable the legacy Force Link Audio addon first"). Next: try it on a device
+      once a registry dependency is published (Percolator Out bringing Percolator along).
 - [ ] **Announce to the community** and collect what people ask for before building more.
 
 ## Companion apps (catalog)

@@ -106,6 +106,15 @@ Tests: case 15 (remount succeeds, so `/etc` is used) and case 16 (remount refuse
 `tools/test_addin.sh`; case 3c there covers the folder's own `install.sh` redoing the `/run` entry after a simulated
 reboot, without the original release.
 
+### Two addins that replace the same function
+An addin hooks a call by defining a function of the same name (`snd_pcm_writei`, `snd_rawmidi_read`). When two preloaded libraries define it,
+the first in `LD_PRELOAD` gets MPC's calls, and the other sees them only if the first passes each call on. So a hook must find the next
+definition with `dlsym(RTLD_NEXT, name)`, never by opening `libasound` itself, and should fetch libc's own `dlsym` with `dlvsym` in case
+another addin replaces `dlsym` (NOTES.md, 2026-10-13). Export nothing else: build with `-fvisibility=hidden` and mark only the hooks and
+the start function visible, so a helper's name can't collide by accident. The catalog reads what each addin's library defines and
+imports: two addins that define the same name are shown on both cards, and in both installers, only when one of them imports neither
+`dlsym` nor `dlvsym` or opens libasound itself (`shares_hooks`, docs/CATALOG_SPEC.md; 2026-10-26).
+
 ## When an addin stops MPC from starting
 
 An addin runs inside MPC, so a broken one can crash MPC at every start. SSH stays up (it is a separate service), and

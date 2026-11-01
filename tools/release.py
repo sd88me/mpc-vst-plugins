@@ -29,6 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from user_files import user_files_problems  # noqa: E402
 from catalog_check import max_glibc  # noqa: E402
 import skin_compat  # noqa: E402
+import deps  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -44,6 +45,10 @@ ap.add_argument("--id", help="catalog id: lowercase letters, digits, hyphens (de
 ap.add_argument("--repo", help="source repo, owner/name (for the catalog manifest)")
 ap.add_argument("--license", help="SPDX license id of the plugin (for the catalog manifest)")
 ap.add_argument("--requires", default="", help="extra requirements, one line (e.g. 'MockbaMod firmware')")
+ap.add_argument("--depends", action="append", default=None, metavar="DEP",
+                help="another catalog plugin this one needs, with optional version rules: tr-mpc=same, percolator>=2.0.0,<3.0.0 (repeat for more)")
+ap.add_argument("--conflicts", action="append", default=None, metavar="ID",
+                help="a catalog plugin that must not be installed beside this one (repeat for more)")
 ap.add_argument("--user-data", action="append", default=[], metavar="REL",
                 help="path inside the plugin folder where the USER puts their own files (ROMs, kits); the installer keeps it on upgrade and moves it in from the old /sdcard/vst layout")
 ap.add_argument("--user-files", metavar="JSON",
@@ -228,6 +233,8 @@ print("MPC OS compatibility: %s%s" % (" and ".join(os_compat), "" if "2.x" in os
 plugin_id = a.id or re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", plugin_id):
     raise SystemExit("--id must be lowercase letters, digits and hyphens")
+for problem in deps.check_lists(a.depends, a.conflicts, plugin_id):
+    raise SystemExit("--depends/--conflicts: " + problem)
 manifest = {
     "schema": 1,
     "id": plugin_id,
@@ -249,6 +256,8 @@ manifest = {
     "param_compat": int(a.version.split(".")[0]),
     "about": a.about,
     "requires": a.requires,
+    **({"depends": a.depends} if a.depends is not None else {}),   # absent unless given: the registry entry may hold them (docs/CATALOG_SPEC.md)
+    **({"conflicts": a.conflicts} if a.conflicts is not None else {}),
     "source_repo": a.repo,
     "license": a.license,
     "cpu": {"p99_pct": bench["p99_pct"], "max_pct": bench["max_pct"], "verdict": bench["verdict"]} if bench else None,
