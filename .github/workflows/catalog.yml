@@ -82,8 +82,8 @@ jobs:
       - id: deploy
         uses: actions/deploy-pages@v4
   mirror-org:
-    # The same catalog files at https://open-mpc.github.io/ (repo open-mpc/open-mpc.github.io), the address the Plugin Manager reads
-    # first (docs/CATALOG.md). Needs the secret OPENMPC_PAGES_TOKEN: a fine-grained token with Contents read/write on that repo
+    # The whole site at https://open-mpc.github.io/ (repo open-mpc/open-mpc.github.io): the address users go to, and the catalog
+    # address clients read first (docs/CATALOG.md, docs/ORG_MIGRATION.md). Needs the secret OPENMPC_PAGES_TOKEN: a fine-grained token with Contents read/write on that repo
     # only. Skipped while the secret is missing.
     if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     needs: build
@@ -96,13 +96,15 @@ jobs:
         with:
           name: catalog
           path: dist
-      - name: Push catalog files to open-mpc.github.io
+      - name: Push the site to open-mpc.github.io
         if: ${{ env.TOKEN != '' }}
         run: |
           git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/open-mpc/open-mpc.github.io.git" org
-          for f in catalog.json catalog.tsv patches.json; do
-            if [ -f "dist/site/$f" ]; then cp "dist/site/$f" "org/$f"; fi
-          done
+          # the whole site (pages, catalog files, mpc-store.sh and its helpers): open-mpc.github.io/ is the address users go to.
+          # Everything but .git and the repo's README is replaced, so files the site no longer has are removed too.
+          [ -f dist/site/index.html ] && [ -f dist/site/catalog.json ] || { echo "no site in the artifact"; exit 1; }
+          find org -mindepth 1 -maxdepth 1 ! -name .git ! -name README.md -exec rm -rf {} +
+          cp -a dist/site/. org/
           cd org
           git add -A
           if git diff --cached --quiet; then echo "no change"; exit 0; fi
