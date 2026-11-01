@@ -18,7 +18,10 @@ section first, then "Sequence" and "Facts to verify", and check each PR below wi
   it, a copy in `sd88me/sd88me.github.io` (#485), because a transferred repo's Pages URL 404s at once.
 - **Scope, phase 1:** only `mpc-vst-plugins` moves, as in "Sequence" below. Ports stay under `sd88me`. **Phase 2 (later, its own plan):**
   split the monorepo into a few repos in the org (catalog first) once phase 1 has run for a few catalog cycles.
-- **Timing:** the transfer happens in a quiet period, not before the week of 2026-11-09.
+- **Timing (changed later on 2026-11-01):** transfer on **Mon 2026-11-02 in the evening**, after a go/no-go: go only if the old address
+  is already served by the `sd88me.github.io` copy (#485, dry-run checked). No-go: the transfer moves to the week of 2026-11-09.
+- **PR pause for developers: Mon 2 Nov to Mon 9 Nov.** No new PRs to this repo; hold releases that use the reusable release workflow
+  (its `uses:` path breaks at the transfer). Announced on Discord on 2026-11-01; the list of what to change follows around 9 Nov.
 
 **Pieces**
 | Piece | Where | State |
@@ -39,7 +42,9 @@ section first, then "Sequence" and "Facts to verify", and check each PR below wi
 3. [ ] Whole site at `open-mpc.github.io/`: PR #679 (mirror-org copies the whole site; `SITE` fallback).
 4. [ ] Release the clients with the fallback (Plugin Manager, desktop installer) and give people time to update. Old installs cannot
        be updated after the old address dies, so this goes well before the transfer.
-5. [ ] Rebase #485; make it copy into `sd88me/sd88me.github.io` under `mpc-vst-plugins/`; deploy key with write access on that repo in
+4b. [ ] Check an installed Plugin Manager updates itself from the catalog (0.2.4 to 0.2.5 on its Installed tab): old Managers reach the
+       fallback-capable 1.0.0 only this way.
+5. [ ] **Go/no-go gate.** Rebase #485; make it copy into `sd88me/sd88me.github.io` under `mpc-vst-plugins/`; deploy key with write access on that repo in
        the secret `MIRROR_DEPLOY_KEY`, variable `CATALOG_MIRROR_REPO=sd88me/sd88me.github.io`; delete the scratch `scratch-tools/` folder
        there. Dry-run with the real folder name before the transfer.
 6. [ ] Write down this repo's settings to re-add after the move: webhooks (Discord release hook), variables, secrets (`OPENMPC_PAGES_TOKEN`,
