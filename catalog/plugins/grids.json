@@ -14,5 +14,5 @@
   ],
   "license": "GPL-3.0-only",
   "summary": "Drum Map: a topographic drum sequencer that plays kick, snare and hats from MPC's clock through its own MIDI port, from Émilie Gillet's open-source Grids.",
-  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-drum-map/v1.2.0/screenshots/page_0.png"
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-drum-map/v1.2.1/screenshots/page_0.png"
 }

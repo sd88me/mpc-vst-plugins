@@ -22,6 +22,7 @@ check_dir
 SO="$DIR/$ADDIN_SO"
 [ -n "$ADDIN_INSTALL_TEST" ] || [ "$(id -u)" = 0 ] || die "run as root"
 SVC=$(mpc_service)
+resolve_dropin_root "$SVC"
 check_lib "$SVC"
 if [ $YES = 0 ]; then
     printf "Remove %s%s? [y/N] " "$ADDIN_NAME" "$([ $RESTART = 1 ] && echo ' and restart MPC')"; read -r ok

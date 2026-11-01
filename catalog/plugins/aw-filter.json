@@ -1,0 +1,17 @@
+{
+  "id": "aw-filter",
+  "name": "Airwindows Collection: Filter",
+  "author": "sd88me",
+  "repo": "sd88me/mpc-vst-airwindows",
+  "kind": "effect",
+  "style": "filter",
+  "tags": [
+    "airwindows",
+    "eq",
+    "collection"
+  ],
+  "license": "MIT",
+  "summary": "The Airwindows Filter collection: all 54 filters and EQs (Baxandall, Isolator, Holt, SmoothEQ and more) in one plugin, each with its own panel, Q-Link badges and built-in manual.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-airwindows/6196324ee776860ce4d3cc46dbd90e331f3ba53d/docs/img/filter.png",
+  "asset_pattern": "AW-Filter-*-mpc-armv7.zip"
+}

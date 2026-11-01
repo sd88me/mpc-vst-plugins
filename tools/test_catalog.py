@@ -458,18 +458,19 @@ class AddinTest(Base):
     MANIFEST = ('# a test addin\nADDIN_ID=test-addin\nADDIN_NAME="Test addin"   # shown\nADDIN_SO=libtest.so\n'
                 'ADDIN_CONF=test.conf\nADDIN_FILES="helper"\nADDIN_DONE="Open it."\n')
 
-    def build_addin(self, manifest=None, machine=40, version="1.2.0", repo="acme/mpc-addin-test"):
+    def build_addin(self, manifest=None, machine=40, version="1.2.0", repo="acme/mpc-addin-test", elf_class=1, glibc=b"GLIBC_2.30"):
         d = os.path.join(self.tmp, "pkg")
         os.makedirs(d, exist_ok=True)
         open(os.path.join(d, "addin.manifest"), "w").write(manifest or self.MANIFEST)
-        fake_so(os.path.join(d, "libtest.so"), machine)
+        fake_so(os.path.join(d, "libtest.so"), machine, glibc=glibc, elf_class=elf_class)
         open(os.path.join(d, "test.conf"), "w").write("x=1\n")
         open(os.path.join(d, "helper"), "w").write("data\n")
         out = os.path.join(self.tmp, "dist")
         r = subprocess.run([sys.executable, os.path.join(HERE, "release_addin.py"), "--dir", d, "--version", version,
                             "--repo", repo, "--license", "MIT", "-o", out], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
-        return os.path.join(out, "Test-addin-%s-mpc-armv7.zip" % version)
+        arch = "aarch64" if machine == 183 else "armv7"
+        return os.path.join(out, "Test-addin-%s-mpc-%s.zip" % (version, arch))
 
     def rezip(self, zpath, fn):
         """Rewrite the package through fn({relative name: bytes}) and fix SHA256SUMS."""
@@ -506,7 +507,33 @@ class AddinTest(Base):
 
     def test_a_64_bit_class_arm_library_is_refused(self):
         z = self.rezip(self.build_addin(), lambda f: f.update({"libtest.so": f["libtest.so"][:4] + b"\x02" + f["libtest.so"][5:]}))
-        self.assertIn("libtest.so is not a 32-bit ARM library", self.errors(z))
+        self.assertIn("libtest.so is not a 32-bit ARM library (manifest arch armv7)", self.errors(z))
+
+    def test_an_aarch64_addin_is_accepted(self):
+        """Gen2 (aarch64) addins are allowed, same as plugins (2026-10-23: addins were armv7-only before)."""
+        z = self.build_addin(machine=183, elf_class=2)
+        self.assertTrue(z.endswith("-mpc-aarch64.zip"), z)
+        errors, _, rec = catalog_check.check(z, catalog=True, expect_id="test-addin", expect_repo="acme/mpc-addin-test")
+        self.assertEqual(errors, [])
+        self.assertEqual(rec["manifest"]["arch"], "aarch64")
+
+    def test_catalog_build_attaches_an_aarch64_sibling_to_an_addin(self):
+        """catalog_build.py's aarch64-sibling check compared manifest["uid"] unconditionally, which only a VST
+        plugin's manifest has -- an addin's aarch64 sibling always failed with 'download/validate failed: uid'
+        (found 2026-10-23, mpc-addin-commander's real release, catalog issue #515)."""
+        z32 = self.build_addin()
+        z64 = self.build_addin(machine=183, elf_class=2)
+        entry = {"id": "test-addin", "name": "Test addin", "author": "A", "repo": "acme/mpc-addin-test",
+                  "kind": "addin", "license": "MIT", "summary": "s"}
+        rel = {"tag_name": "v1.2.3", "prerelease": False, "draft": False, "published_at": "2026-10-23T00:00:00Z", "body": "",
+               "assets": [{"id": 1, "name": os.path.basename(z32), "browser_download_url": "https://x/" + os.path.basename(z32), "download_count": 1},
+                          {"id": 2, "name": os.path.basename(z64), "browser_download_url": "https://x/" + os.path.basename(z64), "download_count": 1}]}
+        gh = FakeGitHub({"acme/mpc-addin-test": [rel]}, {1: z32, 2: z64})
+        cat, problems = catalog_build.build([entry], gh, os.path.join(self.tmp, "cache"), set())
+        self.assertEqual(problems, [])
+        v = cat["plugins"][0]["versions"][0]
+        self.assertTrue(v["gen2"])
+        self.assertEqual(set(v["assets"]), {"armv7", "aarch64"})
 
     def test_release_refuses_bad_input(self):
         for bad in ("ADDIN_ID=Test_Addin\nADDIN_SO=libtest.so\n", "ADDIN_ID=t\nADDIN_SO=libtest.so\nADDIN_FILES=missing\n",
@@ -609,6 +636,25 @@ class BuildTest(Base):
         self.assertEqual(p["downloads"], 9)   # all time: every published zip, including the yanked 1.0.0 and the invalid 1.2.0
         self.assertEqual(sorted((x["tag"] for x in problems)), ["v1.2.0", "v1.3.0-b"])
 
+    def test_added_date_comes_from_added_json_else_the_oldest_release(self):
+        old, new = self.build("1.0.0"), self.build("1.1.0")
+        rels = [self.rel("v1.1.0", 2, at="2026-10-05T00:00:00Z"), self.rel("v1.0.0", 1, at="2026-09-29T00:00:00Z")]
+        for added, want in (({"test-synth": "2026-10-20"}, "2026-10-20"), ({}, "2026-09-29"), (None, "2026-09-29")):
+            gh = FakeGitHub({"acme/test-synth": rels}, {1: old, 2: new})
+            cat, _ = catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "cache"), set(), added=added)
+            self.assertEqual(cat["plugins"][0]["added"], want)
+            self.assertEqual(cat["plugins"][0]["updated"], "2026-10-05")
+
+    def test_added_json_is_checked(self):
+        path = os.path.join(self.tmp, "added.json")
+        self.assertEqual(catalog_build.load_added(path), ({}, []))   # optional
+        open(path, "w").write('{"a": "2026-10-01", "b": "yesterday", "c": 5}')
+        added, problems = catalog_build.load_added(path)
+        self.assertEqual(added, {"a": "2026-10-01", "b": "yesterday"})
+        self.assertEqual(len(problems), 2)
+        open(path, "w").write("[1]")
+        self.assertEqual(len(catalog_build.load_added(path)[1]), 1)
+
     def test_flagged_versions_are_listed_and_kept(self):
         old, new = self.build("1.0.0", imports=("socket",)), self.build("1.1.0", imports=("socket", "system"))
         gh = FakeGitHub({"acme/test-synth": [self.rel("v1.1.0", 2), self.rel("v1.0.0", 1)]}, {1: old, 2: new})
@@ -650,6 +696,29 @@ class BuildTest(Base):
         self.assertNotEqual(v["assets"]["aarch64"]["sha256"], v["assets"]["armv7"]["sha256"])
         row = catalog_site.tsv(cat, []).splitlines()[1].split("\t")
         self.assertEqual(row[16:19], [str(v["assets"]["aarch64"]["size"]), v["assets"]["aarch64"]["sha256"], "https://x/x-mpc-aarch64.zip"])
+
+    def test_a_gen2_only_plugin_is_listed_with_its_aarch64_zip(self):
+        """asset_pattern for the Gen2 build alone (a plugin whose engine has no 32-bit ARM backend): the one zip is the Gen2 build,
+        url/sha256 stay it for schema-1 readers, gen2_only says no Gen1 build exists, and catalog.tsv blanks the armv7 columns."""
+        z64 = self.build("1.0.0", machine=183, elf_class=2)
+        rel = self.rel("v1.0.0", 7, name="x-mpc-aarch64.zip")
+        entry = dict(self.ENTRY, asset_pattern="*-mpc-aarch64.zip")
+        gh = FakeGitHub({"acme/test-synth": [rel]}, {7: z64})
+        cat, problems = catalog_build.build([entry], gh, os.path.join(self.tmp, "cache"), set())
+        self.assertEqual(problems, [])
+        v = cat["plugins"][0]["versions"][0]
+        self.assertTrue(v["gen2"] and v["gen2_only"])
+        self.assertEqual(list(v["assets"]), ["aarch64"])
+        self.assertEqual(v["url"], v["assets"]["aarch64"]["url"])
+        row = catalog_site.tsv(cat, []).splitlines()[1].split("\t")
+        self.assertEqual(row[9:12], ["-", "-", "-"])
+        self.assertEqual(row[16:19], [str(v["assets"]["aarch64"]["size"]), v["assets"]["aarch64"]["sha256"], v["url"]])
+
+    def test_a_gen2_only_pattern_refuses_an_armv7_zip(self):
+        entry = dict(self.ENTRY, asset_pattern="*-mpc-aarch64.zip")
+        gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 7, name="x-mpc-aarch64.zip")]}, {7: self.build("1.0.0")})
+        cat, problems = catalog_build.build([entry], gh, os.path.join(self.tmp, "cache"), set())
+        self.assertTrue(any("Gen2 build" in p["error"] for p in problems), problems)
 
     def test_a_version_without_an_aarch64_asset_has_no_gen2(self):
         gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1)]}, {1: self.build("1.0.0")})
@@ -829,7 +898,7 @@ class BuildTest(Base):
 
     def test_stray_json_beside_the_registry(self):
         os.makedirs(os.path.join(self.tmp, "plugins"))
-        for n in ("apps.json", "patches.json", "yanked.json", "plugins/test-synth.json", "test-synth.json", "README.md"):
+        for n in ("added.json", "apps.json", "patches.json", "yanked.json", "plugins/test-synth.json", "test-synth.json", "README.md"):
             open(os.path.join(self.tmp, n), "w").write("{}")
         self.assertEqual([os.path.basename(f) for f, _ in catalog_build.stray_files(self.tmp)], ["test-synth.json"])
 
@@ -917,6 +986,12 @@ class SiteTest(unittest.TestCase):
         self.assertTrue(catalog_build.check_entry(e))
         self.assertEqual(catalog_build.check_entry(dict(e, source_available=True, style="rompler", tags=["jv-880"])), [])
         self.assertTrue(catalog_build.check_entry(dict(BuildTest.ENTRY, style="Bad Style")))
+
+    def test_registry_license_expression(self):
+        for lic in ("MIT AND Apache-2.0", "(MIT OR Apache-2.0) AND GPL-3.0-only"):
+            self.assertEqual(catalog_build.check_entry(dict(BuildTest.ENTRY, license=lic)), [], lic)
+        for lic in ("MIT AND MAME license", "MIT AND", "AND MIT", "MIT WITH Apache-2.0", "MIT Apache-2.0"):
+            self.assertTrue(catalog_build.check_entry(dict(BuildTest.ENTRY, license=lic)), lic)
 
     def test_registry_role_midi_only_on_an_instrument(self):
         ok = dict(BuildTest.ENTRY, kind="instrument", role="midi")
@@ -1227,6 +1302,26 @@ class InstallerTest(Base):
         self.assertFalse(os.path.exists(os.path.join(self.legacy_root, "sdcard", "vst", "test_synth.so")))
         self.assertTrue([n for n in os.listdir(self.tmp) if n.startswith("MPC.settings.bak-")])
 
+    def with_locations(self, *locs):
+        """MPC.settings with a real SynthContentLocations block, CRLF like the device's."""
+        block = "".join("      <Location>%s</Location>\n" % loc for loc in locs)
+        xml = SETTINGS_XML.replace('  <VALUE name="SynthContentLocations" val="/sdcard/Synths"/>\n',
+                                   "  <VALUE name=\"SynthContentLocations\">\n    <SynthContentLocations>\n" + block +
+                                   "    </SynthContentLocations>\n  </VALUE>\n")
+        with open(self.settings_path, "w", newline="") as f:
+            f.write(xml.replace("\n", "\r\n"))
+
+    def test_warns_loudly_when_the_target_is_not_a_content_location(self):
+        warn = "is not one of MPC's content locations"
+        for locs, listed in ((["/usr/share/Akai/Content/Synths"], False),
+                             ([self.synths + "-old"], False),    # a longer name that merely starts with the target
+                             ([self.synths], True),
+                             ([self.synths + "/"], True)):       # MPC accepts a trailing slash
+            self.with_locations(*locs)
+            r = self.run_script("install.sh")
+            self.assertEqual(r.returncode, 0, r.stderr)            # warns, does not refuse: the plugin loads either way
+            self.assertEqual(warn in r.stderr, not listed, (locs, r.stderr))
+
     def legacy(self, *parts):
         return os.path.join(self.legacy_root, "sdcard", "vst", *parts)
 
@@ -1515,7 +1610,7 @@ class StoreTest(Base):
         open(self.settings_path, "w").write(SyncTest.ONLY_OTHER)
         self.log = os.path.join(self.tmp, "mpc_ctl.log")
 
-    def write_catalog(self, published, addins=(), gen2=None):
+    def write_catalog(self, published, addins=(), gen2=None, gen2_only=False):
         vs = []
         for v, path in self.versions:
             if v not in published:
@@ -1529,6 +1624,8 @@ class StoreTest(Base):
             if gen2 and v == "1.2.0":   # the aarch64 zip of the same version: assets{} as catalog_build.py writes them
                 vs[-1]["assets"] = {"aarch64": {"size": os.path.getsize(gen2), "sha256": self.hashlib.sha256(open(gen2, "rb").read()).hexdigest(),
                                                 "url": "http://127.0.0.1:%d/%s" % (self.port, os.path.basename(gen2))}}
+                if gen2_only:   # no Gen1 zip: the clients must not offer this version to an armv7 device
+                    vs[-1].update(gen2=True, gen2_only=True)
         vs.sort(key=lambda x: [int(n) for n in x["version"].split(".")], reverse=True)
         cat = {"schema": 1, "plugins": [{"id": "test-synth", "name": "Test Synth", "kind": "instrument", "distribution": "release",
                                           "latest": vs[0]["version"], "versions": vs},
@@ -1649,6 +1746,19 @@ class StoreTest(Base):
         shutil.copy(z64, self.web)
         self.write_catalog(["1.2.0"], gen2=os.path.join(self.web, os.path.basename(z64)))
 
+    def test_a_gen2_only_version_installs_on_gen2_and_is_refused_on_gen1(self):
+        z64 = self.build(version="1.2.0", machine=183, elf_class=2)
+        shutil.copy(z64, self.web)
+        self.write_catalog(["1.2.0"], gen2=os.path.join(self.web, os.path.basename(z64)), gen2_only=True)
+        r = self.store("install", "test-synth", env_extra={"MPC_STORE_ARCH": "armv7l"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)   # skipped, not an error (#548)
+        self.assertIn("skipping test-synth", r.stdout + r.stderr)
+        self.assertIn("Gen2 only", r.stdout + r.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.synths, self.SKIN)))
+        self.assertIn("[Gen2 only]", self.store("list", env_extra={"MPC_STORE_ARCH": "armv7l"}).stdout)
+        r = self.store("install", "test-synth", env_extra={"MPC_STORE_ARCH": "aarch64"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
     def test_a_gen2_device_installs_the_aarch64_zip(self):
         self.with_gen2()
         r = self.store("install", "test-synth", env_extra={"MPC_STORE_ARCH": "aarch64"})
@@ -1665,7 +1775,8 @@ class StoreTest(Base):
 
     def test_a_gen2_device_refuses_a_plugin_with_no_gen2_build(self):
         r = self.store("install", "test-synth", env_extra={"MPC_STORE_ARCH": "aarch64"})
-        self.assertNotEqual(r.returncode, 0)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)   # skipped, not an error (#548: the rest of a batch still goes ahead)
+        self.assertIn("skipping test-synth", r.stdout + r.stderr)
         self.assertIn("no Gen2", r.stdout + r.stderr)
         self.assertFalse(os.path.exists(os.path.join(self.synths, self.SKIN)))
 

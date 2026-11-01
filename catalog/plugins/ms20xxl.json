@@ -1,0 +1,5 @@
+{ "id": "ms20xxl", "name": "MS20XXL", "author": "L'Cronx", "repo": "sunskiefer/MS20XXL",
+  "kind": "instrument", "style": "synth", "tags": ["ms-20", "semi-modular", "mono", "patch-panel", "sequencer", "sq-10", "korg35", "analog"],
+  "license": "GPL-3.0-or-later",
+  "screenshot": "https://raw.githubusercontent.com/sunskiefer/MS20XXL/v0.1.1/docs/img/patch.png",
+  "summary": "Korg MS-20-style semi-modular mono synth, circuit-modelled from the MS-20 schematics: the KLM-307 (MK2) and KORG35 (MK1) filter boards solved from their circuit equations, Hz/V sockets, the panel's voltage laws. Every MS-20 patch jack in its place, normalled like the hardware, patched by touch; an SQ-10-style sequencer; 63 patches with cables." }

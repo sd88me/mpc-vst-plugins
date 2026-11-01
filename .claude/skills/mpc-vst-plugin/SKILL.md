@@ -162,16 +162,22 @@ Parameter entries feeding `gen_vst.py` (`tools/params.py` format) can carry:
 - `vst.json`'s `"title_font"` (a `.ttf`/`.otf` path, e.g. a real downloaded font under an OFL-style licence,
   never a recreation of a manufacturer's proprietary font) overlays frame titles in that font via PIL after
   the PNGs are drawn; off by default, every other port keeps its current look.
-- Per control: `ns=`/`vs=` (name/value px, `ns=0` no name) and `bw=` (touch width) on knobs and sliders; `banks="A|B"`
+- Per control: `ns=`/`vs=` (name/value px, `ns=0` no name, `vs=0` no value text on a knob, `vy=` pushes it down) and `bw=` (touch width) on knobs and sliders; `banks="A|B"`
   on any line keeps it to those `qlinks` sub-pages; toggles take `bw=`/`ns=0`; `knob lay=side bw= bh= vs=` is a step cell (docs/SKIN_STUDIO.md; offline only so far).
-- `scale_names=1` in `layout.conf` makes the knob and toggle names MPC draws follow `label_scale` (21 px × it,
-  toggle box grown to fit); without it they stay the fixed 15-17 px / 120 px box every existing skin has.
+- `scale_names=1` in `layout.conf` makes the knob, toggle and slider names MPC draws follow `label_scale` (21 px × it,
+  toggle box grown to fit; a slider's value text and label width scale too); without it they stay the fixed 15-17 px /
+  120 px box every existing skin has.
 - A `readout` or `list` line can style its live text: `tsize=`, `tcolor=`, `tweight=`, `talign=` (left|center|right),
   `tfont=`, and `tpad=` on readouts (`shadow_skin.live_text`). Readouts are centred and list rows start at the left
   unless `talign=` says otherwise.
 - A `"display": "string"` param is polled every 10 ms for `<key>_on` (list tiles lit from MIDI) and every 100 ms
   for text changes (readouts refreshed without a tap); `"poll": false` on the param turns that off for one
-  whose text only changes on a tap or whose `get_param()` is costly.
+  whose text only changes on a tap or whose `get_param()` is costly. The wrapper spreads the polls over the blocks, and a text param
+  the layout never mentions is not polled (`"poll": true` forces it; `params.h: N text param(s) ... not polled` says how many).
+- A host write (a Q-Link, automation, a touch) sends no `audioMasterUpdateDisplay`: MPC rebuilds its parameter screen
+  on each one, which broke Q-Links on the automation screen (NOTES 2026-10-21). Polled readouts catch up within 100 ms.
+  A param that other unpolled text depends on (a machine selector behind `dynamic_name` labels, a `"poll": false`
+  readout bound with `get=`, or a `when=` panel that follows a param the engine derives from this one) takes `"refresh_display": true` to ask for one on its writes. `step_of` buttons always ask.
 - `vst.json`'s `"tile"` (a 270x110 PNG) becomes `Plugin Skins/browser_images/soundsmode.png` plus
   `Presets/0000-Default.xpl` in the skin folder (`tools/xpl.py`): the Sounds > INSTRUMENTS browser draws the
   artwork and a tap opens the plugin. MPC indexes `Presets/` at startup, so a new preset file needs a restart.
@@ -215,6 +221,12 @@ thread-safe, but a slow `set_param` holds audio. Links need `-lpthread`. host_te
 - Q-Links: one bank of 4 per tab if the target has 4 knobs (MPC Key 37 sub-pages don't cycle); nothing destructive
   on a Q-Link; `-` slots give each panel its own column; keep watched controls left of x ~1025 (Q-Link sidebar).
 - Ship `tested.json`, a `TESTING.md` (offline + numbered device table) and, for skin rework, a design-QA note.
+- **When a realistic or hardware-looking skin is requested**, follow SKIN_STUDIO "Realistic hardware skins". Draw each
+  tab at 2x and cut each control's frames from it. Light the knobs from a fixed direction: draw the round, lit body
+  once, and turn only the pointer and any non-round parts (a 303-style chamfer). Shade those parts by how they face
+  the light. Draw the plate as a bevelled slab with depth, a drop shadow and screws, with sections recessed as wells
+  and lettering engraved. Draw everything (no product photos, no maker's marks) and check min/mid/max frames side by
+  side.
 
 ## Skin studio (layout design)
 `tools/studio.py`: `auto` (params → first-pass layout.conf), `to-svg` / `from-svg` (Inkscape round trip; tabs are layers,
@@ -226,11 +238,24 @@ Looks and images (SKIN_STUDIO "Looks and images", `tools/skin_assets.py`): `look
 image per option), experimental `meter`. All need `"art": "html"`. Never commit Akai's stock skin art here.
 Always `preview` before deploying. Enum `options=` are optional in layouts (they default to the parameter's own).
 
+Several interfaces in one plugin: `when=` cannot switch tabs and a skin binds at insert, so variants with different
+navigation are separate folders — `tools/make_skinset.py` merges built skins into `Plugin Skins/<name>/` with
+`ui.txt` as the active choice. Engine contract (`ui` parameter, `MODULE_SUBDIR`), UX rules and measurements:
+docs/SKIN_VARIANTS.md.
+
 ## CPU check and release
 - `tools/bench.sh build/x.so <ip> -j`: plays the plugin on the device (idle, chords, Q-Link sweep, release tail),
   thread-CPU timed, verdict PASS/WARN/FAIL against the 2902 µs block (docs/BENCH.md). Nothing installed; MPC keeps running.
 - `tools/release.py`: one shareable zip (the `portable/<skin>/` plugin folder + install.sh/uninstall.sh + generated INSTALL.md + SHA256SUMS); the
   installer stops/restarts MPC, so installing a release on the user's device needs their go-ahead (docs/RELEASING.md).
+- **Every release should include a Gen2 (aarch64) build when the port's engine allows it** (proven pilot, 2026-10-11, docs/GEN2.md):
+  add `"targets": ["armv7", "aarch64"]` to `vst.json`, `tools/build_port.sh vst.json all`, `tools/test_port.sh vst.json aarch64` must PASS,
+  run `release.py` once per arch (two zips, same tag), and wire `TARGETS="armv7 aarch64"` + `extra_aarch64` into the repo's `vst-release.yml`.
+  No catalog registry change is needed — `catalog_build.py` picks up the aarch64 sibling asset automatically. **The user has their own
+  Gen2 device (an MPC Live III) since 2026-10-22** and can test a build directly over SSH (the autorun-stick route, `docs/USB_STICK.md`,
+  works on MPC OS 3.9.1; not on 3.10.0+). To have both, `tools/mpc310_on_391/` builds a stick that runs the 3.10 app on 3.9.1
+  at every boot (device-verified 2026-10-24); never commit or share a built stick. Still don't claim or infer "tested" status without an actual run; add a `tested.json` entry
+  only after one (on the user's device or a tester's). Skip aarch64 only when the engine/toolchain genuinely can't build for it, and say why.
 - `tools/screenshot.sh <ssh target> out.png [--plugin]`: a screenshot of what the device shows now (read-only DRM grab; NOTES.md).
 - `tools/probe_device.sh` (read-only): arch, CPU, audio workers, plugin formats. VST3 is **not** compiled into MPC OS
   (Force, 2026-09-24): don't build VST3 ports.

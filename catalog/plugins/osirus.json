@@ -1,0 +1,5 @@
+{ "id": "osirus", "name": "Osirus", "author": "sd88me", "repo": "sd88me/mpc-vst-osirus",
+  "kind": "instrument", "style": "synth", "tags": ["emulation", "virtual-analog", "rompler-free", "gen2"], "license": "GPL-3.0-only",
+  "summary": "An emulation of the Access Virus A, B and C synthesizers' original firmware (gearmulator's DSP56300 emulator) as a native instrument for Gen2 MPC devices, with a touchscreen skin, banks and patch browser, Q-Link control and knob values on every page. Gen2 (aarch64) only; you need your own Virus ROM.",
+  "asset_pattern": "*-mpc-aarch64.zip",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-osirus/e39d03c538f4fde79d558cd4c423b18964cc5ffc/docs/screenshots/osirus-osc.png" }

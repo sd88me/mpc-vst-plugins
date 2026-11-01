@@ -69,6 +69,7 @@ def main():
     if not so.endswith(".so"):
         raise SystemExit("ADDIN_SO must be a .so")
     name = am.get("ADDIN_NAME") or aid
+    arch = elf_machine(os.path.join(a.dir, so))
 
     slug = re.sub(r"[^A-Za-z0-9]+", "-", name).strip("-")
     top = "%s-%s" % (slug, a.version)
@@ -92,7 +93,7 @@ track. It is installed to `/data/mpc-addins/{id}/`.
 
 ## Requirements
 
-- A first-generation MPC OS standalone device (32-bit ARM: Force, MPC Live / Live II, One, X, Key 61 and Key 37).
+- {device_line}
 - **Root shell access** (SSH) to the device. Stock MPC OS doesn't offer this; you need a modded unit.
 {requires}- Installing addins this way is unofficial: back up first, use at your own risk.
 
@@ -116,6 +117,10 @@ deletes its folder.
 
 See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (`docs/ADDINS.md`).
 """.format(name=name, ver=a.version, about=(a.about + "\n\n") if a.about else "", id=aid, top=top, so=so,
+           device_line=("A Gen2 MPC OS standalone device (aarch64: Live III, One G2, Key(s) G2). The installer refuses anything else."
+                         if arch == "aarch64" else
+                         "A Gen1 MPC OS standalone device (32-bit ARM: Force, MPC Live / Live II, One, X, Key 61 and Key 37). "
+                         "The installer refuses anything else."),
            requires=("- %s\n" % a.requires) if a.requires else "",
            conf_md=("\nSettings are in `/data/mpc-addins/%s/%s`; an upgrade keeps your edits.\n" % (aid, conf)) if conf else "",
            done_md=("\n" + done + "\n") if done else "")
@@ -124,7 +129,7 @@ See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-
     manifest = {
         "schema": 1, "id": aid, "name": name, "version": a.version, "kind": "addin", "layout": "addin",
         "so": so, "conf": conf or None, "files": files, "user_data": [conf] if conf else [],
-        "arch": elf_machine(os.path.join(root, so)), "max_glibc": max_glibc(os.path.join(root, so)),
+        "arch": arch, "max_glibc": max_glibc(os.path.join(root, so)),
         "param_compat": int(a.version.split(".")[0]), "about": a.about, "requires": a.requires,
         "source_repo": a.repo, "license": a.license, "cpu": None,
     }
@@ -134,7 +139,7 @@ See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-
     open(os.path.join(root, "SHA256SUMS"), "w").write("".join(
         "%s  %s\n" % (hashlib.sha256(open(os.path.join(root, f), "rb").read()).hexdigest(), f) for f in names))
     os.makedirs(a.out, exist_ok=True)
-    zpath = os.path.join(a.out, top + "-mpc-armv7.zip")
+    zpath = os.path.join(a.out, "%s-mpc-%s.zip" % (top, "aarch64" if arch == "aarch64" else "armv7"))
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
         for f in sorted(os.listdir(root)):
             p = os.path.join(root, f)

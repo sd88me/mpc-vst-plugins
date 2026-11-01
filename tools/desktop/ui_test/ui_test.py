@@ -14,7 +14,7 @@ try:
         b = p.chromium.launch()
         ctx = b.new_context(bypass_csp=True, viewport={"width": 1000, "height": 1300}); pg = ctx.new_page()
         errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
-        pg.goto(link)
+        pg.goto(link); pg.click("#mode-install")
         check("URL token is removed from the address bar", "t=" not in pg.evaluate("location.href"))
         check("steps 2 and 3 locked before connecting", "off" in pg.locator("#s2").get_attribute("class"))
         pg.screenshot(path="/out/ui-1-start.png")

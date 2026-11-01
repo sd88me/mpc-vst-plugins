@@ -1,0 +1,21 @@
+{
+ "id": "phyxxl",
+ "name": "PhyXXL",
+ "author": "L'Cronx",
+ "repo": "sunskiefer/PhyXXL",
+ "kind": "effect",
+ "style": "filter",
+ "tags": [
+  "filter",
+  "multi-filter",
+  "ms-20",
+  "sem",
+  "moog",
+  "matrix-12",
+  "arp-2600",
+  "polivoks"
+ ],
+ "license": "GPL-3.0-or-later",
+ "screenshot": "https://raw.githubusercontent.com/sunskiefer/PhyXXL/v0.1.2/docs/img/overview.png",
+ "summary": "Eight filters in the style of classic synths (MS-20, SEM, Minimoog, Matrix-12, 2600, Wasp, prologue, Polivoks) in one effect. Route audio from any filter into any other; modulate each from ten sources by touch patch bay or matrix. 28 patches. By L'Cronx, GPL-3. No third-party code; not endorsed by the makers of the originals."
+}

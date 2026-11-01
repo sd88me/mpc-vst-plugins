@@ -1,0 +1,21 @@
+{
+ "id": "dinxxl",
+ "name": "DINXXL",
+ "author": "L'Cronx",
+ "repo": "sunskiefer/dinxxl",
+ "kind": "instrument",
+ "style": "drum-machine",
+ "tags": [
+  "blastbeats",
+  "opl3",
+  "fm",
+  "drum-machine",
+  "groovebox",
+  "step-sequencer",
+  "chiptune",
+  "adlib"
+ ],
+ "license": "GPL-3.0-or-later",
+ "screenshot": "https://raw.githubusercontent.com/sunskiefer/dinxxl/v1.0.0/docs/img/keys.png",
+ "summary": "BlastBeats-style OPL3 FM groovebox: the published v7.1 firmware by Twisted Electrons runs unmodified on a software model of its board (YMF262 via ymfm). 6 drums, 4 four-op synths, 64-step sequencer with p-locks and songs, factory card inside. By L'Cronx; not made or endorsed by Twisted Electrons."
+}

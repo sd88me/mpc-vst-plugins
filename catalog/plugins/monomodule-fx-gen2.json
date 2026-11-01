@@ -1,0 +1,5 @@
+{ "id": "monomodule-fx-gen2", "name": "Monomodule FX (Gen2)", "author": "sd88me", "repo": "sd88me/mpc-vst-monomodule",
+  "kind": "effect", "style": "multi-effect", "tags": ["elektron", "monomachine", "gen2"], "license": "AGPL-3.0-or-later",
+  "summary": "The Elektron Monomachine's seven effect machines (thru, reverb, chorus, dynamix, ring mod, phaser, flanger) as an audio effect for Gen2 MPC devices, with a touchscreen skin and Q-Links. A ready-made download with nothing of Elektron's in it: it reads your own Monomachine OS file from the plugin folder. Gen2 only.",
+  "asset_pattern": "Monomodule-FX-*-mpc-aarch64.zip",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-monomodule/main/docs/img/monomodule-fx-gen2.png" }

@@ -25,7 +25,21 @@ mpc_service() {
     echo acvs
 }
 
-ours() { echo "$SYSTEMD_ROOT/etc/systemd/system/$1.service.d/$DROPIN_NAME"; }   # service
+DROPIN_ROOT=""   # /etc or /run, set once by resolve_dropin_root() before anything calls ours()
+ours() { echo "$SYSTEMD_ROOT$DROPIN_ROOT/systemd/system/$1.service.d/$DROPIN_NAME"; }   # service
+
+# Where the shared drop-in goes. One already there (from an install earlier in this boot) wins; otherwise /etc if
+# root is writable, or can be made so with a remount; otherwise /run (tmpfs: it does not survive a reboot, so an
+# addin installed this way needs reinstalling after one -- e.g. by re-running install.sh from an autorun stick).
+# Gen2's Live III is the first device seen with no writable /etc at all: a verity rootfs, remount refused outright,
+# unlike a plain ro mount (which boot_reload_add already handles by remounting around its own, separate write).
+resolve_dropin_root() {   # service
+    if [ -f "$SYSTEMD_ROOT/etc/systemd/system/$1.service.d/$DROPIN_NAME" ]; then DROPIN_ROOT=/etc; return; fi
+    if [ -f "$SYSTEMD_ROOT/run/systemd/system/$1.service.d/$DROPIN_NAME" ]; then DROPIN_ROOT=/run; return; fi
+    if ! root_ro || etc_overlay; then DROPIN_ROOT=/etc
+    elif remount_root rw; then remount_root ro; DROPIN_ROOT=/etc
+    else DROPIN_ROOT=/run; fi
+}
 writable() {   # file: can it be replaced? A probe file, since busybox's [ -w ] says yes to root on a read-only mount
     w="$(dirname "$1")/.mpc-addins-probe.$$"
     [ -w "$1" ] && (: > "$w") 2>/dev/null && rm -f "$w"
@@ -123,8 +137,14 @@ preload_add() {   # service unit so
         grep -qF "$3" "$2" || { mv "$2.prev" "$2"; echo "error: editing $2 failed; restored" >&2; exit 1; }
         rm -f "$2.prev"
     else
+        f=$(ours "$1")
+        was_ro=0; [ "$DROPIN_ROOT" = /etc ] && root_ro && ! etc_overlay && was_ro=1
+        if [ $was_ro = 1 ] && ! remount_root rw; then die "/ is read-only and could not be remounted: can't write $f"; fi
         sync_ours "$1" "$3" ""
-        grep -qF "$3" "$(ours "$1")" || { echo "error: writing $(ours "$1") failed" >&2; exit 1; }
+        sync
+        [ $was_ro = 0 ] || remount_root ro || echo "warning: / is still writable; it is read-only again after a reboot" >&2
+        [ "$DROPIN_ROOT" != /run ] || echo "warning: $f is on /run (tmpfs): not persistent, reinstall after a reboot" >&2
+        grep -qF "$3" "$f" || { echo "error: writing $f failed" >&2; exit 1; }
     fi
 }
 
@@ -136,7 +156,13 @@ preload_remove() {   # service so: out of every writable file that lists it, the
             if writable "$f"; then edit_preload "$f" remove "$2"; else echo "warning: $f lists $2 but is read-only" >&2; fi
         done
     done
-    [ ! -f "$o" ] || sync_ours "$1" "" "$2"
+    if [ -f "$o" ]; then
+        was_ro=0; [ "$DROPIN_ROOT" = /etc ] && root_ro && ! etc_overlay && was_ro=1
+        if [ $was_ro = 1 ] && ! remount_root rw; then die "/ is read-only and could not be remounted: can't update $o"; fi
+        sync_ours "$1" "" "$2"
+        sync
+        [ $was_ro = 0 ] || remount_root ro || echo "warning: / is still writable; it is read-only again after a reboot" >&2
+    fi
 }
 
 # After a reboot. Where /etc is an overlay that systemd mounts itself (etc.mount, a few seconds into boot, on MPC OS 3.x),
@@ -149,8 +175,12 @@ BOOT_MARK="mpc-vst-plugins addin installer"
 ADDIN_MOUNTS="${ADDIN_MOUNTS:-/proc/mounts}"
 etc_overlay() { awk '$2 == "/etc" && $3 == "overlay" { f = 1 } END { exit !f }' "$ADDIN_MOUNTS" 2>/dev/null; }
 root_ro() { awk '$2 == "/" && $4 ~ /(^|,)ro(,|$)/ { f = 1 } END { exit !f }' "$ADDIN_MOUNTS" 2>/dev/null; }
-remount_root() {   # rw | ro (logged under test)
-    if [ -n "$ADDIN_INSTALL_TEST" ]; then echo "mount -o remount,$1 /" >> "${ADDIN_TEST_LOG:-/dev/null}"; return 0; fi
+remount_root() {   # rw | ro (logged under test; ADDIN_REMOUNT_FAILS=1 simulates a verity root that refuses it)
+    if [ -n "$ADDIN_INSTALL_TEST" ]; then
+        echo "mount -o remount,$1 /" >> "${ADDIN_TEST_LOG:-/dev/null}"
+        [ "$1" = rw ] && [ -n "${ADDIN_REMOUNT_FAILS:-}" ] && return 1
+        return 0
+    fi
     mount -o remount,"$1" /
 }
 boot_unit_text() {   # service
@@ -202,7 +232,11 @@ boot_reload_remove() {   # service: once the shared drop-in is gone (the last ad
 #   ADDIN_NETWORK 1 if ADDIN_CONF has a bind= setting: a first interactive install asks whether to open it to the network ("" or 0 none)
 #   ADDIN_VERSION X.Y.Z, written by tools/release_addin.py ("" for a build that was not released)
 # Only plain assignments: tools/catalog_check.py refuses a manifest with anything else in it.
-SELF_FILES="addin.manifest addin-lib.sh uninstall.sh"   # copied into the folder too, so it can remove itself
+SELF_FILES="addin.manifest addin-lib.sh uninstall.sh install.sh mpc-plugin.json"   # copied into the folder too, so it
+    # can remove itself, and reinstall itself (needed on a device with no persistent /etc: the LD_PRELOAD drop-in
+    # goes in /run, wiped by a reboot, so sh /data/mpc-addins/<id>/install.sh -y -n redoes it without the release
+    # zip; mpc-plugin.json travels with it so the arch check still has the right PKG_ARCH). The USB stick's run.sh
+    # (docs/USB_STICK.md) does this for every installed addin on each boot it is inserted for.
 load_manifest() {
     [ -f addin.manifest ] || die "addin.manifest is missing next to install.sh"
     ADDIN_ID=""; ADDIN_NAME=""; ADDIN_SO=""; ADDIN_CONF=""; ADDIN_FILES=""; ADDIN_DONE=""; ADDIN_NETWORK=""; ADDIN_VERSION=""
@@ -241,9 +275,12 @@ remove_files() {
 check_so() {   # file
     set -- $(dd if="$1" bs=20 count=1 2>/dev/null | od -b | sed 's/^[0-7]*//')
     [ $# -ge 20 ] && [ "$1 $2 $3 $4" = "177 105 114 106" ] || die "$ADDIN_SO is not an ELF file"
-    [ "$5 $6" = "001 001" ] || die "$ADDIN_SO is not a 32-bit little-endian library"
     [ "${17} ${18}" = "003 000" ] || die "$ADDIN_SO is not a shared library"
-    [ "${19} ${20}" = "050 000" ] || die "$ADDIN_SO is not built for ARM"
+    case "$5 $6 ${19} ${20}" in
+        "001 001 050 000") ;;   # 32-bit little-endian, EM_ARM: Gen1 (Force, MPC Live/One/X/Key 61/Key 37)
+        "002 001 267 000") ;;   # 64-bit little-endian, EM_AARCH64: Gen2 (Live III, One G2, Key(s) G2)
+        *) die "$ADDIN_SO is not a 32-bit ARM or 64-bit AArch64 shared library" ;;
+    esac
 }
 
 # MockbaMod (and mods like it) launch MPC from their own boot script, which exports LD_PRELOAD from a file that the

@@ -1,0 +1,5 @@
+{ "id": "machinemodule-tap-gen2", "name": "Machinemodule Tap (Gen2)", "author": "sd88me", "repo": "sd88me/mpc-vst-machinedrum",
+  "kind": "effect", "style": "utility", "tags": ["elektron", "machinedrum", "gen2"], "license": "AGPL-3.0-only",
+  "summary": "Puts any Machinemodule tracks, and its reverb and delay sends, on their own MPC return or FX track, so MPC's mixer and effects can process them. Needs Machinemodule in the same project. Gen2 (aarch64) only.",
+  "asset_pattern": "Machinemodule-Tap-*-mpc-aarch64.zip",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-machinedrum/main/docs/img/machinemodule-tap-gen2.png" }

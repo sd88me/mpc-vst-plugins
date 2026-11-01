@@ -32,12 +32,14 @@ type App struct {
 	verInfo     versionInfo
 	work        string
 
-	mu      sync.Mutex
-	dev     *Device
-	uploads map[string]*Package
-	cat     []CatPlugin
-	catAt   time.Time
-	job     *Job
+	mu        sync.Mutex
+	dev       *Device
+	uploads   map[string]*Package
+	cat       []CatPlugin
+	catAt     time.Time
+	job       *Job
+	stickJob  *Job                  // the USB-stick builder's own job slot: independent of a device connection
+	stickScan map[string]*stickScan // salt-scan results, by handle
 
 	patches   []Patch
 	patchesAt time.Time
@@ -48,7 +50,7 @@ type App struct {
 func NewApp(cfg Config, token, hostport, catalogURL, work string) *App {
 	port := hostport[strings.LastIndex(hostport, ":")+1:]
 	return &App{cfg: cfg, token: token, catalogURL: catalogURL, releasesURL: defaultReleasesURL, patchesURL: patchesURLFor(catalogURL), work: work, uploads: map[string]*Package{}, patchCode: map[string][]byte{},
-		hosts: map[string]bool{"127.0.0.1:" + port: true, "localhost:" + port: true}}
+		stickScan: map[string]*stickScan{}, hosts: map[string]bool{"127.0.0.1:" + port: true, "localhost:" + port: true}}
 }
 
 // fetchCatalog reads the catalog from catalogURL, then from each fallback, and returns the first one that parses. The error
@@ -103,6 +105,9 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/api/install", a.install)
 	mux.HandleFunc("/api/device", a.devicePlugins)
 	mux.HandleFunc("/api/remove", a.remove)
+	mux.HandleFunc("/api/userfiles", a.userFilesList)
+	mux.HandleFunc("/api/userfiles/upload", a.userFilesUpload)
+	mux.HandleFunc("/api/userfiles/delete", a.userFilesDelete)
 	mux.HandleFunc("/api/unregistered", a.unregistered)
 	mux.HandleFunc("/api/register", a.register)
 	mux.HandleFunc("/api/backups", a.backups)
@@ -110,6 +115,15 @@ func (a *App) Handler() http.Handler {
 	mux.HandleFunc("/api/job", a.jobStatus)
 	mux.HandleFunc("/api/patches", a.patchList)
 	mux.HandleFunc("/api/patch/run", a.patchRun)
+	mux.HandleFunc("/api/stick/scan", a.stickScanStart)
+	mux.HandleFunc("/api/stick/job", a.stickJobStatus)
+	mux.HandleFunc("/api/stick/keygen", a.stickKeygen)
+	mux.HandleFunc("/api/stick/build", a.stickBuild)
+	mux.HandleFunc("/api/stick/easy", a.stickEasy)
+	mux.HandleFunc("/api/stick/easyinfo", a.stickEasyInfo)
+	mux.HandleFunc("/api/stick/g2", a.stickG2)
+	mux.HandleFunc("/api/browse", a.browse)
+	mux.HandleFunc("/api/drives", a.drives)
 	return a.guard(mux)
 }
 
@@ -547,13 +561,14 @@ func (a *App) jobStatus(w http.ResponseWriter, r *http.Request) {
 // plugins from the catalog and for zips dropped into this session, so those are the ones it will remove.
 type knownPlugin struct {
 	DevPlugin
-	ID        string   `json:"id"`
-	Version   string   `json:"version,omitempty"`
-	RootLabel string   `json:"rootLabel"`
-	Known     bool     `json:"known"`
-	Keep      []string `json:"keep"`
-	Source    string   `json:"source,omitempty"`
-	Addin     bool     `json:"addin"`
+	ID        string          `json:"id"`
+	Version   string          `json:"version,omitempty"`
+	RootLabel string          `json:"rootLabel"`
+	Known     bool            `json:"known"`
+	Keep      []string        `json:"keep"`
+	UserFiles []UserFileGroup `json:"userFiles"` // the user's own files this plugin needs (ROMs), from its manifest
+	Source    string          `json:"source,omitempty"`
+	Addin     bool            `json:"addin"`
 }
 
 // classify matches the device's plugin folders to the catalog and to the dropped zips. Caller holds a.mu and a.dev != nil.
@@ -567,6 +582,7 @@ func (a *App) classify() []knownPlugin {
 				if c.UserData != nil {
 					kp.Keep = c.UserData
 				}
+				kp.UserFiles = c.UserFiles
 			}
 		}
 		if !kp.Known {
@@ -577,6 +593,7 @@ func (a *App) classify() []knownPlugin {
 						if m.UserData != nil {
 							kp.Keep = m.UserData
 						}
+						kp.UserFiles = m.UserFiles
 					}
 				}
 			}

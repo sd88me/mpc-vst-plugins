@@ -1,0 +1,5 @@
+{ "id": "machinemodule-gen2", "name": "Machinemodule (Gen2)", "author": "sd88me", "repo": "sd88me/mpc-vst-machinedrum",
+  "kind": "instrument", "style": "drum-machine", "tags": ["elektron", "machinedrum", "gen2"], "license": "AGPL-3.0-only",
+  "summary": "The Elektron Machinedrum UW sound engine as an instrument for Gen2 MPC devices: 16 tracks in one plugin, touchscreen skin, bank and kit lists, Q-Links. A ready-made download with nothing of Elektron's in it: you add your own OS file (and optionally your flash image) in the plugin folder. Gen2 only.",
+  "asset_pattern": "Machinemodule-[0-9]*-mpc-aarch64.zip",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-machinedrum/main/docs/img/machinemodule-gen2.png" }

@@ -172,7 +172,8 @@ def tsv(catalog, helpers):
     (tab separated, '-' when
     empty; defer is 1 when the zip's installer understands -n, 0 when it restarts MPC by itself; os_compat is "2.x,3.x" or "3.x", the MPC OS
     generations the version works on, '-' when the catalog does not say; max_glibc is the newest glibc it needs; the last three are the
-    Gen2 (aarch64) zip's size, sha256 and url, '-' when the version has none, and a Gen2 device picks them). Clients that read fewer
+    Gen2 (aarch64) zip's size, sha256 and url, '-' when the version has none, and a Gen2 device picks them; a Gen2-only version has '-' in
+    the size, sha256 and url columns above). Clients that read fewer
     columns ignore the rest. An addin (kind 'addin') has no skin or uid ('-'): it installs to /data/mpc-addins/<id>."""
     out = ["#mpc-catalog-tsv 1"]
     for name, path in helpers:
@@ -185,8 +186,10 @@ def tsv(catalog, helpers):
                 continue
             m = v["manifest"]
             a64 = (v.get("assets") or {}).get("aarch64") or {}
+            g2only = bool(v.get("gen2_only"))   # a Gen2-only version has no Gen1 zip: the armv7 columns are '-'
             row = ["plugin", p["id"], v["version"], "1" if v["version"] == p.get("latest") else "0", p["kind"], p["name"], m.get("skin") or "-",
-                   m.get("uid") or "-", v.get("param_compat", 1), v["size"], v["sha256"], v["url"], ",".join(m.get("user_data", [])) or "-",
+                   m.get("uid") or "-", v.get("param_compat", 1), "-" if g2only else v["size"], "-" if g2only else v["sha256"],
+                   "-" if g2only else v["url"], ",".join(m.get("user_data", [])) or "-",
                    "1" if v.get("defer") else "0", ",".join(v.get("os_compat") or []) or "-", v.get("max_glibc") or "-",
                    a64.get("size", "-"), a64.get("sha256", "-"), a64.get("url", "-")]
             out.append("\t".join(_f(x) for x in row))

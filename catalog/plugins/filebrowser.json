@@ -1,0 +1,19 @@
+{
+  "id": "filebrowser",
+  "name": "MPC File Browser",
+  "author": "jacob-sabella",
+  "repo": "jacob-sabella/mpc-addin-filebrowser",
+  "kind": "addin",
+  "style": "utility",
+  "tags": [
+    "files",
+    "browser",
+    "upload",
+    "samples",
+    "editor"
+  ],
+  "license": "MIT AND Apache-2.0",
+  "summary": "FileBrowser Quantum beside MPC: browse the device's drives in a web browser, upload and download samples and projects, play audio, edit text files. Listens on the device only: reach it through an SSH tunnel (login admin / mpcadmin; change it). bind=0.0.0.0 opens it to your network.",
+  "screenshot": "https://raw.githubusercontent.com/jacob-sabella/mpc-addin-filebrowser/88b86eb39f907485995497cf0eaeeb5ddd7aa3e4/docs/tile.png",
+  "asset_pattern": "MPC-File-Browser-*-mpc-armv7.zip",
+  "flags_reviewed": ["runs programs"] }

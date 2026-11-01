@@ -1,0 +1,4 @@
+{ "id": "prloguexxl", "name": "PrLogueXXL", "author": "L'Cronx", "repo": "sunskiefer/PrLogueXXL",
+  "kind": "instrument", "style": "synth", "tags": ["synth", "poly", "analog-modelled", "vpm", "fm", "arpeggiator", "pad", "lead"],
+  "license": "GPL-3.0-or-later", "screenshot": "https://raw.githubusercontent.com/sunskiefer/PrLogueXXL/v0.1.1/docs/img/osc.png",
+  "summary": "16-voice poly synth modelled on the KORG prologue-16 (not affiliated with KORG): two VCOs, a multi engine (noise, 16 VPM types, KORG's logue-sdk waves oscillator), Poly/Duo/Mono/Unison/Chord, Main and Sub timbres, arpeggiator on MPC's grid, mod FX, delay/reverb and a low-frequency compressor with a live meter, over four pages." }

@@ -1,0 +1,322 @@
+[
+ {
+  "key": "t01",
+  "name": "Text 1",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t02",
+  "name": "Text 2",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t03",
+  "name": "Text 3",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t04",
+  "name": "Text 4",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t05",
+  "name": "Text 5",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t06",
+  "name": "Text 6",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t07",
+  "name": "Text 7",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t08",
+  "name": "Text 8",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t09",
+  "name": "Text 9",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t10",
+  "name": "Text 10",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t11",
+  "name": "Text 11",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t12",
+  "name": "Text 12",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t13",
+  "name": "Text 13",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t14",
+  "name": "Text 14",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t15",
+  "name": "Text 15",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t16",
+  "name": "Text 16",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t17",
+  "name": "Text 17",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t18",
+  "name": "Text 18",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t19",
+  "name": "Text 19",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t20",
+  "name": "Text 20",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t21",
+  "name": "Text 21",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t22",
+  "name": "Text 22",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t23",
+  "name": "Text 23",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t24",
+  "name": "Text 24",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t25",
+  "name": "Text 25",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t26",
+  "name": "Text 26",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t27",
+  "name": "Text 27",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t28",
+  "name": "Text 28",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t29",
+  "name": "Text 29",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t30",
+  "name": "Text 30",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t31",
+  "name": "Text 31",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t32",
+  "name": "Text 32",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t33",
+  "name": "Text 33",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t34",
+  "name": "Text 34",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t35",
+  "name": "Text 35",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t36",
+  "name": "Text 36",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t37",
+  "name": "Text 37",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t38",
+  "name": "Text 38",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t39",
+  "name": "Text 39",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ },
+ {
+  "key": "t40",
+  "name": "Text 40",
+  "display": "string",
+  "default": 0,
+  "min": 0,
+  "max": 1
+ }
+]

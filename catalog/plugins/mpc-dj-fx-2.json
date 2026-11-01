@@ -1,0 +1,22 @@
+{
+  "id": "mpc-dj-fx-2",
+  "name": "MPC DJ FX 2",
+  "author": "mitchoster",
+  "repo": "mitchoster/mpc-vst-djfx2",
+  "kind": "effect",
+  "style": "multi-fx",
+  "tags": [
+    "dj",
+    "isolator",
+    "filter",
+    "beat-repeat",
+    "delay",
+    "reverb",
+    "performance",
+    "macro"
+  ],
+  "license": "MIT",
+  "summary": "One-slot live DJ insert for MPC/Force: 3-band isolator, DJ filter, beat repeat, delay, reverb, through-zero flanger, grain delay, limiter, and eight performance macros measured from Lenny Kiser's DJ-FX rack.",
+  "screenshot": "https://raw.githubusercontent.com/mitchoster/mpc-vst-djfx2/0f20d92f/docs/ui-preview/page_1.png",
+  "asset_pattern": "MPC-DJ-FX-2-*-mpc-armv7.zip"
+}

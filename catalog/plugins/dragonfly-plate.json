@@ -10,7 +10,7 @@
     "plate",
     "dragonfly"
   ],
-  "license": "GPL-3.0-only",
+  "license": "GPL-3.0-or-later",
   "summary": "Dragonfly Plate reverb as a native insert effect, with a touchscreen skin and Q-Links.",
   "asset_pattern": "Plate-*-mpc-armv7.zip",
   "screenshot": "https://raw.githubusercontent.com/gmorb/mpc-vst-dragonfly-plate/a9087385948d18ae38739c44ddf42ab826d1a567/docs/banners/plate.png"

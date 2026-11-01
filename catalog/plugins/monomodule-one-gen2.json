@@ -1,0 +1,5 @@
+{ "id": "monomodule-one-gen2", "name": "Monomodule One (Gen2)", "author": "sd88me", "repo": "sd88me/mpc-vst-monomodule",
+  "kind": "instrument", "style": "synth", "tags": ["elektron", "monomachine", "gen2"], "license": "AGPL-3.0-or-later",
+  "summary": "The Elektron Monomachine's synth engine (15 machines) as an instrument for Gen2 MPC devices, with a touchscreen skin, banks and preset lists, and Q-Links. A ready-made download: nothing of Elektron's is in the zip; you put your own Monomachine OS file in the plugin folder and it makes its skin and sound from that. Gen2 (aarch64) only.",
+  "asset_pattern": "Monomodule-One-*-mpc-aarch64.zip",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-monomodule/main/docs/img/monomodule-gen2.png" }

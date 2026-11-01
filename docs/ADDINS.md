@@ -38,8 +38,10 @@ addin). So every addin installs the same way, with the installer in `tools/relea
 MPC keeps the old `.so` mapped), installs the settings file only when the folder has none (the user's edits survive
 an upgrade), adds the `.so` to `LD_PRELOAD` and restarts MPC. `-n` leaves MPC alone: the caller stops and starts it
 once for a batch (`DEFER=1` in the script tells batch installers so). The folder also gets `uninstall.sh`,
-`addin-lib.sh` and `addin.manifest`, so `sh /data/mpc-addins/<id>/uninstall.sh` removes the addin later without the
-release; that is what `mpc-store.sh remove` and the desktop app run.
+`install.sh`, `addin-lib.sh`, `mpc-plugin.json` and `addin.manifest`, so `sh /data/mpc-addins/<id>/uninstall.sh`
+removes the addin later, and `sh /data/mpc-addins/<id>/install.sh -y -n -t /data/mpc-addins/<id>` reinstalls it
+in place, both without the release zip; `mpc-store.sh remove`/the desktop app use the former, and a device with no
+persistent `/etc` (below) needs the latter after every reboot.
 
 Before anything changes, `install.sh` checks the `.so` on the device: it must be an ELF 32-bit little-endian ARM shared
 object, since anything else in `LD_PRELOAD` stops MPC from starting. The folder (`-t`, default
@@ -84,6 +86,26 @@ root filesystem, so the unit goes with it: re-run an addin's installer afterward
 A side effect: an addin that crashes MPC now does so after a reboot too. Before, a reboot happened to start MPC without
 the addins. The steps below still apply.
 
+### A device with no persistent `/etc` at all (Gen2, verity rootfs)
+
+Every device above still has *some* way to make the shared drop-in's folder persist: a plain writable root, or an
+`/etc` overlay on `/data`. Gen2's Live III (2026-10-23) has neither -- `/` is `dm-verity` (`/dev/dm-0`), and `mount
+-o remount,rw /` is refused outright ("cannot remount /dev/root read-write, is write-protected"), not just denied by
+permissions. There is no way to write under `/etc` on this device, ever.
+
+The installer falls back to `/run/systemd/system/<service>.service.d/90-mpc-addins.conf` instead (`resolve_dropin_root()`
+in `addin-lib.sh`, tried only after a plain root and an `/etc` overlay have both been ruled out). systemd merges `/run`
+drop-ins with the same priority as `/etc`'s, so this works exactly the same way once written -- but `/run` is tmpfs: it
+does not survive a reboot, and `install.sh` says so ("not persistent, reinstall after a reboot"). `/data/mpc-addins/<id>/`
+itself is unaffected (it is on `/data`, which does persist), so the fix is cheap: `sh /data/mpc-addins/<id>/install.sh -y
+-n -t /data/mpc-addins/<id>` from the folder itself, no release zip needed (the folder keeps its own copy of `install.sh`
+and `mpc-plugin.json` for exactly this). The USB stick (`docs/USB_STICK.md`) does this for every installed addin on each
+boot it is inserted for, so reinserting it restores both root/SSH access and every addin in one step.
+
+Tests: case 15 (remount succeeds, so `/etc` is used) and case 16 (remount refused, so `/run` is used) in
+`tools/test_addin.sh`; case 3c there covers the folder's own `install.sh` redoing the `/run` entry after a simulated
+reboot, without the original release.
+
 ## When an addin stops MPC from starting
 
 An addin runs inside MPC, so a broken one can crash MPC at every start. SSH stays up (it is a separate service), and
@@ -107,13 +129,13 @@ Most addins also have an off switch in their settings file (`enabled=0`), which 
 
 An addin that serves something over the network must listen on the device only by default (`bind=127.0.0.1`),
 must say in its catalog `summary` what it exposes and how to reach it, and must have a `bind` setting. Addins run as
-root inside MPC and the ones below have no login, so the network is opt-in.
+root inside MPC and most of the ones below have no login, so the network is opt-in.
 
 To reach one from a computer, open an SSH tunnel to the device and leave it running, then use `localhost` on that
 computer:
 
 ```sh
-ssh -N -L 6730:127.0.0.1:6730 root@<device address>     # one -L per addin: 6720 for remote, 6730 for commander
+ssh -N -L 6730:127.0.0.1:6730 root@<device address>     # one -L per addin: 6720 remote, 6730 commander, 6760 filebrowser
 ```
 
 `bind=0.0.0.0` in the addin's settings file opens it to every network interface instead (settings are read when MPC
@@ -123,6 +145,7 @@ starts). The ones in the catalog, and what anyone who can reach the port can the
 |---|---|---|---|
 | `remote` | HTTP 6720 | none | see and touch the screen, send any MIDI into MPC, and read text files in the `mcp_files` folders through its MCP endpoint (read-only; `mcp=0` turns MCP off). The MCP endpoint refuses requests from a web page on another site (`Origin` and `Host` checks); the rest of the server has no such check |
 | `commander` | HTTP and WebSocket 6730 | none | change any parameter of the VST plugins MPC has loaded, send MIDI and transport commands into MPC, write to the control-surface injector file, read the most recent project file and the plugins' skins. There is no `Origin` check yet, so a web page open in a browser on the same network can reach it too |
+| `filebrowser` | HTTP 6760 | password: `admin`, default `mpcadmin` (the same on every device until changed: in FileBrowser, or `password=` in the settings) | after logging in as admin: read, upload, change and delete any file in the folders it shows (`sources`, default `/media:/storage`; on Gen1 `/media/az01-internal` is all of `/data`, MPC's settings included). FileBrowser Quantum runs as root, as its own process beside MPC |
 
 `install.sh` asks about this itself for an addin with `ADDIN_NETWORK=1`, on a first interactive install (`-y` keeps the safe default), and after restarting MPC it checks that the library is in the new MPC's `LD_PRELOAD`, warning if a launcher dropped it.
 
@@ -152,7 +175,10 @@ be the installer's own. An addin finds its settings file in its own folder (the 
 ## Releasing
 
 1. Build the `.so` for armhf (an older glibc than the device's, as for plugins: `docs/RELEASING.md`) into a folder with `addin.manifest`
-   and the files it names.
+   and the files it names. For Gen2 (aarch64) too: a second build into a separate folder, same `addin.manifest` and files,
+   `arm64v8/gcc:12-bookworm` under QEMU (no older-glibc ceiling to respect: Gen2 only runs MPC OS 3.x, glibc 2.39) --
+   optional, and the only thing that changes in step 2 is a second `release_addin.py --dir` for it (named by the
+   built `.so`'s own arch, same as a plugin's zip).
 2. Package and check it:
    ```sh
    tools/release_addin.py --dir build/package --version 1.0.0 --repo owner/mpc-addin-<name> --license MIT \
@@ -182,12 +208,17 @@ jobs:
       tools_ref: <sha>                 # the same commit
       package_dir: build/package       # the build writes addin.manifest, the .so and the files it names here
       build: tools/build_armhf.sh      # run from the repo root; MPC_VST is set
+      package_dir_aarch64: build/aarch64   # optional: a Gen2 build too, same layout; omit for an armv7-only addin
+      build_aarch64: tools/build_aarch64.sh
       host_test: tools/test_host.sh    # optional; MPC_VST is set
       about: One line about the addin.
       license: MIT                     # needed to be listed in the catalog
       dry_run: ${{ inputs.dry_run }}   # optional: the zip as a run artifact only
 ```
-Re-running with the same version replaces the draft's zip; a version that is already published is refused.
+With both `package_dir_aarch64`/`build_aarch64` set, one run builds and attaches **both** zips to the same draft
+release (mpc-addin-remote and mpc-addin-commander do this; mpc-addin-skipback releases by hand instead, `tools/build_aarch64.sh`
++ `tools/release_addin.py` run directly). Re-running with the same version replaces the draft's zip(s); a version
+that is already published is refused.
 
 Addin repos are named `mpc-addin-<name>`. For a quick test without a release, unzip the package from step 2 (or copy
 the three installer files next to the build output) and run its `install.sh`.

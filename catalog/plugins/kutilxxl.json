@@ -1,0 +1,5 @@
+{ "id": "kutilxxl", "name": "KutilXXL", "author": "L'Cronx", "repo": "sunskiefer/BUSTEDXXL",
+  "kind": "instrument", "style": "groovebox", "tags": ["bastl", "kastle", "modular", "patch-panel", "touch-cables", "sampler", "fm", "groovebox"],
+  "license": "GPL-3.0-or-later",
+  "screenshot": "https://raw.githubusercontent.com/sunskiefer/BUSTEDXXL/f191123fa6b5a5468157517c608a8ac528d2c147/docs/img/screen1.png",
+  "summary": "Groovebox of Bastl-style modules patched with touch cables: Wave Bard on Bastl's open-source Kastle 2 DSP, plus imagined Kompas, Crust 2, Pizza, Alchemist, Basil and ABC across three panels. Tap a jack then another to patch, cables run between screens, and a tap on empty panel art zooms the top or bottom half of a screen to the full display." }

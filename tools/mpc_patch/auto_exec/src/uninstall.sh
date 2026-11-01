@@ -7,7 +7,7 @@ P=${AEX_PREFIX:-}
 if [ -z "$P" ]; then PATH=/usr/sbin:/usr/bin:/sbin:/bin; export PATH; fi   # fixed PATH on the device; tests (AEX_PREFIX) bring their own shims
 [ "$(id -u)" = 0 ] || { echo 'Root required'; exit 1; }
 [ -f "$P/etc/auto-exec/VERSION" ] || { echo 'Patch not installed'; exit 0; }
-[ "$(cat "$P/etc/auto-exec/VERSION")" = 0.3.0 ] || { echo 'Different version: use its matching uninstaller'; exit 1; }
+[ "$(cat "$P/etc/auto-exec/VERSION")" = 0.3.2 ] || { echo 'Different version: use its matching uninstaller'; exit 1; }
 mpc_service() {
  if systemctl cat acvs >/dev/null 2>&1; then echo acvs
  elif systemctl cat inmusic-mpc >/dev/null 2>&1; then echo inmusic-mpc

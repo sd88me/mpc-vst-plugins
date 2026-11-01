@@ -4,15 +4,15 @@
     {
       "id": "drum-pad-layout",
       "title": "16-pad drum layout for selected plugins",
-      "summary": "Machinedrum Module / Machinemodule, 6W6, 8W8, CW-78, 9W9, TR-MPC and Lucky Dip get MPC's drum layout with all 16 pads lit.",
+      "summary": "Machinedrum Module / Machinemodule, 6W6, 8W8, CW-78, 9W9, TR-MPC and Lucky Dip get MPC's drum layout with all 16 pads lit. On Gen2 (Live III) it runs a patched copy of MPC instead of changing the system.",
       "author": "sd88me",
       "license": "MIT",
       "docs": "tools/mpc_patch/README.md",
       "script": {
-        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/6ddf68cf92b3f1c0bdd322231ed133c0cc2eed48/tools/mpc_patch/mpc-drum-pad-patch.sh",
-        "sha256": "ec69edaaf5b1ce57d3937d2ec967d34bd5257d5faa15d1520b8cb51422dfefe7"
+        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/17a9d5c8c1e240e88389591540b7ea58534b9aa6/tools/mpc_patch/mpc-drum-pad-patch.sh",
+        "sha256": "681bf0689bbd8f7fdc60cc65cf38689a018e11ae812d39dd124fe7c091fb8c14"
       },
-      "supports": {"os": "MPC OS 3.9.1.2", "arch": "armv7l", "mpc_md5": ["592eebc8e1ce0797dc8c98e7002143b8"]},
+      "supports": {"os": "MPC OS 3.9.1.2 (Force); Gen1 MPC OS 3.10.0; Gen2 (aarch64) MPC OS 3.9.1 and 3.10.0", "arch": "armv7l,aarch64", "mpc_md5": ["592eebc8e1ce0797dc8c98e7002143b8", "a7ace6a9993df33afeae50571755bbf9", "15a664f6b6ae591c8b78baae8b376f02", "b6cc8e7a398bdf6c3fd8f7176eecd3ee"]},
       "modifies": ["/usr/bin/MPC"],
       "backup": "/sdcard/MPC-backup",
       "restarts_mpc": true,
@@ -38,13 +38,13 @@
     {
       "id": "auto-exec",
       "title": "Auto exec: run plugins from any noexec drive, no setup",
-      "summary": "Recommended for a noexec drive. MPC cannot load a plugin from a drive mounted noexec (SSD, USB stick, SD card): it is listed but only shows Load Plugin. This makes the Synths folder of every noexec drive executable through a small boot-time service, with nothing to choose; the drives stay noexec. Tried on a Force with two USB sticks, a plugin loaded and survived a power cycle (not yet tried: the SSD, an eject without its release command). Replaces drive exec.",
+      "summary": "Recommended for a noexec drive. MPC cannot load a plugin from a drive mounted noexec (SSD, USB stick, SD card): it is listed but only shows Load Plugin. This makes the Synths folder of every noexec drive executable through a small boot-time service, with nothing to choose; the drives stay noexec. Tried on a Force with two USB sticks, a plugin loaded and survived a power cycle (not yet tried: an eject without its release command); 0.3.1 also starts after a reboot when an overlay is mounted on /usr (tried on a second Force, two reboots), and 0.3.2 finds drives with a space in the name. Apply updates an installed 0.3.0 or 0.3.1 in place. Replaces drive exec.",
       "author": "sd88me (mount logic after timomacquis)",
       "license": "MIT",
       "docs": "tools/mpc_patch/auto_exec/README.md",
       "script": {
-        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/1a6251e5dc90386a010179cb2173a51831cbbf4b/tools/mpc_patch/auto_exec/auto-exec-patch.sh",
-        "sha256": "23521d7069a19c2fc1bee62414f200f645ef8b7ddc1b916148c565ce73aee486"
+        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/40df2587d906cd44d064597472e7ae0ee92ed94a/tools/mpc_patch/auto_exec/auto-exec-patch.sh",
+        "sha256": "8302f19dac337c98408c0f92867fb3a67fe494fa7cb58a91d347a30f128e6421"
       },
       "supports": {"os": "MPC OS Gen1 (mount probe on a Force, 2026-10-14)", "arch": "armv7l"},
       "modifies": ["/etc/auto-exec", "/etc/systemd/system/auto-exec.timer", "/usr/lib/systemd/system/auto-exec-bootstrap.service", "/media/<each noexec drive>/Synths (an executable bind mount of the folder)"],

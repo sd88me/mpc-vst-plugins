@@ -1,0 +1,4 @@
+{ "id": "profit-5", "name": "Profit-5", "author": "sd88me", "repo": "sd88me/mpc-vst-profit5",
+  "kind": "instrument", "style": "synth", "tags": ["analog", "poly", "vintage", "poly-mod"], "license": "MIT",
+  "summary": "Five-voice analog polysynth modelled on an early SSM-chip classic: two oscillators, a four-pole resonant filter, Poly-Mod, wheel-mod, glide and unison, 38 factory programs, a Rev 2 / Rev 4 voicing switch, and an importer for Repro-5 .h2p patches.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-profit5/5724d1fe8fdb0aab2c72837228a7fd77f1980ec1/docs/img/screenshot-osc.png" }

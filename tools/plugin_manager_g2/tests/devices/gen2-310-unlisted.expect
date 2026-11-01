@@ -1,0 +1,4 @@
+location: /synths/Synths  (/synths is exfat, read-only)
+location: /media/9A5E-BA8A/Synths  (/media/9A5E-BA8A is vfat, noexec)
+install target: (none)
+problem: No install location

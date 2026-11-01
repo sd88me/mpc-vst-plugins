@@ -165,6 +165,7 @@ var SORTS = {
     verifiedOn(b).length - verifiedOn(a).length || testedDate(b).localeCompare(testedDate(a)) || b.downloads - a.downloads || a.name.localeCompare(b.name); }, desc: false },
   name:      { label: "Name",              cmp: function (a, b) { return a.name.localeCompare(b.name); }, desc: false },
   updated:   { label: "Recently updated",  cmp: function (a, b) { return a.updated.localeCompare(b.updated); }, desc: true },
+  added:     { label: "Newest in catalog", cmp: function (a, b) { return (a.added || "").localeCompare(b.added || "") || b.name.localeCompare(a.name); }, desc: true },
   downloads: { label: "Downloads",         cmp: function (a, b) { return a.downloads - b.downloads; }, desc: true },
   developer: { label: "Developer",         cmp: function (a, b) { return a.author.localeCompare(b.author) || a.name.localeCompare(b.name); }, desc: false },
   kind:      { label: "Kind",              cmp: function (a, b) { return a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name); }, desc: false }
@@ -216,10 +217,11 @@ function osTag(v) {
 function tested2(v) { return !!(v && (v.tested || []).some(function (t) { return /gen\s*2/i.test(t.device || ""); })); }
 function genTag(v) {
   if (!v || !v.gen2) return "";
+  if (v.gen2_only) return '<span class="tag gen" title="' + esc("Built for Gen2 (aarch64) MPC devices only: MPC Live III and kin. " + (tested2(v) ? "Tested on a Gen2 unit." : "Not yet tested on a Gen2 unit.")) + '">Gen2 only</span>';
   return '<span class="tag gen" title="' + esc("Also built for Gen2 (aarch64) MPC devices. " + (tested2(v) ? "Tested on a Gen2 unit." : "Not yet tested on a Gen2 unit.")) + '">Gen2 build</span>';
 }
 function genRow(v) {
-  return v && v.gen2 ? '<dt>Gen2</dt><dd>aarch64 build available (' + (tested2(v) ? "tested on a Gen2 unit" : "not yet tested on a Gen2 unit") + ')</dd>' : "";
+  return v && v.gen2 ? '<dt>Gen2</dt><dd>' + (v.gen2_only ? "aarch64 only: no Gen1 or Force build (" : "aarch64 build available (") + (tested2(v) ? "tested on a Gen2 unit" : "not yet tested on a Gen2 unit") + ')</dd>' : "";
 }
 function osRow(v) {
   var g = osGens(v); if (!g) return "";
@@ -299,7 +301,7 @@ function card(p, big) {
   return head +
     '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + (p.kind !== "addin" ? osRow(v) + genRow(v) : "") +
     (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
-    '<div class="actions">' + (v ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
+    '<div class="actions">' + (v && !v.gen2_only ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
     (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="Gen2 MPC devices (aarch64, MPC OS 3.x)">Download (Gen2)</a>' : '') +
     '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a>' +
     (v && ID_RE.test(p.id) ? '<label class="pick"><input type="checkbox" data-pick="' + esc(p.id) + '"' + (state.sel.indexOf(p.id) >= 0 ? " checked" : "") + '> Add to install list</label>' : '') +

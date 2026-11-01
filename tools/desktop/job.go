@@ -39,6 +39,14 @@ func (j *Job) finish(err error) {
 	}
 }
 
+// finishWithResult is finish(nil) but with a caller-chosen Result instead of the default "Done." -- for a job whose
+// success carries data the page needs (e.g. stickScanStart's scan handle), not just a status line.
+func (j *Job) finishWithResult(result string) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.State, j.Result = "done", result
+}
+
 // snapshot returns the state and the lines after `since`.
 func (j *Job) snapshot(since int) (state string, lines []string, next int, result string) {
 	j.mu.Lock()
@@ -154,7 +162,7 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 	if plugins {
 		j.log("Installing to %s (%s)", root.Label, root.Path)
 		if !root.InContent && root.Path != "" {
-			j.log("Note: MPC does not list %s as a content location, so a plugin's screen may not show until you add it in MPC's settings", root.Path)
+			j.log("WARNING: MPC does not list %s as a content location, so the plugin will load with no skin until the folder is added to MPC's content locations (or you install to a listed folder)", root.Path)
 		}
 	}
 	if dev.Info.TmpFreeKB > 0 && need/1024*13/10 > dev.Info.TmpFreeKB {

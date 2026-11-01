@@ -1,0 +1,18 @@
+{
+ "id": "mpc-tape-echo",
+ "name": "MPC Tape Echo",
+ "author": "mitchoster",
+ "repo": "mitchoster/mpc-vst-tape-echo",
+ "kind": "effect",
+ "style": "delay",
+ "tags": [
+  "delay",
+  "tape",
+  "echo",
+  "spring"
+ ],
+ "license": "GPL-3.0-only",
+ "summary": "Three-head tape echo with a spring tank: 12 head and reverb modes, tape saturation, wow and flutter, tempo sync, live VU.",
+ "screenshot": "https://raw.githubusercontent.com/mitchoster/mpc-vst-tape-echo/main/docs/img/panel.png",
+ "asset_pattern": "*-mpc-armv7.zip"
+}

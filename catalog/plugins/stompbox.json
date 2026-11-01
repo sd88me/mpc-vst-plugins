@@ -1,0 +1,5 @@
+{ "id": "stompbox", "name": "Stompbox", "author": "jacob-sabella", "repo": "jacob-sabella/mpc-vst-stompbox",
+  "kind": "effect", "style": "amp-sim", "tags": ["guitar", "amp", "pedals", "cabinet", "cab-ir", "guitarix", "presets"],
+  "license": "GPL-3.0-or-later",
+  "summary": "A whole guitar rig from guitarix's DSP: gate, comp, wah, any number of pedals, amp, tone stack, power amp, cabinet with an IR loader, post FX, mod, delay, reverb and EQ. 219 models and guitarix's 40 factory presets in the PRESET menu. Not affiliated with guitarix.",
+  "screenshot": "https://raw.githubusercontent.com/jacob-sabella/mpc-vst-stompbox/bc70be3dd01103bc792db0c2b0e54a589fc37d36/docs/screenshots/stompbox.png" }

@@ -51,7 +51,7 @@ cp /t/MPC.v1 /t/w5; out=$(echo PATCH | run /t/w5 /t/bk5 install); echo "$out" | 
 check "  file untouched" "$(md5 /t/w5)" $V1
 rm -f /t/w[2-9]
 # 10 a file that is not the 3.9.1.2 MPC
-cp /t/bad.bin /t/w6; out=$(echo PATCH | run /t/w6 /t/bk6 install); echo "$out" | grep -q 'not MPC OS 3.9.1.2'; check "other firmware refused" $? 0
+cp /t/bad.bin /t/w6; out=$(echo PATCH | run /t/w6 /t/bk6 install); echo "$out" | grep -q 'not a supported'; check "other firmware refused" $? 0
 cmp -s /t/bad.bin /t/w6; check "  file untouched" $? 0
 rm -f /t/w[2-9]
 # 12 upgrade from this patch's earlier name table (the 2026-10-02 build: fixtures MPC.v3old + v3bk/orig-regions.txt)

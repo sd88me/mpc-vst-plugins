@@ -67,7 +67,10 @@ authors, listed in the catalog, and installed by people on their own units.
   A plugin that needs more than 2.32 (up to 2.36) is listed as 3.x only; the catalog refuses more than 2.36.
 - **Tested on a Force** (MPC OS 3.9.1) as the reference device. Other Gen1 MPC OS devices (Live and Live II, One, X,
   Key 61) run the same `MPC` program. A user's MPC One on MPC OS 2.15 is what led to the glibc 2.31 builds; reports
-  from other models are welcome. Gen2 devices (e.g. Live III) are reported to be more locked down.
+  from other models are welcome. **Gen2 devices (aarch64: Live III, One G2, Key(s) G2) are supported** with a
+  separate build per plugin/addin; confirmed on a Live III (2026-10-23) for both. Gen2's root filesystem is
+  verity-based and more locked down than Gen1's: no SSH without a modded unit, and no writable `/etc` at all even
+  with root (docs/GEN2.md).
 
 What the plugins can do:
 - **Instruments and effects** that play from pads, keys and MIDI clips, with Q-Links, automation, and settings saved
@@ -82,7 +85,7 @@ What the tools can do:
 - **A release workflow** (`vst-release.yml`): a reusable GitHub Actions workflow that builds, tests, previews and
   packages a port into a draft release; you test the draft zip on a device, then publish.
 - **Skin Studio**, a page editor in your browser: double-click `SkinStudio.command` (macOS), `SkinStudio.bat`
-  (Windows) or `SkinStudio.sh` (Linux). It needs Python 3. See [docs/SKIN_STUDIO.md](docs/SKIN_STUDIO.md).
+  (Windows) or `SkinStudio.sh` (Linux). It needs Python 3. See [docs/SKIN_STUDIO.md](docs/SKIN_STUDIO.md). Several interfaces in one plugin: [docs/SKIN_VARIANTS.md](docs/SKIN_VARIANTS.md).
 
 ## How it works
 
@@ -131,6 +134,11 @@ design.
 - **MPC OS 2.x needs a compatible skin.** A plugin marked *MPC OS 3.x only* loads on 2.x and plays from the Q-Links, but its
   touchscreen page stays empty until its developer releases a version with a compatible skin. See
   [MPC OS 2.x vs 3.x](#mpc-os-2x-vs-3x).
+- **A plugin shows no skin (just "Load Plugin") when its folder isn't a content location.** MPC finds a plugin's skin only through
+  a `Synths` folder listed under `SynthContentLocations` in `MPC.settings`. The plugin still loads from its `file=` path, so
+  it works but looks bare. Install into a listed folder (the installers warn when the target isn't one: `install.sh -t <folder>`),
+  or add the folder to the list with MPC stopped and `MPC.settings` backed up, then start MPC. A trailing `/` is fine. Checked
+  on a Live III (MPC 3.10.0), 2026-10-27; details in docs/NOTES.md.
 - **VST2 only.** MPC OS has no VST3 or LV2 support.
 - **Setup needs root SSH to the device**, to copy the plugin and add it to `MPC.settings`, so it is for modded units.
   Adding a new plugin needs one MPC restart; the installers stop and start MPC for you (the service is `acvs`, or
@@ -225,6 +233,9 @@ screen shows. If you are comfortable in a terminal and on 2.x, the output of thi
   checkout is needed.
 - `tools/html_art.py` + `tools/html_art/`: the optional browser renderer for skin artwork (`"art": "html"`):
   the same layouts drawn as SVG/CSS in headless Chromium, restyled per port with a stylesheet.
+- `tools/mpc310_on_391/`: a USB stick that runs the MPC 3.10 app on an MPC Live III that stays on MPC OS 3.9.1 (which
+  keeps the USB-script route developers use for SSH). Built on your computer from Akai's two official Gen2 update
+  images; nothing from Akai is in the repo. See [its README](tools/mpc310_on_391/README.md).
 - `tools/skin_check.py`: checks a built skin for overlapping touch areas, controls off the screen, Q-Links on hidden
   parameters and switches missing options; `gen_vst.py` runs it after every build.
 - `tools/studio.py` + `tools/skin_template.svg`: the skin studio. Auto-layout from a port's
@@ -236,6 +247,7 @@ screen shows. If you are comfortable in a terminal and on 2.x, the output of thi
 - `tools/bench.sh` + `tools/bench.c`: a CPU stress test run on the device, with a PASS/WARN/FAIL verdict for Gen1
   hardware. See [docs/BENCH.md](docs/BENCH.md).
 - `tools/desktop/`: the MPC plugin installer app (Go; a local web page that installs, updates and removes plugins over SSH).
+- `tools/plugin_manager_g2/`: the OpenMPC Plugin Manager VST, a VST that browses the catalog and installs, updates and removes plugins on the MPC itself (Gen2 first, with rollback; a fork of poloq's MIT `mpc-vst-manager`). See [its README](tools/plugin_manager_g2/README.md) and `DESIGN.md`.
 - `tools/mpc-store.sh`: the same install, update, remove, prune and sync from a shell on the device, for the catalog's one-line command.
 - `tools/release.py`: packages a plugin as one shareable zip with an installer, an uninstaller and generated
   INSTALL.md. See [docs/RELEASING.md](docs/RELEASING.md).

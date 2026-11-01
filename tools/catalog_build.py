@@ -2,7 +2,7 @@
 """Build catalog.json from the registry (catalog/plugins/*.json) and the plugins' GitHub releases or tags.
 
   tools/catalog_build.py [--registry catalog/plugins] [--out catalog/dist] [--cache catalog/.cache]
-                         [--yanked catalog/yanked.json] [--keep 10] [--check-registry]
+                         [--yanked catalog/yanked.json] [--added catalog/added.json] [--keep 10] [--check-registry]
 
 For every registry entry with distribution "release" (the default): list the repo's releases, download the asset
 matching asset_pattern, validate it with tools/catalog_check.py (--catalog, id and repo must match the entry), and record
@@ -43,10 +43,18 @@ ZIP_PATTERN = "*-mpc-armv7.zip"
 # SPDX ids accepted as open source; anything else needs a human decision (edit this list in the PR that adds it).
 MAX_SUMMARY = 350   # characters; longer detail belongs in the repo README (docs/CATALOG.md)
 MAX_TAGS = 8
-CATALOG_FILES = {"apps.json", "patches.json", "yanked.json"}   # the only JSON directly in catalog/; plugin entries live in plugins/
+CATALOG_FILES = {"added.json", "apps.json", "patches.json", "yanked.json"}   # the only JSON directly in catalog/; plugin entries live in plugins/
 OPEN_LICENSES = {"MIT", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Apache-2.0", "GPL-2.0-only", "GPL-2.0-or-later",
                  "GPL-3.0-only", "GPL-3.0-or-later", "LGPL-2.1-only", "LGPL-2.1-or-later", "LGPL-3.0-only",
                  "LGPL-3.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later", "MPL-2.0", "Unlicense", "CC0-1.0", "Zlib"}
+
+
+def is_open_license(lic):
+    """An SPDX ID on OPEN_LICENSES, or several joined by AND/OR (a zip that bundles a program under another open licence,
+    e.g. "MIT AND Apache-2.0"): open when every ID in it is."""
+    ids = lic.replace("(", " ").replace(")", " ").split()
+    return bool(ids) and len(ids) % 2 == 1 and all(t in OPEN_LICENSES for t in ids[::2]) \
+        and all(t in ("AND", "OR") for t in ids[1::2])
 
 
 def check_entry(e, fname=None):
@@ -68,7 +76,7 @@ def check_entry(e, fname=None):
         p.append("repo must be owner/name")
     if e["kind"] not in ENTRY_KINDS:
         p.append("kind must be one of %s" % ", ".join(ENTRY_KINDS))
-    if e["license"] not in OPEN_LICENSES and e.get("source_available") is not True:
+    if not is_open_license(e["license"]) and e.get("source_available") is not True:
         p.append("license %r is not on the open-source list: set \"source_available\": true if the source is public "
                  "but the license limits use (shown as a badge), see docs/CATALOG.md" % e["license"])
     if "source_available" in e and not isinstance(e["source_available"], bool):
@@ -169,7 +177,7 @@ def _nonempty_str(v):
 def check_build_yourself(e):
     """Registry rules for a "build-yourself" entry (offline; the tag and script checks need GitHub, see build())."""
     p = []
-    if e["license"] not in OPEN_LICENSES:
+    if not is_open_license(e["license"]):
         p.append("build-yourself needs an open-source SPDX license (source_available is not enough): the source must be "
                  "open even though no built zip is published")
     if e.get("source_available"):
@@ -247,6 +255,21 @@ def load_registry(path):
                 comp_ids[c["id"]] = e["id"]
             entries.append(e)
     return entries, problems
+
+
+def load_added(path):
+    """-> ({id: "YYYY-MM-DD"}, problems [(file, message)]) from catalog/added.json (the date each entry joined the catalog)."""
+    if not os.path.exists(path):
+        return {}, []
+    try:
+        data = json.load(open(path))
+    except ValueError as err:
+        return {}, [(path, "not valid JSON: %s" % err)]
+    if not isinstance(data, dict):
+        return {}, [(path, "must be an object of id: date")]
+    bad = [(path, "%r: %r is not a YYYY-MM-DD date" % (k, v)) for k, v in sorted(data.items())
+           if not (isinstance(v, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}", v))]
+    return ({k: v for k, v in data.items() if isinstance(v, str)}, bad)
 
 
 def stray_files(catalog_dir):
@@ -380,7 +403,7 @@ def tag_versions(e, src, yanked, tested, keep, problems):
     return versions
 
 
-def build(entries, src, cache, yanked, keep=10, now=None, require_portable=()):
+def build(entries, src, cache, yanked, keep=10, now=None, require_portable=(), added=None):
     """-> (catalog dict, problems list [{id, tag, error, unreadable?, superseded?}]). "unreadable" marks a repo or
     release list that could not be read at all, as opposed to one that was read and found invalid.
     A plugin whose newest stable release is of the old layout (no "layout" field) gets a problem, so the catalog repo opens an
@@ -435,6 +458,10 @@ def build(entries, src, cache, yanked, keep=10, now=None, require_portable=()):
             except Exception as ex:
                 failed.append(({"id": e["id"], "tag": tag, "error": "download/validate failed: %s" % ex}, pub))
                 continue
+            pattern = e.get("asset_pattern", "*-mpc-armv7.zip")
+            gen2_only = "aarch64" in pattern and "armv7" not in pattern   # a plugin with only a Gen2 build (docs/GEN2.md)
+            if not errors and gen2_only and rec["manifest"].get("arch") != "aarch64":
+                errors = ["the entry's asset_pattern is for the Gen2 build, but %s is arch %s" % (asset["name"], rec["manifest"].get("arch"))]
             if not errors and (rec["manifest"]["kind"] == "addin") != (e["kind"] == "addin"):
                 errors = ["the release is a%s but the registry entry's kind is %s" % (
                     "n addin" if rec["manifest"]["kind"] == "addin" else " plugin", e["kind"])]
@@ -446,18 +473,23 @@ def build(entries, src, cache, yanked, keep=10, now=None, require_portable=()):
                 continue
             # Gen2: an optional sibling asset (armv7 -> aarch64 in the pattern) built from the same tag. It must pass the same checks
             # and agree with the armv7 zip on id, uid and version; a bad one is reported but never hides the Gen1 release.
-            rec["assets"] = {"armv7": {k: rec[k] for k in ("sha256", "size") if k in rec} | {"url": asset["browser_download_url"]}}
+            rec["assets"] = {("aarch64" if gen2_only else "armv7"): {k: rec[k] for k in ("sha256", "size") if k in rec} | {"url": asset["browser_download_url"]}}
+            if gen2_only:   # the one zip IS the Gen2 build: url/sha256/size stay it (schema-1 readers), gen2_only tells the clients not to offer it on Gen1
+                rec["gen2"] = True
+                rec["gen2_only"] = True
             pat64 = e.get("asset_pattern", "*-mpc-armv7.zip").replace("armv7", "aarch64")
             # a pattern with no "armv7" in it has no aarch64 sibling (it would match the armv7 zip again)
-            a64 = [x for x in rel.get("assets", []) if fnmatch.fnmatch(x["name"], pat64)] if pat64 != e.get("asset_pattern", "*-mpc-armv7.zip") else []
+            a64 = [x for x in rel.get("assets", []) if fnmatch.fnmatch(x["name"], pat64)] if pat64 != e.get("asset_pattern", "*-mpc-armv7.zip") and not gen2_only else []
             if len(a64) == 1:
                 z64 = os.path.join(cache, "%s-%s.zip" % (e["id"], a64[0]["id"]))
                 try:
                     if not os.path.exists(z64):
                         src.download(a64[0], z64)
                     err64, warn64, rec64 = catalog_check.check(z64, catalog=True, expect_id=e["id"], expect_repo=e["repo"])
+                    # an addin's manifest has no "uid" (that's a VST plugin's concept, for save-file compatibility
+                    # across generations); expect_id above already ties both zips to the same catalog entry
                     if not err64 and (rec64["manifest"]["arch"] != "aarch64" or rec64["version"] != rec["version"]
-                                      or rec64["manifest"]["uid"] != rec["manifest"]["uid"]):
+                                      or rec64["manifest"].get("uid") != rec["manifest"].get("uid")):
                         err64 = ["aarch64 zip is not arch aarch64 with the same version and uid as the armv7 zip"]
                 except Exception as ex:
                     err64 = ["download/validate failed: %s" % ex]
@@ -520,6 +552,8 @@ def build(entries, src, cache, yanked, keep=10, now=None, require_portable=()):
         item["latest_beta"] = next((v["version"] for v in versions if v["channel"] == "beta" and not v["yanked"]), None)
         item["downloads"] = all_time
         item["updated"] = max((v["date"] for v in versions if not v["yanked"]), default="")
+        # when the entry joined the catalog (the site's "Newest in catalog" sort): catalog/added.json, else the oldest release
+        item["added"] = (added or {}).get(e["id"]) or min((v["date"] for v in versions if not v["yanked"] and v.get("date")), default="")
         plugins.append(item)
     plugins.sort(key=lambda p: p["name"].lower())
     catalog = {"schema": 1, "generated": (now or datetime.datetime.now(datetime.timezone.utc)).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -554,14 +588,17 @@ def main():
     ap.add_argument("--out", default="catalog/dist")
     ap.add_argument("--cache", default="catalog/.cache")
     ap.add_argument("--yanked", default="catalog/yanked.json")
+    ap.add_argument("--added", default="catalog/added.json")
     ap.add_argument("--keep", type=int, default=10)
     ap.add_argument("--check-registry", action="store_true")
     ap.add_argument("--require-portable", metavar="ID", nargs="+",
                     help="validate only these entries' releases and fail when a newest release is of the old layout (PR check for new listings)")
     a = ap.parse_args()
     entries, reg_problems = load_registry(a.registry)
+    added, added_problems = load_added(a.added)
     if a.check_registry:
-        reg_problems += stray_files(os.path.dirname(os.path.normpath(a.registry)))
+        reg_problems += stray_files(os.path.dirname(os.path.normpath(a.registry))) + added_problems
+        reg_problems += [(a.added, "%r is not a registry entry" % k) for k in sorted(added) if k not in {e["id"] for e in entries}]
     for f, m in reg_problems:
         print("error: %s: %s" % (f, m), file=sys.stderr)
     if a.check_registry:
@@ -570,13 +607,13 @@ def main():
     yanked = set(json.load(open(a.yanked))) if os.path.exists(a.yanked) else set()
     if a.require_portable:
         sel = [e for e in entries if e["id"] in a.require_portable]
-        catalog, problems = build(sel, GitHub(os.environ.get("GITHUB_TOKEN")), a.cache, yanked, a.keep, require_portable=set(a.require_portable))
+        catalog, problems = build(sel, GitHub(os.environ.get("GITHUB_TOKEN")), a.cache, yanked, a.keep, require_portable=set(a.require_portable), added=added)
         bad = [p for p in problems if not p.get("superseded")]
         for p in bad:
             print("error: %(id)s %(tag)s: %(error)s" % p, file=sys.stderr)
         print("%d entries checked for the portable layout, %d problems" % (len(sel), len(bad)))
         sys.exit(1 if bad or reg_problems else 0)
-    catalog, problems = build(entries, GitHub(os.environ.get("GITHUB_TOKEN")), a.cache, yanked, a.keep)
+    catalog, problems = build(entries, GitHub(os.environ.get("GITHUB_TOKEN")), a.cache, yanked, a.keep, added=added)
     os.makedirs(a.out, exist_ok=True)
     json.dump(catalog, open(os.path.join(a.out, "catalog.json"), "w"), indent=1)
     json.dump(problems, open(os.path.join(a.out, "problems.json"), "w"), indent=1)

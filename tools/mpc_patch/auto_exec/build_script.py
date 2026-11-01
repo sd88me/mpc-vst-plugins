@@ -6,7 +6,7 @@ import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-VERSION = "1"   # this wrapper's revision (the patch itself is 0.3.0)
+VERSION = "1"   # this wrapper's revision (the patch itself is 0.3.2)
 FILES = [("auto-exec.sh", "755"), ("uninstall.sh", "755"), ("bootstrap.sh", "755"), ("root-bootstrap.sh", "755"),
          ("auto-exec.service", "644"), ("auto-exec.timer", "644"), ("auto-exec-bootstrap.service", "644")]
 

@@ -1,12 +1,16 @@
-# Reusable: build an addin, package it with tools/release_addin.py and attach the zip to a DRAFT release in the
-# calling repo. A person then installs that exact zip on a device (docs/ADDINS.md "Releasing", step 3) and publishes
-# the draft, which creates the tag. The plugin counterpart is vst-release.yml.
+# Reusable: build an addin (Gen1/armv7, and optionally Gen2/aarch64 too), package each with tools/release_addin.py
+# and attach the zip(s) to a DRAFT release in the calling repo. A person then installs the exact zip for their
+# device (docs/ADDINS.md "Releasing", step 3) and publishes the draft, which creates the tag. The plugin counterpart
+# is vst-release.yml.
 #
 # Call it from the addin's repo, pinning this repo to one commit in BOTH places:
 #   uses: sd88me/mpc-vst-plugins/.github/workflows/addin-release.yml@<sha>
 #   with: { tools_ref: <sha>, ... }
 # It has no permissions: block of its own: it creates the draft release with the caller's GITHUB_TOKEN, so the calling
 # job must grant   permissions: { contents: write }
+#
+# For an addin with a Gen2 (aarch64) build too, also set package_dir_aarch64/build_aarch64: both zips are built and
+# uploaded to the same release in this one job (not two separate calls, which could race each other creating it).
 name: Addin draft release
 
 on:
@@ -32,6 +36,14 @@ on:
         description: Command, run from the caller's repo root, that fills <package_dir>; MPC_VST is set
         type: string
         required: true
+      package_dir_aarch64:
+        description: Optional Gen2 (aarch64) counterpart of package_dir; omit for an armv7-only addin
+        type: string
+        default: ''
+      build_aarch64:
+        description: Command that fills package_dir_aarch64; required together with it
+        type: string
+        default: ''
       host_test:
         description: Optional host test command, run from the caller's repo root; MPC_VST is set
         type: string
@@ -60,6 +72,7 @@ jobs:
       TAG: ${{ inputs.tag }}
       VERSION: ${{ inputs.version }}
       PACKAGE_DIR: ${{ inputs.package_dir }}
+      PACKAGE_DIR_AARCH64: ${{ inputs.package_dir_aarch64 }}
       MPC_VST: ${{ github.workspace }}/mpc-vst-plugins
       GH_REPO: ${{ github.repository }}
     steps:
@@ -89,15 +102,22 @@ jobs:
           ref: ${{ inputs.tools_ref }}
           path: mpc-vst-plugins
 
-      - name: Set up QEMU (addins are built for armhf under emulation)
+      - name: Set up QEMU (addins build under emulation -- arm for Gen1/armhf, arm64 for Gen2/aarch64)
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: arm
+          platforms: ${{ inputs.package_dir_aarch64 != '' && 'arm,arm64' || 'arm' }}
 
-      - name: Build
+      - name: Build (Gen1)
         working-directory: addin
         env:
           BUILD: ${{ inputs.build }}
+        run: bash -euo pipefail -c "$BUILD"
+
+      - name: Build (Gen2)
+        if: ${{ inputs.package_dir_aarch64 != '' }}
+        working-directory: addin
+        env:
+          BUILD: ${{ inputs.build_aarch64 }}
         run: bash -euo pipefail -c "$BUILD"
 
       - name: Host test
@@ -115,24 +135,29 @@ jobs:
           LICENSE_ID: ${{ inputs.license }}
           REQUIRES: ${{ inputs.requires }}
         run: |
-          m="$PACKAGE_DIR/addin.manifest"
-          [ -f "$m" ] || { echo "::error::no $m: the build must write addin.manifest into $PACKAGE_DIR"; exit 1; }
-          key() { sed -n "s/^$1=//p" "$m" | head -1 | sed 's/^"\(.*\)"$/\1/'; }
-          so="$PACKAGE_DIR/$(key ADDIN_SO)"
-          file -b "$so" | grep -q 'ELF 32-bit LSB.*ARM' || { echo "::error::$so is not a 32-bit ARM ELF: $(file -b "$so")"; exit 1; }
-          args=(--dir "$PACKAGE_DIR" --version "$VERSION" --about "$ABOUT" --repo "$GITHUB_REPOSITORY" -o "$GITHUB_WORKSPACE/dist")
-          [ -z "$LICENSE_ID" ] || args+=(--license "$LICENSE_ID")
-          [ -z "$REQUIRES" ] || args+=(--requires "$REQUIRES")
-          python3 "$MPC_VST/tools/release_addin.py" "${args[@]}"
-          zip=$(ls "$GITHUB_WORKSPACE"/dist/*.zip)
-          # catalog conformance (docs/CATALOG_SPEC.md): warnings are shown, errors fail the run
-          if [ -n "$LICENSE_ID" ]; then flags=(--catalog --expect-id "$(key ADDIN_ID)" --expect-repo "$GITHUB_REPOSITORY")
-          else flags=(); echo "::warning::no license input: this release can't be listed in the catalog"; fi
-          python3 "$MPC_VST/tools/catalog_check.py" "$zip" "${flags[@]}"
-          echo "zip=$zip" >> "$GITHUB_OUTPUT"
-          echo "name=$(key ADDIN_NAME)" >> "$GITHUB_OUTPUT"
+          package_one() {   # package_one <dir> <elf-pattern>
+            dir="$1"; pattern="$2"
+            m="$dir/addin.manifest"
+            [ -f "$m" ] || { echo "::error::no $m: the build must write addin.manifest into $dir"; exit 1; }
+            key() { sed -n "s/^$1=//p" "$m" | head -1 | sed 's/^"\(.*\)"$/\1/'; }
+            so="$dir/$(key ADDIN_SO)"
+            file -b "$so" | grep -qE "$pattern" || { echo "::error::$so is not $pattern: $(file -b "$so")"; exit 1; }
+            args=(--dir "$dir" --version "$VERSION" --about "$ABOUT" --repo "$GITHUB_REPOSITORY" -o "$GITHUB_WORKSPACE/dist")
+            [ -z "$LICENSE_ID" ] || args+=(--license "$LICENSE_ID")
+            [ -z "$REQUIRES" ] || args+=(--requires "$REQUIRES")
+            out=$(python3 "$MPC_VST/tools/release_addin.py" "${args[@]}")
+            echo "$out"
+            zip=${out%% (*}   # release_addin.py prints "<path> (<n> files, <size> MB)"; take the path
+            # catalog conformance (docs/CATALOG_SPEC.md): warnings are shown, errors fail the run
+            if [ -n "$LICENSE_ID" ]; then flags=(--catalog --expect-id "$(key ADDIN_ID)" --expect-repo "$GITHUB_REPOSITORY")
+            else flags=(); echo "::warning::no license input: this release can't be listed in the catalog"; fi
+            python3 "$MPC_VST/tools/catalog_check.py" "$zip" "${flags[@]}"
+            echo "name=$(key ADDIN_NAME)" >> "$GITHUB_OUTPUT"
+          }
+          package_one "$PACKAGE_DIR" 'ELF 32-bit LSB.*ARM,'
+          [ -z "$PACKAGE_DIR_AARCH64" ] || package_one "$PACKAGE_DIR_AARCH64" 'ELF 64-bit LSB.*ARM aarch64'
 
-      - name: Upload the zip as a run artifact
+      - name: Upload the zip(s) as a run artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.tag }}
@@ -143,45 +168,43 @@ jobs:
         if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ github.token }}
-          ZIP: ${{ steps.pkg.outputs.zip }}
           NAME: ${{ steps.pkg.outputs.name }}
           ABOUT: ${{ inputs.about }}
           TOOLS_REF: ${{ inputs.tools_ref }}
         run: |
-          python3 - "$ZIP" > notes.md <<'PY'
+          python3 - dist/*.zip > notes.md <<'PY'
           import os, re, sys, zipfile
-          z = zipfile.ZipFile(sys.argv[1])
+          z = zipfile.ZipFile(sys.argv[1])   # the Gen1 and Gen2 zips share the same INSTALL.md content (requirements, install)
           md = z.read(next(n for n in z.namelist() if n.endswith("/INSTALL.md"))).decode()
           keep = [s for s in re.split(r"(?m)^(?=## )", md) if s.startswith(("## Requirements", "## Install"))]
           if os.environ["ABOUT"]:
               print(os.environ["ABOUT"] + "\n")
           print("".join(keep).rstrip() + "\n")
-          print("Uninstalling and the file list are in `INSTALL.md` inside the zip.")
+          print("Uninstalling and the file list are in `INSTALL.md` inside each zip.")
           PY
           printf '\n---\nBuilt by GitHub Actions from %s@%s with mpc-vst-plugins@%s.\n' \
             "$GITHUB_REPOSITORY" "${GITHUB_SHA::7}" "${TOOLS_REF::7}" >> notes.md
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ZIP" --clobber
+            gh release upload "$TAG" dist/*.zip --clobber
             gh release edit "$TAG" --draft --target "$GITHUB_SHA" --title "$NAME v$VERSION" --notes-file notes.md
           else
-            gh release create "$TAG" "$ZIP" --draft --target "$GITHUB_SHA" --title "$NAME v$VERSION" --notes-file notes.md
+            gh release create "$TAG" dist/*.zip --draft --target "$GITHUB_SHA" --title "$NAME v$VERSION" --notes-file notes.md
           fi
 
       - name: Summary
         env:
-          ZIP: ${{ steps.pkg.outputs.zip }}
           DRY: ${{ inputs.dry_run }}
         run: |
           {
             echo "## $TAG"
             if [ "$DRY" = true ]; then
-              echo "Dry run: no release. The zip is in this run's artifacts."
+              echo "Dry run: no release. The zip(s) are in this run's artifacts."
             else
               echo "Draft release updated: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases (drafts are only visible to maintainers)."
             fi
-            echo "- Zip: \`$(basename "$ZIP")\` ($(du -h "$ZIP" | cut -f1))"
+            for z in dist/*.zip; do echo "- Zip: \`$(basename "$z")\` ($(du -h "$z" | cut -f1))"; done
             echo
             echo "Before publishing (docs/ADDINS.md, \"Releasing\"):"
-            echo "1. Install **this** zip on a device with its install.sh, use the addin, run its uninstall.sh."
+            echo "1. Install **each** zip on a matching device with its install.sh, use the addin, run its uninstall.sh."
             echo "2. Publish the draft. That creates the tag."
           } >> "$GITHUB_STEP_SUMMARY"

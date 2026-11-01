@@ -1,0 +1,13 @@
+{
+  "id": "magic-tape-echo",
+  "name": "Magic Tape Echo",
+  "author": "MagicStino",
+  "repo": "MagicStino/Magic-Tape-Echo",
+  "kind": "effect",
+  "license": "GPL-3.0-or-later",
+  "summary": "Three-head stereo tape echo with tape saturation, wow/flutter, tempo sync, optional spring reverb and a slow VU meter.",
+  "style": "delay",
+  "tags": ["delay", "tape", "echo", "spring"],
+  "screenshot": "https://raw.githubusercontent.com/MagicStino/Magic-Tape-Echo/a616cc2fad6bd7eb920111627bb1fc81631ff09a/magic-tape-echo-three-heads.png",
+  "asset_pattern": "Magic-Tape-Echo-*-mpc-armv7.zip"
+}

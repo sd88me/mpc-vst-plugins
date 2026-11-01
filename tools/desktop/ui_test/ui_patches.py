@@ -41,7 +41,7 @@ try:
         b = pw.chromium.launch(executable_path=os.environ.get("CHROMIUM") or ("/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None)); pg = b.new_page(viewport={"width": 1000, "height": 1100})
         errs = []; pg.on("pageerror", lambda e: errs.append(str(e))); pg.on("console", lambda m: m.type == "error" and errs.append(m.text))
         pg.route("**/api/**", handle)
-        pg.goto("http://127.0.0.1:8811/index.html?t=x"); time.sleep(0.5)
+        pg.goto("http://127.0.0.1:8811/index.html?t=x"); pg.click("#mode-install"); time.sleep(0.5)
         check("step 7 exists, collapsed", pg.locator("#d7").count() == 1 and not pg.locator("#d7").evaluate("e => e.open"))
         check("looks disabled before connecting", "off" in pg.locator("#s7").get_attribute("class"))
         pg.locator("#d7 summary").click(); time.sleep(0.3)

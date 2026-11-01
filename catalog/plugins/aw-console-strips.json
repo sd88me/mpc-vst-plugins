@@ -1,0 +1,17 @@
+{
+  "id": "aw-console-strips",
+  "name": "Airwindows Collection: Console Strips",
+  "author": "sd88me",
+  "repo": "sd88me/mpc-vst-airwindows",
+  "kind": "effect",
+  "style": "mixing",
+  "tags": [
+    "airwindows",
+    "channel-strip",
+    "collection"
+  ],
+  "license": "MIT",
+  "summary": "The Airwindows Console Strips collection: all 8 big console channel strips (ConsoleX and ConsoleH), spread over four pages in one plugin, each with its own panel, Q-Link badges and built-in manual.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-airwindows/6196324ee776860ce4d3cc46dbd90e331f3ba53d/docs/img/consolestrips.png",
+  "asset_pattern": "AW-Console-Strips-*-mpc-armv7.zip"
+}

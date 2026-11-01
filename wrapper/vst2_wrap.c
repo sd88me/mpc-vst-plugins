@@ -14,6 +14,7 @@
 #endif
 #include <stdint.h>
 #include <stdlib.h>
+#include <time.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
@@ -129,12 +130,17 @@ typedef struct {
     int inpos;
     double bpm;
     volatile int holdFrames[NPARAMS];  /* momentary params: frames left before reporting back to 0 (hold_ms) */
+    long long press_ms[NPARAMS];       /* momentary params: when the last press that was acted on arrived (CLOCK_MONOTONIC ms), see set_param_now */
     volatile char changed[NPARAMS];  /* params the plugin changed itself (step_of on an option), to report */
     float last_pos[NPARAMS]; /* stepped params: the last position the host asked for, in steps (-1 = none yet) */
     float qacc[NPARAMS];     /* qlink_ticks: turn events counted toward the next step (see setParameter) */
     signed char last_on[NPARAMS];  /* last "<key>_on" value told to the host, +1 (0 = unknown, -1 = the engine has no such key) */
     unsigned last_text[NPARAMS];   /* hash of a text readout's last value (see housekeeping) */
-    int on_poll, text_poll;        /* frames until the next "<key>_on" poll / readout poll (see housekeeping) */
+    short poll_list[NPARAMS]; int npoll;   /* the polled params: "display":"string" without "poll":false (see housekeeping) */
+    int n_on;                      /* of those, how many may still have a "<key>_on" (not yet answered -1) */
+    int on_acc, text_acc;          /* poll work owed, in frames x params; a visit costs 441 / 4410 of it */
+    int on_cur, text_cur;          /* where the next visit continues in poll_list */
+    int rev_poll;                  /* HAS_DISPLAY_REV: frames until the next display_rev read (every 100 ms) */
     int playing;             /* HAS_TRANSPORT: last transport state sent */
     double ppq;              /* HAS_TRANSPORT: song position at the last block, to spot a jump back */
     volatile char need_update_display;  /* deferred audioMasterUpdateDisplay -- see setParameter() */
@@ -149,6 +155,7 @@ typedef struct {
     int nrpn_msb;
     volatile char cc_changed[NPARAMS];   /* set from MIDI CC/NRPN, reported to the host at most every 1024 frames */
     int cc_report;           /* frames until CC-driven changes are reported again */
+    int update_wait;         /* frames until another audioMasterUpdateDisplay may be sent (see housekeeping) */
     int program;             /* NPRESETS: the preset last picked (not in the engine's state; 0 after a reload) */
 #if SAMPLE_ACCURATE
     struct { int32_t frame; uint8_t msg[3]; } evq[WRAP_EVQ];   /* this block's MIDI, sorted by frame (see queue_midi) */
@@ -239,6 +246,17 @@ static void set_param_now(AEffect *e, int32_t i, float n) {
     if (i < 0 || i >= NPARAMS) return;
     const param_t *p = &PARAMS[i];
     int nudge = 0;
+    /* One tap on a drawn button reaches us as two presses 30 to 140 ms apart, with no release between (the finger going down and lifting;
+     * Live III, 2026-10-30, docs/NOTES.md), so "Program >" stepped two programs and a keyboard key typed twice. A momentary param ignores a
+     * second press within debounce_ms of the last one acted on (vst.json "debounce_ms", default 250, 0 = off). The wrapper's own spring-back
+     * to 0 and the host's echo of it are releases, not presses, and pass. */
+    if (p->momentary && p->debounce_ms > 0 && n > 0.5f) {
+        struct timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        long long now = ts.tv_sec * 1000LL + ts.tv_nsec / 1000000;
+        if (w->press_ms[i] && now - w->press_ms[i] < p->debounce_ms) return;
+        w->press_ms[i] = now;
+    }
     if (popup_set(w->open, i, n)) {
         if (w->open[i] > 0.5f) popup_close_others(w->open, w->holdFrames, i);   /* one list at a time */
         return;
@@ -347,7 +365,11 @@ static void set_param_now(AEffect *e, int32_t i, float n) {
     eng_set(w, PARAMS[i].key, buf);
     if (PARAMS[i].momentary && n > 0.5f) w->holdFrames[i] = PARAMS[i].hold_ms > 0 ? (int)(PARAMS[i].hold_ms * 44.1f) : 1;
     if (!nudge) popup_picked(w->open, w->holdFrames, i);   /* a list pick closes it; a Q-Link nudge doesn't */
-    w->need_update_display = 1;   /* deferred to processReplacing(), see the step_target branch above */
+    /* No UpdateDisplay for a plain host write: the host knows the value it sent, and MPC answers every UpdateDisplay by
+     * rebuilding its parameter screen, so asking on each write (each automation step, each Q-Link event) left Q-Links
+     * unable to move a param on the track's automation screen (docs/NOTES.md, 2026-10-21). Polled readouts see the
+     * change within 100 ms (housekeeping); "refresh_display" opts a param back in for unpolled text that depends on it. */
+    if (p->refresh_display) w->need_update_display = 1;   /* deferred to processReplacing(), see the step_target branch */
 }
 
 /* MPC's plugin host (JUCE) sets parameter 0 to the far end of its range and straight back whenever it gets ready to play:
@@ -484,17 +506,28 @@ static void housekeeping(AEffect *e, int32_t n) {
      *   so push a change with audioMasterAutomate (a tile lights while the pad is held);
      * - a readout's text, every 100 ms: the host only re-reads it on UpdateDisplay, so ask for one when the text
      *   changed (a chord name on a page without tiles stayed stale until something else was tapped).
-     * Only "display":"string" params without "poll":false are polled. A "<key>_on" the engine does not answer is
-     * asked once, then skipped. The two countdowns run independently of the block size; a readout that changes
-     * constantly (a clock) asks for at most 10 UpdateDisplays a second. Costs about one get_param per polled param per poll on the
-     * audio thread; docs/BENCH.md measures it (Chordsmith, 10 polled params: idle p99 under 4% of a block). */
-    int poll_on = (w->on_poll -= n) <= 0, poll_text = (w->text_poll -= n) <= 0;
-    if (poll_on && (w->on_poll += 441) <= 0) w->on_poll = 441;        /* keep the remainder, so the rate holds */
-    if (poll_text && (w->text_poll += 4410) <= 0) w->text_poll = 4410;   /* for any block size */
-    for (int i = 0; (poll_on || poll_text) && i < NPARAMS; i++) {
-        if (!PARAMS[i].string_display || PARAMS[i].no_poll) continue;
-        char k2[96], b2[64];   /* 64: the hash sees the first 63 characters, enough for a 47-character readout */
-        if (poll_on && w->last_on[i] >= 0) {
+     * Only "display":"string" params without "poll":false are polled (gen_vst.py also leaves out the ones the layout never
+     * mentions). A "<key>_on" the engine does not answer is asked once, then skipped. The work is spread: each block visits its
+     * share of the list, resuming where the last block stopped, so every param is still read about once per 10 / 100 ms
+     * but no block reads them all (at most one pass per block, whatever the block size). A readout that changes
+     * constantly (a clock) asks for at most 10 UpdateDisplays a second. Costs about one get_param per polled param per poll
+     * on the audio thread; docs/BENCH.md measures it (Chordsmith, 10 polled params: idle p99 under 4% of a block). */
+    int poll_rev = (w->rev_poll -= n) <= 0;
+    if (poll_rev && (w->rev_poll += 4410) <= 0) w->rev_poll = 4410;   /* for any block size */
+    if (w->npoll) {
+        int on_k = 0, text_k = 0;
+        if (w->n_on > 0) { w->on_acc += n * w->n_on; on_k = w->on_acc / 441; w->on_acc -= on_k * 441; if (on_k > w->n_on) on_k = w->n_on; }
+        w->text_acc += n * w->npoll; text_k = w->text_acc / 4410; w->text_acc -= text_k * 4410;
+        if (text_k > w->npoll) text_k = w->npoll;
+        for (int k = 0; k < on_k; k++) {
+            int i = -1;
+            for (int t = 0; t < w->npoll && i < 0; t++) {   /* the next param that may have a "<key>_on" */
+                int j = w->poll_list[w->on_cur];
+                w->on_cur = (w->on_cur + 1) % w->npoll;
+                if (w->last_on[j] >= 0) i = j;
+            }
+            if (i < 0) break;
+            char k2[96], b2[64];
             snprintf(k2, sizeof k2, "%s_on", PARAMS[i].key);
             if (eng_get(w, k2, b2, sizeof b2) > 0) {
                 int on = atoi(b2) ? 1 : 0;
@@ -503,19 +536,26 @@ static void housekeeping(AEffect *e, int32_t n) {
                     w->master(&w->fx, audioMasterAutomate, i, 0, 0, (float)on);
                     w->need_update_display = 1;
                 }
-            } else
+            } else {
                 w->last_on[i] = -1;
+                w->n_on--;
+            }
         }
-        if (poll_text && eng_get(w, PARAMS[i].key, b2, sizeof b2) > 0) {
-            unsigned h = 2166136261u;   /* FNV-1a */
-            for (const char *s = b2; *s; s++) h = (h ^ (unsigned char)*s) * 16777619u;
-            if (h != w->last_text[i]) {
-                w->last_text[i] = h;
-                w->need_update_display = 1;
+        for (int k = 0; k < text_k; k++) {
+            int i = w->poll_list[w->text_cur];
+            w->text_cur = (w->text_cur + 1) % w->npoll;
+            char b2[64];   /* 64: the hash sees the first 63 characters, enough for a 47-character readout */
+            if (eng_get(w, PARAMS[i].key, b2, sizeof b2) > 0) {
+                unsigned h = 2166136261u;   /* FNV-1a */
+                for (const char *c = b2; *c; c++) h = (h ^ (unsigned char)*c) * 16777619u;
+                if (h != w->last_text[i]) {
+                    w->last_text[i] = h;
+                    w->need_update_display = 1;
+                }
             }
         }
     }
-    if (HAS_DISPLAY_REV && poll_text) {
+    if (HAS_DISPLAY_REV && poll_rev) {
         char rev[16];
         if (eng_get(w, "display_rev", rev, sizeof rev) > 0 && strcmp(rev, w->last_rev)) {
             snprintf(w->last_rev, sizeof w->last_rev, "%s", rev);
@@ -548,8 +588,12 @@ static void housekeeping(AEffect *e, int32_t n) {
         for (int i = 0; i < NPARAMS; i++)
             if (w->cc_changed[i]) { w->cc_changed[i] = 0; w->master(&w->fx, audioMasterAutomate, i, 0, 0, get_norm(w, i)); }
     }
-    if (w->need_update_display) {
+    /* At most one UpdateDisplay per 50 ms (2205 frames); a request inside that window waits, it is not dropped. MPC rebuilds its
+     * parameter screen on each one, so a burst (a held stepper, readouts that change every poll) must not become a rebuild per block. */
+    if (w->update_wait > 0) w->update_wait -= n;
+    if (w->need_update_display && w->update_wait <= 0) {
         w->need_update_display = 0;
+        w->update_wait = 2205;
         w->master(&w->fx, audioMasterUpdateDisplay, 0, 0, 0, 0.0f);
     }
 }
@@ -579,10 +623,11 @@ static void run_block(AEffect *e, float **in, float **out, int32_t n, int accumu
             i += DSP_BLOCK;
             continue;
         }
+        /* MPC processes in place (in == out): take this frame's input before writing its output. */
+        w->inb[2 * w->inpos] = have_in ? f2s(in[0][i]) : 0; w->inb[2 * w->inpos + 1] = have_in ? f2s(in[1][i]) : 0;
         float l = 0, r = 0;
         if (w->pos < DSP_BLOCK) { l = w->block[w->pos * 2] * (1.0f / 32768.0f); r = w->block[w->pos * 2 + 1] * (1.0f / 32768.0f); w->pos++; }
         if (accumulate) { out[0][i] += l; out[1][i] += r; } else { out[0][i] = l; out[1][i] = r; }
-        w->inb[2 * w->inpos] = have_in ? f2s(in[0][i]) : 0; w->inb[2 * w->inpos + 1] = have_in ? f2s(in[1][i]) : 0;
         if (++w->inpos == DSP_BLOCK) { eng_process(w, w->inb, w->block, DSP_BLOCK); w->pos = 0; w->inpos = 0; }
         i++;
     }
@@ -699,11 +744,18 @@ static void program_name(wrap_t *w, int idx, char *out) {
 #endif
 }
 
+/* Vendor opcode answered only by the framework's own bench (tools/bench.c): 1 when parameter idx is a
+ * one-shot trigger ("momentary": true), 0 otherwise. MPC never sends it, and a plugin built before
+ * this existed returns 0 from the default branch, which the bench reads as "no triggers known". */
+#define EFF_MPC_IS_MOMENTARY 0x7F01
+
 static intptr_t dispatcher(AEffect *e, int32_t op, int32_t idx, intptr_t v, void *p, float o) {
     wrap_t *w = e->object;
     (void)o;
     switch (op) {
     case effOpen: return 1;
+    case EFF_MPC_IS_MOMENTARY:
+        return (idx >= 0 && idx < NPARAMS && PARAMS[idx].momentary) ? 1 : 0;
     case effClose:
         g_api->destroy(w->dsp);
         pthread_mutex_destroy(&w->lock);
@@ -822,6 +874,9 @@ __attribute__((visibility("default"))) AEffect *VSTPluginMain(audioMasterCallbac
     w->dsp = g_api->create(MODULE_DIR);
 #endif
     if (!w->dsp) { pthread_mutex_destroy(&w->lock); free(w); return NULL; }
+    for (int i = 0; i < NPARAMS; i++)
+        if (PARAMS[i].string_display && !PARAMS[i].no_poll) w->poll_list[w->npoll++] = (short)i;
+    w->n_on = w->npoll;
     w->master = master;
     w->pos = DSP_BLOCK;
     for (int i = 0; i < NPARAMS; i++) w->last_pos[i] = w->last_norm[i] = -1;

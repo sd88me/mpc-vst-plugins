@@ -1,0 +1,29 @@
+{
+  "name": "Plugin Manager G2",
+  "vendor": "OpenMPC",
+  "uid": "OMG2",
+  "version": 100,
+  "so": "openmpc_pm_g2.so",
+  "params": "params.json",
+  "layout": "layout.conf",
+  "art": "html",
+  "defines": {
+    "HAS_DISPLAY_REV": 1,
+    "PARAM_TEXT_MAX": 128
+  },
+  "targets": ["armv7", "aarch64"],
+  "build": {
+    "root": "..",
+    "sources": [
+      "src/manager.c"
+    ],
+    "cflags": [],
+    "libs": [
+      "-lpthread",
+      "-ldl",
+      "-lm"
+    ]
+  },
+  "tile": "art/tile.png",
+  "skin_post": "skin_post.py"
+}

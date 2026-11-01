@@ -14,5 +14,5 @@
   ],
   "license": "MIT",
   "summary": "Replays the chord you hold in genre grooves from its library, with swing, strum and latch, through its own MIDI port.",
-  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-groovebank/v1.1.0/screenshots/page_0.png"
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-groovebank/v1.1.1/screenshots/page_0.png"
 }

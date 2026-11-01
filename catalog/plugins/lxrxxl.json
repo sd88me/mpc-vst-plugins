@@ -1,5 +1,5 @@
 { "id": "lxrxxl", "name": "LXRXXL", "author": "L'Cronx", "repo": "sunskiefer/LXR02XXL",
-  "kind": "instrument", "style": "drum-machine", "tags": ["drums", "drum-machine", "lxr", "lxr-02", "sonic-potions", "erica-synths", "sequencer", "randomizer"],
-  "license": "LicenseRef-LXR02-Open", "source_available": true,
-  "screenshot": "https://raw.githubusercontent.com/sunskiefer/LXR02XXL/v0.5.8/docs/img/page.png",
-  "summary": "A port of the open-source Sonic Potions LXR engine to MPC, with LXR-02-style features written from the manual. The whole panel on one page, 64-step sequencer with songs, rolls and a euclidean generator, Force pads playing the voices, randomizers and the Hrtl LXR-02 DLC presets. Artwork by Suns Kiefer." }
+  "kind": "instrument", "style": "drum-machine", "tags": ["drums", "drum-machine", "lxr", "lxr-02", "erica-synths", "sequencer", "reverb", "randomizer"],
+  "license": "GPL-3.0-only",
+  "screenshot": "https://raw.githubusercontent.com/sunskiefer/LXR02XXL/v0.6.0/docs/img/page.png",
+  "summary": "Inspired by the LXR-02: its open-source sound engine (GPL-3.0) with the real FX unit and the plate reverb, the whole panel on one page, 64-step sequencer with songs, rolls and a euclidean generator, Force pads playing the voices, randomizers and the Hrtl LXR-02 DLC presets old and new. Artwork by Suns Kiefer." }

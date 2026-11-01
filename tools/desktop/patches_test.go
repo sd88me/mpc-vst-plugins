@@ -206,6 +206,11 @@ func TestPatchRowsOnlyAskTheDeviceWhenItCanAnswer(t *testing.T) {
 	if rows := PatchRows(d, []Patch{other}, fetch); rows[0].State != "unsupported" || asked != 0 {
 		t.Errorf("another architecture is not asked: %+v asked=%d", rows[0], asked)
 	}
+	several := p
+	several.Supports.Arch = "aarch64, armv7l"
+	if rows := PatchRows(d, []Patch{several}, fetch); rows[0].State == "unsupported" || asked == 0 {
+		t.Errorf("a patch listing this architecture among several is asked: %+v asked=%d", rows[0], asked)
+	}
 	if rows := PatchRows(d, []Patch{p}, func(Patch) ([]byte, error) { return nil, fmt.Errorf("checksum") }); rows[0].State != "error" || !strings.Contains(rows[0].Detail, "checksum") {
 		t.Errorf("a refused script is an error row: %+v", rows[0])
 	}

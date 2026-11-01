@@ -1,0 +1,18 @@
+{
+  "id": "shapey-eq",
+  "name": "Shapey EQ",
+  "author": "3dthc",
+  "repo": "3dthc/Shapey-MPC",
+  "kind": "effect",
+  "style": "eq",
+  "tags": [
+    "eq",
+    "parametric-eq",
+    "analyzer",
+    "mixing"
+  ],
+  "license": "MIT",
+  "summary": "An 8-band parametric EQ you shape by touch: tap or drag on the curve, drag numbered dots, and make any band a bell, shelf, cut, notch or band pass. Live analyzer, zero latency, presets and four themes.",
+  "screenshot": "https://raw.githubusercontent.com/3dthc/Shapey-MPC/ddbf9bbc9f66f2af0802070b38bb3d113140131c/docs/shapey-eq.png",
+  "asset_pattern": "Shapey-EQ-*-mpc-armv7.zip"
+}
