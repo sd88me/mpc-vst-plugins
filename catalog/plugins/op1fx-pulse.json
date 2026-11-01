@@ -1,0 +1,18 @@
+{
+  "id": "op1fx-pulse",
+  "name": "Pulse",
+  "author": "Bombest",
+  "repo": "Bombest-Audio/op1-fx",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "op1",
+    "synth",
+    "pwm",
+    "pulse"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "Two PWM pulse oscillators per voice, eight voices. OP-1 inspired.",
+  "screenshot": "https://raw.githubusercontent.com/Bombest-Audio/op1-fx/34f1396d82a4ae72baa761a50f1d9bfe834c444f/screenshots/mpc/pulse.png",
+  "asset_pattern": "Pulse-*-mpc-armv7.zip"
+}

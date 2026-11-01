@@ -1,0 +1,18 @@
+{
+  "id": "op1fx-delay",
+  "name": "Delay",
+  "author": "Bombest",
+  "repo": "Bombest-Audio/op1-fx",
+  "kind": "effect",
+  "style": "delay",
+  "tags": [
+    "op1",
+    "delay",
+    "echo",
+    "tape"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "Four-knob delay with a 12-preset bank. OP-1 inspired.",
+  "screenshot": "https://raw.githubusercontent.com/Bombest-Audio/op1-fx/34f1396d82a4ae72baa761a50f1d9bfe834c444f/screenshots/mpc/delay.png",
+  "asset_pattern": "Delay-*-mpc-armv7.zip"
+}

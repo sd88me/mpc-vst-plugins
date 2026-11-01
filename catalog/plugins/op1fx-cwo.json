@@ -1,0 +1,18 @@
+{
+  "id": "op1fx-cwo",
+  "name": "Cwo",
+  "author": "Bombest",
+  "repo": "Bombest-Audio/op1-fx",
+  "kind": "effect",
+  "style": "delay",
+  "tags": [
+    "op1",
+    "delay",
+    "frequency-shifter",
+    "feedback"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "Stereo delay with a frequency shifter in the feedback loop, plus a MIX knob. OP-1 inspired.",
+  "screenshot": "https://raw.githubusercontent.com/Bombest-Audio/op1-fx/34f1396d82a4ae72baa761a50f1d9bfe834c444f/screenshots/mpc/cwo.png",
+  "asset_pattern": "Cwo-*-mpc-armv7.zip"
+}

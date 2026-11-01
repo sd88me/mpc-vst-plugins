@@ -1,0 +1,17 @@
+{
+  "id": "op1fx-sampler",
+  "name": "Sampler",
+  "author": "Bombest",
+  "repo": "Bombest-Audio/op1-fx",
+  "kind": "instrument",
+  "style": "sampler",
+  "tags": [
+    "op1",
+    "sampler",
+    "looper"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "Plays one sample across the keyboard with start, end, tune and loop. OP-1 inspired.",
+  "screenshot": "https://raw.githubusercontent.com/Bombest-Audio/op1-fx/34f1396d82a4ae72baa761a50f1d9bfe834c444f/screenshots/mpc/sampler.png",
+  "asset_pattern": "Sampler-*-mpc-armv7.zip"
+}

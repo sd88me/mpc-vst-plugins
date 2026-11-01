@@ -1,0 +1,18 @@
+{
+  "id": "op1fx-dbox",
+  "name": "DBox",
+  "author": "Bombest",
+  "repo": "Bombest-Audio/op1-fx",
+  "kind": "instrument",
+  "style": "drum-machine",
+  "tags": [
+    "op1",
+    "drums",
+    "synth",
+    "kit"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "A 24-key synthesized drum kit: two oscillators and noise per hit, 12 voices. OP-1 inspired.",
+  "screenshot": "https://raw.githubusercontent.com/Bombest-Audio/op1-fx/34f1396d82a4ae72baa761a50f1d9bfe834c444f/screenshots/mpc/dbox.png",
+  "asset_pattern": "DBox-*-mpc-armv7.zip"
+}
