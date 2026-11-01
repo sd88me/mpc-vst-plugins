@@ -17,9 +17,16 @@
 #endif
 #include <stdio.h>
 #include <string.h>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 static inline int mpc_dirname_of(const char *path, char *buf, size_t n) {
     const char *slash = strrchr(path, '/');
+#ifdef _WIN32
+    const char *bs = strrchr(path, '\\');
+    if (bs && (!slash || bs > slash)) slash = bs;
+#endif
     size_t len = slash ? (size_t)(slash - path) : 0;
     if (!slash || len == 0 || len >= n) return 0;
     memcpy(buf, path, len);
@@ -30,6 +37,14 @@ static inline int mpc_dirname_of(const char *path, char *buf, size_t n) {
 static inline int mpc_plugin_dir(char *buf, size_t n) {
     if (n) buf[0] = 0;
     if (!n) return 0;
+#ifdef _WIN32   /* the DLL that holds this function */
+    HMODULE m = NULL;
+    char path[MAX_PATH];
+    if (!GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            (LPCSTR)&mpc_plugin_dir, &m) || !GetModuleFileNameA(m, path, sizeof path))
+        return 0;
+    return mpc_dirname_of(path, buf, n);
+#else
     FILE *f = fopen("/proc/self/maps", "r");   /* the mapping that contains this function */
     if (!f) return 0;
     char line[1024];
@@ -45,6 +60,7 @@ static inline int mpc_plugin_dir(char *buf, size_t n) {
     }
     fclose(f);
     return ok;
+#endif
 }
 
 #endif

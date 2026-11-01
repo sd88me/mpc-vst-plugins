@@ -353,7 +353,7 @@ def main():
     if sys.argv[2:] == ["--shell"]:
         b = cfg.get("build", {})
         root = os.path.normpath(os.path.join(here, b.get("root", ".")))
-        for k, v in (("ROOT", root), ("PORT", os.path.relpath(here, root)), ("SO", cfg["so"]),
+        for k, v in (("ROOT", root), ("PORT", os.path.relpath(here, root)), ("SO", cfg["so"]), ("NAME", cfg["name"]),
                      ("SOURCES", " ".join(b.get("sources", []))), ("CFLAGS", " ".join(b.get("cflags", []))),
                      ("CFLAGS_ARM", " ".join(b.get("cflags_arm", []))),
                      ("CFLAGS_A64", " ".join(b.get("cflags_aarch64", []))),

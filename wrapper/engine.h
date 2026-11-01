@@ -2,6 +2,7 @@
  * Contract: 44100 Hz, interleaved int16 stereo, rendered in 128-frame blocks. Parameters are
  * string key/value pairs; the keys and their ranges come from the port's generated params.h.
  * An engine written for another host plugs in through a small adapter (see adapters/).
+ * The desktop VST3 wrapper (vst3_wrap.c, docs/DESKTOP_VST3.md) keeps this contract at any host rate: it resamples to and from 44100.
  * Optional keys the wrapper asks get_param() for: "state" (chunk save/restore), "<key>_name" / "<key>_display"
  * (dynamic names and value text), and with vst.json "programs" on a whole-number param, "<key>:<n>" (preset n's
  * name, without loading it; unanswered = "<Name> <n>").

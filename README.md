@@ -139,7 +139,8 @@ design.
   it works but looks bare. Install into a listed folder (the installers warn when the target isn't one: `install.sh -t <folder>`),
   or add the folder to the list with MPC stopped and `MPC.settings` backed up, then start MPC. A trailing `/` is fine. Checked
   on a Live III (MPC 3.10.0), 2026-10-27; details in docs/NOTES.md.
-- **VST2 only.** MPC OS has no VST3 or LV2 support.
+- **VST2 only.** MPC OS has no VST3 or LV2 support. (For a desktop DAW, a port can also be built as a VST3 on this machine:
+  [docs/DESKTOP_VST3.md](docs/DESKTOP_VST3.md); its window shows the port's MPC skin.)
 - **Setup needs root SSH to the device**, to copy the plugin and add it to `MPC.settings`, so it is for modded units.
   Adding a new plugin needs one MPC restart; the installers stop and start MPC for you (the service is `acvs`, or
   `inmusic-mpc` on firmware that has no `acvs`).
@@ -244,6 +245,9 @@ screen shows. If you are comfortable in a terminal and on 2.x, the output of thi
   filmstrips (`tools/skin_assets.py`). See [docs/SKIN_STUDIO.md](docs/SKIN_STUDIO.md).
 - `tools/test_port.sh` + `tools/host_test.c`: the offline x86 test of a port under ASan (instances, params, options,
   popups, MIDI→audio, legacy `process()`, chunks), PASSED/FAILED.
+- `tools/build_vst3.sh` + `wrapper/vst3_wrap.c`: the same port as a VST3 for a desktop DAW (Linux), for local use, with
+  `wrapper/vst3_editor.c` drawing its MPC skin (flattened by `tools/desktop_skin.py`) in the plugin window;
+  `tools/test_vst3.sh` + `tools/vst3_host_test.c` test it offline under ASan. See [docs/DESKTOP_VST3.md](docs/DESKTOP_VST3.md).
 - `tools/bench.sh` + `tools/bench.c`: a CPU stress test run on the device, with a PASS/WARN/FAIL verdict for Gen1
   hardware. See [docs/BENCH.md](docs/BENCH.md).
 - `tools/desktop/`: the MPC plugin installer app (Go; a local web page that installs, updates and removes plugins over SSH).
