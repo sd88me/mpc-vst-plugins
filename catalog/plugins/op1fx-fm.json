@@ -1,0 +1,18 @@
+{
+  "id": "op1fx-fm",
+  "name": "Fm",
+  "author": "Bombest",
+  "repo": "Bombest-Audio/op1-fx",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "op1",
+    "synth",
+    "fm",
+    "operators"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "Four-operator FM synth with eight voices and four screen knobs. OP-1 inspired.",
+  "screenshot": "https://raw.githubusercontent.com/Bombest-Audio/op1-fx/34f1396d82a4ae72baa761a50f1d9bfe834c444f/screenshots/mpc/fm.png",
+  "asset_pattern": "Fm-*-mpc-armv7.zip"
+}

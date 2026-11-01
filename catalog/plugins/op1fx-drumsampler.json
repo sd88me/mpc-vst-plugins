@@ -1,0 +1,18 @@
+{
+  "id": "op1fx-drumsampler",
+  "name": "DrumSampler",
+  "author": "Bombest",
+  "repo": "Bombest-Audio/op1-fx",
+  "kind": "instrument",
+  "style": "sampler",
+  "tags": [
+    "op1",
+    "drums",
+    "sampler",
+    "kit"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "24-slot drum sampler with a synthesized default kit. Load a WAV per slot.",
+  "screenshot": "https://raw.githubusercontent.com/Bombest-Audio/op1-fx/34f1396d82a4ae72baa761a50f1d9bfe834c444f/screenshots/mpc/drumsampler.png",
+  "asset_pattern": "DrumSampler-*-mpc-armv7.zip"
+}
