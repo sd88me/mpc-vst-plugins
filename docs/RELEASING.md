@@ -28,7 +28,9 @@ An addin (a library MPC preloads) is released with `tools/release_addin.py`, or 
    (`docs/CATALOG_SPEC.md`), then check it: `tools/catalog_check.py dist/<zip> --catalog`.
    `--extra SRC:DEST` ships extra runtime files in the plugin folder, next to the `.so` (an engine bundle, presets; `DEST` is
    relative to the plugin folder, a leading `vst/` from older scripts is still accepted). `--user-data <folder>` marks a folder
-   where the user adds files (ROMs, kits, banks); the installer keeps it.
+   where the user adds files (ROMs, kits, banks); the installer keeps it. `--folder-name <name>` names the plugin folder (and the zip)
+   when it differs from the plugin-list name, e.g. Monomodule's `Monomodule One` folder for the list name `Monomodule`; keep it the same
+   across versions so upgrades find the user's data.
 7. **Publish**: tag `<port>-vX.Y.Z` in the port's repo and attach the zip:
    `gh release create maze-voice-vst-v1.2.0 dist/Maze-Voice-1.2.0-mpc-armv7.zip [dist/Maze-Voice-1.2.0-mpc-aarch64.zip] --notes-file ...`
    Paste the zip's INSTALL.md "Requirements" and "Install" sections into the notes.
