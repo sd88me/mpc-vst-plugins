@@ -52,18 +52,37 @@
   "name": "Mode Prev",
   "momentary": true,
   "step_of": "mode",
-  "step_delta": -1
+  "step_delta": -1,
+  "debounce_ms": 0
  },
  {
   "key": "mode_next",
   "name": "Mode Next",
   "momentary": true,
   "step_of": "mode",
-  "step_delta": 1
+  "step_delta": 1,
+  "debounce_ms": 0
  },
  {
   "key": "transport_log",
   "name": "Transport",
+  "display": "string",
+  "poll": false
+ },
+ {
+  "key": "push",
+  "name": "Push",
+  "momentary": true
+ },
+ {
+  "key": "push_raw",
+  "name": "Push Raw",
+  "momentary": true,
+  "debounce_ms": 0
+ },
+ {
+  "key": "push_count",
+  "name": "Pushes",
   "display": "string",
   "poll": false
  }

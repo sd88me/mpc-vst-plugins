@@ -16,5 +16,5 @@
   ],
   "license": "GPL-3.0-or-later",
   "summary": "Dual Slope, based on Befaco's Rampage VCV Rack module: two rise-and-fall generators (envelopes, LFOs, slew) whose outputs go out of its own MIDI port as CCs.",
-  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-dual-slope/v1.2.0/screenshots/page_0.png"
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-dual-slope/v1.2.1/screenshots/page_0.png"
 }

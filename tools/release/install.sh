@@ -53,7 +53,14 @@ MP=$(df -kP "$SYNTHS" 2>/dev/null | awk 'NR==2 {m = $6; for (i = 7; i <= NF; i++
 if [ -n "$MP" ] && MP="$MP" awk '$2 == ENVIRON["MP"] {print $4}' /proc/mounts 2>/dev/null | grep -q '\(^\|,\)noexec\(,\|$\)'; then
     echo "warning: $SYNTHS is on a noexec mount, so MPC will not be able to load this plugin from it. Install on the internal drive (-t /sdcard/Synths), or on Gen1 apply the drive exec patch (tools/mpc_patch/drive_exec) and then run its verify."
 fi
-grep -q "$SYNTHS" "$SETTINGS" || echo "warning: $SYNTHS isn't in MPC's SynthContentLocations; the skin may not show"
+# MPC draws a plugin's skin only if its folder is under a listed content location (the plugin loads either way; device test, MPC 3.10.0, docs/NOTES.md 2026-10-27).
+# Compare whole entries (not a substring: /sdcard/Synths-old must not count), ignoring CR and a trailing slash, which MPC accepts.
+WANT=$(printf %s "$SYNTHS" | sed 's|/*$||')
+if ! sed -n 's/.*<Location>\(.*\)<\/Location>.*/\1/p' "$SETTINGS" | tr -d '\r' | sed 's|/*$||' | grep -qxF -- "$WANT"; then
+    echo "WARNING: $SYNTHS is not one of MPC's content locations (SynthContentLocations in $SETTINGS)." >&2
+    echo "         The plugin will load, but with NO SKIN. Install into a listed Synths folder with -t, or add this folder to the list" >&2
+    echo "         (MPC stopped, MPC.settings backed up) and start MPC again." >&2
+fi
 
 echo "Installing $NAME @VERSION@:"
 echo "  $SYNTHS/$SKIN/ (skin, $SO and its data), and an entry in $SETTINGS"

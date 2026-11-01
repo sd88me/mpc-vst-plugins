@@ -13,6 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # test_auto_exec.py installs the earlier auto exec scripts from history to test the update
       - name: Tests
         run: python3 tools/test_patches.py
       - name: Drive exec patch, with real mounts (root, private mount namespace)

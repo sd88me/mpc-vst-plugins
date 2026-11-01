@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include "../../wrapper/engine.h"
 
-typedef struct { char mode[32], num[32], chan[32], cont[32], longl[32], tlog[32]; } st_t;
+typedef struct { char mode[32], num[32], chan[32], cont[32], longl[32], tlog[32]; int push, push_raw; } st_t;
 
 static void *create(const char *d) {
     (void)d;
@@ -21,11 +21,14 @@ static char *slot(st_t *s, const char *k) {
 static void set_param(void *i, const char *k, const char *v) {
     st_t *s = i;
     size_t l = strlen(s->tlog);
+    if (!strcmp(k, "push") && v[0] != '0') { s->push++; return; }          /* presses that reached the engine: the wrapper's debounce_ms test */
+    if (!strcmp(k, "push_raw") && v[0] != '0') { s->push_raw++; return; }
     if (!strcmp(k, "transport")) { if (l < sizeof s->tlog - 1) { s->tlog[l] = v[0]; s->tlog[l + 1] = 0; } return; }
     char *p = slot(i, k);
     if (p) snprintf(p, 32, "%s", v);
 }
 static int get_param(void *i, const char *k, char *b, int n) {
+    if (!strcmp(k, "push_count")) return snprintf(b, n, "%d %d", ((st_t *)i)->push, ((st_t *)i)->push_raw);
     if (!strcmp(k, "transport_log")) return snprintf(b, n, "%s", ((st_t *)i)->tlog[0] ? ((st_t *)i)->tlog : "-");
     char *p = slot(i, k);
     return p ? snprintf(b, n, "%s", p) : 0;

@@ -84,6 +84,10 @@ static float *ins[2] = {inL, inR}, *outs[2] = {outL, outR};
 static MidiEv mev[64];
 static Events evs;
 static int synth, sweep_all;
+#define TRIGGER_WARN_PCT 90.0   /* a trigger tap that eats this much of a block is worth a WARN */
+/* Parameters split by kind, once the plugin answers the framework's EFF_MPC_IS_MOMENTARY opcode: the
+ * sweep only turns continuous controls, one-shot triggers get their own stage (2026-10-26). */
+static int *sw_idx, sw_n, *tr_idx, tr_n, pending_release = -1;
 static unsigned rng = 12345;
 static float frand(void) { rng = rng * 1664525u + 1013904223u; return (rng >> 8) / 16777216.0f; }
 
@@ -119,11 +123,20 @@ static Stage run(const char *name, int mode, int voices, double seconds) {
             send_notes(1, held, 36);
         }
         if (synth && mode == 3 && b == 0) send_notes(0, 16, 36);
-        if (mode == 2) {
-            int np = fx->numParams;
-            if (np > 0) {
-                int n = sweep_all ? np : 4;
-                for (int k = 0; k < n; k++) fx->setParameter(fx, sweep_all ? k : (int)(frand() * np) % np, frand());
+        if (mode == 2 && sw_n > 0) {
+            int n = sweep_all ? sw_n : 4;
+            for (int k = 0; k < n && k < sw_n; k++) {
+                int slot = sweep_all ? k : (int)(frand() * sw_n) % sw_n;
+                fx->setParameter(fx, sw_idx[slot], frand());
+            }
+        }
+        if (mode == 4) {
+            /* one trigger every 8 blocks, released on the next one: a tap, not a drag */
+            if (pending_release >= 0) { fx->setParameter(fx, pending_release, 0.0f); pending_release = -1; }
+            else if (tr_n > 0 && b % 8 == 0) {
+                int slot = (int)(b / 8) % tr_n;
+                fx->setParameter(fx, tr_idx[slot], 1.0f);
+                pending_release = tr_idx[slot];
             }
         }
         fx->processReplacing(fx, ins, outs, BLOCK);
@@ -177,6 +190,18 @@ int main(int argc, char **argv) {
     double open_ms = (now_us(CLOCK_MONOTONIC) - o0) / 1e3;
     synth = (fx->flags & (1 << 8)) != 0;
 
+    /* Ask which parameters are one-shot triggers; a plugin built before the opcode answers 0 for every
+     * index, and the sweep then covers all parameters as it always did. */
+    {
+        int np = fx->numParams > 0 ? fx->numParams : 1;
+        sw_idx = calloc((size_t)np, sizeof *sw_idx);
+        tr_idx = calloc((size_t)np, sizeof *tr_idx);
+        for (int i = 0; i < fx->numParams; i++) {
+            if (fx->dispatcher(fx, 0x7F01, i, 0, 0, 0) == 1) tr_idx[tr_n++] = i;
+            else sw_idx[sw_n++] = i;
+        }
+    }
+
     printf("plugin %s: %s, %d params, open %.1f ms; block %d @ %d Hz = %.0f us budget\n", path,
            synth ? "instrument" : "effect", fx->numParams, open_ms, BLOCK, SR, BUDGET_US);
     Stage st[16];
@@ -194,8 +219,11 @@ int main(int argc, char **argv) {
     } else {
         st[ns++] = run("audio in", 1, 0, secs);
     }
+    if (tr_n > 0) printf("  %d one-shot trigger(s) excluded from the sweep, fired in their own stage\n", tr_n);
     st[ns++] = run(sweep_all ? "all-param sweep" : "q-link sweep", 2, 0, secs);
     st[ns++] = run("release tail", 3, 0, secs);
+    const int ncont = ns;   /* stages above decide the verdict; triggers are reported, not scored */
+    if (tr_n > 0) st[ns++] = run("trigger fire", 4, 0, secs);
 
     printf("%-16s %8s %8s %8s %9s %7s\n", "stage", "mean%", "p99%", "max%", "threads%", "peak");
     double worst99 = 0, worstmax = 0, bg = 0;
@@ -203,21 +231,32 @@ int main(int argc, char **argv) {
         Stage *s = &st[i];
         printf("%-16s %8.1f %8.1f %8.1f %9.1f %7.2f\n", s->name, s->mean / BUDGET_US * 100, s->p99 / BUDGET_US * 100,
                s->max / BUDGET_US * 100, s->bg, s->peak);
-        if (s->p99 > worst99) worst99 = s->p99;
-        if (s->max > worstmax) worstmax = s->max;
+        if (i < ncont && s->p99 > worst99) worst99 = s->p99;
+        if (i < ncont && s->max > worstmax) worstmax = s->max;
         if (s->bg > bg) bg = s->bg;
     }
     double w99 = worst99 / BUDGET_US * 100, wmax = worstmax / BUDGET_US * 100;
     /* thresholds: see docs/BENCH.md */
     const char *verdict = w99 <= 15 && wmax <= 50 ? "PASS" : w99 <= 35 && wmax <= 80 ? "WARN" : "FAIL";
-    printf("worst p99 %.1f%%, worst block %.1f%%, background threads up to %.1f%% of a core -> %s\n", w99, wmax, bg,
-           verdict);
-    if (json)
+    /* A one-shot trigger is not a drag, so it does not decide the verdict like one (see docs/BENCH.md). It is
+     * still real audio-thread work: a tap that eats most of a block glitches the next one, so PASS turns into
+     * WARN above TRIGGER_WARN_PCT. */
+    const double trmax = tr_n > 0 ? st[ncont].max / BUDGET_US * 100 : 0.0;
+    if (tr_n > 0 && trmax >= TRIGGER_WARN_PCT && strcmp(verdict, "FAIL") != 0) verdict = "WARN";
+    printf("worst p99 %.1f%%, worst block %.1f%%, background threads up to %.1f%% of a core", w99, wmax, bg);
+    if (tr_n > 0) printf(", trigger max %.1f%% of a block", trmax);
+    printf(" -> %s\n", verdict);
+    if (json) {
         printf("{\"plugin\":\"%s\",\"instrument\":%d,\"open_ms\":%.1f,\"p99_pct\":%.1f,\"max_pct\":%.1f,"
-               "\"threads_pct\":%.1f,\"verdict\":\"%s\"}\n",
+               "\"threads_pct\":%.1f,\"verdict\":\"%s\"",
                path, synth, open_ms, w99, wmax, bg, verdict);
+        if (tr_n > 0) printf(",\"triggers\":%d,\"trigger_max_pct\":%.1f", tr_n, st[ns - 1].max / BUDGET_US * 100);
+        printf("}\n");
+    }
     fx->dispatcher(fx, effStopProcess, 0, 0, 0, 0);
     fx->dispatcher(fx, effMainsChanged, 0, 0, 0, 0);
     fx->dispatcher(fx, effClose, 0, 0, 0, 0);
+    free(sw_idx);
+    free(tr_idx);
     return verdict[0] == 'F';
 }

@@ -1,0 +1,26 @@
+# Weekly: checks whether the catalog has plugins with screenshots that the Plugin Manager G2's skin has no thumbnail for (they show initials until
+# the next release), and if so pushes a branch with the new thumbnails and opens a PR (or an issue with a compare link: this repo does not let
+# Actions create pull requests). It never releases anything; a person reviews it and runs plugin-manager-g2.yml.
+name: Plugin Manager G2 thumbnails
+on:
+  schedule:
+    - cron: '23 4 * * 1'   # Mondays 04:23 UTC
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pillow
+      - name: Regenerate the thumbnails; open a PR or an issue if there are new ones
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: tools/plugin_manager_g2/vst/thumbs_check.sh

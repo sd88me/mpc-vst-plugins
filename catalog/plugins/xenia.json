@@ -1,0 +1,5 @@
+{ "id": "xenia", "name": "Xenia", "author": "sd88me", "repo": "sd88me/mpc-vst-xenia",
+  "kind": "instrument", "style": "synth", "tags": ["emulation", "wavetable", "rompler-free", "gen2"], "license": "GPL-3.0-only",
+  "summary": "An emulation of the Microwave XT wavetable synthesizer's original firmware (gearmulator's 68k and DSP56300 emulators) as a native instrument for Gen2 MPC devices: ten touchscreen pages, ROM banks and patch browser, assignable play knobs and Q-Link control on every page. Gen2 (aarch64) only; you need your own Microwave XT ROM.",
+  "asset_pattern": "*-mpc-aarch64.zip",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-xenia/aeb6a25cfe8e5e14fc1df592526b2c2a32eb99be/docs/screenshots/xenia-play.png" }

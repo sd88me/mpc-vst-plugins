@@ -61,8 +61,11 @@ func TestForArchPicksTheZipForTheDevice(t *testing.T) {
 	if c, err := by["gen1"].ForArch("armv7l"); err != nil || c.URL != "https://example.com/g1.zip" {
 		t.Errorf("Gen1-only on Gen1: %+v %v", c, err)
 	}
-	if _, err := (CatPlugin{Kind: "addin", Name: "A", Aarch64: &Asset{}}).ForArch("aarch64"); err == nil {
-		t.Error("addins are armv7 only")
+	if c, err := (CatPlugin{Kind: "addin", Name: "A", Version: "1.0.0", Aarch64: &Asset{URL: "https://example.com/a-aarch64.zip"}}).ForArch("aarch64"); err != nil || c.URL != "https://example.com/a-aarch64.zip" {
+		t.Errorf("an addin WITH a Gen2 build must be accepted like any other plugin: %+v %v", c, err)
+	}
+	if _, err := (CatPlugin{Kind: "addin", Name: "A", Version: "1.0.0"}).ForArch("aarch64"); err == nil {
+		t.Error("an addin with no Gen2 build must still be refused")
 	}
 }
 
@@ -147,5 +150,131 @@ func TestAGen2DeviceRefusesACatalogPluginWithNoGen2Build(t *testing.T) {
 	}
 	if len(fd.calls()) != 0 {
 		t.Error("MPC must not be touched")
+	}
+}
+
+// On a Gen2 device (the Live III, MPC OS 3.9.1 aarch64) /sdcard isn't mounted, so the writable internal drive is
+// /nvme/Synths. When SynthsDir is absent but SynthsAlt is found, SynthsAlt becomes the primary "Internal drive".
+func TestGen2InternalDriveIsNvmeWhenSdcardAbsent(t *testing.T) {
+	fd := newFakeDevice(t)
+	nvme := filepath.Join(fd.dir, "nvme", "Synths")
+	if err := os.MkdirAll(nvme, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := fd.cfg()
+	cfg.SynthsDir = filepath.Join(fd.dir, "sdcard", "Synths") // never created: like /sdcard unmounted on Gen2
+	cfg.SynthsAlt = nvme                                      // stands in for /nvme/Synths
+	cfg.RootGlobs = shQuote(cfg.SynthsDir) + " " + shQuote(nvme)
+
+	d, err := Dial("127.0.0.1", "secret", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+
+	if len(d.Info.Roots) != 1 {
+		t.Fatalf("only /nvme/Synths should be offered (not the absent /sdcard): %+v", d.Info.Roots)
+	}
+	r := d.Info.Roots[0]
+	if r.Path != nvme || !r.Primary || r.Label != "Internal drive" {
+		t.Errorf("the nvme drive must be the primary internal drive: %+v", r)
+	}
+	if d.Info.Synths != nvme {
+		t.Errorf("DeviceInfo.Synths should be the nvme drive, got %q", d.Info.Synths)
+	}
+}
+
+// An MPC One (Gen2) has no NVMe: its user storage is the loopback image mounted at /storage (a Key 37 is the same), and
+// an MPC One's own report showed /storage with ~17 GB free and no /nvme. With /sdcard and /nvme/Synths both absent, the
+// next alternative, /storage/Synths, is the primary internal drive.
+func TestGen2InternalDriveIsStorageOnAMpcOne(t *testing.T) {
+	fd := newFakeDevice(t)
+	storage := filepath.Join(fd.dir, "storage", "Synths")
+	if err := os.MkdirAll(storage, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := fd.cfg()
+	cfg.SynthsDir = filepath.Join(fd.dir, "sdcard", "Synths") // never created
+	nvme := filepath.Join(fd.dir, "nvme", "Synths")           // never created: an MPC One has no NVMe
+	cfg.SynthsAlt = nvme + " " + storage
+	cfg.RootGlobs = shQuote(cfg.SynthsDir) + " " + shQuote(nvme) + " " + shQuote(storage)
+
+	d, err := Dial("127.0.0.1", "secret", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	if len(d.Info.Roots) != 1 || d.Info.Roots[0].Path != storage || !d.Info.Roots[0].Primary || d.Info.Roots[0].Label != "Internal drive" {
+		t.Fatalf("/storage/Synths must be the primary internal drive: %+v", d.Info.Roots)
+	}
+	if d.Info.Synths != storage {
+		t.Errorf("DeviceInfo.Synths should be /storage/Synths, got %q", d.Info.Synths)
+	}
+}
+
+// If more than one alternative exists, the first in the list wins (the order says which is the internal drive).
+func TestTheFirstFoundSynthsAltWins(t *testing.T) {
+	fd := newFakeDevice(t)
+	nvme := filepath.Join(fd.dir, "nvme", "Synths")
+	storage := filepath.Join(fd.dir, "storage", "Synths")
+	os.MkdirAll(nvme, 0o755)
+	os.MkdirAll(storage, 0o755)
+	cfg := fd.cfg()
+	cfg.SynthsDir = filepath.Join(fd.dir, "sdcard", "Synths")
+	cfg.SynthsAlt = nvme + " " + storage
+	cfg.RootGlobs = shQuote(cfg.SynthsDir) + " " + shQuote(nvme) + " " + shQuote(storage)
+
+	d, err := Dial("127.0.0.1", "secret", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	if d.Info.Synths != nvme {
+		t.Errorf("the first alternative found must win: got %q", d.Info.Synths)
+	}
+}
+
+// When SynthsDir itself is present (Gen1/Force), SynthsAlt is ignored even if it also exists.
+func TestSynthsAltIsIgnoredWhenTheConfiguredPrimaryExists(t *testing.T) {
+	fd := newFakeDevice(t)
+	nvme := filepath.Join(fd.dir, "nvme", "Synths")
+	os.MkdirAll(nvme, 0o755)
+	cfg := fd.cfg() // SynthsDir = <dir>/Synths, which exists
+	cfg.SynthsAlt = nvme
+	cfg.RootGlobs = shQuote(cfg.SynthsDir) + " " + shQuote(nvme)
+
+	d, err := Dial("127.0.0.1", "secret", cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	if d.Info.Synths != cfg.SynthsDir {
+		t.Errorf("the configured primary must win when present: got %q", d.Info.Synths)
+	}
+	var p Root
+	for _, r := range d.Info.Roots {
+		if r.Primary {
+			p = r
+		}
+	}
+	if p.Path != cfg.SynthsDir {
+		t.Errorf("primary should be the configured SynthsDir, got %+v", p)
+	}
+}
+
+func TestAGen2OnlyVersionIsRefusedOnGen1(t *testing.T) {
+	raw := `{"schema":1,"plugins":[{"id":"g2","name":"G2","author":"a","kind":"instrument","distribution":"release","latest":"1.0.0","versions":[
+	 {"version":"1.0.0","size":20,"sha256":"` + strings.Repeat("b", 64) + `","url":"https://example.com/g2-aarch64.zip","channel":"stable","yanked":false,"gen2":true,"gen2_only":true,
+	  "assets":{"aarch64":{"size":20,"sha256":"` + strings.Repeat("b", 64) + `","url":"https://example.com/g2-aarch64.zip"}}}]}]}`
+	got, err := parseCatalog([]byte(raw))
+	if err != nil || len(got) != 1 || !got[0].Gen2Only || got[0].Aarch64 == nil {
+		t.Fatalf("parse: %+v %v", got, err)
+	}
+	if _, err := got[0].ForArch("armv7l"); err == nil || !strings.Contains(err.Error(), "Gen2 only") {
+		t.Errorf("a Gen1 or Force device must be refused, got %v", err)
+	}
+	c, err := got[0].ForArch("aarch64")
+	if err != nil || c.URL != "https://example.com/g2-aarch64.zip" {
+		t.Errorf("Gen2: %+v %v", c, err)
 	}
 }

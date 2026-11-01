@@ -1,0 +1,7 @@
+[
+  {"version": "0.1.9", "device": "MPC Live III (Gen2)", "firmware": "3.10.0.49", "date": "2026-10-28"},
+  {"version": "0.2.0", "device": "Force (Gen1)", "firmware": "3.9.1.2", "date": "2026-10-28"},
+  {"version": "0.2.0", "device": "MPC Live III (Gen2)", "firmware": "3.10.0.49", "date": "2026-10-29"},
+  {"version": "0.2.1", "device": "MPC Live III (Gen2)", "firmware": "3.10.0.49", "date": "2026-10-29"},
+  {"version": "0.2.1", "device": "Force (Gen1)", "firmware": "3.9.1.2", "date": "2026-10-29"}
+]

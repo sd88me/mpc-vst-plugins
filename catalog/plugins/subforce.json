@@ -1,5 +1,0 @@
-{ "id": "subforce", "name": "SubForce", "author": "Devko", "repo": "Devko/SubForce",
-  "kind": "instrument", "style": "synth", "tags": ["monosynth", "analog", "bass", "ladder-filter", "paraphonic"], "license": "MIT",
-  "asset_pattern": "SubForce-*-mpc-armv7.zip",
-  "screenshot": "https://raw.githubusercontent.com/Devko/SubForce/main/docs/img/filter.png",
-  "summary": "Analog-style monosynth in the spirit of a 37-key American paraphonic classic: two morphing oscillators with hard sync, sub and noise, a feedback mixer, a 4-pole ladder filter with Multidrive, two looping envelopes, glide and Duo. 57 presets and a six-tab touchscreen skin with Q-Links." }

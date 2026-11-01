@@ -14,10 +14,12 @@
 # once and started once, and is started again if something fails. What was installed is remembered in <synths-dir>/.mpc-store.
 # Addins (catalog kind "addin": libraries MPC preloads, docs/ADDINS.md) go to /data/mpc-addins/<id> instead of a Synths folder; each
 # installed addin folder holds its version (addin.manifest) and its own uninstall.sh.
-# The catalog is https://sd88me.github.io/mpc-vst-plugins/catalog.tsv (docs/CATALOG.md); the helper files it lists (sync.sh,
+# The catalog is https://open-mpc.github.io/catalog.tsv, with https://sd88me.github.io/mpc-vst-plugins/catalog.tsv (the
+# old address, kept as a copy) tried when the first does not give a catalog (docs/CATALOG.md, docs/ORG_MIGRATION.md); the helper files it lists (sync.sh,
 # plugin_list.awk) are fetched from the same folder and checked against the hashes in it. Build-yourself plugins are not here.
 set -e
-URL="${MPC_STORE_URL:-https://sd88me.github.io/mpc-vst-plugins/catalog.tsv}"
+# MPC_STORE_URL and --url take one address, or several separated by spaces that are tried in turn; the first that gives a catalog wins.
+URL="${MPC_STORE_URL:-https://open-mpc.github.io/catalog.tsv https://sd88me.github.io/mpc-vst-plugins/catalog.tsv}"
 SYNTHS=/sdcard/Synths; YES=0; DRY=0; MAJOR=0
 ADDINS="${MPC_ADDINS:-/data/mpc-addins}"
 TAB=$(printf '\t')
@@ -43,6 +45,11 @@ if [ -z "$MPC_INSTALL_TEST" ] && [ "$CMD" != list ] && [ $DRY = 0 ]; then
     case "$ARCH" in armv7*|aarch64) ;; *) die "this is for MPC OS devices (Gen1 32-bit ARM or Gen2 aarch64); this one is $ARCH" ;; esac
     command -v systemctl >/dev/null || die "systemctl not found"
 fi
+# Gen2 (the Live III, MPC OS 3.x aarch64): /sdcard isn't mounted, so the writable internal drive is /nvme/Synths.
+# Fall back to it when the /sdcard default is in effect and absent (harmless on Gen1/Force).
+[ "$SYNTHS" = /sdcard/Synths ] && [ ! -d /sdcard/Synths ] && [ -d /nvme ] && SYNTHS=/nvme/Synths
+# A Gen2 unit without NVMe (an MPC One, a Key 37) keeps user content on the loopback image mounted at /storage.
+[ "$SYNTHS" = /sdcard/Synths ] && [ ! -d /sdcard/Synths ] && [ -d /storage/Synths ] && SYNTHS=/storage/Synths
 SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
 W="${MPC_STORE_TMP:-/tmp}/mpc-store.$$"; mkdir -p "$W" || die "cannot create $W"
 trap 'rm -rf "$W"' EXIT
@@ -55,10 +62,16 @@ fetch() {   # fetch <url> <dest>
 }
 sha_of() { sha256sum "$1" | cut -d' ' -f1; }
 
-echo "Reading the catalog: $URL"
-fetch "$URL" "$W/catalog.tsv" || die "cannot download the catalog (is the device online?)"
-head -n 1 "$W/catalog.tsv" | grep -q '^#mpc-catalog-tsv 1' || die "that is not a catalog this script understands"
-BASE="${URL%/*}"
+WHY="cannot download the catalog (is the device online?)"; GOT=
+for u in $URL; do
+    echo "Reading the catalog: $u"
+    if ! fetch "$u" "$W/catalog.tsv"; then WHY="cannot download the catalog (is the device online?)"; continue; fi
+    if ! head -n 1 "$W/catalog.tsv" | grep -q '^#mpc-catalog-tsv 1'; then WHY="that is not a catalog this script understands"; continue; fi
+    GOT="$u"; break
+done
+[ -n "$GOT" ] || die "$WHY"
+URL="$GOT"
+BASE="${URL%/*}"   # the helper files are fetched from the folder of the address that worked
 
 row() {   # row <id> [version]: the catalog line (latest when no version)
     awk -F'\t' -v id="$1" -v v="${2:-}" '$1 == "plugin" && $2 == id && ((v == "" && $4 == 1) || (v != "" && $3 == v)) { print; exit }' "$W/catalog.tsv"
@@ -146,25 +159,34 @@ os_warnings() {
 
 do_list() {
     printf '%-18s %-9s %-10s %s\n' "ID" "LATEST" "INSTALLED" "NAME"
-    awk -F'\t' '$1 == "plugin" && $4 == 1 { print $2 "\t" $3 "\t" $6 "\t" $7 "\t" $5 "\t" $15 "\t" $19 }' "$W/catalog.tsv" | while IFS=$TAB read -r id ver name skin kind os url64; do
+    awk -F'\t' '$1 == "plugin" && $4 == 1 { print $2 "\t" $3 "\t" $6 "\t" $7 "\t" $5 "\t" $15 "\t" $19 "\t" $12 }' "$W/catalog.tsv" | while IFS=$TAB read -r id ver name skin kind os url64 url1; do
         inst=$(installed_version "$id" || true)
         where="$SYNTHS/$skin"; [ "$kind" != addin ] || where="$ADDINS/$id"
         if [ -z "$inst" ]; then if [ -d "$where" ]; then inst="manual"; else inst="-"; fi; fi
         [ "$kind" != addin ] || name="$name (addin)"
         mark=""; if [ "$inst" != "-" ] && [ "$inst" != "manual" ] && [ "$inst" != "$ver" ]; then mark="  (update available)"; fi
         if [ "$os" = "3.x" ]; then mark="$mark  [MPC OS 3.x only]"; fi
-        if [ "$ARCH" = aarch64 ] && [ "$kind" != addin ] && { [ -z "$url64" ] || [ "$url64" = "-" ]; }; then mark="$mark  [no Gen2 build]"; fi
+        if [ "$ARCH" = aarch64 ] && { [ -z "$url64" ] || [ "$url64" = "-" ]; }; then mark="$mark  [no Gen2 build]"; fi
+        if [ "$ARCH" != aarch64 ] && [ "$url1" = "-" ]; then mark="$mark  [Gen2 only]"; fi
         printf '%-18s %-9s %-10s %s%s\n' "$id" "$ver" "$inst" "$name" "$mark"
     done
 }
 
 # install_rows <catalog line>...: download and verify everything first, then one stop/start around all the installs
 do_install_rows() {
-    n=0; : > "$W/todo"
+    n=0; skipped=0; : > "$W/todo"
     for r in "$@"; do
         id=$(col "$r" 2); ver=$(col "$r" 3); size=$(col "$r" 10); sha=$(col "$r" 11); url=$(col "$r" 12)
+        # Not built for this device's architecture: skipped, not fatal, so the rest of a batch (other plugins, and
+        # whatever else a caller like the USB stick does around this, e.g. enabling SSH) still goes ahead.
+        if [ "$ARCH" != aarch64 ] && [ "$url" = "-" ]; then
+            echo "skipping $id $ver: Gen2 only (aarch64), no build for this device"; skipped=$((skipped + 1)); continue
+        fi
         if [ "$ARCH" = aarch64 ]; then   # a Gen2 device takes the aarch64 zip; the armv7 one would not load
-            url=$(col "$r" 19); [ -n "$url" ] && [ "$url" != "-" ] || die "$id $ver has no Gen2 (aarch64) build: nothing was installed"
+            url=$(col "$r" 19)
+            if [ -z "$url" ] || [ "$url" = "-" ]; then
+                echo "skipping $id $ver: no Gen2 (aarch64) build yet for this device"; skipped=$((skipped + 1)); continue
+            fi
             size=$(col "$r" 17); sha=$(col "$r" 18)
         fi
         echo "Downloading $id $ver ($((size / 1024)) KB)"
@@ -178,7 +200,11 @@ do_install_rows() {
         if grep -q 'DEFER=' "$dir/install.sh"; then echo 1 > "$W/defer.$id"; else echo 0 > "$W/defer.$id"; fi
         printf '%s\n' "$r" >> "$W/todo"; n=$((n + 1))
     done
-    [ $n -gt 0 ] || { echo "Nothing to install."; return 0; }
+    if [ $n -eq 0 ]; then
+        if [ $skipped -gt 0 ]; then echo "Nothing to install: $skipped skipped (no build for this device)."
+        else echo "Nothing to install."; fi
+        return 0
+    fi
     echo "Verified. About to install:"; awk -F'\t' '{ print "  " $2 " " $3 " (" $6 ($5 == "addin" ? ", an addin" : "") ")" }' "$W/todo"
     os_warnings "$W/todo"
     [ $DRY = 1 ] && { echo "Dry run: nothing changed."; return 0; }
@@ -202,7 +228,8 @@ do_install_rows() {
             else echo "error: $name failed; continuing would leave a mixed state, so stopping here" >&2; break; fi
         done < "$W/todo"
     fi
-    echo "Installed $ok of $n."
+    if [ $skipped -gt 0 ]; then echo "Installed $ok of $n ($skipped skipped: no build for this device)."
+    else echo "Installed $ok of $n."; fi
     [ $ok = $n ] || return 1
 }
 

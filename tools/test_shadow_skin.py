@@ -192,6 +192,34 @@ class BuildAttrs(unittest.TestCase):
         w = {"kind": "enum_v", "options": ["A", "B"], "cx": 100, "cy": 100, "sh": 44}
         self.assertEqual({r[3] for r in shadow_skin.seg_rects(w)}, {44})
 
+    def slider_texts(self, layout):
+        defs, _ = self.build(layout)
+        sd = [v for k, v in defs.items() if k.startswith("shSlider")][0]
+        out = {}
+        for c in sd["componentsData"]:
+            if c["componentData"]["name"] in ("Name", "Value"):
+                out[c["componentData"]["name"]] = (c["componentData"]["data"]["textStyle"]["font"]["height"],
+                                                   int(c["bounds"]["bounds"].split()[2]))
+        return out
+
+    def test_plain_slider_text_unchanged(self):
+        t = self.slider_texts("[tab T]\nslider_v cx=500 cy=350 w=40 h=200 key=a\n")
+        self.assertEqual(t, {"Name": (17.0, 130), "Value": (22.0, 130)})
+
+    def test_label_scale_alone_leaves_slider_text(self):
+        t = self.slider_texts("label_scale=1.3\n[tab T]\nslider_v cx=500 cy=350 w=40 h=200 key=a\n")
+        self.assertEqual(t, {"Name": (17.0, 130), "Value": (22.0, 130)})
+
+    def test_scale_names_scales_slider_text(self):
+        t = self.slider_texts("scale_names=1\nlabel_scale=1.3\n[tab T]\nslider_v cx=500 cy=350 w=40 h=200 key=a\n")
+        self.assertAlmostEqual(t["Name"][0], 21.0 * 1.3)
+        self.assertAlmostEqual(t["Value"][0], 22.0 * 1.3)
+        self.assertEqual(t["Name"][1], round(130 * 1.3))
+
+    def test_slider_ns_vs_override_under_scale_names(self):
+        t = self.slider_texts("scale_names=1\n[tab T]\nslider_v cx=500 cy=350 w=40 h=200 key=a ns=30 vs=36\n")
+        self.assertEqual((t["Name"][0], t["Value"][0]), (30.0, 36.0))
+
     def test_plain_knob_unchanged(self):
         defs, _ = self.build("[tab T]\nknob cx=200 cy=300 r=30 key=a\n")
         self.assertEqual([k for k in defs if k.startswith("shKnob")], ["shKnob30_ls%g" % shadow_skin.LABEL_SCALE])
@@ -384,6 +412,83 @@ class InlinedSvgs(unittest.TestCase):
             self.assertIn("url('#%s-g')" % iid, part)
             self.assertEqual(part.count('href="#%s-c"' % iid), 2)
             self.assertNotRegex(part, r'(url\(\s*[\'"]?#|href="#)(g|c)\b')
+
+
+class VersionXml(unittest.TestCase):
+    """version.xml used to say 1.0.0.0 for every port, whatever vst.json claimed (found on a 3.1.0 plugin)."""
+
+    def test_vst_int_becomes_four_parts(self):
+        for v, want in ((1000, "1.0.0.0"), (2000, "2.0.0.0"), (3100, "3.1.0.0"), (3125, "3.1.2.5"),
+                        (1, "0.0.0.1"), (None, "1.0.0.0")):
+            self.assertEqual(shadow_skin.vst_version(v), want, v)
+
+    def test_version_xml_carries_vendor_slug_and_version(self):
+        s = shadow_skin.version_xml("MPCDJ", "MPC DJ FX 2", 3110)
+        self.assertIn("<identifier>MPCDJ.vst.mpcdjfx2</identifier>", s)
+        self.assertIn("<version>3.1.1.0</version>", s)
+        self.assertNotIn("1.0.0.0</version>", s)
+
+    def test_a_field_above_nine_rolls_into_the_one_to_its_left(self):
+        # The documented limit (vst_version docstring, docs/PORTING.md): one decimal digit each for minor, patch
+        # and build. patch 10 and minor 1 are the same int, so it cannot be rejected here -- pinned so that the
+        # roll-over stays a known property and not a surprise in a released skin.
+        for v, want in ((3200, "3.2.0.0"), (3500, "3.5.0.0"), (10, "0.0.1.0")):
+            self.assertEqual(shadow_skin.vst_version(v), want, v)
+
+
+class HtmlArtBoxButton(unittest.TestCase):
+    """A layout `button ... w= h=` line becomes the `boxbtn` draw op. html_art had no branch for it, so every
+    art:html build with a sized button failed (found porting MPC DJ FX 2, 2026-10-27); these tests keep the
+    emit, the draw and the device's geometry in step."""
+
+    PARAMS = [{"key": "panic", "name": "PANIC", "min": 0, "max": 1}]
+    LAYOUT = ('[tab T]\nbutton cx=640 cy=300 w=136 h=40 key=panic label="PANIC"\nqlinks "T" = panic\n')
+
+    def tearDown(self):
+        shadow_skin.apply_theme([])
+
+    def ops(self, layout=LAYOUT):
+        """Run shadow_skin against a capture stub, so the draw script it would pipe to the art tool is readable."""
+        d = tempfile.mkdtemp()
+        lp, cap, art = os.path.join(d, "layout.conf"), os.path.join(d, "ops.txt"), os.path.join(d, "art.sh")
+        open(lp, "w").write(layout)
+        open(art, "w").write("#!/bin/sh\ncat > '%s'\n" % cap)
+        os.chmod(art, 0o755)
+        shadow_skin.build(lp, self.PARAMS, d, art, lambda a, b: None)
+        return open(cap).read().splitlines()
+
+    def svg(self, op):
+        art = html_art.Art()
+        art.run(op)
+        return "".join(art.ops)
+
+    def test_sized_button_reaches_the_browser_renderer(self):
+        box = [o for o in self.ops() if o.startswith("boxbtn|")]
+        self.assertTrue(box, "a button with w= and h= must emit boxbtn")
+        svg = self.svg(box[0])
+        self.assertIn('class="button"', svg)
+        self.assertIn('width="136"', svg)
+        self.assertIn('height="40"', svg)
+        self.assertIn('rx="8"', svg)          # h/8 = 5, clamped up to the device's minimum
+        self.assertIn("PANIC", svg)
+
+    def test_radius_follows_the_device_rule(self):
+        # shadow_art.c: fill_rr(x, y, w, h, clamp(h / 8, 8, 18))
+        self.assertIn('rx="8"', self.svg("boxbtn|10|10|400|40|aabbcc|PANIC|1"))      # 5 -> 8
+        self.assertIn('rx="15"', self.svg("boxbtn|10|10|120|120|aabbcc|PLAY|1"))     # 15, in range
+        self.assertIn('rx="18"', self.svg("boxbtn|10|10|200|200|aabbcc|PLAY|1"))     # 25 -> 18
+
+    def test_label_the_device_drops_is_dropped_here_too(self):
+        # dot_label() returns early above 16 characters, so nothing is drawn inside the box
+        svg = self.svg("boxbtn|10|10|300|60|aabbcc|ABCDEFGHIJKLMNOPQ|1")
+        self.assertIn('class="button"', svg)
+        self.assertNotIn("ABCDEFGHIJKLMNOPQ", svg)
+
+    def test_no_sheen_or_inset_on_a_sized_button(self):
+        # the device fills one rounded rectangle; the sheen belongs to the fixed-size `button` op only
+        svg = self.svg("boxbtn|10|10|136|40|aabbcc|PANIC|1")
+        self.assertNotIn("button-sheen", svg)
+        self.assertIn('<rect class="button-bg" x="10" y="10" width="136" height="40" rx="8"/>', svg)
 
 
 if __name__ == "__main__":

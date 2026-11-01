@@ -1,0 +1,3 @@
+# built sticks are signed for MPC's USB reader: never commit or share one
+stick-out/
+*.img

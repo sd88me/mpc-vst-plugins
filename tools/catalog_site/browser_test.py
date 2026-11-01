@@ -103,6 +103,14 @@ with sync_playwright() as p:
     check("Listed has no badge; Verified and Experimental do", pg.locator("#grid article[data-tier=listed] .tag[class*=tier-]").count() == 0
           and pg.locator("#grid article[data-tier=verified] .tag.tier-verified").count() >= 1)
     check("Recommended sorts by tier", [rank[t] for t in tiers] == sorted(rank[t] for t in tiers), str(tiers))
+    # "Newest in catalog" sorts by when the entry was added (catalog/added.json), newest first, not by release date
+    import json
+    fixture = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixture-catalog.json")))["plugins"]
+    want = [x["name"].upper() for x in sorted(fixture, key=lambda x: x["added"], reverse=True)]
+    pg.select_option("#sort", "added")
+    got = [t.upper() for t in pg.locator("#grid article.card h2").all_inner_texts()]
+    check("Newest in catalog sorts by date added, newest first", got == want, "%s vs %s" % (got, want))
+    pg.select_option("#sort", index=0)
     # Verified is split by device generation: one badge per generation, and a Tier filter option for each
     both = pg.locator("#grid article:has(h2:has-text('Tested Two')) .tag.tier-verified").all_text_contents()
     check("a plugin tested on both generations has two Verified badges", both == ["Verified Gen1", "Verified Gen2"], str(both))

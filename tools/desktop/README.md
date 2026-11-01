@@ -9,14 +9,48 @@ It uses the same release zips and the same `install.sh` as every other route (`d
 path. What it adds: a friendly page, one copy of each zip over SSH (as a tar stream, so executable bits and symlinks survive), and
 one MPC stop and start around the whole batch when the installers allow it.
 
+The same mode opens with an **easy stick** (`tools/desktop/easystick.go`, added 2026-10-27, offline-tested only): it downloads
+the community "Plugin Manager USB for OPEN MPC" release by Twisted Cable (MIT; <https://github.com/Eurikon/plugin-manager-usb-for-open-mpc>),
+pinned to one reviewed version and checked against a fixed SHA-256, never "latest" (the stick runs as root). The pin is read
+at run time from `tools/desktop/easystick-pin.json` on `main` (version, URL, sha256; the URL must be under that project's
+releases), so adopting a tested release is a one-file PR with no installer release; the `easyStickVersion`/`easyStickSHA256`
+constants are the offline fallback, refreshed at the next installer release, and unpacks it onto an empty drive. It needs no firmware: the bundle carries the
+OS 3.9.1 autorun route and the OS 3.10 controller helper, and picks the Gen1 or Gen2 runtime on the device.
+
+A collapsed **Beta: one-prompt G2 install stick** section (`tools/desktop/g2stick.go`, added 2026-10-29, offline-tested only) asks
+the MPC OS first (the stock USB prompt exists only up to 3.9.1; 3.10 and "not sure" point back to the easy stick) and writes the
+"Level 1" bundle from `tools/usb_g2/build_stick.py`: our own autorun script plus both G2 packages. Before writing anything it
+checks that the bundle's boot files are present, that `payload.sha256` lists exactly one armv7 and one aarch64 package, and that
+each package matches its checksum; it then unpacks onto an empty drive like the easy stick. The installer downloads the bundle named in
+`tools/desktop/g2stick-pin.json` (read from `main` at run time, so a new G2 release is a one-file change; the url must be under this repo's
+releases and the sha256 is checked), and a local bundle file can still be chosen. Each plugin manager release needs a new bundle, built with
+`tools/usb_g2/build_stick.py` from the user's own firmware (only the derived `autorun.check` goes in).
+
+A password SSH stick can't work on a Gen2 (read-only root, found on a Live III 2026-10-29): the page says "Gen2 needs a key", and when the scanned firmware looks Gen2 (its name says Gen2, or it is an aarch64 executable) `stickBuild` refuses a password and the page blocks it.
+
+Below it, a collapsed **Advanced: turn on SSH (for developers)** section (`tools/desktop/stick.go`, a Go port of the salt scan in
+`tools/usb_stick/saltscan.py`, so the app needs no Python) builds a different stick: it reads the device's own stock Akai firmware
+once for the check the stock "USB script" reader needs (MPC OS up to 3.9.1 only; Akai closed that route in 3.10), turns SSH on (paste
+a public key, have the app generate one whose private half is shown once and never kept, or, with heavier warnings, set a password,
+which needs a writable root and is refused on most Gen2 units) and reapplies every already-installed addin's `LD_PRELOAD` entry
+(needed on a device with no persistent `/etc`, docs/ADDINS.md). A checkbox, on by default, also puts the plugin manager on the same
+stick: the manager's files go in unmodified, its `open.sh` is kept as `autorun/manager-open.sh`, and our `open.sh` runs the SSH and
+addin step first (restarting MPC once if the addins' running `LD_PRELOAD` differs, so the manager sees them), then it. The stick's
+`USB-SHA256.json` is rewritten to match. A Gen2 device like the Live III forgets SSH and the addin drop-in at every reboot, so the
+stick is reinserted after each one. The stick no longer installs a preset plugin list itself (`tools/usb_stick/*.py` still does).
+None of this needs the device's own SSH yet. Both the firmware path and the output folder have a
+**Browse…** button (`/api/browse`, a server-side folder/file picker, since a browser's own file input never exposes a real path)
+instead of typing one, and the output folder step also lists this computer's mounted drives (`/api/drives`; Linux, macOS and
+Windows): pick a mounted USB stick there and Build writes the stick straight onto it, with nothing left to copy by hand.
+
 ## What it does, in order
 
 1. **Connect:** SSH as root with your password, a key in `~/.ssh` (no passphrase), or neither on a device whose root has no password. It reads the device (32-bit ARM or Gen2 aarch64: Gen2 gets the catalog's aarch64 zips; `tar`?
    `systemctl`? where is `MPC.settings`?) and refuses one that is not an MPC OS device. The device's key fingerprint is shown; nothing
    about the device is saved.
-   The device scan lists every writable `Synths` location (the internal drive, and `/media/*/Synths` for cards and drives; read-only mounts such as
+   The device scan lists every writable `Synths` location (the internal drive — `/sdcard/Synths` on Gen1/Force, `/nvme/Synths` on a Gen2 Live III and `/storage/Synths` on a Gen2 MPC One or Key 37 (no NVMe), where `/sdcard` isn't mounted — and `/media/*/Synths` for cards and drives; read-only mounts such as
    MPC's own content folder are skipped, and the same storage reached by two paths is listed once; the internal drive's `Synths` folder is created at connect when it is missing, 2026-10-11). Step 3 lets you pick where to install, the
-   internal drive by default, and warns when MPC does not list the folder as a content location. A writable drive under `/media` (its own
+   internal drive by default, and warns when MPC does not list the folder as a content location (the plugin still loads, but with no skin; the job log repeats it as a `WARNING`, and a package's `install.sh` prints the same warning on stderr, comparing whole entries and ignoring a trailing slash, 2026-10-27). A writable drive under `/media` (its own
    mount point, not MPC OS's `az01-*`/`acvs-*`) that has no `Synths` folder gets a **Create Synths folder** button in that box
    (`/api/mkroot`; only a drive from the last scan is accepted, never a typed path), after which it is a plugin location (2026-10-14, offline). A drive that cannot store symbolic links
    (FAT, exFAT, NTFS) is refused for a package that needs them, and so is a drive without room. A drive mounted `noexec` (an MPC/Force's SSD is) is refused too: MPC cannot load a plugin from it, so the plugin would be listed but only show "Load Plugin".
@@ -31,7 +65,9 @@ one MPC stop and start around the whole batch when the installers allow it.
    If the SSH connection drops during a copy (a laptop waking from sleep, a Wi-Fi or VPN change), the app reconnects once, after
    checking that the device presents the same key, and copies that package again; MPC is not stopped and nothing is installed
    until every copy is done, so this is safe. A second drop stops with "Nothing was installed and MPC was not stopped"
-   (`TestACopyThatLosesTheConnectionIsRetriedOnce`, offline, 2026-10-14).
+   (`TestACopyThatLosesTheConnectionIsRetriedOnce`, offline, 2026-10-14). A connection that silently stalls (a weak Wi-Fi
+   link, not a clean drop) is caught by SSH keepalives: the app pings the device every 15 s and, after a couple of missed
+   replies, closes the dead connection so a command returns an error you can retry instead of hanging (2026-10-23).
    **Register every plugin folder** (ticked by default, under Install to; `InstallOpts.Register`): after the packages are in
    place, and while MPC is still stopped for the batch, the app runs its own embedded `sync.sh` with every plugin location, so
    folders you copied in by hand or that MPC forgot also get into MPC's plugin list, `MPC.settings` is backed up first, and MPC
@@ -79,6 +115,10 @@ show an empty touchscreen page". It warns and never blocks. Tests: `catalog_test
 
 What was installed is written to `<Synths>/.mpc-store` on the device, so `mpc-store.sh update` (the on-device script) knows about it.
 
+## Your ROMs and files
+
+A plugin whose manifest has `user_files` (docs/CATALOG_SPEC.md) gets a step after Install. Pick the files; the app checks each one against the plugin's rules (extension, size, an identification text inside it) and says what it is ("Virus C: OK") or why it is wrong, before copying the good ones into the plugin's folder on the device. The folder lists what is there, checked the same way, with a Delete button. Names are reduced to their last part and limited to letters, digits, spaces and `. _ - ( ) + , ' &`; a file is copied under a `.part` name and moved into place. The plugin reads these files when it loads, so MPC is not restarted. Code: `userfiles.go`, tests in `userfiles_test.go` (rules, and upload/list/delete against the fake device).
+
 ## Safety
 
 - The page is served on `127.0.0.1` only, behind a random token in the link the app prints. Every request must carry the token, the
@@ -90,7 +130,7 @@ What was installed is written to `<Synths>/.mpc-store` on the device, so `mpc-st
 ## Run it
 
 Download the archive for your system from the releases, unpack it and start `mpc-installer` (double-click it, or run it in a
-terminal). It prints a link and opens it in your browser. `--no-browser` only prints the link; `--port`, `--catalog`, `--no-update-check` and `--version`
+terminal). It prints a link and opens it in your browser. `--no-browser` only prints the link; `--catalog` sets one catalog address and is then used alone (by default the app reads `https://open-mpc.github.io/catalog.json` and, when that does not give a catalog, the old `https://sd88me.github.io/mpc-vst-plugins/catalog.json`, with `patches.json` taken from the same pair; added 2026-10-20, offline tests only); `--port`, `--no-update-check` and `--version`
 exist too.
 
 The first run is unsigned, so the system warns you once:
@@ -102,7 +142,7 @@ The first run is unsigned, so the system warns you once:
 
 ## Build and test
 
-Go 1.26 or newer, one dependency (`golang.org/x/crypto`):
+Go 1.26 or newer, two dependencies (`golang.org/x/crypto`, `github.com/ulikunitz/xz` for the USB-stick mode's salt scan):
 
 ```
 cd tools/desktop
@@ -113,3 +153,5 @@ CGO_ENABLED=0 go build -trimpath -ldflags="-s -w -X main.version=1.0.0" -o mpc-i
 A browser test of the page against a stand-in device (sshd in a container) lives in `ui_test/`; see its header. The release workflow
 is `.github/workflows/desktop.yml` (Actions, "Desktop installer", Run workflow: builds Windows, macOS and Linux binaries into a
 draft release; install it, try it, then publish).
+
+The SSH stick opens its bundled manager only the first time (it writes `.plugin-manager-opened` on the stick); later insertions just redo SSH and the addins, and a file `open-plugin-manager.txt` on the stick opens it again (2026-10-29: inserting it to get SSH back kept launching the manager). Test: `TestAdvancedStickOpensTheManagerOnlyOnceUnlessAsked`.

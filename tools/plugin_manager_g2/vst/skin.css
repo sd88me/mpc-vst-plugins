@@ -1,0 +1,3 @@
+/* Plugin Manager: flat, dark, MPC-like. Only the option segments (tabs, filter pills) are drawn by the renderer. */
+:root { --seg-size: 17px; --sheen: 0; --shadow: none; }
+.seg-tx { font-weight: 600; letter-spacing: 0.06em; }

@@ -1,0 +1,4 @@
+{ "id": "j106", "name": "JN-106", "author": "sd88me", "repo": "sd88me/mpc-vst-jn106",
+  "kind": "instrument", "style": "synth", "tags": ["analog", "poly", "vintage", "chorus"], "license": "GPL-3.0-only",
+  "summary": "Faithful, circuit-modelled and hardware-profiled six-voice Juno emulation (Ultramaster KR-106 DSP): IR3109 filter, BA662 VCA and MN3009 BBD chorus modelled from the circuits, the 106 CPU firmware reimplemented from its disassembly, curves fitted to real hardware and checked against the service notes. 256 factory presets, realistic panel skin.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-jn106/9053529f679d2a5f07781f002004e27cc12959e0/docs/img/screenshot-lfo-dco.png" }

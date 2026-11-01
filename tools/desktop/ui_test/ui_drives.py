@@ -38,7 +38,7 @@ try:
         b = pw.chromium.launch(executable_path=os.environ.get("CHROMIUM") or ("/opt/pw-browsers/chromium" if os.path.exists("/opt/pw-browsers/chromium") else None)); pg = b.new_page(viewport={"width": 1000, "height": 1100})
         errs = []; pg.on("pageerror", lambda e: errs.append(str(e))); pg.on("console", lambda m: m.type == "error" and errs.append(m.text))
         pg.route("**/api/**", handle)
-        pg.goto("http://127.0.0.1:8812/index.html?t=x"); time.sleep(0.5)
+        pg.goto("http://127.0.0.1:8812/index.html?t=x"); pg.click("#mode-install"); time.sleep(0.5)
         pg.fill("#host", "10.0.0.2"); pg.fill("#pw", "x"); pg.click("#connect"); time.sleep(0.8)
         check("a drive without Synths is listed under Install to", pg.locator("#where").is_visible() and "MY DRIVE" in pg.locator("#drivelist").inner_text())
         state["fail"] = True; pg.click("#drivelist button"); time.sleep(0.5)

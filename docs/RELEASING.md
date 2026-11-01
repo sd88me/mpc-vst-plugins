@@ -28,7 +28,9 @@ An addin (a library MPC preloads) is released with `tools/release_addin.py`, or 
    (`docs/CATALOG_SPEC.md`), then check it: `tools/catalog_check.py dist/<zip> --catalog`.
    `--extra SRC:DEST` ships extra runtime files in the plugin folder, next to the `.so` (an engine bundle, presets; `DEST` is
    relative to the plugin folder, a leading `vst/` from older scripts is still accepted). `--user-data <folder>` marks a folder
-   where the user adds files (ROMs, kits, banks); the installer keeps it.
+   where the user adds files (ROMs, kits, banks); the installer keeps it. `--folder-name <name>` names the plugin folder (and the zip)
+   when it differs from the plugin-list name, e.g. Monomodule's `Monomodule One` folder for the list name `Monomodule`; keep it the same
+   across versions so upgrades find the user's data.
 7. **Publish**: tag `<port>-vX.Y.Z` in the port's repo and attach the zip:
    `gh release create maze-voice-vst-v1.2.0 dist/Maze-Voice-1.2.0-mpc-armv7.zip [dist/Maze-Voice-1.2.0-mpc-aarch64.zip] --notes-file ...`
    Paste the zip's INSTALL.md "Requirements" and "Install" sections into the notes.
@@ -41,6 +43,14 @@ and attaches the zip to a **draft** release in the port's repo. Steps 4 and 5 st
 you do to the draft's zip before publishing it, so the zip you tested is the zip people get.
 If the port's build also leaves `build/aarch64/<so>` (vst.json `targets`), the workflow packages and attaches the `-mpc-aarch64.zip` (Gen2) too;
 the CPU result is Gen1's, so that zip has none. Offline only until run on a Gen2 device (docs/GEN2.md).
+
+A port with only a Gen2 build (no 32-bit `.so`) passes `gen2_only: true`: the workflow then packages only `build/aarch64/<so>` as the `-mpc-aarch64.zip`
+(the default, false, is unchanged for every other port).
+
+`.github/workflows/plugin-manager-g2.yml` calls it for `tools/plugin_manager_g2` (a manager that lives in this repo): "Run workflow" with a version (start with `dry_run`)
+builds the Gen2 zip into a draft release tagged `plugin-manager-g2-v<version>`. Listing the manager in the catalog (for its self-update) needs no tool change: a registry entry with `repo: sd88me/mpc-vst-plugins` and
+`asset_pattern: Plugin-Manager-G2-*-mpc-aarch64.zip` (the Gen2-only form, docs/GEN2.md) picks its zip, and the catalog already skips this repo's other
+products' releases (`desktop-v...`). Add that entry in a PR once the first release exists.
 
 A port calls it from its own repo with a `workflow_dispatch` workflow that takes the version. Pin this repo to one
 commit in both places:

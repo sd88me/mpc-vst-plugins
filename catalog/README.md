@@ -18,6 +18,8 @@ Design: `docs/CATALOG.md`. Formats: `docs/CATALOG_SPEC.md`.
    the source is public, add `"source_available": true`: the plugin is listed with a "Restricted use" badge and
    its own license text shown. `screenshot` is an `https://` link to an image (a raw GitHub link to a PNG/JPG in your
    repo, pinned to a tag or commit); the card shows it in a 2:1 frame, cropping other shapes. Anything but `https://` is ignored.
+   A plugin that exists for Gen2 (aarch64) only, because its engine can't run on 32-bit ARM, sets `"asset_pattern": "*-mpc-aarch64.zip"` and
+   ships just that zip (docs/GEN2.md); it is listed as "Gen2 only".
 3. CI checks the entry and your latest release. Once merged, new releases appear automatically (nightly, or
    run the "Catalog build" workflow).
 
@@ -110,7 +112,7 @@ never offered as the latest.
 
 ## Build locally
 `python3 tools/catalog_build.py --check-registry` validates entries (and fails on any `*.json` directly in `catalog/` other than
-`apps.json`, `patches.json` and `yanked.json`: an entry put one folder too high); without the flag it fetches releases (set
+`added.json`, `apps.json`, `patches.json` and `yanked.json`: an entry put one folder too high); without the flag it fetches releases (set
 `GITHUB_TOKEN` to avoid API limits) and writes `catalog/dist/catalog.json` and `problems.json`.
 In `problems.json`, `superseded: true` marks a failing release that a newer, unyanked release of the same plugin
 replaces. `python3 tools/catalog_issues.py --dry-run` shows the issues the nightly would open and close.

@@ -36,7 +36,7 @@ def check(name, cond, extra=""):
     if not cond: fails.append(name)
 def connect(pg, libc):
     state["libc"] = libc
-    pg.goto("http://127.0.0.1:8812/index.html?t=x"); time.sleep(0.4)
+    pg.goto("http://127.0.0.1:8812/index.html?t=x"); pg.click("#mode-install"); time.sleep(0.4)
     pg.fill("#host", "10.0.0.2"); pg.fill("#pw", "x"); pg.click("#connect")
     pg.wait_for_selector("#cat input[type=checkbox]", timeout=10000)
     pg.click("#kt-all")   # addins have their own tab; All lists every row the checks look at

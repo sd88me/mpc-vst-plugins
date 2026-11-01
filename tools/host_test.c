@@ -9,6 +9,7 @@
 #include <string.h>
 #include <math.h>
 #include <pthread.h>
+#include <unistd.h>
 #include "params.h"
 typedef struct AEffect AEffect;
 typedef intptr_t (*cb)(AEffect*,int32_t,int32_t,intptr_t,void*,float);
@@ -130,6 +131,16 @@ static int find_param(const char *key) {
     return -1;
 }
 
+/* params.json "legacy": true -- a retired control kept for saved projects; the checks that pick "the first" knob, option list
+ * or whole number must not land on one. */
+static int is_legacy(int i) {
+#ifdef PLUG_LEGACY_COUNT
+    for (int k = 0; k < PLUG_LEGACY_COUNT; k++) if (PLUG_LEGACY[k] == i) return 1;
+#endif
+    (void)i;
+    return 0;
+}
+
 #if defined(HAS_SONG_POS) && HAS_SONG_POS
 /* poc/songpos: the engine reports its last song_pos() call as "ppq|bpm|playing|frames|calls". One call per block, with the
  * host's ppqPos and tempo and the play flag; ppq -1 and bpm 0 when the host gives no position. */
@@ -173,6 +184,31 @@ static void transport_tests(void) {
 }
 #endif
 
+#if defined(HAS_TRANSPORT) && HAS_TRANSPORT
+/* poc/steptest: a momentary param ignores a second press within debounce_ms (default 250), because MPC delivers one tap on a drawn button
+ * twice, 30-140 ms apart (Live III, 2026-10-30). "push" counts the presses that reach the engine; "push_raw" has "debounce_ms": 0. */
+static void debounce_tests(void) {
+    int push = find_param("push"), raw = find_param("push_raw"), cnt = find_param("push_count");
+    if (push < 0 || raw < 0 || cnt < 0) { printf("warn no push/push_raw/push_count params: debounce not tested\n"); return; }
+    AEffect *c = VSTPluginMain(host);
+    char d[64];
+    c->setP(c, push, 1.0f); c->setP(c, push, 1.0f);       /* one tap, delivered twice */
+    c->setP(c, raw, 1.0f); c->setP(c, raw, 1.0f);         /* debounce_ms 0: both count */
+    d[0] = 0; c->d(c, 7, cnt, 0, d, 0);
+    CHECK(!strcmp(d, "1 2"), "debounce: a tap delivered twice counts once, with debounce_ms 0 twice -> \"%s\" (want \"1 2\")", d);
+    usleep(300 * 1000);                                    /* a finger later: a second tap */
+    c->setP(c, push, 1.0f); c->setP(c, push, 1.0f);
+    d[0] = 0; c->d(c, 7, cnt, 0, d, 0);
+    CHECK(!strcmp(d, "2 2"), "debounce: the next tap 300 ms later counts -> \"%s\" (want \"2 2\")", d);
+    c->setP(c, push, 0.0f); c->setP(c, push, 0.0f);       /* releases (the spring-back, the host's echo) are never held back */
+    usleep(300 * 1000);
+    c->setP(c, push, 1.0f);
+    d[0] = 0; c->d(c, 7, cnt, 0, d, 0);
+    CHECK(!strcmp(d, "3 2"), "debounce: releases do not count, the next press does -> \"%s\" (want \"3 2\")", d);
+    c->d(c, 1, 0, 0, 0, 0);
+}
+#endif
+
 /* A step_of button pair on an option list (e.g. a synth model picked with prev/next): steps by index, wraps both ways, and
  * tells the host the new value (audioMasterAutomate) on the next block. */
 static void step_of_option_tests(AEffect *a) {
@@ -195,6 +231,11 @@ static void step_of_option_tests(AEffect *a) {
     a->setP(a, prev, 1.0f); run(a, 1); a->setP(a, prev, 0.0f);
     CHECK(fabsf(a->getP(a, t) - (float)(n - 2) / (n - 1)) < 1e-3f, "step_of %s on %s: steps one option (%.3f)",
           PARAMS[prev].key, PARAMS[t].key, a->getP(a, t));
+    /* a stepper pressed every block asks for an UpdateDisplay each time; the wrapper sends at most one per 50 ms */
+    run(a, 40); updates = 0;
+    for (int k = 0; k < 32; k++) { a->setP(a, next, 1.0f); run(a, 1); a->setP(a, next, 0.0f); }
+    CHECK(updates >= 1 && updates <= 2, "step_of %s pressed every block for 4096 frames: %d UpdateDisplay(s) (want 1-2, one per 50 ms)",
+          PARAMS[next].key, updates);
 }
 
 /* MIDI control (gen_vst.py cc_lines()): CC 20 moves the first Q-Link's parameter, NRPN n sets parameter n, and the
@@ -221,7 +262,7 @@ static void cc_tests(AEffect *a) {
 #endif
 #ifdef HAS_NRPN
     for (int i = 0; i < NPARAMS; i++) {
-        if (PARAMS[i].nopts || PARAMS[i].momentary || PARAMS[i].string_display || PARAMS[i].step_target >= 0 ||
+        if (is_legacy(i) || PARAMS[i].nopts || PARAMS[i].momentary || PARAMS[i].string_display || PARAMS[i].step_target >= 0 ||
             PARAMS[i].popup_of >= 0 || PARAMS[i].int_display || PARAMS[i].max <= PARAMS[i].min) continue;
         if (!keeps(a, i, 0.5f) || !keeps(a, i, 0.0f)) continue;
         cc(a, 99, i >> 7); cc(a, 98, i & 127); cc(a, 6, 64); cc(a, 38, 0);
@@ -334,6 +375,20 @@ static int toggle_skip(int i) {
 #else
 #define TOGGLE_TEXT 64
 #endif
+/* A plugin that loads something in the background at start-up (the plugin manager's catalog) changes its readouts when that finishes, which
+ * would look like the toggle's doing. Wait, up to about 8 s, until two snapshots of every readout 0.4 s apart are the same. */
+static void settle_readouts(AEffect *c) {
+    static char a[NPARAMS][TOGGLE_TEXT], b[NPARAMS][TOGGLE_TEXT];
+    for (int round = 0; round < 20; round++) {
+        for (int i = 0; i < NPARAMS; i++) { a[i][0] = 0; c->d(c, 7, i, 0, a[i], 0); }
+        usleep(400 * 1000);
+        run(c, 2);
+        int same = 1;
+        for (int i = 0; i < NPARAMS; i++) { b[i][0] = 0; c->d(c, 7, i, 0, b[i], 0); if (strcmp(a[i], b[i])) same = 0; }
+        if (same) return;
+    }
+}
+
 static void param0_toggle_check(void) {
     if (NPARAMS < 2) return;
     AEffect *c = VSTPluginMain(host);
@@ -347,6 +402,7 @@ static void param0_toggle_check(void) {
         moved++;
     }
     run(c, 2);
+    settle_readouts(c);
     for (int i = 0; i < NPARAMS; i++) { before[i][0] = 0; c->d(c, 7, i, 0, before[i], 0); }
     float old = c->getP(c, 0);
     c->setP(c, 0, old < 0.5f ? 1.0f : 0.0f);   /* what JUCE's prepareToPlay does */
@@ -362,6 +418,42 @@ static void param0_toggle_check(void) {
           PARAMS[0].key, moved, changed);
     c->d(c, 1, 0, 0, 0, 0);
 }
+
+#ifdef POLL_PROBE   /* poc/polltest: the wrapper's polling of text readouts (housekeeping) */
+extern volatile long polltest_hits[41], polltest_on_gets;
+extern volatile int polltest_gen[41], polltest_on;
+static void poll_tests(AEffect *a) {
+    run(a, 80);
+    long before[41], tot = 0, worst = 0;
+    memcpy(before, (const void *)polltest_hits, sizeof before);
+    for (int k = 0; k < 340; k++) {   /* about a second: 340 blocks of 128 frames = 9.9 polling periods */
+        long g0 = 0, g1 = 0;
+        for (int t = 1; t <= 40; t++) g0 += polltest_hits[t];
+        run(a, 1);
+        for (int t = 1; t <= 40; t++) g1 += polltest_hits[t];
+        if (g1 - g0 > worst) worst = g1 - g0;
+    }
+    long shown = 0, hidden = 0;
+    for (int t = 1; t <= 40; t++) { long d = polltest_hits[t] - before[t]; tot += d; if (t <= 30) shown += d; else hidden += d; }
+    CHECK(hidden == 0, "text readouts the layout never shows are not polled (%ld reads of t31-t40)", hidden);
+    CHECK(shown >= 270 && shown <= 330, "30 shown readouts are read about once per 100 ms each (%ld reads in a second, want ~297)", shown);
+    CHECK(worst <= 4, "the polls are spread over the blocks: at most %ld reads in one block (a pass over 30 would be 30)", worst);
+    int shown_changed = 0;
+    updates = 0;
+    polltest_gen[17]++;
+    for (int k = 0; k < 40 && !updates; k++) { run(a, 1); shown_changed = 1; }
+    CHECK(updates > 0 && shown_changed, "a changed readout asks for an UpdateDisplay within 40 blocks (about 116 ms)");
+    int a1 = automated[1];
+    polltest_on = 1;
+    int k = 0;
+    for (; k < 12 && automated[1] == a1; k++) run(a, 1);
+    CHECK(automated[1] > a1, "a list tile's _on change is reported within 12 blocks (reported after %d)", k);
+    polltest_on = 0;
+    long g = polltest_on_gets;
+    run(a, 340);
+    CHECK(polltest_on_gets - g >= 80 && polltest_on_gets - g <= 120, "the one tile is asked every 10 ms (%ld asks in a second, want ~99)", polltest_on_gets - g);
+}
+#endif
 
 int main(void) {
     AEffect *a = VSTPluginMain(host), *b = VSTPluginMain(host);
@@ -380,8 +472,9 @@ int main(void) {
     int cont = -1, en = -1, pop = -1;
     for (int i = 0; i < NPARAMS; i++) {
         const param_t *p = &PARAMS[i];
+        if (is_legacy(i)) continue;
         if (cont < 0 && !p->nopts && !p->momentary && !p->string_display && p->step_target < 0 && p->max > p->min) cont = i;
-        if (en < 0 && p->nopts > 2 && !p->momentary && p->popup_of < 0) en = i;
+        if (en < 0 && i > 0 && p->nopts > 2 && !p->momentary && p->popup_of < 0) en = i;   /* not parameter 0: the wrapper holds it for MPC's STOP toggle (param0_toggle_check) */
         if (pop < 0 && p->popup_of >= 0) pop = i;
     }
     if (cont >= 0) {
@@ -389,6 +482,14 @@ int main(void) {
         a->setP(a, cont, 0.25f); a->d(a, 7, cont, 0, d, 0);
         CHECK(fabsf(a->getP(a, cont) - 0.25f) <= tol, "set %s 0.25 -> get %.3f (\"%s\")", PARAMS[cont].key, a->getP(a, cont), d);
         CHECK(fabsf(b->getP(b, cont) - 0.25f) > 1e-4f || PARAMS[cont].def == 0.25f, "instance b unaffected");
+        /* a host write (automation, a Q-Link) asks for no UpdateDisplay of its own: MPC rebuilds its parameter screen on
+         * each one (docs/NOTES.md, 2026-10-21). Polled readouts that show the value may still ask, at most every 100 ms. */
+        if (!PARAMS[cont].refresh_display) {
+            run(a, 40); updates = 0;
+            for (int k = 0; k < 32; k++) { a->setP(a, cont, (k & 1) ? 0.3f : 0.7f); run(a, 1); }
+            CHECK(updates <= 2, "32 host writes of %s over 4096 frames: %d UpdateDisplay(s) (want at most the 100 ms poll's)",
+                  PARAMS[cont].key, updates);
+        }
     }
     if (en >= 0) {
         int n = PARAMS[en].nopts;
@@ -424,7 +525,7 @@ int main(void) {
     }
     for (int i = 0; i < NPARAMS; i++) {   /* an integer with its own Q-Link rate: qlink_ticks events per step */
         const param_t *p = &PARAMS[i];
-        if (p->nopts || !p->int_display || p->qlink_ticks <= 1 || p->max - p->min < 2) continue;
+        if (is_legacy(i) || p->nopts || !p->int_display || p->qlink_ticks <= 1 || p->max - p->min < 2) continue;
         float range = p->max - p->min, tick = 0.1f / range;
         char d0[256]; a->setP(a, i, 0); a->d(a, 7, i, 0, d0, 0);
         for (int k = 0; k < p->qlink_ticks - 1; k++) a->setP(a, i, a->getP(a, i) + tick);
@@ -439,7 +540,7 @@ int main(void) {
     }
     for (int i = 0; i < NPARAMS; i++) {   /* a long whole-number list (a bank list): nudge_pct makes each Q-Link event and wheel click one step */
         const param_t *p = &PARAMS[i];
-        if (p->nopts || !p->int_display || p->nudge_pct <= 0 || p->max - p->min < 2) continue;
+        if (is_legacy(i) || p->nopts || !p->int_display || p->nudge_pct <= 0 || p->max - p->min < 2) continue;
         float range = p->max - p->min, rate[2] = {1.0f / 128, 0.01f};   /* a Q-Link event and a data wheel click, of the whole range */
         const char *who[2] = {"Q-Link events", "data wheel clicks"};
         for (int r = 0; r < 2; r++) {
@@ -467,7 +568,7 @@ int main(void) {
         break;
     }
     for (int i = 0; i < NPARAMS; i++)   /* the first whole-number param */
-        if (!PARAMS[i].nopts && PARAMS[i].int_display && PARAMS[i].qlink_ticks <= 1 && PARAMS[i].max - PARAMS[i].min >= 2) { step_tests(a, i, "int", (int)(PARAMS[i].max - PARAMS[i].min)); break; }
+        if (!is_legacy(i) && !PARAMS[i].nopts && PARAMS[i].int_display && PARAMS[i].qlink_ticks <= 1 && PARAMS[i].max - PARAMS[i].min >= 2) { step_tests(a, i, "int", (int)(PARAMS[i].max - PARAMS[i].min)); break; }
     if (pop >= 0) {
         int t = PARAMS[pop].popup_of, n = PARAMS[t].nopts;
         a->setP(a, pop, 1); CHECK(a->getP(a, pop) > 0.5f, "popup %s opens", PARAMS[pop].key);
@@ -501,6 +602,22 @@ int main(void) {
         a->pr(a, 0, o0, 128); a->pr(a, 0, o0, 100);
         CHECK(1, "effect survives processReplacing with a NULL input");
     }
+    if (a->ni >= 2) {   /* MPC passes the same buffers as input and output: at any block size the result must match separate buffers */
+        static const int bs[] = {32, 64, 96, 128, 192, 256};
+        for (unsigned k = 0; k < sizeof bs / sizeof bs[0]; k++) {
+            AEffect *s1 = VSTPluginMain(host), *s2 = VSTPluginMain(host);
+            static float SI0[256], SI1[256], SO0[256], SO1[256], P0[256], P1[256];
+            float *sin_[2] = {SI0, SI1}, *sout[2] = {SO0, SO1}, *pio[2] = {P0, P1};
+            int n = bs[k], same = 1; long t = 0;
+            for (int blk = 0; blk < 4096 / n; blk++) {
+                for (int i = 0; i < n; i++, t++) P0[i] = P1[i] = SI0[i] = SI1[i] = 0.25f * sinf(2.0f * 3.14159265f * 440.0f * t / 44100.0f);
+                s1->pr(s1, sin_, sout, n); s2->pr(s2, pio, pio, n);
+                for (int i = 0; i < n; i++) same &= fabsf(SO0[i] - P0[i]) < 1e-6f && fabsf(SO1[i] - P1[i]) < 1e-6f;
+            }
+            CHECK(same, "in-place processing (in == out) matches separate buffers at %d frames", n);
+            s1->d(s1, 1, 0, 0, 0, 0); s2->d(s2, 1, 0, 0, 0, 0);
+        }
+    }
     {   /* instance b never got a note (nor audio): process() must add silence, leaving 1.0 */
         float L1[128], R1[128], Z0[128] = {0}, Z1[128] = {0}, *o1[2] = {L1, R1}, *zin[2] = {Z0, Z1}; int kept = 1;
         for (int i = 0; i < 128; i++) L1[i] = R1[i] = 1.0f;
@@ -513,12 +630,16 @@ int main(void) {
 #endif
 #if defined(HAS_TRANSPORT) && HAS_TRANSPORT
     transport_tests();
+    debounce_tests();
 #endif
 #if defined(HAS_SONG_POS) && HAS_SONG_POS
     song_pos_tests();
 #endif
     param0_toggle_check();
     step_of_option_tests(a);
+#ifdef POLL_PROBE
+    poll_tests(a);
+#endif
     void *ch = 0; intptr_t n = a->d(a, 23, 0, 0, &ch, 0);
     if (n > 0) {
         b->d(b, 24, 0, n, ch, 0);

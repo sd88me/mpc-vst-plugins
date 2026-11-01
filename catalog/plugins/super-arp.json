@@ -14,5 +14,5 @@
   ],
   "license": "MIT",
   "summary": "Arpeggiator that splits note order from rhythm: 40 patterns, 40 rhythms and seeded random modifiers.",
-  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-superarp/v1.1.0/screenshots/page_0.png"
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-superarp/v1.1.1/screenshots/page_0.png"
 }

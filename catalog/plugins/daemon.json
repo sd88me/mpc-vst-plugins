@@ -1,0 +1,23 @@
+{
+  "id": "daemon",
+  "name": "Daemon",
+  "author": "sd88me",
+  "repo": "sd88me/mpc-vst-daemon",
+  "kind": "instrument",
+  "role": "midi",
+  "style": "sequencer",
+  "tags": [
+    "generative",
+    "ai",
+    "midi",
+    "chords",
+    "melody",
+    "beats",
+    "agent",
+    "voice"
+  ],
+  "license": "GPL-3.0-or-later",
+  "summary": "AI generative assistant: type or say what you hear and Daemon writes chords, basslines, melodies and beats in your key and plays them in time on its MIDI port. Agent mode builds the session too (tracks, instruments, presets, effects, clips) as a plan you RUN. Gemini or Claude; needs network and an API key.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-daemon/v1.0.0/docs/screenshots/daemon.png",
+  "asset_pattern": "Daemon-[0-9]*-mpc-armv7.zip"
+}

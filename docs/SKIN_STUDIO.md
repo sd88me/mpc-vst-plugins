@@ -135,6 +135,93 @@ image segment's name uses the theme's `ink` (off) and `seg_active_tx` (selected)
 **Images from other skins:** stock MPC skin art is Akai's. Never commit it to this repo (it keeps a reference copy
 in the git-ignored `Assets/`); a port whose skin uses it ships it in its release zip, which is the port owner's call.
 
+## Realistic hardware skins (2026-10-22, offline)
+Use this when a port asks for a realistic, hardware-looking or "3D module" skin. The skin is a script (Python + Pillow)
+that draws each tab as a picture and cuts every control's frames from it. It doesn't use the renderer's `look=`. Model-72
+(`skin/make_skin.py`) and Model-303 (`skin/make_skin.py`, `skin/tabs.py`) are the reference ports.
+
+**Other routes, and when to use them.** Most of these turn the whole knob picture, highlights included, so their
+lighting turns too.
+
+| Route | Cost | Lighting | Example |
+|---|---|---|---|
+| Built-in looks: `look=hardware`, `chrome`, `bakelite`, `davies`, `rubber`, `taper`, `prophet`, `moog` ("Looks and images" above) | one layout line | drawn by the renderer | quickest; good enough for most ports |
+| `img=`/`strip=` from your own art: a knob picture turned by the builder, or a filmstrip from a knob tool (KnobMan and similar) | an asset | `img=` turns the picture's lighting; a pre-rendered strip can hold it fixed | MM-303's chicken-head strips |
+| A hardware project's own pictures under its licence | assets + a script | Model-72 pastes the knob's cap back unturned, so its sheen stays put; the pointer and skirt turn | Model-72 (CA-72's GPL panel art) |
+| An HTML mockup rendered in Chromium: page as background, knobs rendered at 64 angles | a mockup tool | depends on the mockup | vst_instruments (COMMUNITY_SKINS "Mockup-to-skin") |
+| `art_css` restyle (`filter: url(#grain)`) plus Inkscape `art` | CSS / SVG | flat or drawn | painted panels |
+
+This section's fully drawn method is for a skin meant to look like the actual hardware.
+
+**Pipeline.** Draw each tab at 2x, then for every control render each position over its own crop of that tab, and
+downsample. A frame then sits exactly on its spot in the background, shadows included. Write the `layout.conf` from the
+same script, with every coordinate in one place:
+
+- knobs: 64-frame `strip=`;
+- two-way switches and buttons: `toggle img= img_on=`;
+- 3-way switches: a `picture` with one image per option, plus a clear `enum_v`/`enum_h` (`img=art/clear.png`) for the
+  taps. Order the options as the switch reads, top first;
+- `art file=<tab>.png fit=stretch` as the background.
+
+Set `"art": "html"`.
+
+**Knobs: fixed light, turning shapes.** A real knob turns under a light that stays put. Turning the whole knob picture
+(highlights included) is what makes a skin look fake. Split the knob into two parts:
+
+- *The body:* everything round or lit. It is drawn once per size and reused for every frame:
+  - the knurled skirt, shaded by a top-left gradient, with each knurl brighter where it faces the light:
+    `v = base + k * cos(angle - LIGHT)`;
+  - a highlight arc on the lit side of the rim;
+  - the step down to the cap, with its shadow falling down-right;
+  - a domed top with a fixed soft specular patch and a darker far edge.
+- *What turns:* the pointer, plus any part that isn't round. The 303-style flat chamfer is the clearest case: a plane
+  cut across the top by a chord just past the centre, sloping toward the pointer. Shade such a part by how it faces
+  the light, so its brightness changes as it turns:
+  ```python
+  LIGHT = -45                                         # light from the top left, degrees from top
+  facing = math.cos(math.radians(deg - LIGHT))        # 1 toward the light, -1 away
+  half = math.degrees(math.acos(-0.08))               # segment beyond a chord 0.08 r past the centre
+  pts = [polar(c, c, rt, deg - half + 2 * half * i / 40) for i in range(41)]
+  shade = 66 + 34 * facing                            # a flat plane under one light: one value
+  # plus a faint fall toward the rim (it slopes), and a 1 px ridge on the chord:
+  # light when the plane faces away (the edge catches the light), dark when it faces it
+  ```
+  Draw the pointer last, with a darker edge, over the body's copy.
+- *Shadows:* drawn into the background (they don't turn): a soft one offset down-right (blur ~7 px, offset ~(5, 8)) and
+  a tight contact one.
+
+The test is three frames side by side (minimum, middle, maximum). The highlight must stay put while only the pointer and
+facet move, and the facet must be lighter with the pointer toward the light than away from it.
+
+**The 3D module.** The plate is an object on the page:
+
+- a dark page;
+- the slab's drop shadow (blur ~10 px);
+- its side, a band a few px tall under the face, darker toward the bottom;
+- the face: brushed grain, a top-left to bottom-right light gradient and a faint vignette;
+- a bevel band around the face's edge, lit by the same diagonal (bright top-left, dark bottom-right);
+- corner screws.
+
+Two drawing details:
+
+- Make diagonal gradients as `(x + y) / 2` from two linear ramps, e.g.
+  `ImageChops.add(gx, gy, 2.0)` with `gx = linear_gradient("L").transpose(TRANSPOSE)`. A rotated square leaves
+  bright wedges in the corners.
+- Recess sections as wells rather than ruling them off with lines: a slightly darker floor, an inner shadow
+  (`mask - blur(offset(mask, 3, 4))`), and a light lip outside the bottom-right edge.
+
+Engrave lettering and rules with a faint light copy 1 px below the ink.
+
+**Space.** The screws, the bevel and the slab's drop shadow take about 12 px of every edge. Keep wells clear of the
+corner screws, and keep watched controls left of x ~1025 (Q-Link sidebar).
+
+**Art and type.** Draw everything; take no picture from a product photo. A hardware clone also needs its own artwork
+and generic labels, with no maker's name or mark (PORTING "Skin"; `catalog/README.md`). Match the hardware's controls
+by eye: shape, colours, pointer style, toggles, buttons. Pillow draws with any font file: bake the type into the art,
+and record each font's licence before a release. A single-weight face can be emboldened with
+`stroke_width`/`stroke_fill`. A display face may lack glyphs (Earth Normal has no dash): test the characters you need
+against `.notdef`, and draw any that are missing.
+
 ## Inkscape (or Penpot) round trip
 - Open `layout.svg` in Inkscape. Each tab is a **layer** (`tab <NAME>`); only the first is visible,
   so toggle layers in the Layers panel.
@@ -203,7 +290,7 @@ findings as `warning: skin:` lines. It complements the browser editor's layout c
 (label widths, `when=` modes, `banks=` sub-pages).
 
 ## Text size and touch width per control (2026-10-07, offline)
-`knob` and `slider_v`/`slider_h` take `ns=<px>` (name text; `ns=0` drops the name), `vs=<px>` (value text) and
+`knob` and `slider_v`/`slider_h` take `ns=<px>` (name text; `ns=0` drops the name), `vs=<px>` (value text; `vs=0` on a knob drops it, for artwork that has its own labels; `vy=<px>` moves a knob's value text down, to sit under such a label) and
 `bw=<px>` (touch box and text width; default 130). Narrow `bw=` where neighbours sit closer than ~130 px, or MPC gives
 a touch to the wrong control. Toggles take `bw=` and `ns=0` (the switch alone); `enum_v` takes `sh=` like `enum_h`.
 `knob ... lay=side bw= bh= vs=` puts the knob's picture at the left of a bw x bh box and its value, large, in the rest
@@ -212,3 +299,11 @@ a touch to the wrong control. Toggles take `bw=` and `ns=0` (the switch alone); 
 ## Coming next
 Tracked in [ROADMAP.md](ROADMAP.md) ("Skin controls" and "Porting and tooling"), including a build-and-preview
 button in the browser editor.
+
+## More than one interface
+
+A plugin can ship several interfaces and let the user pick one from inside it. The constraint is that MPC
+binds a skin at insert and has no reload call, and that `when=` hides widgets but never tabs — so variants
+with different navigation live in separate folders and the switch copies two small files. Recipe, engine
+contract and the measurements: [SKIN_VARIANTS.md](SKIN_VARIANTS.md). Build the folder with
+`tools/make_skinset.py`.

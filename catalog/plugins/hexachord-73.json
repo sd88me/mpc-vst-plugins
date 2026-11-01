@@ -1,0 +1,17 @@
+{
+  "id": "hexachord-73",
+  "name": "HexChord 73",
+  "author": "Eurikon",
+  "repo": "Eurikon/mpc-vst-plugins",
+  "asset_pattern": "HexChord-73-*-mpc-armv7.zip",
+  "kind": "instrument",
+  "license": "GPL-3.0-or-later",
+  "style": "synth",
+  "tags": [
+    "chord",
+    "polyphonic",
+    "stereo"
+  ],
+  "summary": "Stereo chord synthesizer with four engines, eight chords, four voicings and a touchscreen chord diagram.",
+  "screenshot": "https://raw.githubusercontent.com/Eurikon/mpc-vst-plugins/9eed16e63f97e5ad87621a21cead85b6a7fee35b/media/hexachord-73.png"
+}

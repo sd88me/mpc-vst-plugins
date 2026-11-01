@@ -627,6 +627,27 @@ class Art:
                             '<rect class="button-sheen" x="%d" y="%d" width="%d" height="%d"/>%s</g>' % (
                                 " td3" if self.td3 else "", col, x + 2, y + 2, bw - 4, bh - 4, x + 2, y + 2, bw - 4, bh - 4,
                                 self.text(cx, cy, lab, "button-tx")))
+        elif op == "boxbtn" and n == 8:
+            # A button with its own size (a layout `button ... w= h=` line). shadow_skin emits this op for its
+            # renderer; the browser renderer had no branch for it, so any sized button broke an art:html build
+            # (found 2026-10-27 while redesigning the DJ FX 2 skin).
+            # Geometry follows shadow_art.c: a *filled rounded rectangle* (fill_rr, radius clamp(h/8, 8, 18)) with
+            # the label centred - no inset and no sheen, unlike the fixed-size `button` above. The trailing scale
+            # is ignored there (dot_label sizes itself), so it is only a starting point here: shrink it until the
+            # label fits the box, and drop what dot_label drops (longer than 16 characters).
+            x, y, w, h = I(1), I(2), I(3), I(4)
+            col, lab = hexc(a[5]), a[6]
+            rad = max(8, min(18, h // 8))
+            label = ""
+            if 0 < len(lab) <= 16:
+                scale = float(a[7])
+                while scale > 0.6 and (shadow_skin.text_width(lab, scale) > w - 16 or 15.0 * scale > h - 12):
+                    scale -= 0.05
+                label = self.text(x + w / 2, y + h / 2, lab, "button-tx",
+                                  extra=' style="font-size:%.1fpx"' % (15.0 * scale))
+            self.ops.append('<g class="button%s" style="--fill:%s">'
+                            '<rect class="button-bg" x="%d" y="%d" width="%d" height="%d" rx="%d"/>%s</g>' % (
+                                " td3" if self.td3 else "", col, x, y, w, h, rad, label))
         elif op == "seg" and n == 8:
             x, y, w, h = I(1), I(2), I(3), I(4)
             self.ops.append('<g class="seg" style="--fill:%s;--ink:%s"><rect class="seg-bg" x="%d" y="%d" width="%d" height="%d"/>'

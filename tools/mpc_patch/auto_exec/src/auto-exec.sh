@@ -30,7 +30,7 @@ mount_id() { P=$(mi_path "$1") awk '$5==ENVIRON["P"]{v=$1} END{if(v)print v}' "$
 mount_options() { P=$(mi_path "$1") awk '$5==ENVIRON["P"]{v=$6} END{if(v)print v}' "$MOUNTINFO"; }
 valid_drive() { printf '%s\n' "$1" | grep -Eq '^/media/[A-Za-z0-9][A-Za-z0-9._+() -]*$' && case "$1" in /media/az01-internal|/media/az01-internal-*|/media/acvs-synths) false ;; *) true ;; esac; }
 noexec_drives() {   # one per line: "<mount id> <mount point, unescaped>" for each noexec mount directly under /media
- awk '$5 ~ /^\/media\/[^\/]+$/ { n = split($6, o, ","); for (i = 1; i <= n; i++) if (o[i] == "noexec") print $1, $5 }' "$MOUNTINFO" | mi_unescape
+ awk '$5 ~ "^/media/[^/]+$" { n = split($6, o, ","); for (i = 1; i <= n; i++) if (o[i] == "noexec") print $1, $5 }' "$MOUNTINFO" | mi_unescape
 }
 log() { echo "$*"; }
 owned_line() { awk -v id="$1" '$1==id' "$OWNED"; }

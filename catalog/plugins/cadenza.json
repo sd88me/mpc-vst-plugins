@@ -1,0 +1,5 @@
+{ "id": "cadenza", "name": "Cadenza", "author": "Shrekage", "repo": "Shrekage2024/cadenza-force",
+  "kind": "instrument", "role": "midi", "license": "PolyForm-Shield-1.0.0", "source_available": true,
+  "summary": "Chord-driven generative MIDI sequencer: pick a key and scale, shape chords, bass and melody with a few knobs per page, and it generates and follows along as you play.",
+  "style": "sequencer", "tags": ["chords", "generative", "midi", "bassline"],
+  "screenshot": "https://raw.githubusercontent.com/Shrekage2024/cadenza-force/main/docs/screenshot.png" }

@@ -30,7 +30,7 @@ try:
         b = p.chromium.launch()
         pg = b.new_context(bypass_csp=True, viewport={"width": 1000, "height": 1300}).new_page()
         errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
-        pg.goto(link)
+        pg.goto(link); pg.click("#mode-install")
         pg.fill("#host", "127.0.0.1"); pg.fill("#pw", "secret"); pg.click("#connect")
         pg.wait_for_selector("#cat input[type=checkbox]", timeout=30000)
         row = pg.locator("#cat li", has_text="Test addin").first

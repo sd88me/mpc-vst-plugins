@@ -25,6 +25,8 @@ Plugins go into a drive's `Synths` folder (the installer app: Create Synths fold
 - A plugin loaded from the drive keeps it busy: `release`/`uninstall` refuse then (save, stop MPC).
 - A drive whose Synths folder is made after the patch is picked up within 5 s; MPC may already have dropped the plugin entries (run the app's Register plugin folders).
 - A firmware update may remove the bootstrap unit in the system image: run `status`, then `install` again.
+- **0.3.1 (2026-10-22; device-verified the same day on a tester's Force: two reboots with a USB stick as the exec drive):** the bootstrap unit is written through a bind mount of `/`, so it lands in the root filesystem even when an overlay is mounted over `/usr` (seen on a tester's Force). 0.3.0 wrote it into that overlay, which systemd cannot see at boot, so the patch never started after a reboot there. `status` now says `reason=bootstrap-missing` when the unit is not in the root filesystem. 
+- **0.3.2 (2026-10-22, offline; BusyBox awk checked in Docker):** drives whose name has a space (`/media/Force SSD`) are found. BusyBox awk, the device's, read the old pattern `[^\/]` as "no backslash", so a mount point written `Force\040SSD` in mountinfo was skipped. **Updating (2026-10-22, offline):** 0.3.2 updates 0.3.0 and 0.3.1 in place: `status` says `state=old-patch`, and `install` (or Apply in the installer app) removes the old version with its own uninstaller, then installs. `uninstall` also removes those versions.
 - It cannot be installed next to drive exec or the original ForceHD VST Exec (`status` says so); uninstall those first.
 - 32-bit ARM (Gen1) only. Credit: mount logic and rollback after "ForceHD VST Exec 0.1.3" by timomacquis (#150).
 

@@ -1,0 +1,9 @@
+{ "id": "plugin-manager-g2", "name": "Open MPC Plugin Manager G2", "author": "sd88me", "repo": "sd88me/mpc-vst-plugins",
+  "kind": "instrument",
+  "style": "utility",
+  "tags": ["installer", "catalog", "manager", "gen1", "gen2", "utility"],
+  "license": "MIT",
+  "summary": "The official OpenMPC plugin manager for Gen1 and Gen2 MPCs (32-bit build for Force, Live, One, X, Key; 64-bit for the Live III and kin). Browse this catalog and install, update and remove plugins on the MPC itself, with rollback if an install fails. Built on poloq's mpc-vst-manager.",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/588466d/tools/plugin_manager_g2/docs/screenshots/manager-discover-light.png",
+  "asset_pattern": "Plugin-Manager-G2-*-mpc-armv7.zip",
+  "flags_reviewed": ["runs programs"] }

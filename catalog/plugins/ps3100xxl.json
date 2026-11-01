@@ -1,0 +1,4 @@
+{ "id": "ps3100xxl", "name": "PS3100XXL", "author": "L'Cronx", "repo": "sunskiefer/PS3100XXL",
+  "kind": "instrument", "style": "synth", "tags": ["synth", "poly", "semi-modular", "analog-modelled", "patch-bay", "ensemble", "resonator"],
+  "license": "GPL-3.0-or-later", "screenshot": "https://raw.githubusercontent.com/sunskiefer/PS3100XXL/v0.1.5/docs/img/overview.png",
+  "summary": "Semi-modular poly synth modelled on the 1977 Korg PS-3100 (not affiliated with Korg): one oscillator, filter and envelope per key up to 48 voices, three-peak resonators, ensemble, two modulation generators, sample & hold, twelve temperament knobs and a patch bay you patch by touch, on one zoomable page." }

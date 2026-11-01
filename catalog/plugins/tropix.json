@@ -1,0 +1,22 @@
+{
+  "id": "tropix",
+  "name": "Tropix",
+  "author": "3dthc",
+  "repo": "3dthc/Tropix",
+  "kind": "instrument",
+  "style": "sampler",
+  "tags": [
+    "rompler",
+    "afrobeat",
+    "amapiano",
+    "kompa",
+    "soca",
+    "reggae",
+    "steel-pan",
+    "horns"
+  ],
+  "license": "MIT",
+  "summary": "Island and afro ROMpler: 128 presets and 65 instruments for afrobeat, amapiano, kompa, soca, reggae and Hawaiian music - steel pans, log drums, saxes and trumpets, kompa and slack-key guitars, steels, keys, mallets, basses and percussion, from redistributable recordings and original synthesis. Two layers, glide, horn scoop, vibrato, nine colorways.",
+  "screenshot": "https://raw.githubusercontent.com/3dthc/Tropix/1005f9c4dc719f58bd17b02fac750457e6c8cb1e/docs/images/browse.jpg",
+  "asset_pattern": "Tropix-*-mpc-armv7.zip"
+}

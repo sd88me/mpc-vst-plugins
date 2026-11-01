@@ -1,0 +1,4 @@
+{ "id": "acid-303", "name": "Acid-303", "author": "sd88me", "repo": "sd88me/mpc-vst-acid303",
+  "kind": "instrument", "style": "synth", "tags": ["303", "acid", "mono", "bass", "circuit-model", "devil-fish"], "license": "AGPL-3.0-only",
+  "summary": "An accurate, circuit-modelled 303 voice, matched to the hardware: the voice (from Lemus) solves the original schematic transistor by transistor and is fitted to 400 notes from a real unit. Switchable Devil Fish mods; Gen1 and Gen2 (WARN for CPU on Gen1: one or two instances, ECO).",
+  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-acid303/main/docs/device-303.png" }

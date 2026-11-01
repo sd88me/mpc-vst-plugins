@@ -1,0 +1,4 @@
+{ "id": "drloguexxl", "name": "DrLogueXXL", "author": "L'Cronx", "repo": "sunskiefer/DrLogueXXL",
+  "kind": "instrument", "style": "drum-machine", "tags": ["drums", "analog", "hybrid", "samples", "fm", "logue", "drumlogue", "mixer"],
+  "license": "GPL-3.0-or-later", "screenshot": "https://raw.githubusercontent.com/sunskiefer/DrLogueXXL/v0.2.0/docs/img/perform.png",
+  "summary": "Hybrid drum machine modelled on the KORG drumlogue (not affiliated with KORG): analogue-style kick, snare and toms, six sample parts with 192 synthesised sounds and your own WAVs, a MULTI part with VPM, noise and six open logue SDK units, delay, reverb and master effects, choke groups, a mixer and four macros, on a panel in the machine's look." }

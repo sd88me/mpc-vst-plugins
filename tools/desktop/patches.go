@@ -217,6 +217,16 @@ type PatchRow struct {
 	Detail    string `json:"detail,omitempty"`
 }
 
+// archSupported: supports.arch is one architecture ("armv7l") or several separated by commas ("armv7l,aarch64").
+func archSupported(list, arch string) bool {
+	for _, a := range strings.Split(list, ",") {
+		if strings.TrimSpace(a) == arch {
+			return true
+		}
+	}
+	return false
+}
+
 // PatchRows reads the state of every patch from the device. Read only. A patch built for another architecture is not asked.
 func PatchRows(dev *Device, patches []Patch, fetch func(Patch) ([]byte, error)) []PatchRow {
 	rows := []PatchRow{}
@@ -224,7 +234,7 @@ func PatchRows(dev *Device, patches []Patch, fetch func(Patch) ([]byte, error)) 
 		r := PatchRow{Patch: p, State: "not-checked"}
 		switch {
 		case dev == nil:
-		case dev.Info.Arch != "" && p.Supports.Arch != dev.Info.Arch:
+		case dev.Info.Arch != "" && !archSupported(p.Supports.Arch, dev.Info.Arch):
 			r.State, r.Detail = "unsupported", "built for "+p.Supports.Arch+"; this device is "+dev.Info.Arch
 		default:
 			script, err := fetch(p)

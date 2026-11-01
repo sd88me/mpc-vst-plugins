@@ -1,0 +1,18 @@
+{
+  "id": "tuney",
+  "name": "Tuney",
+  "author": "3dthc",
+  "repo": "3dthc/Tuney-MPC",
+  "kind": "effect",
+  "style": "pitch",
+  "tags": [
+    "pitch-correction",
+    "vocal",
+    "tuner",
+    "effect"
+  ],
+  "license": "MIT",
+  "summary": "Real-time vocal pitch correction: key and scale or your own notes on a touch keyboard, a pitch dial, Retune, Transition, Amount, Vibrato and Humanize, voice ranges and a reference pitch. Presets from hard tune to subtle.",
+  "screenshot": "https://raw.githubusercontent.com/3dthc/Tuney-MPC/55862ef83ab6938b5f1e3e20f5fa1ead7449e9b2/docs/tuney.png",
+  "asset_pattern": "Tuney-*-mpc-armv7.zip"
+}

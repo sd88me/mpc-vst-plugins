@@ -1,5 +1,0 @@
-{ "id": "plugin-manager", "name": "Plugin Manager", "author": "poloq", "repo": "poloq-instruments/mpc-vst-manager",
-  "kind": "instrument", "style": "utility", "tags": ["manager", "installer", "catalog"], "license": "MIT",
-  "summary": "Install, update and remove catalog plugins from the MPC screen, with one MPC restart per batch.",
-  "flags_reviewed": ["runs programs"],
-  "screenshot": "https://raw.githubusercontent.com/poloq-instruments/mpc-vst-manager/9ee0b5aa61acafc935481426beff23cd2db1aaef/docs/screenshot.png" }

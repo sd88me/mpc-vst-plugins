@@ -1,0 +1,5 @@
+{ "id": "meta4mpcxxl-fx", "name": "Meta4MPCXXL FX", "author": "L'Cronx", "repo": "sunskiefer/Meta4MPCXXL",
+  "kind": "effect", "style": "modular", "tags": ["modular", "vcv", "metamodule", "patch-player", "eurorack", "multi-fx"],
+  "license": "GPL-3.0-or-later", "asset_pattern": "Meta4MPCXXL-FX-*-mpc-armv7.zip",
+  "screenshot": "https://raw.githubusercontent.com/sunskiefer/Meta4MPCXXL/v0.1.1/docs/img/meta4mpcxxl.png",
+  "summary": "Meta4MPCXXL as an effect: the track's audio goes into a 4ms MetaModule-format (VCV Rack) patch's In 1 / In 2, with every parameter on Q-Links, MIDI and clock into the patch, and Wi-Fi patch upload from VCV Rack." }

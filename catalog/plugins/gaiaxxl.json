@@ -1,0 +1,4 @@
+{ "id": "gaiaxxl", "name": "GAIAXXL", "author": "L'Cronx", "repo": "sunskiefer/GAIAXXL",
+  "kind": "instrument", "style": "synth", "tags": ["synth", "virtual-analog", "supersaw", "gaia", "arpeggiator", "pad", "lead", "randomizer"],
+  "license": "GPL-3.0-or-later", "screenshot": "https://raw.githubusercontent.com/sunskiefer/GAIAXXL/v0.1.2/docs/img/tone.png",
+  "summary": "Three-tone virtual-analog synth modelled on the discontinued Roland GAIA SH-01 (not affiliated with Roland): the editor's parameters over six full-screen pages, 21 oscillator variations (with KORG logue-sdk wave tables), SYNC/RING, the GAIA's effects chain and arpeggiator, two beams, a musical randomizer and 64 patches." }

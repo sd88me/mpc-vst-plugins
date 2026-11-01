@@ -66,6 +66,10 @@ on:
         description: zig version to install, if the build needs it
         type: string
         default: ''
+      gen2_only:
+        description: The port has only a Gen2 (aarch64) build, in <vst_dir>/build/aarch64/<so>; no 32-bit .so is expected and only the -mpc-aarch64.zip is made
+        type: boolean
+        default: false
       dry_run:
         description: Build and package only (zip + previews as run artifacts), no draft release
         type: boolean
@@ -145,6 +149,7 @@ jobs:
           LICENSE_ID: ${{ inputs.license }}
           REQUIRES: ${{ inputs.requires }}
           USER_DATA: ${{ inputs.user_data }}
+          GEN2_ONLY: ${{ inputs.gen2_only }}
         run: |
           B="$VST_DIR/build"
           entry="$B/pluginlist-entry.xml"
@@ -153,7 +158,7 @@ jobs:
           [ ${#skins[@]} = 1 ] || { echo "::error::expected one skin folder in $B/skin, found ${#skins[@]}"; exit 1; }
           skin="${skins[0]%/}"
           [ -d "$skin" ] || { echo "::error::no skin folder in $B/skin"; exit 1; }
-          file -b "$so" | grep -q 'ELF 32-bit LSB.*ARM' || { echo "::error::$so is not a 32-bit ARM ELF: $(file -b "$so")"; exit 1; }
+          [ "$GEN2_ONLY" = true ] || file -b "$so" | grep -q 'ELF 32-bit LSB.*ARM' || { echo "::error::$so is not a 32-bit ARM ELF: $(file -b "$so")"; exit 1; }
           args=(--so "$so" --skin "$skin" --entry "$entry" --version "$VERSION" --about "$ABOUT" --repo "$GITHUB_REPOSITORY" -o "$GITHUB_WORKSPACE/dist")
           [ -z "$PLUGIN_ID" ] || args+=(--id "$PLUGIN_ID")
           [ -z "$LICENSE_ID" ] || args+=(--license "$LICENSE_ID")
@@ -165,10 +170,11 @@ jobs:
           fi
           for e in $EXTRA; do args+=(--extra "$e"); done
           for u in $USER_DATA; do args+=(--user-data "$u"); done
-          python3 "$MPC_VST/tools/release.py" "${args[@]}"
+          [ "$GEN2_ONLY" = true ] || python3 "$MPC_VST/tools/release.py" "${args[@]}"   # gen2_only: there is no 32-bit build to package
           # Gen2: a port whose vst.json lists the aarch64 target also has build/aarch64/<so>: package it the same way (docs/GEN2.md).
           # The CPU result is a Gen1 measurement, so the Gen2 zip does not carry it.
           so64="$B/aarch64/$(basename "$so")"
+          if [ "$GEN2_ONLY" = true ] && [ ! -f "$so64" ]; then echo "::error::gen2_only, but there is no $so64"; exit 1; fi
           if [ -f "$so64" ]; then
             file -b "$so64" | grep -q 'ELF 64-bit LSB.*aarch64' || { echo "::error::$so64 is not an aarch64 ELF: $(file -b "$so64")"; exit 1; }
             args64=()
@@ -183,7 +189,7 @@ jobs:
           fi
           mkdir -p "$GITHUB_WORKSPACE/previews"
           python3 "$MPC_VST/tools/studio.py" preview "$skin/Plugin Skins" -o "$GITHUB_WORKSPACE/previews/page_%d.png"
-          zip=$(ls "$GITHUB_WORKSPACE"/dist/*-mpc-armv7.zip)
+          zip=$(ls "$GITHUB_WORKSPACE"/dist/*-mpc-armv7.zip 2>/dev/null || ls "$GITHUB_WORKSPACE"/dist/*-mpc-aarch64.zip)
           zips=$(ls "$GITHUB_WORKSPACE"/dist/*.zip | tr '\n' ' ')
           # catalog conformance (docs/CATALOG_SPEC.md): warnings are shown, errors fail the run
           if [ -n "$LICENSE_ID" ]; then flag=--catalog; else flag=""; echo "::warning::no license input: this release can't be listed in the catalog"; fi

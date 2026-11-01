@@ -14,5 +14,5 @@
   ],
   "license": "MIT",
   "summary": "Generative gravity sequencer: each note you play becomes a walker that bounces and retriggers its note as it lands.",
-  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-pixelwalkers/v1.1.0/screenshots/page_0.png"
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-pixelwalkers/v1.1.1/screenshots/page_0.png"
 }

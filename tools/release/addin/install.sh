@@ -24,14 +24,22 @@ done
 load_manifest
 check_dir
 SO="$DIR/$ADDIN_SO"
+# the package says which CPU its .so is for (mpc-plugin.json "arch"; a package from before that field is armv7)
+PKG_ARCH=$(sed -n 's/.*"arch": *"\([a-z0-9]*\)".*/\1/p' mpc-plugin.json 2>/dev/null | head -n 1); [ -n "$PKG_ARCH" ] || PKG_ARCH=armv7
 if [ -z "$ADDIN_INSTALL_TEST" ]; then
     [ "$(id -u)" = 0 ] || die "run as root"
-    case "$(uname -m)" in armv7*) ;; *) die "this build is for 32-bit ARM MPC OS devices; this one is $(uname -m)" ;; esac
+    case "$PKG_ARCH:$(uname -m)" in
+        armv7:armv7*|aarch64:aarch64) ;;
+        armv7:aarch64) die "this build is for Gen1 (32-bit ARM) devices; this one is Gen2 (aarch64): download the -mpc-aarch64.zip" ;;
+        aarch64:*) die "this build is for Gen2 (aarch64) devices; this one is $(uname -m): download the -mpc-armv7.zip" ;;
+        *) die "this build is for $PKG_ARCH devices; this one is $(uname -m)" ;;
+    esac
 fi
 for f in "$ADDIN_SO" $ADDIN_CONF $ADDIN_FILES; do [ -f "$f" ] || die "$f is missing next to install.sh"; done
 check_so "$ADDIN_SO"
 
 SVC=$(mpc_service)
+resolve_dropin_root "$SVC"
 check_lib "$SVC"
 UNIT=$(unit_with_preload "$SVC" "$(ours "$SVC")")   # not our own drop-in: it repeats the unit's list
 echo "Installing $ADDIN_NAME${ADDIN_VERSION:+ $ADDIN_VERSION}:"

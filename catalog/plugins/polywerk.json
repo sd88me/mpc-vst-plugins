@@ -1,0 +1,5 @@
+{ "id": "polywerk", "name": "PolyWerk", "author": "Devko", "repo": "Devko/PolyWerk",
+  "kind": "instrument", "style": "synth", "tags": ["wavetable", "polyphonic", "arpeggiator", "sequencer", "mod-matrix"], "license": "MIT",
+  "asset_pattern": "PolyWerk-*-mpc-armv7.zip",
+  "screenshot": "https://raw.githubusercontent.com/Devko/PolyWerk/main/docs/img/waves.png",
+  "summary": "Eight-voice wavetable synth: two wavetable oscillators with 8x unison and subs, 30 built-in tables plus your own Serum-format WAVs, two filters with comb and vowel, two LFOs, a 12-slot mod matrix, arpeggiator and sequencers, 205 presets and a seven-tab touchscreen skin with Q-Links." }

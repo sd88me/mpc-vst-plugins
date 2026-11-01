@@ -46,6 +46,9 @@ func TestPatchesURLIsNextToTheCatalog(t *testing.T) {
 	if got := patchesURLFor("https://sd88me.github.io/mpc-vst-plugins/catalog.json?x=1"); got != "https://sd88me.github.io/mpc-vst-plugins/patches.json" {
 		t.Errorf("got %q", got)
 	}
+	if got := patchesURLFor("https://open-mpc.github.io/catalog.json"); got != "https://open-mpc.github.io/patches.json" {
+		t.Errorf("got %q", got)
+	}
 	if patchesURLFor("not a url") != "" {
 		t.Error("garbage gives no url")
 	}
@@ -205,6 +208,11 @@ func TestPatchRowsOnlyAskTheDeviceWhenItCanAnswer(t *testing.T) {
 	other.Supports.Arch = "aarch64"
 	if rows := PatchRows(d, []Patch{other}, fetch); rows[0].State != "unsupported" || asked != 0 {
 		t.Errorf("another architecture is not asked: %+v asked=%d", rows[0], asked)
+	}
+	several := p
+	several.Supports.Arch = "aarch64, armv7l"
+	if rows := PatchRows(d, []Patch{several}, fetch); rows[0].State == "unsupported" || asked == 0 {
+		t.Errorf("a patch listing this architecture among several is asked: %+v asked=%d", rows[0], asked)
 	}
 	if rows := PatchRows(d, []Patch{p}, func(Patch) ([]byte, error) { return nil, fmt.Errorf("checksum") }); rows[0].State != "error" || !strings.Contains(rows[0].Detail, "checksum") {
 		t.Errorf("a refused script is an error row: %+v", rows[0])

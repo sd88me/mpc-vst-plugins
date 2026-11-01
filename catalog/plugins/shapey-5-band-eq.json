@@ -1,0 +1,18 @@
+{
+  "id": "shapey-5-band-eq",
+  "name": "Shapey 5-Band EQ",
+  "author": "3dthc",
+  "repo": "3dthc/Shapey-MPC",
+  "kind": "effect",
+  "style": "eq",
+  "tags": [
+    "eq",
+    "parametric-eq",
+    "analyzer",
+    "mixing"
+  ],
+  "license": "MIT",
+  "summary": "The 5-band version of Shapey EQ, made for touch: every band has its own lane under a taller curve, so any dot drags directly. Any band can be a bell, shelf, cut, notch or band pass. Live analyzer, zero latency.",
+  "screenshot": "https://raw.githubusercontent.com/3dthc/Shapey-MPC/ddbf9bbc9f66f2af0802070b38bb3d113140131c/docs/shapey-5-band-eq.png",
+  "asset_pattern": "Shapey-5-Band-EQ-*-mpc-armv7.zip"
+}

@@ -33,13 +33,14 @@
 #
 # Version @@VERSION@@. Source: tools/mpc_patch/auto_exec of the repository this came from.
 set -u
-VERSION=0.3.0
+VERSION=0.3.2
 P=${AEX_PREFIX:-}                    # tests only: a folder that stands for / (files), nothing else changes
 BK_ROOT=$P/data/mpc-vst-plugins/backups
 MOUNTINFO=${AEX_MOUNTINFO:-/proc/self/mountinfo}
 if [ -n "$P" ]; then AUTO_EXEC_STATE=$P/run/auto-exec; export AUTO_EXEC_STATE; fi
 export AEX_PREFIX
 ETC=$P/etc/auto-exec
+OLD_VERSIONS="0.3.0 0.3.1"              # earlier versions this script updates: their own uninstaller (in $ETC) removes them first
 DRIVE_EXEC_ETC=$P/etc/drive-exec         # drive exec, the older patch this replaces: not ours, never touched
 ORIG_ETC=$P/etc/force-vst-exec          # where the contributor's original ("ForceHD VST Exec") installs itself: not ours, never touched
 UNIT_BOOT=$P/usr/lib/systemd/system/auto-exec-bootstrap.service
@@ -60,12 +61,12 @@ mpc_service() {
     else echo acvs; fi
 }
 candidates() {   # drives mounted noexec directly under /media, one per line (internal storage left out)
-    awk '$5 ~ /^\/media\/[^\/]+$/ { n = split($6, o, ","); for (i = 1; i <= n; i++) if (o[i] == "noexec") print $5 }' "$MOUNTINFO" | mi_unescape | while IFS= read -r d; do
+    awk '$5 ~ "^/media/[^/]+$" { n = split($6, o, ","); for (i = 1; i <= n; i++) if (o[i] == "noexec") print $5 }' "$MOUNTINFO" | mi_unescape | while IFS= read -r d; do
         valid_root "$d" && printf '%s\n' "$d"
     done
 }
 media_mounts() {   # every mount directly under /media: "<mount point>  <fs>  <device>  <noexec|exec>" (what the drive really is, whatever its folder is called)
-    awk '$5 ~ /^\/media\/[^\/]+$/ { ex = "exec"; n = split($6, o, ","); for (i = 1; i <= n; i++) if (o[i] == "noexec") ex = "noexec"; for (i = 7; i <= NF && $i != "-"; i++) ; printf "%s  %s  %s  %s\n", $5, $(i+1), $(i+2), ex }' "$MOUNTINFO" | mi_unescape
+    awk '$5 ~ "^/media/[^/]+$" { ex = "exec"; n = split($6, o, ","); for (i = 1; i <= n; i++) if (o[i] == "noexec") ex = "noexec"; for (i = 7; i <= NF && $i != "-"; i++) ; printf "%s  %s  %s  %s\n", $5, $(i+1), $(i+2), ex }' "$MOUNTINFO" | mi_unescape
 }
 write_payload() {   # $1 = folder to write the patch's files into
     d=$1
@@ -88,6 +89,12 @@ need_device() {   # root and the tools; tests (AEX_PREFIX set) skip the architec
     for c in mount umount findmnt flock systemctl awk sed grep; do command -v "$c" >/dev/null || die "missing tool: $c"; done
 }
 installed_version() { [ -f "$ETC/VERSION" ] && cat "$ETC/VERSION"; }
+is_old() { case " $OLD_VERSIONS " in *" $1 "*) true ;; *) false ;; esac; }
+no_leftovers() {
+    for path in "$UNIT_BOOT" "$LINK_BOOT" "$ETC" "$UNIT_SVC" "$UNIT_TIMER"; do
+        [ ! -e "$path" ] && [ ! -L "$path" ] || die "already exists: $path (an earlier install of this patch? uninstall it with its own uninstaller first)"
+    done
+}
 backup_present() { [ -d "$BK_ROOT" ] && [ -n "$(ls "$BK_ROOT" 2>/dev/null)" ]; }
 helper() { AUTO_EXEC_STATE=${AUTO_EXEC_STATE:-$P/run/auto-exec} AEX_MOUNTINFO=$MOUNTINFO /bin/sh "$ETC/auto-exec.sh" "$@"; }
 
@@ -103,9 +110,17 @@ cmd_status() {
         state_line unsupported 0 other-install; return
     fi
     if v=$(installed_version); then
+        if is_old "$v"; then
+            echo "An older version of this patch is installed ($v). Install updates it to $VERSION (it removes $v with its own uninstaller first)."
+            state_line old-patch 1; return
+        fi
         if [ "$v" != "$VERSION" ]; then
             echo "Another version of this patch is installed ($v; this script is $VERSION): remove it with its own uninstaller first."
             state_line unsupported 0 other-version; return
+        fi
+        if ! /bin/sh "$ETC/root-bootstrap.sh" check; then
+            echo "The bootstrap unit is not in the root filesystem (an overlay over /usr hides where it is, or a firmware update removed it): it will not start at boot. Run: sh $0 uninstall, then install again."
+            state_line partial 1 bootstrap-missing; return
         fi
         out=$(helper status 2>&1); echo "$out"
         case "$out" in *"ACTIVE "*) echo "Installed and active. Check that MPC sees it: sh $0 verify"; state_line patched 1 ;;
@@ -165,11 +180,15 @@ cmd_install() {
     need_device
     [ ! -e "$ORIG_ETC" ] || die "the original ForceHD VST Exec is installed ($ORIG_ETC): remove it with its own uninstaller first"
     [ ! -e "$DRIVE_EXEC_ETC" ] || die "drive exec is installed ($DRIVE_EXEC_ETC): uninstall it first (this patch replaces it)"
-    v=$(installed_version) && die "this patch is already installed (version $v). Uninstall it first (sh $0 uninstall)."
-    for path in "$UNIT_BOOT" "$LINK_BOOT" "$ETC" "$UNIT_SVC" "$UNIT_TIMER"; do
-        [ ! -e "$path" ] && [ ! -L "$path" ] || die "already exists: $path (an earlier install of this patch? uninstall it with its own uninstaller first)"
-    done
+    OLD=
+    if v=$(installed_version); then
+        is_old "$v" || die "this patch is already installed (version $v). Uninstall it first (sh $0 uninstall)."
+        OLD=$v
+    else
+        no_leftovers
+    fi
     echo "Installing the auto exec patch ($VERSION):"
+    [ -z "$OLD" ] || echo "  first removes the installed version $OLD with its own uninstaller (the drives' executable folders go away for a moment)."
     echo "  every drive under /media mounted noexec gets an executable bind mount of its Synths folder (the drive stays noexec)."
     echo "  Noexec drives right now:"; candidates | sed 's/^/    /'
     echo "  files:  $ETC/, $UNIT_SVC, $UNIT_TIMER and the bootstrap unit in /usr/lib/systemd/system"
@@ -179,7 +198,13 @@ cmd_install() {
         if [ -n "$P" ]; then read -r a; else read -r a < /dev/tty 2>/dev/null || read -r a; fi
         [ "$a" = PATCH ] || die "cancelled; nothing was changed"
     fi
+    if [ -n "$OLD" ]; then
+        /bin/sh "$ETC/uninstall.sh" || die "could not remove version $OLD (see above); $OLD stays installed and nothing else was changed"
+        no_leftovers
+        echo "Version $OLD removed."
+    fi
     BACKUP=$BK_ROOT/auto-exec-$VERSION-$(date +%Y%m%d-%H%M%S)
+    [ ! -e "$BACKUP" ] || BACKUP=$BACKUP-$$                     # a second install within the same second (an update right after one)
     [ ! -e "$BACKUP" ] || die "backup folder exists: $BACKUP"
     mkdir -p "$BACKUP" || die "cannot create $BACKUP"
     chmod 700 "$BACKUP"
@@ -237,7 +262,7 @@ cmd_install() {
 cmd_uninstall() {
     need_device
     v=$(installed_version) || { echo "Not installed. Nothing to do."; exit 0; }
-    [ "$v" = "$VERSION" ] || die "another version is installed ($v): use its own uninstaller"
+    [ "$v" = "$VERSION" ] || is_old "$v" || die "another version is installed ($v): use its own uninstaller"
     if [ "$CONFIRMED" = 0 ]; then
         echo "This removes the executable mounts and the files of the patch. Plugins on the drives stay, but will not load until the patch is back."
         printf "Type REMOVE to continue: "

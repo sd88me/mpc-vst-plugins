@@ -1,0 +1,5 @@
+{ "id": "dronexxl", "name": "DroneXXL", "author": "L'Cronx", "repo": "sunskiefer/DroneXXL",
+  "kind": "instrument", "style": "synth", "tags": ["drone", "experimental", "modular", "patch-panel", "ambient", "randomizer", "vcv-rack"],
+  "license": "GPL-3.0-or-later",
+  "screenshot": "https://raw.githubusercontent.com/sunskiefer/DroneXXL/v0.1.0/docs/img/overview.png",
+  "summary": "Drone and experimental synth, after the Solar 42, built on Neil Baumberger's AmbientModules: a 15-module rack (4 drones, mixer, filter, pads, 2 PapaSrapa, 2 VCOs, LFOs, joystick, sequencer, detector) patched by touch, with 8 macros, an XY pad, a randomizer that never repeats and a brickwall limiter." }

@@ -1,0 +1,3 @@
+location: /media/ramdrive/Synths  (/media/ramdrive is tmpfs, not kept across restarts)
+install target: (none)
+problem: No install location

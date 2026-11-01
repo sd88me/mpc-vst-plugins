@@ -12,5 +12,5 @@
   ],
   "license": "BSD-3-Clause",
   "summary": "Two-oscillator wavetable synth with unison, filter and mod envelopes; ships its wavetable library and 9 presets.",
-  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-tablor/v1.1.0/screenshots/page_0.png"
+  "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-tablor/v1.1.1/screenshots/page_0.png"
 }

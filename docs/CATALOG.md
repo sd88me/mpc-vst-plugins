@@ -5,6 +5,10 @@ checksum and device-verification status, that stays correct without anyone editi
 
 ## Principles (what keeps it low maintenance)
 1. **No server, no database, no accounts.** A static site on GitHub Pages, built from one generated `catalog.json`.
+   Addresses (2026-11-01): the Plugin Manager reads `https://open-mpc.github.io/catalog.json` (the OpenMPC org's Pages repo
+   `open-mpc/open-mpc.github.io`) and falls back to `https://sd88me.github.io/mpc-vst-plugins/catalog.json`. Older managers
+   only know the second, so both must serve the same file. The `mirror-org` job in `.github/workflows/catalog.yml` copies each
+   build's whole site there (since 2026-11-01 `https://open-mpc.github.io/` is the address users go to) (needs the `OPENMPC_PAGES_TOKEN` secret; skipped without it).
 2. **Authors register once, never per release.** A plugin's catalog entry is a tiny file pointing at its GitHub repo.
    Versions, URLs and checksums are *discovered* from the repo's Releases by a scheduled job.
 3. **The zip is the source of truth, not the registry.** Every release zip carries a machine-readable manifest
@@ -19,7 +23,9 @@ checksum and device-verification status, that stays correct without anyone editi
 6. **The catalog never hosts or links a build that contains someone else's firmware.** A port whose DSP is compiled
    from the user's own firmware cannot publish a zip, so it lists as **build-yourself** (below): open source, no
    download, no checksum, a build command and the user's own files it needs. This is a separate distribution type;
-   the checks for normal `release` entries are unchanged.
+   the checks for normal `release` entries are unchanged. Build-yourself is only for ports of **discontinued**
+   products (2026-10-29). A port of firmware from a product still on sale is not listed in either form without the
+   manufacturer's written permission; the author can write an independent engine instead (see #612).
 
 ## Architecture
 ```
@@ -32,17 +38,22 @@ vst-release.yml  --release-->   nightly + on-dispatch workflow:       device scr
 ```
 
 ### Registry entry (`plugins/<id>.json`, hand-written once)
-`id`, `name`, `author`, `repo` (owner/name), `kind` (instrument | effect), `license`, `summary`, `screenshot`
+`id`, `name`, `author`, `repo` (owner/name), `kind` (instrument | effect), `license` (an SPDX ID, or IDs joined by `AND`/`OR` when the zip
+bundles a program under another licence, e.g. `MIT AND Apache-2.0`: open when every ID is), `summary`, `screenshot`
 (optional `https://` URL; the site ignores anything else), `asset_pattern` (default `*-mpc-armv7.zip`), `homepage` (optional),
 `tier` (optional, only `"experimental"`) and `featured` (optional bool); see Trust tiers below. `flags_reviewed` (optional list of
 risky-call categories a maintainer has looked at, e.g. `["network"]` for a remote-control plugin; see Validation). Nothing versioned.
+`catalog/added.json` (`{"<id>": "YYYY-MM-DD"}`) records when each entry joined the catalog, for the site's "Newest in catalog" sort. A
+maintainer adds a line when merging a new entry (not the contributor, so PRs don't conflict on one file); an entry without a line uses
+the date of its oldest release. Backfilled 2026-10-24 from the first commit that added each registry file.
 
 Length limits (checked by `tools/catalog_build.py`): `summary` at most 350 characters and `tags` at most 8, so cards and the page stay
 readable. Put the full feature list in the repo README. Maintainers may edit a summary or tags for length and consistency, but do not
 change claims about testing or safety without the author.
 
 ### Distribution types
-`distribution` in the registry entry: `release` (default; everything above) or `build-yourself`.
+`distribution` in the registry entry: `release` (default; everything above) or `build-yourself`. `build-yourself` is limited to
+ports of discontinued products (rule 6 above); today's two entries, Monomodule and Machinemodule, are discontinued Elektron hardware.
 
 A **build-yourself** plugin's build embeds firmware-derived code or data (for example the DSP statically recompiled from
 the user's own Elektron OS file, plus ROM samples), so the built `.so` and its installer zip can never be published
@@ -96,7 +107,7 @@ bumping it breaks saved projects), `sha256` of every file. `INSTALL.md` stays fo
 
 ### Gen2 (aarch64)
 A version may also have a `*-mpc-aarch64.zip` on the same release (arch `aarch64`, same id/uid/version). It is listed under the same
-registry entry as `versions[].assets.aarch64` with `gen2: true`; `url`/`sha256` stay the armv7 asset. `catalog.tsv` carries the aarch64 zip in three trailing columns (size, sha256, url). See [GEN2.md](GEN2.md).
+registry entry as `versions[].assets.aarch64` with `gen2: true`; `url`/`sha256` stay the armv7 asset. `catalog.tsv` carries the aarch64 zip in three trailing columns (size, sha256, url). A plugin with only a Gen2 build (`asset_pattern` for `*-mpc-aarch64.zip` alone) is `gen2_only: true`, with `-` in the armv7 columns. See [GEN2.md](GEN2.md).
 
 ### Generated `catalog.json`
 Per plugin (`distribution: release`): registry fields + `versions[]` (newest first, last N kept): `version`, `date`, `url`, `size`, `sha256`,
@@ -189,7 +200,7 @@ here first and move to its own repo (recommended, for community ownership) once 
 
 ### Phase 3: The website
 - [x] `tools/catalog_site.py` generates the site from `catalog.json`; `catalog.yml` deploys with Pages on main (2026-09-29; checked in headless Chromium; Pages deploy live at https://sd88me.github.io/mpc-vst-plugins/).
-- [x] List with search, filters (kind, style, developer, license, MPC OS 2.x / 3.x, beta) and sorting (updated, downloads, name, developer, kind), state kept in the URL hash; plugin page with history, install steps, checksum, source link.
+- [x] List with search, filters (kind, style, developer, license, MPC OS 2.x / 3.x, beta) and sorting (updated, newest in catalog, downloads, name, developer, kind), state kept in the URL hash; plugin page with history, install steps, checksum, source link.
 - [x] Guide pages Install, Build and Workflow (Add yours was merged into Workflow on 2026-10-09; add.html redirects) (2026-09-29): Markdown in `catalog/pages/*.md`, rendered by `tools/catalog_site.py`
       with a shared menu; checked in headless Chromium at desktop and phone width.
 - [x] (2026-09-29; live, `feed.xml` and `catalog.tsv` both served, checked 2026-10-02) Atom feed `feed.xml`; "Tested on" from optional `tested.json` in the plugin repo; contributor docs in `catalog/README.md`.
@@ -221,7 +232,7 @@ Locrian's installer uses a drop-in folder in `Synths` (`docs/CATALOG_SPEC.md`, "
 - [x] Guides (Install, Build, Workflow; Setup was merged into Build on 2026-10-01) checked against the new layout (2026-09-30): Install's manual steps use `plugin-meta.xml`,
       and it has "If a plugin disappears after a restart". Site cards carry no layout-specific text (`index.template.html`).
 - [x] Old-layout releases are flagged (2026-10-13, offline: `tools/test_catalog.py`): warning in `catalog_check.py`, a builder problem for a newest stable release, and a PR check (`--require-portable`) for new or changed registry entries. Prompted by a third-party port whose release zip still used `/sdcard/vst` and did not show up in plugin managers.
-- [x] Stray registry files are rejected (2026-10-15, offline: `tools/test_catalog.py`): `--check-registry` fails on any `*.json` directly in `catalog/` other than `apps.json`, `patches.json` and `yanked.json`. The build only reads `catalog/plugins/*.json`, so an entry added one folder too high (GitHub's "Create file" in `catalog/`) used to pass CI and never be listed (Fretty, #447).
+- [x] Stray registry files are rejected (2026-10-15, offline: `tools/test_catalog.py`): `--check-registry` fails on any `*.json` directly in `catalog/` other than `added.json`, `apps.json`, `patches.json` and `yanked.json`. The build only reads `catalog/plugins/*.json`, so an entry added one folder too high (GitHub's "Create file" in `catalog/`) used to pass CI and never be listed (Fretty, #447).
 - [x] Published releases still in the old layout dropped off a list-rebuilding scanner (NOTES 2026-09-30); all current plugins were re-released above, so the scanner and the catalog agree.
 
 ### Phase 4: Install and update from the device or desktop
@@ -275,3 +286,12 @@ Locrian's installer uses a drop-in folder in `Synths` (`docs/CATALOG_SPEC.md`, "
 - **Authors not using `release.py`.** Support them by documenting the manifest; the validator is the contract.
 - **Rate limits / token.** One nightly run with the Actions token is far below limits for hundreds of plugins.
 - **Catalog scope creep.** Every feature that needs a server, a DB or manual curation is out of scope by default.
+
+## Client addresses during the organization move (2026-10-20, offline tests only; new address live 2026-11-01)
+The desktop app and `tools/mpc-store.sh` try `https://open-mpc.github.io/` first and the old
+`https://sd88me.github.io/mpc-vst-plugins/` second (a custom `--catalog` / `--url` / `MPC_STORE_URL` is used as given; the script takes
+several addresses separated by spaces). Since 2026-11-01 the OpenMPC org site (`open-mpc/open-mpc.github.io`) serves `catalog.json` and `catalog.tsv` at its root; a file it does
+not have yet (`patches.json` until the mirror job copies it) comes from the old address, which stays a copy kept alive from
+`sd88me.github.io` (`ORG_MIGRATION.md`, steps 2 and 3).
+Helper files and `patches.json` come from the same folder as the catalog that worked. Releases published before this change only
+know the old address.
