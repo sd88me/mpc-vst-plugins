@@ -730,6 +730,7 @@ def apply_dependencies(plugins, problems):
     when a newer version of the same plugin stays listed). -> True when anything was hidden."""
     by = {p["id"]: p for p in plugins}
     why = {}   # (plugin id, version) -> {arch: reason}
+    absent = {}   # (plugin id, version) -> dependency ids not in the catalog at all
     changed, any_change = True, False
     while changed:
         changed = False
@@ -748,6 +749,8 @@ def apply_dependencies(plugins, problems):
                             d.setdefault("pick", {})[arch] = max(fits, key=lambda w: deps.key(w["version"]))["version"]
                         else:
                             d.get("pick", {}).pop(arch, None)
+                            if not t:
+                                absent.setdefault((p["id"], v["version"]), set()).add(d["id"])
                             has = ", ".join(w["version"] for w in (t or {}).get("versions", []) if not w.get("yanked")) or "none"
                             lost[arch] = "needs %s%s, which the catalog doesn't list%s (listed: %s)" % (
                                 d["id"], deps.text(d["rules"]), "" if arch == "armv7" else " for Gen2", has if t else "not in the catalog")
@@ -774,7 +777,8 @@ def apply_dependencies(plugins, problems):
             newer = any(not w.get("yanked") and deps.key(w["version"]) > deps.key(ver) for w in p["versions"])
             what = "hidden" if not left else "%s build hidden" % ("Gen2" if "aarch64" in reasons else "Gen1")
             problems.append({"id": p["id"], "tag": v.get("_tag") or "v" + ver, "superseded": newer,
-                             "error": "%s: %s" % (what, "; ".join(sorted(set(reasons.values()))))})
+                             "error": "%s: %s" % (what, "; ".join(sorted(set(reasons.values())))),
+                             "absent": sorted(absent.get((p["id"], ver), ()))})
             v.pop("_lost", None)
     return any_change
 
@@ -853,12 +857,20 @@ def main():
         sys.exit(1 if reg_problems else 0)
     yanked = set(json.load(open(a.yanked))) if os.path.exists(a.yanked) else set()
     if a.require_portable:
-        sel = [e for e in entries if e["id"] in a.require_portable]
-        catalog, problems = build(sel, GitHub(os.environ.get("GITHUB_TOKEN")), a.cache, yanked, a.keep, require_portable=set(a.require_portable), added=added, collections=collections)
-        bad = [p for p in problems if not p.get("superseded")]
+        # The plugins they depend on are built too (not judged), so a dependency isn't "missing" just because only these were built.
+        by_id, ids = {e["id"]: e for e in entries}, set(a.require_portable)
+        while True:
+            sel = [e for e in entries if e["id"] in ids]
+            catalog, problems = build(sel, GitHub(os.environ.get("GITHUB_TOKEN")), a.cache, yanked, a.keep, require_portable=set(a.require_portable), added=added, collections=collections)
+            more = {d for p in problems for d in p.get("absent", ())} & set(by_id) - ids
+            if not more:
+                break
+            ids |= more
+        bad = [p for p in problems if not p.get("superseded") and p["id"] in a.require_portable]
         for p in bad:
             print("error: %(id)s %(tag)s: %(error)s" % p, file=sys.stderr)
-        print("%d entries checked for the portable layout, %d problems" % (len(sel), len(bad)))
+        print("%d entries checked for the portable layout (%d more built for their dependencies), %d problems"
+              % (len(a.require_portable), len(sel) - len(a.require_portable), len(bad)))
         sys.exit(1 if bad or reg_problems else 0)
     catalog, problems = build(entries, GitHub(os.environ.get("GITHUB_TOKEN")), a.cache, yanked, a.keep, added=added, collections=collections)
     os.makedirs(a.out, exist_ok=True)

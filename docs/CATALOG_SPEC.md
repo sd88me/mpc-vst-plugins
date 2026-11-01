@@ -68,7 +68,9 @@ a plugin folder (`portable/<skin>/`) that is missing `version.xml`, `Plugin Skin
 an extra; a `plugin-meta.xml` whose `file=` is not `%payload-path%/<skin>/<so>` or whose `uid`/`name` disagree with the manifest;
 an `os_compat` that is not `["2.x","3.x"]` or `["3.x"]`, or that claims 2.x when the check below does not confirm it;
 an unknown `layout`; with `--catalog`, no `source_repo` or `license`; with `--expect-id/--expect-repo`, a registry mismatch.
-Zips of the old layout (no `layout` field) are checked against their own rules (`payload/`, `plugin.xml`). `catalog_check.py` warns for each one ("old layout"); with `--require-portable` it is an error. The builder reports a problem (and `catalog_issues.py` opens an issue) when a plugin's **newest stable** release is of the old layout; older versions stay silent history. A PR that adds or changes a registry entry runs `catalog_build.py --require-portable <ids>`, so a new listing must already release the portable folder.
+Zips of the old layout (no `layout` field) are checked against their own rules (`payload/`, `plugin.xml`). `catalog_check.py` warns for each one ("old layout"); with `--require-portable` it is an error. The builder reports a problem (and `catalog_issues.py` opens an issue) when a plugin's **newest stable** release is of the old layout; older versions stay silent history. A PR that adds or changes a registry entry runs `catalog_build.py --require-portable <ids>`, so a new listing must already release the portable folder. The plugins those entries depend on are built
+too, so the dependency check sees them, but only the named entries are judged (2026-10-31: before this, every dependent's PR failed with its
+host "not in the catalog").
 
 **MPC OS compatibility (`tools/skin_compat.py`, docs/OS2_SKINS.md).** The checker works out `os_compat` itself, for every version, so releases
 made before the field existed are classified too. A version is `2.x` and `3.x` when the `.so` needs glibc 2.32 or less and every
