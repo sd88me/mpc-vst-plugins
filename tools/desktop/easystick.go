@@ -50,7 +50,7 @@ type easyPin struct {
 }
 
 // easyPinURL is a var so tests can point it at a local server; empty means "use the compiled-in pin only".
-var easyPinURL = "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/main/tools/desktop/easystick-pin.json"
+var easyPinURL = "https://raw.githubusercontent.com/open-mpc/mpc-vst-plugins/main/tools/desktop/easystick-pin.json"
 
 // easyReleasePrefixes are the only places a pin file may send the download (the upstream project's releases and this
 // project's fork of it), so a changed pin file can't point the installer at an arbitrary host.

@@ -78,7 +78,7 @@ jobs:
             { echo "## What is new"; echo; echo "$CHANGES" | tr '|' '\n' | sed 's/^ *//; /^$/d; s/^/- /'; echo; } >> notes.md
           fi
           cat >> notes.md <<EOF
-          The MPC plugin installer: a small app that installs, updates and removes plugins on a modded MPC or Force from your computer. Guide: https://sd88me.github.io/mpc-vst-plugins/install.html
+          The MPC plugin installer: a small app that installs, updates and removes plugins on a modded MPC or Force from your computer. Guide: https://open-mpc.github.io/mpc-vst-plugins/install.html
 
           ## Which file do I need?
 

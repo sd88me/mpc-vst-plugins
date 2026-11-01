@@ -1,7 +1,7 @@
 # Plugin Manager for MPC / Force
 
 A VST2 "instrument" for the MPC OS plugin host that is really an app: it lists the
-[mpc-vst-plugins catalog](https://sd88me.github.io/mpc-vst-plugins/) on the MPC screen and installs, updates and
+[mpc-vst-plugins catalog](https://open-mpc.github.io/) on the MPC screen and installs, updates and
 removes plugins, with one MPC restart per batch. Working on an MPC One and an MPC Key 37 (Gen1, MPC OS 3.9.1).
 
 ![Plugin Manager on an MPC One](docs/screenshot.png)
@@ -55,7 +55,7 @@ Logs: `/tmp/pluginmgr/manager.log`, `/tmp/pluginmgr/apply.log`. Device report: `
   MPC being stopped. Without `systemd-run` it falls back to leaving MPC's cgroup by hand (untested).
 
 ## Building
-Needs Docker and an [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) checkout next to this folder
+Needs Docker and an [mpc-vst-plugins](https://github.com/open-mpc/mpc-vst-plugins) checkout next to this folder
 (or `MPC_VST=<path>`), and Pillow for the card thumbnails.
 ```
 python3 vst/make_images.py   # only after changing the artwork

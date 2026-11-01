@@ -33,7 +33,7 @@ Your repo can call this repo's reusable workflow, which builds, tests, packages 
 ```
 jobs:
   vst:
-    uses: sd88me/mpc-vst-plugins/.github/workflows/vst-release.yml@<commit>
+    uses: open-mpc/mpc-vst-plugins/.github/workflows/vst-release.yml@<commit>
     permissions: { contents: write }
     with:
       tag: my-plugin-vst-v${{ inputs.version }}
@@ -87,7 +87,7 @@ tools/catalog_check.py dist/Your-Plugin-1.0.0-mpc-armv7.zip --catalog
 Attach the zip to a GitHub release on your repo. The [release workflow](workflow.html) page has the whole path.
 
 ### 2. Add one file
-Open a pull request to [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) adding `catalog/plugins/<id>.json`, where `<id>` is the id in your zip's manifest:
+Open a pull request to [mpc-vst-plugins](https://github.com/open-mpc/mpc-vst-plugins) adding `catalog/plugins/<id>.json`, where `<id>` is the id in your zip's manifest:
 
 ```
 { "id": "your-plugin", "name": "Your Plugin", "author": "Your name",
@@ -128,14 +128,14 @@ Add a `screenshot` field to your entry and the card shows that image at the top,
 ### MPC OS 2.x and 3.x (optional)
 Every release is classed **2.x + 3.x** or **3.x only** (the card's MPC OS line and the MPC OS filter; MPC OS 3.x is the standard, so the only card badge is **MPC OS 2.x tested**, for a 2.x + 3.x release with a 2.x device test in `tested.json`). You do not declare it: the check works it out from your zip, and a 3.x-only plugin is listed like any other.
 - **2.x + 3.x** needs both: the library needs glibc 2.32 or less (the default build does), and the skin only uses the file versions MPC OS 2.15.1's own skins use. A skin written with the current tools uses newer versions, so it is labelled 3.x only, and on MPC OS 2.x it shows no touchscreen page (the Q-Links still work).
-- **To offer 2.x**, write the skin in the 2.x shape (the generator writes it when built with `SHADOW_SKIN_MPC_OS=2`; for a hand-written skin see [the table](https://github.com/sd88me/mpc-vst-plugins/blob/main/docs/OS2_SKINS.md)), run `python3 tools/skin_compat.py check "<skin>/Plugin Skins/TUI.json" "<skin>/Plugin Skins/Q-Links.json"` to see what still stops it, and publish a new release. The label updates on the next catalog build, and `tools/release.py` prints it when you build the zip.
+- **To offer 2.x**, write the skin in the 2.x shape (the generator writes it when built with `SHADOW_SKIN_MPC_OS=2`; for a hand-written skin see [the table](https://github.com/open-mpc/mpc-vst-plugins/blob/main/docs/OS2_SKINS.md)), run `python3 tools/skin_compat.py check "<skin>/Plugin Skins/TUI.json" "<skin>/Plugin Skins/Q-Links.json"` to see what still stops it, and publish a new release. The label updates on the next catalog build, and `tools/release.py` prints it when you build the zip.
 - A library that needs glibc 2.33 to 2.36 is still listed, as 3.x only; more than 2.36 is rejected.
 - Whether to support 2.x is your call: earlier releases keep their label, and people on MPC OS 2.x are told before they install a 3.x-only plugin.
 
 ### Plugins that can't ship a zip
 Some plugins compile the user's own firmware into the plugin. Their build contains firmware-derived data, so it must never be published or shared. Those are listed as **Build it yourself**: the catalog shows what you need, the exact build command and a warning, and offers no download.
 
-Your repo needs an open-source license and a root `LICENSE` file, a one-command build script and a `vX.Y.Z` git tag that contains it. Never put a `*-mpc-armv7.zip` on a GitHub release; the nightly build flags it. The pull request adds the same registry file with `"distribution": "build-yourself"` and three extra fields: `requires_user_files`, `build` and, for a build that installs several plugins, `components`. The [catalog README](https://github.com/sd88me/mpc-vst-plugins/blob/main/catalog/README.md#if-your-plugin-cant-publish-a-zip-build-yourself) has a complete example.
+Your repo needs an open-source license and a root `LICENSE` file, a one-command build script and a `vX.Y.Z` git tag that contains it. Never put a `*-mpc-armv7.zip` on a GitHub release; the nightly build flags it. The pull request adds the same registry file with `"distribution": "build-yourself"` and three extra fields: `requires_user_files`, `build` and, for a build that installs several plugins, `components`. The [catalog README](https://github.com/open-mpc/mpc-vst-plugins/blob/main/catalog/README.md#if-your-plugin-cant-publish-a-zip-build-yourself) has a complete example.
 
 ### Keeping it working
 - Keep the `uid`, the `.so` name and the catalog id fixed across releases.
@@ -150,4 +150,4 @@ This is community software that runs as root on people's devices. Say what the p
 A tool that runs on the user's computer next to an MPC (not a plugin, nothing installed on the device by the catalog) is listed on the **Companion apps** tab: add an entry to `catalog/apps.json` with your repo and, per platform, a pattern for the release asset: the nightly build then fills in the links, version and checksums from your newest stable release. See `catalog/README.md`.
 
 ## After the release
-The catalog finds new releases by itself every night. To list a plugin for the first time, see [List it in the catalog](#list-it-in-the-catalog) above. If a release fails the checks, it is left out, the previous version stays listed, and an issue is opened on the [catalog repository](https://github.com/sd88me/mpc-vst-plugins/issues) saying why.
+The catalog finds new releases by itself every night. To list a plugin for the first time, see [List it in the catalog](#list-it-in-the-catalog) above. If a release fails the checks, it is left out, the previous version stays listed, and an issue is opened on the [catalog repository](https://github.com/open-mpc/mpc-vst-plugins/issues) saying why.

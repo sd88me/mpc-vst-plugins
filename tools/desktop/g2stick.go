@@ -28,10 +28,12 @@ import (
 const g2StickMaxSize = 128 << 20 // two packages of ~20 MB each
 
 // g2PinURL is a var so tests can point it at a local server; empty means "no published stick".
-var g2PinURL = "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/main/tools/desktop/g2stick-pin.json"
+var g2PinURL = "https://raw.githubusercontent.com/open-mpc/mpc-vst-plugins/main/tools/desktop/g2stick-pin.json"
 
-// g2ReleasePrefix is the only place a pin file may send the download.
-const g2ReleasePrefix = "https://github.com/sd88me/mpc-vst-plugins/releases/download/"
+// g2ReleasePrefix and g2OldReleasePrefix are the only places a pin file may send the download. The pin file keeps the old owner's
+// address (it redirects after the move to open-mpc): installers released before the move accept only that one.
+const g2ReleasePrefix = "https://github.com/open-mpc/mpc-vst-plugins/releases/download/"
+const g2OldReleasePrefix = "https://github.com/sd88me/mpc-vst-plugins/releases/download/"
 
 var g2StickNeed = []string{"autorun/autorun.json", "autorun/autorun.check", "autorun/open.sh",
 	"autorun/runtime/run.sh", "autorun/runtime/payload.sha256", ".mpc-g2-stick"}
@@ -51,7 +53,7 @@ func currentG2Pin() (easyPin, error) {
 	defer resp.Body.Close()
 	var p easyPin
 	if resp.StatusCode != 200 || json.NewDecoder(io.LimitReader(resp.Body, 8<<10)).Decode(&p) != nil ||
-		p.Version == "" || !strings.HasPrefix(p.URL, g2ReleasePrefix) || strings.ContainsAny(p.URL, " \t\r\n") || !hex64.MatchString(p.SHA256) {
+		p.Version == "" || !(strings.HasPrefix(p.URL, g2ReleasePrefix) || strings.HasPrefix(p.URL, g2OldReleasePrefix)) || strings.ContainsAny(p.URL, " \t\r\n") || !hex64.MatchString(p.SHA256) {
 		return easyPin{}, errNoG2Stick
 	}
 	return p, nil

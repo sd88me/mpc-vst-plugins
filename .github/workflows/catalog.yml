@@ -109,7 +109,7 @@ jobs:
           git add -A
           if git diff --cached --quiet; then echo "no change"; exit 0; fi
           git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
-            commit -q -m "Catalog update from sd88me/mpc-vst-plugins@${GITHUB_SHA::7}"
+            commit -q -m "Catalog update from ${GITHUB_REPOSITORY}@${GITHUB_SHA::7}"
           git push -q origin HEAD:main
   mirror:
     # Keeps the OLD catalog address answering after the repo has moved to another owner (docs/ORG_MIGRATION.md, step 2), by committing a

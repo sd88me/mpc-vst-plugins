@@ -20,7 +20,7 @@ ROOT = os.path.dirname(HERE)
 ID = re.compile(r"[a-z0-9]+(-[a-z0-9]+)*")
 SHA = re.compile(r"[0-9a-f]{64}")
 MD5 = re.compile(r"[0-9a-f]{32}")
-OWN = re.compile(r"https://raw\.githubusercontent\.com/sd88me/mpc-vst-plugins/([0-9a-f]{40})/(.+)")
+OWN = re.compile(r"https://raw\.githubusercontent\.com/open-mpc/mpc-vst-plugins/([0-9a-f]{40})/(.+)")
 REQUIRED = ["id", "title", "summary", "author", "license", "docs", "script", "supports", "modifies", "backup", "restarts_mpc", "reversible"]
 MAX_SCRIPT = 1 << 20
 
