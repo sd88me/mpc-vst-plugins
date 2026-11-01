@@ -26,7 +26,8 @@ type App struct {
 	hosts       map[string]bool // accepted Host headers
 	catalogURL  string
 	patchesURL  string
-	releasesURL string // where the version check looks; empty = no check
+	fallbacks   []string // catalog addresses tried, in order, when catalogURL does not give a catalog (empty for a custom --catalog)
+	releasesURL string   // where the version check looks; empty = no check
 	verAt       time.Time
 	verInfo     versionInfo
 	work        string
@@ -50,6 +51,43 @@ func NewApp(cfg Config, token, hostport, catalogURL, work string) *App {
 	port := hostport[strings.LastIndex(hostport, ":")+1:]
 	return &App{cfg: cfg, token: token, catalogURL: catalogURL, releasesURL: defaultReleasesURL, patchesURL: patchesURLFor(catalogURL), work: work, uploads: map[string]*Package{}, patchCode: map[string][]byte{},
 		stickScan: map[string]*stickScan{}, hosts: map[string]bool{"127.0.0.1:" + port: true, "localhost:" + port: true}}
+}
+
+// fetchCatalog reads the catalog from catalogURL, then from each fallback, and returns the first one that parses. The error
+// names every address that failed, so a broken new address is not hidden behind the old one's answer.
+func (a *App) fetchCatalog() ([]CatPlugin, error) {
+	var msgs []string
+	for _, u := range append([]string{a.catalogURL}, a.fallbacks...) {
+		cat, err := FetchCatalog(u)
+		if err == nil {
+			return cat, nil
+		}
+		msgs = append(msgs, u+": "+err.Error())
+	}
+	if len(msgs) == 1 {
+		return nil, errors.New(strings.TrimPrefix(msgs[0], a.catalogURL+": "))
+	}
+	return nil, errors.New(strings.Join(msgs, "; "))
+}
+
+// fetchPatches is the same for patches.json, which sits next to each catalog. A missing manifest at one address (404) is not
+// "no patches published" while another address still has to be asked.
+func (a *App) fetchPatches() ([]Patch, error) {
+	urls := []string{a.patchesURL}
+	for _, f := range a.fallbacks {
+		urls = append(urls, patchesURLFor(f))
+	}
+	var firstErr error
+	for _, u := range urls {
+		ps, err := FetchPatches(u)
+		if err == nil {
+			return ps, nil
+		}
+		if firstErr == nil || errors.Is(firstErr, errNoPatches) {
+			firstErr = err
+		}
+	}
+	return nil, firstErr
 }
 
 func (a *App) Handler() http.Handler {
@@ -201,7 +239,7 @@ func (a *App) catalog(w http.ResponseWriter, r *http.Request) {
 	a.mu.Lock()
 	if a.cat == nil || time.Since(a.catAt) > 10*time.Minute {
 		a.mu.Unlock()
-		cat, err := FetchCatalog(a.catalogURL)
+		cat, err := a.fetchCatalog()
 		if err != nil {
 			fail(w, 502, "cannot read the catalog: "+err.Error()+" (you can still install zips you have already downloaded)")
 			return
@@ -581,7 +619,7 @@ func (a *App) ensureCat() {
 	if ok {
 		return
 	}
-	if cat, err := FetchCatalog(a.catalogURL); err == nil {
+	if cat, err := a.fetchCatalog(); err == nil {
 		a.mu.Lock()
 		a.cat, a.catAt = cat, time.Now()
 		a.mu.Unlock()
@@ -808,7 +846,7 @@ func (a *App) patchList(w http.ResponseWriter, r *http.Request) {
 	a.mu.Lock()
 	if a.patches == nil || time.Since(a.patchesAt) > 10*time.Minute {
 		a.mu.Unlock()
-		ps, err := FetchPatches(a.patchesURL)
+		ps, err := a.fetchPatches()
 		a.mu.Lock()
 		switch {
 		case errors.Is(err, errNoPatches):

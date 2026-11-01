@@ -64,6 +64,9 @@ func main() {
 		os.Exit(1)
 	}
 	app := NewApp(defaultConfig(), token, ln.Addr().String(), *catalog, work)
+	if *catalog == defaultCatalogURL {
+		app.fallbacks = []string{legacyCatalogURL} // a custom --catalog is used alone
+	}
 	if *noUpdateCheck {
 		app.releasesURL = ""
 	}
