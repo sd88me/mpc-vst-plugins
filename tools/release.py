@@ -40,6 +40,7 @@ ap.add_argument("--version", required=True)
 ap.add_argument("--extra", action="append", default=[], help="SRC:DEST extra data, DEST relative to the plugin folder (e.g. bin:engine/bin); a leading vst/ is accepted for old scripts")
 ap.add_argument("--bench", help="JSON line from `tools/bench.sh ... -j` on a Gen1 device")
 ap.add_argument("--about", default="", help="one-line description for INSTALL.md")
+ap.add_argument("--folder-name", help="name part of the plugin folder when it differs from the plugin-list name (default: the list name); the folder name is kept so upgrades keep the user's data")
 ap.add_argument("--id", help="catalog id: lowercase letters, digits, hyphens (default: from the plugin name)")
 ap.add_argument("--repo", help="source repo, owner/name (for the catalog manifest)")
 ap.add_argument("--license", help="SPDX license id of the plugin (for the catalog manifest)")
@@ -58,14 +59,15 @@ name, so_name = attr["name"], os.path.basename(attr["file"])
 if os.path.basename(a.so) != so_name:
     raise SystemExit("entry file= is %s but --so is %s" % (so_name, os.path.basename(a.so)))
 skin_name = os.path.basename(os.path.normpath(a.skin))
-if skin_name != "%s - VST - %s" % (attr["manufacturer"], name):
-    raise SystemExit("skin folder must be named '%s - VST - %s'" % (attr["manufacturer"], name))
+fname = a.folder_name or name
+if skin_name != "%s - VST - %s" % (attr["manufacturer"], fname):
+    raise SystemExit("skin folder must be named '%s - VST - %s'" % (attr["manufacturer"], fname))
 for need in ("version.xml", "Plugin Skins/TUI.json"):
     if not os.path.exists(os.path.join(a.skin, need)):
         raise SystemExit("skin is missing " + need)
 bench = json.loads(open(a.bench).read().strip().splitlines()[-1]) if a.bench else None
 
-slug = re.sub(r"[^A-Za-z0-9]+", "-", name).strip("-")
+slug = re.sub(r"[^A-Za-z0-9]+", "-", fname).strip("-")
 top = "%s-%s" % (slug, a.version)
 stage = tempfile.mkdtemp()
 root = os.path.join(stage, top)
