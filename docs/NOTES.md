@@ -6,6 +6,12 @@ from the Force and may differ on MPC Live/One/X/Key (e.g. `Force Documents` vs `
 
 ## Facts (verified)
 
+- **The host processes in place**: an effect's `processReplacing` gets the same buffers as input and output, so read each
+  frame's input before writing its output. Until 2026-10-31 the wrapper's effect path did not, for block sizes that are not a
+  multiple of 128 (Preferences block size 32, 64, 96 or 192): the effect heard its own output instead of the track. Fixed in
+  `wrapper/vst2_wrap.c`; `tools/host_test.c` now checks in-place against separate buffers at 32-256 frames. Effect ports pick
+  up the fix on their next rebuild.
+
 - `/usr/bin/MPC` contains `"pluginList"` + `"-arm"`, `KNOWNPLUGINS`, `VSTPluginMain`.
 - Settings: `/media/az01-internal/Settings/MPC/MPC.settings`. Edit **with `acvs`
   stopped**; back it up first (malformed XML ⇒ MPC resets it to defaults).
