@@ -62,6 +62,14 @@ on:
         description: One line of extra requirements for the manifest (e.g. a firmware)
         type: string
         default: ''
+      depends:
+        description: Other catalog plugins this release needs, space separated (e.g. percolator>=2.0.0 or tr-mpc=same; docs/CATALOG_SPEC.md "Dependencies")
+        type: string
+        default: ''
+      conflicts:
+        description: Catalog ids this release must not be installed with, space separated
+        type: string
+        default: ''
       zig:
         description: zig version to install, if the build needs it
         type: string
@@ -148,6 +156,8 @@ jobs:
           PLUGIN_ID: ${{ inputs.plugin_id }}
           LICENSE_ID: ${{ inputs.license }}
           REQUIRES: ${{ inputs.requires }}
+          DEPENDS: ${{ inputs.depends }}
+          CONFLICTS: ${{ inputs.conflicts }}
           USER_DATA: ${{ inputs.user_data }}
           GEN2_ONLY: ${{ inputs.gen2_only }}
         run: |
@@ -163,6 +173,8 @@ jobs:
           [ -z "$PLUGIN_ID" ] || args+=(--id "$PLUGIN_ID")
           [ -z "$LICENSE_ID" ] || args+=(--license "$LICENSE_ID")
           [ -z "$REQUIRES" ] || args+=(--requires "$REQUIRES")
+          for d in $DEPENDS; do args+=(--depends "$d"); done
+          for c in $CONFLICTS; do args+=(--conflicts "$c"); done
           if [ -f "$VST_DIR/bench.txt" ]; then
             args+=(--bench "$VST_DIR/bench.txt"); bench="from committed $VST_DIR/bench.txt"
           else

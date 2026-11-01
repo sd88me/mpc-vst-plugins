@@ -438,7 +438,25 @@
        "size": 12011,
        "url": "https://x/x-mpc-aarch64.zip"
       }
-     }
+     },
+     "depends": [
+      {
+       "id": "test-synth",
+       "rules": [
+        [
+         ">=",
+         "1.1.0"
+        ]
+       ],
+       "pick": {
+        "armv7": "1.1.0",
+        "aarch64": null
+       }
+      }
+     ],
+     "conflicts": [
+      "three-only"
+     ]
     },
     {
      "version": "1.0.0",

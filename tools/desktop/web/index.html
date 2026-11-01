@@ -418,7 +418,7 @@ function text(el, s) { el.textContent = s; }
 function api(path, body, raw) {
   var o = { headers: { "X-MPC-Token": T } };
   if (body !== undefined) { o.method = "POST"; if (raw) o.body = body; else { o.headers["Content-Type"] = "application/json"; o.body = JSON.stringify(body); } }
-  return fetch(path, o).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+  return fetch(path, o).then(function (r) { return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || ("HTTP " + r.status)); e.status = r.status; throw e; } return j; }); });
 }
 function msg(el, s, cls) { text(el, s || ""); el.className = "msg" + (cls ? " " + cls : ""); }
 function gb(kb) { return kb >= 1048576 ? (kb / 1048576).toFixed(1) + " GB" : Math.round(kb / 1024) + " MB"; }
@@ -523,6 +523,18 @@ function osNote(p) {   /* {level, text} when this plugin will not work as expect
   if (g.length && g.indexOf("2.x") < 0 && vgt("2.34", S.libc)) return { level: "warn", text: p.name + " is made for MPC OS 3.x. This device looks like MPC OS 2.x (glibc " + S.libc + "), so its touchscreen page may stay empty; it still works from the Q-Links." };
   return null;
 }
+/* What else a plugin needs and, for an addin, the installed or ticked addins that replace some of the same MPC functions where one of
+   the two may not pass the calls on (catalog shares_hooks). Notes only, never blocks. */
+function needNotes(p) {
+  var n = [];
+  if (!p) return n;
+  if (p.requires) n.push({ level: "warn", text: p.name + " needs: " + p.requires });
+  (p.shares_hooks || []).forEach(function (o) {
+    var c = S.cat.filter(function (x) { return x.id === o.id; })[0];
+    if (c && (c.installed || S.pickCat[c.id])) n.push({ level: "warn", text: p.name + " and " + o.name + " replace some of the same MPC functions (" + o.symbols.join(", ") + "), and one of them may not pass the calls on: together, one may stop working. If it does, remove one of them." });
+  });
+  return n;
+}
 function drawCat() {
   var ul = $("cat"); ul.textContent = "";
   var rows = shownCat(), f = S.f, filtered = !!(f.q || f.dev || f.show);
@@ -538,6 +550,7 @@ function drawCat() {
     if (p.gen2) { var gt = el("span", "tag", "Gen2"); gt.title = "Also built for Gen2 (aarch64) MPC devices; the app installs the right zip for the connected device."; b.appendChild(gt); }
     t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " by " + p.author + " · " + mb(p.size) + " · " + p.summary));
     var on = osNote(p); if (on) t.appendChild(el("span", "d osn " + on.level, on.text));
+    needNotes(p).forEach(function (nn) { t.appendChild(el("span", "d osn " + nn.level, nn.text)); });
     var lab = el("label"); lab.htmlFor = cb.id; lab.style.display = "contents"; lab.appendChild(t);
     li.appendChild(cb); li.appendChild(lab); ul.appendChild(li);
   });
@@ -811,13 +824,20 @@ drop.addEventListener("drop", function (e) { upload(e.dataTransfer.files); });
 function startInstall() {
   var s = selection();
   api("/api/plan", s).then(function (p) {
-    var names = p.items.map(function (i) { return i.title + " " + i.version; }).join(", ");
+    var names = p.items.filter(function (i) { return !i.why; }).map(function (i) { return i.title + " " + i.version; }).join(", ");
+    var deps = p.items.filter(function (i) { return i.why; });
     var r = p.maybeMore ? " MPC will restart at least once, and once more for each plugin with an older installer that restarts MPC by itself (the log shows which)."
           : p.restarts > 1 ? " MPC will restart " + p.restarts + " times, because some of the installers restart it themselves." : " MPC will restart once.";
     S.mode = "install"; $("dlgsave").hidden = false; text($("dlgtitle"), "Install on your device?"); text($("yes"), "Install");
-    var notes = s.catalog.map(function (id) { return osNote(S.cat.filter(function (x) { return x.id === id; })[0]); }).filter(Boolean);
+    var notes = [];
+    s.catalog.forEach(function (id) { var c = S.cat.filter(function (x) { return x.id === id; })[0]; notes.push(osNote(c)); notes = notes.concat(needNotes(c)); });
+    notes = notes.filter(Boolean);
+    (p.notes || []).forEach(function (t) { notes.push({ level: "warn", text: t + "." }); });
+    (p.refused || []).forEach(function (t) { notes.push({ level: "err", text: t + "." }); });
+    S.force = (p.refused || []).length > 0;
     if (notes.some(function (n) { return n.level === "err"; })) text($("yes"), "Install anyway");
-    text($("dlgtxt"), "About to install: " + names + (S.roots.length > 1 ? " to " + rootLabelOf(S.root) : "") + "." + r + (notes.length ? " " + notes.map(function (n) { return (n.level === "err" ? "Warning: " : "Note: ") + n.text; }).join(" ") : ""));
+    text($("dlgtxt"), "About to install: " + names + (S.roots.length > 1 ? " to " + rootLabelOf(S.root) : "") + "." +
+      (deps.length ? " Also installing, for the dependencies: " + deps.map(function (i) { return i.title + " " + i.version + " (" + i.why + ")"; }).join("; ") + "." : "") + r + (notes.length ? " " + notes.map(function (n) { return (n.level === "err" ? "Warning: " : "Note: ") + n.text; }).join(" ") : ""));
     $("dlg").showModal();
   }).catch(function (e) { msg($("result"), e.message, "err"); });
 }
@@ -835,7 +855,7 @@ $("resetf").addEventListener("click", function () {
 $("no").addEventListener("click", function () { $("dlg").close(); });
 function chosenDev() { return S.dev.filter(function (p) { return S.pickDev[devKey(p)] && p.known; }); }
 $("rm").addEventListener("click", function () {
-  var ch = chosenDev(); S.mode = "remove"; $("dlgsave").hidden = false;
+  var ch = chosenDev(); S.mode = "remove"; S.force = false; $("dlgsave").hidden = false;
   text($("dlgtitle"), "Remove from your device?"); text($("yes"), "Remove");
   var plugs = ch.filter(function (p) { return !p.addin; }), adds = ch.filter(function (p) { return p.addin; });
   text($("dlgtxt"), "About to remove: " + ch.map(function (p) { return p.name || p.folder; }).join(", ") + "." +
@@ -875,11 +895,18 @@ $("yes").addEventListener("click", function () {
   if (S.mode === "remove") {
     var items = chosenDev().map(function (p) { return { root: p.root, folder: p.folder }; });
     S.running = true; refresh(); msg($("rmresult"), "Working…"); var rl = $("rmlog"); rl.hidden = false; rl.textContent = "";
-    api("/api/remove", { items: items, confirm: true }).then(function () { poll(0, $("rmlog"), $("rmresult"), "Done. MPC is starting again: the plugins are gone from its list."); })
-      .catch(function (e) { S.running = false; refresh(); msg($("rmresult"), e.message, "err"); });
+    api("/api/remove", { items: items, confirm: true, force: !!S.force }).then(function () { poll(0, $("rmlog"), $("rmresult"), "Done. MPC is starting again: the plugins are gone from its list."); })
+      .catch(function (e) {
+        S.running = false; refresh(); rl.hidden = true;
+        if (e.status === 409 && !S.force && / needs /.test(e.message)) { // something installed still needs it: ask again
+          msg($("rmresult"), ""); S.force = true; text($("dlgtitle"), "Remove anyway?"); text($("yes"), "Remove anyway");
+          text($("dlgtxt"), "Warning: " + e.message.replace(/ Nothing was changed.*$/, "") + " It may stop working."); $("dlg").showModal(); return;
+        }
+        msg($("rmresult"), e.message, "err");
+      });
     return;
   }
-  var s = selection(); s.confirm = true;
+  var s = selection(); s.confirm = true; s.force = !!S.force;
   S.running = true; refresh(); msg($("result"), "Working…"); var log = $("log"); log.hidden = false; log.textContent = "";
   api("/api/install", s).then(function () { poll(0, $("log"), $("result"), "Done. MPC is starting again: the new plugins are in the plugin list."); }).catch(function (e) { S.running = false; refresh(); msg($("result"), e.message, "err"); });
 });
