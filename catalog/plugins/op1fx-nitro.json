@@ -1,0 +1,18 @@
+{
+  "id": "op1fx-nitro",
+  "name": "Nitro",
+  "author": "Bombest",
+  "repo": "Bombest-Audio/op1-fx",
+  "kind": "effect",
+  "style": "filter",
+  "tags": [
+    "op1",
+    "filter",
+    "drive",
+    "dj"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "Filter with a drive stage and a MIX knob, 12 presets. OP-1 inspired.",
+  "screenshot": "https://raw.githubusercontent.com/Bombest-Audio/op1-fx/34f1396d82a4ae72baa761a50f1d9bfe834c444f/screenshots/mpc/nitro.png",
+  "asset_pattern": "Nitro-*-mpc-armv7.zip"
+}

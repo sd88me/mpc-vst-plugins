@@ -1,0 +1,18 @@
+{
+  "id": "op1fx-dna",
+  "name": "DNA",
+  "author": "Bombest",
+  "repo": "Bombest-Audio/op1-fx",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "op1",
+    "synth",
+    "1-bit",
+    "wavetable"
+  ],
+  "license": "GPL-3.0-only",
+  "summary": "A 128-bit genome played as a one-bit wave through an anti-aliased reader. Eight voices. OP-1 inspired.",
+  "screenshot": "https://raw.githubusercontent.com/Bombest-Audio/op1-fx/34f1396d82a4ae72baa761a50f1d9bfe834c444f/screenshots/mpc/dna.png",
+  "asset_pattern": "DNA-*-mpc-armv7.zip"
+}
