@@ -203,7 +203,7 @@ func TestCatalogErrorNamesEveryAddressThatFailed(t *testing.T) {
 }
 
 func TestDefaultCatalogAddressesAreTheOrgThenTheOldSite(t *testing.T) {
-	if defaultCatalogURL != "https://open-mpc.github.io/mpc-vst-plugins/catalog.json" || legacyCatalogURL != "https://sd88me.github.io/mpc-vst-plugins/catalog.json" {
+	if defaultCatalogURL != "https://open-mpc.github.io/catalog.json" || legacyCatalogURL != "https://sd88me.github.io/mpc-vst-plugins/catalog.json" {
 		t.Fatalf("default %q legacy %q", defaultCatalogURL, legacyCatalogURL)
 	}
 }

@@ -46,6 +46,9 @@ func TestPatchesURLIsNextToTheCatalog(t *testing.T) {
 	if got := patchesURLFor("https://sd88me.github.io/mpc-vst-plugins/catalog.json?x=1"); got != "https://sd88me.github.io/mpc-vst-plugins/patches.json" {
 		t.Errorf("got %q", got)
 	}
+	if got := patchesURLFor("https://open-mpc.github.io/catalog.json"); got != "https://open-mpc.github.io/patches.json" {
+		t.Errorf("got %q", got)
+	}
 	if patchesURLFor("not a url") != "" {
 		t.Error("garbage gives no url")
 	}

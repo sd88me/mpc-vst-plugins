@@ -18,7 +18,7 @@ import (
 // The catalog moves to the open-mpc organization. Until it has, and for installs that predate the move, the old address is
 // tried second: it stays alive as a copy (docs/ORG_MIGRATION.md). Both serve the same catalog.json.
 const (
-	defaultCatalogURL = "https://open-mpc.github.io/mpc-vst-plugins/catalog.json"
+	defaultCatalogURL = "https://open-mpc.github.io/catalog.json"
 	legacyCatalogURL  = "https://sd88me.github.io/mpc-vst-plugins/catalog.json"
 )
 

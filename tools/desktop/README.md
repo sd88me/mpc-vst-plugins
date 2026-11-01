@@ -130,7 +130,7 @@ A plugin whose manifest has `user_files` (docs/CATALOG_SPEC.md) gets a step afte
 ## Run it
 
 Download the archive for your system from the releases, unpack it and start `mpc-installer` (double-click it, or run it in a
-terminal). It prints a link and opens it in your browser. `--no-browser` only prints the link; `--catalog` sets one catalog address and is then used alone (by default the app reads `https://open-mpc.github.io/mpc-vst-plugins/catalog.json` and, when that does not give a catalog, the old `https://sd88me.github.io/mpc-vst-plugins/catalog.json`, with `patches.json` taken from the same pair; added 2026-10-20, offline tests only); `--port`, `--no-update-check` and `--version`
+terminal). It prints a link and opens it in your browser. `--no-browser` only prints the link; `--catalog` sets one catalog address and is then used alone (by default the app reads `https://open-mpc.github.io/catalog.json` and, when that does not give a catalog, the old `https://sd88me.github.io/mpc-vst-plugins/catalog.json`, with `patches.json` taken from the same pair; added 2026-10-20, offline tests only); `--port`, `--no-update-check` and `--version`
 exist too.
 
 The first run is unsigned, so the system warns you once:

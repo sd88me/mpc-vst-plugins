@@ -14,12 +14,12 @@
 # once and started once, and is started again if something fails. What was installed is remembered in <synths-dir>/.mpc-store.
 # Addins (catalog kind "addin": libraries MPC preloads, docs/ADDINS.md) go to /data/mpc-addins/<id> instead of a Synths folder; each
 # installed addin folder holds its version (addin.manifest) and its own uninstall.sh.
-# The catalog is https://open-mpc.github.io/mpc-vst-plugins/catalog.tsv, with https://sd88me.github.io/mpc-vst-plugins/catalog.tsv (the
+# The catalog is https://open-mpc.github.io/catalog.tsv, with https://sd88me.github.io/mpc-vst-plugins/catalog.tsv (the
 # old address, kept as a copy) tried when the first does not give a catalog (docs/CATALOG.md, docs/ORG_MIGRATION.md); the helper files it lists (sync.sh,
 # plugin_list.awk) are fetched from the same folder and checked against the hashes in it. Build-yourself plugins are not here.
 set -e
 # MPC_STORE_URL and --url take one address, or several separated by spaces that are tried in turn; the first that gives a catalog wins.
-URL="${MPC_STORE_URL:-https://open-mpc.github.io/mpc-vst-plugins/catalog.tsv https://sd88me.github.io/mpc-vst-plugins/catalog.tsv}"
+URL="${MPC_STORE_URL:-https://open-mpc.github.io/catalog.tsv https://sd88me.github.io/mpc-vst-plugins/catalog.tsv}"
 SYNTHS=/sdcard/Synths; YES=0; DRY=0; MAJOR=0
 ADDINS="${MPC_ADDINS:-/data/mpc-addins}"
 TAB=$(printf '\t')
