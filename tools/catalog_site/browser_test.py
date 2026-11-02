@@ -217,8 +217,13 @@ with sync_playwright() as p:
     pg.fill("#q", "shimmer")
     check("a search that matches a member surfaces the card with that member", coll.count() == 1 and chips() == ["Pack Verb"]
           and coll.locator(".matchline").text_content().startswith("1 of 5 match"), str(chips()))
+    pg.fill("#q", "acme pack")
+    check("a search for the collection's title shows all its members", coll.count() == 1 and len(chips()) == 4)
+    pg.fill("#q", "drum")
+    check("a word in its summary lists only the members that match", coll.count() == 1 and chips() == ["Pack Kick"]
+          and coll.locator(".matchline").text_content().startswith("1 of 5 match"), str(chips()))
     pg.fill("#q", "every acme plugin")
-    check("a search for the collection's own text shows all its members", coll.count() == 1 and len(chips()) == 4)
+    check("its summary alone does not surface it", coll.count() == 0)
     pg.fill("#q", "nothing like this")
     check("a search matching no member hides it", coll.count() == 0)
     pg.fill("#q", ""); pg.select_option("#f-dev", "Acme")

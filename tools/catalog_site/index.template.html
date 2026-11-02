@@ -282,9 +282,10 @@ function kindCount(list) {
   return KIND_ORDER.filter(function (k) { return n[k]; }).map(function (k) { return n[k] + " " + KIND_WORD[k][n[k] === 1 ? 0 : 1]; }).join(" \u00b7 ");
 }
 /* One grid item per collection with at least one member that passes the tab, search and filters. It sorts like a plugin: best tier of
-   those members, their Verified generations and newest test, the collection's total downloads, its title. */
+   those members, their Verified generations and newest test, the collection's total downloads, its title. A search for the collection's
+   title lists all its members; any other search (a word in its summary too) lists only the members that match it. */
 function collItem(c) {
-  var q = state.q.toLowerCase(), own = !!q && [c.title, c.author, c.summary].join(" ").toLowerCase().indexOf(q) >= 0;
+  var q = state.q.toLowerCase(), own = !!q && c.title.toLowerCase().indexOf(q) >= 0;
   var hit = c.mem.filter(function (p) { return match(p, own); });
   if (!hit.length) return null;
   var inTab = c.mem.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); });
