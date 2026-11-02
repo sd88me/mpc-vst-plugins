@@ -474,7 +474,9 @@ int main(void) {
         const param_t *p = &PARAMS[i];
         if (is_legacy(i)) continue;
         if (cont < 0 && !p->nopts && !p->momentary && !p->string_display && p->step_target < 0 && p->max > p->min) cont = i;
-        if (en < 0 && i > 0 && p->nopts > 2 && !p->momentary && p->popup_of < 0) en = i;   /* not parameter 0: the wrapper holds it for MPC's STOP toggle (param0_toggle_check) */
+        /* not parameter 0: the wrapper holds it for MPC's STOP toggle (param0_toggle_check); and one that keeps what it is
+         * set to: an option the engine derives (TR-MPC's per-slot kit, read only) can't be stepped, as the NRPN test skips it */
+        if (en < 0 && i > 0 && p->nopts > 2 && !p->momentary && p->popup_of < 0 && keeps(a, i, 1.0f) && keeps(a, i, 0.0f)) en = i;
         if (pop < 0 && p->popup_of >= 0) pop = i;
     }
     if (cont >= 0) {

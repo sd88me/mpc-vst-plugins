@@ -153,6 +153,7 @@ typedef struct {
     pthread_mutex_t lock;    /* one engine call at a time: see eng_set() */
     int nrpn;                /* HAS_NRPN: the parameter CC 99/98 selected (-1: none), its coarse value from CC 6 */
     int nrpn_msb;
+    int absolute_set;        /* cc_set() in progress: a MIDI CC/NRPN value is absolute, so nudge_gain doesn't multiply it */
     volatile char cc_changed[NPARAMS];   /* set from MIDI CC/NRPN, reported to the host at most every 1024 frames */
     int cc_report;           /* frames until CC-driven changes are reported again */
     int update_wait;         /* frames until another audioMasterUpdateDisplay may be sent (see housekeeping) */
@@ -296,7 +297,7 @@ static void set_param_now(AEffect *e, int32_t i, float n) {
         w->need_update_display = 1;
         return;
     }
-    if (p->nudge_gain > 1 && p->nopts <= 1 && p->max > p->min) {
+    if (p->nudge_gain > 1 && p->nopts <= 1 && p->max > p->min && !w->absolute_set) {
         /* "nudge_gain": a small move (data wheel click, Q-Link event) is multiplied; a bigger one is a drag or a jump */
         const float cur = get_norm(w, i), d = n - cur;
         if (d != 0 && fabsf(d) < 0.02f) n = clamp01(cur + d * p->nudge_gain);
@@ -659,7 +660,9 @@ static void cc_set(wrap_t *w, int i, float n) {
     const param_t *p = &PARAMS[i];
     if (p->nopts > 1) n = roundf(clamp01(n) * (p->nopts - 1)) / (p->nopts - 1);
     else if (p->int_display && p->max > p->min) n = roundf(clamp01(n) * (p->max - p->min)) / (p->max - p->min);
+    w->absolute_set = 1;     /* NRPN's fine byte (CC 38) lands a tiny step from the coarse one (CC 6): not a wheel click */
     setParameter(&w->fx, i, n);
+    w->absolute_set = 0;
     w->cc_changed[i] = 1;
 }
 
