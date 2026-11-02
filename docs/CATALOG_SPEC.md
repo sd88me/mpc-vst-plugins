@@ -92,7 +92,7 @@ No version fields: they are read from the releases (or, for `build-yourself`, th
 `source_repo`. Stable releases are GitHub releases that are not prereleases; prereleases form the beta channel.
 `collection` is optional: the id of a `collections/<id>.json` with the same `repo` (below).
 
-### Collections: `collections/<id>.json` (2026-11-02, offline)
+### Collections: `collections/<id>.json` (2026-11-02, live)
 ```json
 { "id": "my-pack", "title": "My Pack", "author": "Someone", "repo": "someone/my-pack",
   "summary": "One line about the set.", "screenshot": "optional https URL" }
@@ -156,7 +156,7 @@ Every plugin also has `distribution`. For `build-yourself` plugins the record ca
 warnings, tested, notes: ""}`: no `url`, `size`, `sha256`, `param_compat` or `manifest`. Readers must treat those
 keys as absent for such entries (an installer must skip them: there is nothing to download).
 
-`collections` (2026-11-02, offline; absent when there are none): `[{id, title, author, repo, summary, screenshot?, members, kinds, tier,
+`collections` (2026-11-02, live; absent when there are none): `[{id, title, author, repo, summary, screenshot?, members, kinds, tier,
 verified_on, downloads, updated, added}]`. `members` are plugin ids (by name), `kinds` a count per `kind`, `tier` the best member tier,
 `verified_on` the generations of its verified members, `downloads` the members' total, `updated` the newest member update and `added` the
 oldest member's. A member plugin carries `collection` (the id). The plugins themselves stay in `plugins` unchanged, so installers and

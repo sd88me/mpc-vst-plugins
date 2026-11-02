@@ -215,7 +215,7 @@ if you do this once:
 - [ ] One PR adding `catalog/plugins/<id>.json` to mpc-vst-plugins (first release only). Never put versions or checksums in it.
 - [ ] **Several plugins from one repo?** More than 5 entries by the same author in one repo need a collection
       (`catalog/collections/<id>.json` plus `"collection": "<id>"` in each entry; `catalog/README.md`), so the catalog shows one card for the set.
-      `--check-registry` fails without it (2026-11-02, offline).
+      `--check-registry` fails without it (live 2026-11-02).
 - [ ] Keep the `uid` and `.so` name fixed; bump `param_compat` (X of X.Y.Z) only when parameter indices change.
 - [ ] **Firmware-derived port?** If the DSP is compiled from the user's own firmware (so the built `.so` embeds firmware
       code, or the zip carries ROM samples or the OS file), you cannot publish a zip at all. Opt out of the release path:
