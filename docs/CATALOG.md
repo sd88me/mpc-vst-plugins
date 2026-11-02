@@ -51,7 +51,8 @@ vst-release.yml  --release-->   nightly + on-dispatch workflow:       device scr
 bundles a program under another licence, e.g. `MIT AND Apache-2.0`: open when every ID is), `summary`, `screenshot`
 (optional `https://` URL; the site ignores anything else), `asset_pattern` (default `*-mpc-armv7.zip`), `homepage` (optional),
 `tier` (optional, only `"experimental"`) and `featured` (optional bool); see Trust tiers below. `flags_reviewed` (optional list of
-risky-call categories a maintainer has looked at, e.g. `["network"]` for a remote-control plugin; see Validation). Nothing versioned.
+risky-call categories a maintainer has looked at, e.g. `["network"]` for a remote-control plugin; see Validation), `collection` (optional, see
+Collections below). Nothing versioned.
 `catalog/added.json` (`{"<id>": "YYYY-MM-DD"}`) records when each entry joined the catalog, for the site's "Newest in catalog" sort. A
 maintainer adds a line when merging a new entry (not the contributor, so PRs don't conflict on one file); an entry without a line uses
 the date of its oldest release. Backfilled 2026-10-24 from the first commit that added each registry file.
@@ -59,6 +60,25 @@ the date of its oldest release. Backfilled 2026-10-24 from the first commit that
 Length limits (checked by `tools/catalog_build.py`): `summary` at most 350 characters and `tags` at most 8, so cards and the page stay
 readable. Put the full feature list in the repo README. Maintainers may edit a summary or tags for length and consistency, but do not
 change claims about testing or safety without the author.
+
+### Collections (2026-11-02, offline: unit tests and a headless-browser check, not yet published)
+One repo can publish many entries (22 from `mmiroshnikov/mpc-airwindows`, 20 more in PR #685 from `Bombest-Audio/op1-fx`), which floods
+the grid. A **collection** shows them as one card. `catalog/collections/<id>.json` holds `id`, `title`, `author`, `repo`, `summary` and an
+optional `https://` `screenshot`; each member entry adds `"collection": "<id>"`. Members are otherwise unchanged: own release, versions,
+checks, `tested.json` tier, uid and download; `catalog.tsv`, the installer and `catalog_check.py` do not know about collections.
+- **Rules** (`catalog_build.py`, `load_collections`): the collection file must exist, every member's `repo` must equal the collection's, a
+  collection needs at least 2 members, and its `summary` has the plugin limit (350 characters).
+- **N-entry rule (N = 5, `MAX_UNCOLLECTED`):** more than 5 entries sharing a `repo` without a `collection` fails `--check-registry`, and so CI.
+  When the rule was added (2026-11-02) three repos were over it and got collections: `mpc-airwindows` (22 entries), `airwindows-collection`
+  (`sd88me/mpc-vst-airwindows`, 11) and `tr-mpc` (`sd88me/mpc-vst-TR-MPC`, 6).
+- **`catalog.json`:** `collections[]` with members, kind counts, best member tier, total downloads (`docs/CATALOG_SPEC.md`).
+- **Site:** one card per collection (its screenshot, else a collage of up to four member screenshots; title, author, Collection badge,
+  "5 instruments · 1 effect", best tier, the first member chips and +N, View all and Source). It shows under each tab its members cover,
+  with counts and chips for that kind, and sorts by its best member tier and total downloads. Search and filters match the members (or the
+  collection's own title and summary) and list the members that match. `#c=<id>`, shared as `p/c/<id>.html`, opens the collection view:
+  members by kind, each with its install checkbox and a Pick all per group, feeding the same install list. A member's popup and its
+  `p/<id>.html` say "Part of <title>". Entries without a collection look as before.
+- **Feed:** members of a collection released on the same day and channel are one `feed.xml` entry ("<title>: N plugins updated").
 
 ### Distribution types
 `distribution` in the registry entry: `release` (default; everything above) or `build-yourself`. `build-yourself` is limited to
@@ -143,7 +163,7 @@ opened one issue per version, 70 in all, which this replaced).
 ### Site
 Generated static HTML (`tools/catalog_site.py`, no JS framework): searchable/filterable grid, a page per plugin
 (screenshot, description, version history, install steps, source link, checksum, tested-on), a "recently updated"
-feed and an Atom feed. Fast-moving plugins are handled by the version list and the stable/beta channel split.
+feed and an Atom feed. A collection is one card with its own view (Collections above). Fast-moving plugins are handled by the version list and the stable/beta channel split.
 
 ### Installer / updater (later, optional)
 Same JSON, thin clients: (a) a BusyBox shell script on the device (`list`, `install <id>`, `update`, `remove`)
@@ -217,6 +237,8 @@ here first and move to its own repo (recommended, for community ownership) once 
 - [x] (2026-10-09, offline: browser-checked at desktop and phone width, not yet published) The catalog page has tabs: All, Instruments, MIDI, Effects and Addins (2026-10-10; All is every plugin together; since 2026-10-14, offline, All is the first tab and the landing tab, so a link without `tab=` opens on All and an Instruments link carries `#tab=instrument`: MIDI is the optional registry field `role: "midi"`, tagged by hand on 14 sequencers/generators and listed there instead of under Instruments; the other tabs are the old single Plugins tab split by kind; they share the filter bar and grid, a bundle shows under each kind it installs, old `#tab=plugins` links open Instruments), Device patches (the `patches.html` cards) and
       Companion apps (`catalog/apps.json`, `tools/app_check.py`; issue #232, MPC Link first). The tab is in the URL hash (`#tab=apps`). The site is named "Open MPC - Plugin Catalog" and the footer links the Discord.
 - [x] (2026-10-09, tested offline against MPC Link v0.4.0 and a fake GitHub; the first nightly run is unverified) Companion app downloads are read from each app's newest stable GitHub release by `tools/app_resolve.py` (`assets` rules in `catalog/apps.json`), run by `catalog.yml`; pinned `downloads` are the fallback.
+- [x] (2026-11-02, offline: unit tests and a headless-browser check) Collections: one card per repo's set of entries, the more-than-5 rule,
+      `collections[]` in `catalog.json`, the collection view with Pick all, a grouped feed (see Collections above).
 - [ ] Announce to the community; collect what people actually ask for before building Phase 4.
 
 ### Distribution: build-yourself (2026-09-29)
