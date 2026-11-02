@@ -1,0 +1,8 @@
+{
+  "id": "bombest-op1fx",
+  "title": "Bombest OP Style",
+  "author": "Bombest",
+  "repo": "Bombest-Audio/op1-fx",
+  "summary": "11 instruments and 7 effects written from scratch in C, OP-1 inspired, each with its own MPC skin.",
+  "screenshot": "https://raw.githubusercontent.com/Bombest-Audio/op1-fx/34f1396d82a4ae72baa761a50f1d9bfe834c444f/screenshots/mpc/fm.png"
+}
