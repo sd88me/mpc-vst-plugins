@@ -12,7 +12,7 @@ import (
 
 // defaultReleasesURL lists the releases of the repository this app is built from. The check looks only at tags named
 // desktop-v<version>, so other releases (plugins, the catalog) never count.
-const defaultReleasesURL = "https://api.github.com/repos/sd88me/mpc-vst-plugins/releases?per_page=30"
+const defaultReleasesURL = "https://api.github.com/repos/open-mpc/mpc-vst-plugins/releases?per_page=30"
 
 var tagRe = regexp.MustCompile(`^desktop-v(\d+)\.(\d+)\.(\d+)$`)
 

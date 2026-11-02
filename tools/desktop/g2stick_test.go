@@ -106,6 +106,15 @@ func TestG2PinNeedsAReleaseUnderOurRepo(t *testing.T) {
 	if p, err := currentG2Pin(); err != nil || p.Version != "g2-stick-0.2.1" {
 		t.Fatalf("good pin refused: %v", err)
 	}
+	// the published pin keeps the old owner's release address (installers from before the move accept only that one)
+	srv2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"version":"g2-stick-0.2.4","url":"` + g2OldReleasePrefix + `x.zip","sha256":"` + strings.Repeat("a", 64) + `"}`))
+	}))
+	defer srv2.Close()
+	g2PinURL = srv2.URL
+	if p, err := currentG2Pin(); err != nil || p.Version != "g2-stick-0.2.4" {
+		t.Fatalf("pin on the old owner's release address refused: %v", err)
+	}
 }
 
 func TestShippedG2PinIsValid(t *testing.T) {

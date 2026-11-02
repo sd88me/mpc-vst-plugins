@@ -32,7 +32,7 @@ Answer `yes` to the fingerprint question. You should get a shell prompt on the d
 | `Permission denied` | Root SSH is not enabled on this unit, or the password is wrong. |
 
 ## 1. Download the app
-Open [the latest release](https://github.com/sd88me/mpc-vst-plugins/releases/latest) and download the file for your computer from **Assets**:
+Open [the latest release](https://github.com/open-mpc/mpc-vst-plugins/releases/latest) and download the file for your computer from **Assets**:
 
 | Your computer | Download the file that ends with |
 |---|---|

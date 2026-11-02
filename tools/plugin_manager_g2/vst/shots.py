@@ -53,7 +53,7 @@ def prune(folder, ids):
 def gen2_ids():
     """Catalog ids whose newest version has an aarch64 zip (the live catalog.json): the only ones a Gen2 MPC can install. Every thumbnail is
     one button per id per row (5 x 159 components made the Live III draw black patches in the header, 2026-10-28), so a lean Gen2 skin (--gen2) bakes only these."""
-    url = os.environ.get("CATALOG_URL", "https://sd88me.github.io/mpc-vst-plugins/catalog.json")
+    url = os.environ.get("CATALOG_URL", "https://open-mpc.github.io/catalog.json")
     cat = json.load(io.BytesIO(urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "openmpc-pm shots.py"}), timeout=60).read()))
     out = set()
     for p in cat["plugins"]:

@@ -9,7 +9,7 @@
       "license": "MIT",
       "docs": "tools/mpc_patch/README.md",
       "script": {
-        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/17a9d5c8c1e240e88389591540b7ea58534b9aa6/tools/mpc_patch/mpc-drum-pad-patch.sh",
+        "url": "https://raw.githubusercontent.com/open-mpc/mpc-vst-plugins/17a9d5c8c1e240e88389591540b7ea58534b9aa6/tools/mpc_patch/mpc-drum-pad-patch.sh",
         "sha256": "681bf0689bbd8f7fdc60cc65cf38689a018e11ae812d39dd124fe7c091fb8c14"
       },
       "supports": {"os": "MPC OS 3.9.1.2 (Force); Gen1 MPC OS 3.10.0; Gen2 (aarch64) MPC OS 3.9.1 and 3.10.0", "arch": "armv7l,aarch64", "mpc_md5": ["592eebc8e1ce0797dc8c98e7002143b8", "a7ace6a9993df33afeae50571755bbf9", "15a664f6b6ae591c8b78baae8b376f02", "b6cc8e7a398bdf6c3fd8f7176eecd3ee"]},
@@ -26,7 +26,7 @@
       "license": "MIT",
       "docs": "tools/mpc_patch/drive_exec/README.md",
       "script": {
-        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/f036a8791daff1ccf426c3953e84a8942c979564/tools/mpc_patch/drive_exec/drive-exec-patch.sh",
+        "url": "https://raw.githubusercontent.com/open-mpc/mpc-vst-plugins/f036a8791daff1ccf426c3953e84a8942c979564/tools/mpc_patch/drive_exec/drive-exec-patch.sh",
         "sha256": "500b5ccdfbc4b735a810e747d03c4bab38dec279dff31b682a89a905970d0594"
       },
       "supports": {"os": "MPC OS Gen1 (tried on a Force, MPC OS 3.9.1)", "arch": "armv7l"},
@@ -43,7 +43,7 @@
       "license": "MIT",
       "docs": "tools/mpc_patch/auto_exec/README.md",
       "script": {
-        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/40df2587d906cd44d064597472e7ae0ee92ed94a/tools/mpc_patch/auto_exec/auto-exec-patch.sh",
+        "url": "https://raw.githubusercontent.com/open-mpc/mpc-vst-plugins/40df2587d906cd44d064597472e7ae0ee92ed94a/tools/mpc_patch/auto_exec/auto-exec-patch.sh",
         "sha256": "8302f19dac337c98408c0f92867fb3a67fe494fa7cb58a91d347a30f128e6421"
       },
       "supports": {"os": "MPC OS Gen1 (mount probe on a Force, 2026-10-14)", "arch": "armv7l"},
@@ -60,7 +60,7 @@
       "license": "MIT",
       "docs": "tools/mpc_patch/hwremap/README.md",
       "script": {
-        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/a9bb8c71ba382fa6c3902fbbdead6d5f620222a5/tools/mpc_patch/hwremap/hwremap-patch.sh",
+        "url": "https://raw.githubusercontent.com/open-mpc/mpc-vst-plugins/a9bb8c71ba382fa6c3902fbbdead6d5f620222a5/tools/mpc_patch/hwremap/hwremap-patch.sh",
         "sha256": "f76393d43a5871a77f13f369a214aafadbbe40e1bfe8eb12ebfe6f252693f293"
       },
       "supports": {"os": "MPC OS 3.9 (MPC Live with Hakai, and Force stock 3.9.0, as tried by the remap's author)", "arch": "armv7l"},

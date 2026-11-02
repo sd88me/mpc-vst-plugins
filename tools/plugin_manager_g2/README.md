@@ -65,7 +65,7 @@ the project's development**: the catalog, its release rules and the official way
 ## How to use it
 
 **Install the manager** (once). Download `Plugin-Manager-G2-<version>-mpc-aarch64.zip` from the
-[releases](https://github.com/sd88me/mpc-vst-plugins/releases) (tag `plugin-manager-g2-v<version>`), unzip it, copy the folder to the device and run
+[releases](https://github.com/open-mpc/mpc-vst-plugins/releases) (tag `plugin-manager-g2-v<version>`), unzip it, copy the folder to the device and run
 the installer as root, naming your Synths folder (`INSTALL.md` in the zip explains how to find it: `/nvme/Synths` on a Live III,
 `/storage/Synths` on an MPC One):
 

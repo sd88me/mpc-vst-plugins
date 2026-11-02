@@ -14,25 +14,25 @@ an installer app, and the tools to build, test and release your own.
 
 ## Plugin catalog
 
-**[Open MPC - Plugin Catalog](https://sd88me.github.io/mpc-vst-plugins/)**: one browsable list of the community's VST2
+**[Open MPC - Plugin Catalog](https://open-mpc.github.io/)**: one browsable list of the community's VST2
 plugins for MPC OS, with each plugin's current version, license, source link and a checksummed download.
 
-[![The Open MPC - Plugin Catalog home page](docs/img/catalog-home.png)](https://sd88me.github.io/mpc-vst-plugins/)
+[![The Open MPC - Plugin Catalog home page](docs/img/catalog-home.png)](https://open-mpc.github.io/)
 
 - **Find a plugin.** Search, filter by kind, style, developer, license or distribution, and sort by recently updated or
   most downloaded. Every version shows its date and SHA-256, and what it was tested on. Each plugin is **Verified** (the newest release was tested on real hardware and the test is recorded; shown per generation as Verified Gen1 and/or Verified Gen2), **Listed** (it passed the catalog's automatic release checks, but no hardware test is recorded) or **Experimental** (new or unproven, hidden unless you ask for it). None of these is a security review: nobody reads each plugin's code, so stick to developers you trust. Plugins one developer
   publishes as a set from one repo (the Airwindows ports, for example) are one **collection** card: View all lists them by kind, each
   with its own version and install tick, plus Pick all. There is an Atom feed (`feed.xml`) of new releases.
-- **Install with the installer app.** The [MPC plugin installer](https://github.com/sd88me/mpc-vst-plugins/releases/latest) is a
+- **Install with the installer app.** The [MPC plugin installer](https://github.com/open-mpc/mpc-vst-plugins/releases/latest) is a
   small Windows, Mac and Linux app: connect to your device, tick plugins from the catalog (or drop in zips, including
   build-yourself ones), and it checks each download, installs the batch with one MPC restart and backs up your settings
   first. It can also remove plugins (keeping your own files), install to an SD card or USB drive, register plugin folders
   MPC does not know about, and clean up old settings backups. Needs root SSH access. Source in
   [tools/desktop](tools/desktop/README.md).
-- **Guides on the site:** [install a downloaded plugin](https://sd88me.github.io/mpc-vst-plugins/install.html),
-  [build a plugin](https://sd88me.github.io/mpc-vst-plugins/build.html), the
-  [release workflow](https://sd88me.github.io/mpc-vst-plugins/workflow.html) and
-  [how to get yours listed](https://sd88me.github.io/mpc-vst-plugins/workflow.html#list-it-in-the-catalog).
+- **Guides on the site:** [install a downloaded plugin](https://open-mpc.github.io/install.html),
+  [build a plugin](https://open-mpc.github.io/build.html), the
+  [release workflow](https://open-mpc.github.io/workflow.html) and
+  [how to get yours listed](https://open-mpc.github.io/workflow.html#list-it-in-the-catalog).
 - **Get your plugin listed.** Publish a GitHub release built with `tools/release.py` (or the reusable
   `vst-release.yml` workflow), then open a PR adding one small file, `catalog/plugins/<id>.json`. After that new
   releases appear on their own: the catalog reads your releases every night and checks each zip. Open-source licenses,
@@ -57,7 +57,7 @@ authors, listed in the catalog, and installed by people on their own units.
 - **Plugins you can install today**: synths, samplers, drum machines, sequencers, an amp simulator and a record-digging
   streamer, from several authors. Among them are Dexed (DX7), JV-880, Acid, Maze Voice and Maze Sequencer, Crate Digger,
   Plaits and NAM, plus **Build it yourself** ports (Monomodule, Machinemodule) for engines that need your own firmware.
-  The [catalog](https://sd88me.github.io/mpc-vst-plugins/) has the current list and versions.
+  The [catalog](https://open-mpc.github.io/) has the current list and versions.
 - **A release you can trust.** Every release is built in CI on a pinned toolchain, checked against the catalog's rules
   (layout, checksums, glibc and CPU limits), smoke-tested on a real device and only then published. Each version
   shows its SHA-256 and what it was tested on.

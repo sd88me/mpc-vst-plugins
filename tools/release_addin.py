@@ -115,7 +115,7 @@ deletes its folder.
 
 ## Files
 
-See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins) (`docs/ADDINS.md`).
+See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/open-mpc/mpc-vst-plugins) (`docs/ADDINS.md`).
 """.format(name=name, ver=a.version, about=(a.about + "\n\n") if a.about else "", id=aid, top=top, so=so,
            device_line=("A Gen2 MPC OS standalone device (aarch64: Live III, One G2, Key(s) G2). The installer refuses anything else."
                          if arch == "aarch64" else

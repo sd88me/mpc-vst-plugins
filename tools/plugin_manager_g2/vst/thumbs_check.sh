@@ -27,4 +27,4 @@ body="The catalog gained plugins with screenshots since the last build: ${new:-t
 if gh pr create --base main --head "$branch" --title "$title" --body "$body" 2>/dev/null; then exit 0; fi
 gh issue create --title "$title" --body "$body
 
-Open a pull request: https://github.com/${GITHUB_REPOSITORY:-sd88me/mpc-vst-plugins}/compare/main...$branch?expand=1"
+Open a pull request: https://github.com/${GITHUB_REPOSITORY:-open-mpc/mpc-vst-plugins}/compare/main...$branch?expand=1"

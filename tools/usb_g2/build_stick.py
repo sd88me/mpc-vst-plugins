@@ -29,7 +29,7 @@ import saltscan  # noqa: E402
 
 PLUGIN_ID = "plugin-manager-g2"
 ARCHES = ("armv7", "aarch64")
-CATALOG_JSON = "https://sd88me.github.io/mpc-vst-plugins/catalog.json"
+CATALOG_JSON = "https://open-mpc.github.io/catalog.json"
 PROMPT = ("OPENMPC PLUGIN MANAGER VST\n\nThis installs the OpenMPC Plugin Manager VST and restarts MPC. "
           "It needs no network.\n\nHave you saved your project?")
 MARKER = ".mpc-g2-stick"

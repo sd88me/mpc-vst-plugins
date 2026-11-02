@@ -69,7 +69,7 @@ The exact command, and any extra tools it needs, are on the plugin's card and in
 An MPC OS plugin is a small Linux library (`.so`) for the device's ARM processor, plus a **skin**: a folder that describes the plugin's page on the MPC screen. This repo's tools build both from one small description file, and they test the result on your PC before it goes anywhere near a device.
 
 What you need on top of the tools above:
-- A checkout of [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins). A plugin lives in its own repo next to it, and points at it with the `MPC_VST` variable.
+- A checkout of [mpc-vst-plugins](https://github.com/open-mpc/mpc-vst-plugins). A plugin lives in its own repo next to it, and points at it with the `MPC_VST` variable.
 - An engine to wrap: a synth or effect core in C or C++, or an engine from Schwung (it plugs in through an adapter).
 - A device to try it on. Nothing here needs one until the very last step.
 
@@ -79,7 +79,7 @@ What you need on top of the tools above:
 - **A MIDI generator** (sequencer, arpeggiator): MPC ignores a plugin's MIDI output, so it opens its own MIDI port.
 - **An app** (network, files, helper programs): allowed. Keep the audio thread from ever waiting.
 
-The [porting checklist](https://github.com/sd88me/mpc-vst-plugins/blob/main/docs/PORTING.md) covers each case in detail.
+The [porting checklist](https://github.com/open-mpc/mpc-vst-plugins/blob/main/docs/PORTING.md) covers each case in detail.
 
 ### 2. Describe the plugin
 Put a `vst.json` next to the engine:
@@ -115,7 +115,7 @@ The page is a description that MPC draws: knobs, faders, switches, buttons, opti
 "$MPC_VST/tools/studio.py" preview "build/skin/<vendor> - VST - <Name>/Plugin Skins" -o page_%d.png
 ```
 
-Live text can use two fonts, Titillium Web and Roboto. Anything else has to be baked into the artwork. The [Skin Studio guide](https://github.com/sd88me/mpc-vst-plugins/blob/main/docs/SKIN_STUDIO.md) has the details.
+Live text can use two fonts, Titillium Web and Roboto. Anything else has to be baked into the artwork. The [Skin Studio guide](https://github.com/open-mpc/mpc-vst-plugins/blob/main/docs/SKIN_STUDIO.md) has the details.
 
 ### 5. Test on your PC
 ```
@@ -136,7 +136,7 @@ Only now does a device come in. Follow the [release workflow](workflow.html): me
 | A build stops with an error about its self-check | Your OS file or your tools differ from what the plugin was built against, and the build refuses to make an unverified plugin. Check the file name and version on the plugin's card. |
 
 ## Where to read more
-- [Porting checklist](https://github.com/sd88me/mpc-vst-plugins/blob/main/docs/PORTING.md)
-- [What has been verified on real hardware](https://github.com/sd88me/mpc-vst-plugins/blob/main/docs/NOTES.md)
-- [Skin Studio](https://github.com/sd88me/mpc-vst-plugins/blob/main/docs/SKIN_STUDIO.md)
-- [CPU check](https://github.com/sd88me/mpc-vst-plugins/blob/main/docs/BENCH.md)
+- [Porting checklist](https://github.com/open-mpc/mpc-vst-plugins/blob/main/docs/PORTING.md)
+- [What has been verified on real hardware](https://github.com/open-mpc/mpc-vst-plugins/blob/main/docs/NOTES.md)
+- [Skin Studio](https://github.com/open-mpc/mpc-vst-plugins/blob/main/docs/SKIN_STUDIO.md)
+- [CPU check](https://github.com/open-mpc/mpc-vst-plugins/blob/main/docs/BENCH.md)

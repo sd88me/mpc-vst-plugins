@@ -128,7 +128,7 @@ kind = "instrument" if attr.get("isInstrument") == "1" else "effect"
 b = ""
 if bench:
     b = ("\n## CPU\n\nMeasured on a Gen1 device (MPC Live/One/X/Force class, Cortex-A17) with `tools/bench.sh` from "
-         "[mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins): worst p99 **%.1f%%** of one audio block, worst "
+         "[mpc-vst-plugins](https://github.com/open-mpc/mpc-vst-plugins): worst p99 **%.1f%%** of one audio block, worst "
          "block %.1f%%, verdict **%s**. As a rule of thumb, several instances run comfortably when p99 is under 15%%.\n"
          % (bench["p99_pct"], bench["max_pct"], bench["verdict"]))
 extra_md = "".join("- `%s` (data next to the plugin)\n" % e for e in extras)
@@ -196,7 +196,7 @@ rebuild the whole plugin list from the plugin folders in `Synths` keep this plug
 {bench}
 ## Files
 
-See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugins).
+See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/open-mpc/mpc-vst-plugins).
 """.format(name=name, ver=a.version, about=(a.about + "\n\n") if a.about else "", kind=kind, top=top, so=so_name,
            skin=skin_name, extra_md=extra_md, bench=b, user_md=user_md, synths=SYNTHS, listkey="pluginList-arm-64bit" if gen2 else "pluginList-arm",
            install_args=" -t '<your Synths folder>'" if gen2 else "", requirements=REQ_GEN2 if gen2 else REQ_GEN1,
