@@ -1097,6 +1097,51 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(len(doc.getElementsByTagName("entry")), 1)
         self.assertIn("A <&>", doc.getElementsByTagName("title")[1].firstChild.data)
 
+    def collection_catalog(self):
+        v = lambda ver, date, ch="stable": {"version": ver, "date": date, "url": "https://x/%s.zip" % ver, "yanked": False, "channel": ch}
+        m = lambda i, vers, col="pack": {"id": "m%d" % i, "name": "Member %d" % i, "author": "Z", "summary": "s%d" % i, "kind": "effect",
+                                        "collection": col, "versions": vers}
+        return {"schema": 1, "generated": "g", "plugins": [
+            m(1, [v("2.0.0", "2026-10-30"), v("1.0.0", "2026-10-01")]), m(2, [v("2.0.0", "2026-10-30"), v("1.0.0", "2026-10-01")]),
+            m(3, [v("1.1.0", "2026-10-30"), v("1.2.0-b", "2026-10-30", "beta"), v("1.0.0", "2026-10-02")]),
+            {"id": "solo", "name": "Solo", "author": "Y", "summary": "s", "versions": [v("1.0.0", "2026-10-30")]}],
+            "collections": [{"id": "pack", "title": "Pack <&>", "author": "Z", "repo": "z/pack", "summary": "p", "members": ["m1", "m2", "m3"]}]}
+
+    def test_atom_feed_one_entry_per_collection_release(self):
+        import xml.dom.minidom
+        doc = xml.dom.minidom.parseString(catalog_site.atom(self.collection_catalog(), "https://e.io/x/"))
+        entries = {e.getElementsByTagName("id")[0].firstChild.data: e for e in doc.getElementsByTagName("entry")}
+        self.assertEqual(sorted(entries), sorted(["tag:mpc-vst-catalog,2026:c/pack@2026-10-30", "tag:mpc-vst-catalog,2026:m3@1.2.0-b",
+                                                  "tag:mpc-vst-catalog,2026:c/pack@2026-10-01", "tag:mpc-vst-catalog,2026:m3@1.0.0",
+                                                  "tag:mpc-vst-catalog,2026:solo@1.0.0"]))
+        e = entries["tag:mpc-vst-catalog,2026:c/pack@2026-10-30"]
+        title = e.getElementsByTagName("title")[0].firstChild.data
+        self.assertEqual(title, "Pack <&>: 3 plugins updated")   # mixed versions: no version in the title
+        self.assertEqual(e.getElementsByTagName("summary")[0].firstChild.data, "Member 1 2.0.0, Member 2 2.0.0, Member 3 1.1.0")
+        self.assertEqual(e.getElementsByTagName("link")[0].getAttribute("href"), "https://e.io/x/p/c/pack.html")
+        same = entries["tag:mpc-vst-catalog,2026:c/pack@2026-10-01"].getElementsByTagName("title")[0].firstChild.data
+        self.assertEqual(same, "Pack <&> 1.0.0: 2 plugins updated")
+        # a one-member "collection release" is that member's own entry (m3's beta and its 1.0.0 above)
+        self.assertEqual(entries["tag:mpc-vst-catalog,2026:m3@1.2.0-b"].getElementsByTagName("title")[0].firstChild.data, "Member 3 1.2.0-b (beta)")
+        # without a base URL the link is the repo's releases page; without collections[] every member is its own entry
+        doc = xml.dom.minidom.parseString(catalog_site.atom(self.collection_catalog()))
+        self.assertIn("https://github.com/z/pack/releases", [l.getAttribute("href") for l in doc.getElementsByTagName("link")])
+        cat = self.collection_catalog()
+        del cat["collections"]
+        self.assertEqual(len(xml.dom.minidom.parseString(catalog_site.atom(cat)).getElementsByTagName("entry")), 8)
+
+    def test_collection_share_pages(self):
+        cat = self.collection_catalog()
+        col = cat["collections"][0]
+        page = catalog_site.share_page(cat["plugins"][0], col)
+        self.assertIn('Part of <a href="c/pack.html">Pack &lt;&amp;&gt;</a>', page)
+        self.assertNotIn("Part of", catalog_site.share_page(cat["plugins"][3]))
+        page = catalog_site.collection_page(col, cat["plugins"][:3])
+        self.assertIn('location.replace("../../index.html#c=pack")', page)
+        self.assertIn('<h2>Effects (3)</h2>', page)
+        self.assertIn('<a href="../m2.html">Member 2</a>', page)
+        self.assertIn('content="Pack &lt;&amp;&gt; by Z"', page)
+
     def test_registry_style_and_source_available(self):
         e = dict(BuildTest.ENTRY, license="MAME license")
         self.assertTrue(catalog_build.check_entry(e))

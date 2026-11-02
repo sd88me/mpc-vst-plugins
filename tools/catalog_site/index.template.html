@@ -134,11 +134,21 @@
 <script>
 var CAT = JSON.parse(document.getElementById("data").textContent);
 var P = CAT.plugins;
-var state = { tab: "all", q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: [], open: "" };
+var state = { tab: "all", q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: [], open: "", coll: "" };
 var STORE = JSON.parse(document.getElementById("store").textContent);
 var BY_WARNING = "The result contains firmware-derived data: build it yourself, install it on your own devices only, never share it.";
 var ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 function isBY(p) { return p.distribution === "build-yourself"; }
+var BYID = {}; P.forEach(function (p) { BYID[p.id] = p; });
+/* Collections (catalog.json collections[], docs/CATALOG.md): several plugins from one repo shown as one card. A member keeps its own
+   release, tier and install checkbox; it is not a card of its own while its collection is listed. Catalogs built before the field have none. */
+var C = (CAT.collections || []).filter(function (c) { return ID_RE.test(c.id || ""); });
+C.forEach(function (c) { c.mem = (c.members || []).map(function (id) { return BYID[id]; }).filter(function (p) { return p && p.collection === c.id; }); });
+C = C.filter(function (c) { return c.mem.length >= 2; });
+var COLL = {}; C.forEach(function (c) { COLL[c.id] = c; });
+function collOf(p) { return p && p.collection && COLL[p.collection] ? COLL[p.collection] : null; }
+/* the tab a plugin is listed under: an instrument with role "midi" is under MIDI */
+function tabKindOf(p) { return p.kind === "instrument" && p.role === "midi" ? "midi" : p.kind; }
 function kindsOf(p) { var k = [p.kind]; (p.components || []).forEach(function (c) { if (k.indexOf(c.kind) < 0) k.push(c.kind); }); return k; }
 /* Trust tiers (tools/catalog_build.py tier_of, docs/CATALOG.md). Listed is the unlabelled middle: a card with no tier badge is in the catalog
    and passed the release checks, nothing more. Only Verified (one badge per generation, below) and Experimental get a badge. verified = tested on a device, listed = passed the release checks,
@@ -155,6 +165,7 @@ function verifiedOn(p) { return tierOf(p) !== "verified" ? [] : Array.isArray(p.
 var TIER_FILTERS = ["verified", "verified-gen1", "verified-gen2", "listed", "experimental", "all"];
 /* Recommended tiebreaker: the date of the newest hardware test on the newest stable release ("" when none). */
 function testedDate(p) {
+  if (p.coll) return p.testedDate;
   var v = p.versions.filter(function (x) { return !x.yanked && x.channel === "stable"; })[0], d = "";
   if (v) (v.tested || []).forEach(function (t) { if ((t.date || "") > d) d = t.date; });
   return d;
@@ -228,9 +239,9 @@ function osRow(v) {
   if (g.indexOf("2.x") >= 0) return '<dt>MPC OS</dt><dd>2.x and 3.x (' + (tested2x(v) ? "tested on a 2.x unit" : "checked against 2.15.1's own skins, not yet tested on a 2.x unit") + ')</dd>';
   return '<dt>MPC OS</dt><dd>3.x only' + (osWhy(v) ? ' (' + esc(osWhy(v)) + ')' : '') + '</dd>';
 }
-function match(p) {
+function match(p, anyText) {   /* anyText: the search already matched (a collection's own title or summary) */
   var s = state, hay = [p.name, p.author, p.style || "", (p.tags || []).join(" "), p.summary].join(" ").toLowerCase();
-  if (s.q && hay.indexOf(s.q.toLowerCase()) < 0) return false;
+  if (s.q && !anyText && hay.indexOf(s.q.toLowerCase()) < 0) return false;
   if (PLUGIN_TABS.indexOf(s.tab) >= 0 && !inTabKind(p, s.tab)) return false;
   if (s.tier === "all") {} else if (/^verified-/.test(s.tier)) { if (verifiedOn(p).indexOf(s.tier.slice(9)) < 0) return false; }
   else if (s.tier) { if (tierOf(p) !== s.tier) return false; } else if (tierOf(p) === "experimental") return false;
@@ -256,11 +267,88 @@ function barLine(p) {
   if (!m.length) return "";
   return '<details class="how"><summary>To improve this listing (' + m.length + ')</summary><ul>' + m.map(function (k) { return '<li>' + esc(CAT.bar[k]) + '</li>'; }).join("") + '</ul></details>';
 }
+function canPick(p) { return !isBY(p) && !!shown(p) && ID_RE.test(p.id); }
+function tierTags(p) {
+  var t = [];
+  if (tierOf(p) === "verified") verifiedOn(p).forEach(function (g) { t.push('<span class="tag tier-verified" data-gen="' + g + '" title="' + esc(GENS[g].tip) + '">' + GENS[g].label + '</span>'); });
+  else if (tierOf(p) !== "listed") t.push('<span class="tag tier-' + tierOf(p) + '" title="' + esc(TIERS[tierOf(p)].tip) + '">' + TIERS[tierOf(p)].label + '</span>');
+  return t;
+}
+/* "13 instruments · 7 effects" */
+var KIND_WORD = { instrument: ["instrument", "instruments"], midi: ["MIDI plugin", "MIDI plugins"], effect: ["effect", "effects"], addin: ["addin", "addins"] };
+var KIND_ORDER = ["instrument", "midi", "effect", "addin"];
+function kindCount(list) {
+  var n = {}; list.forEach(function (p) { var k = tabKindOf(p); n[k] = (n[k] || 0) + 1; });
+  return KIND_ORDER.filter(function (k) { return n[k]; }).map(function (k) { return n[k] + " " + KIND_WORD[k][n[k] === 1 ? 0 : 1]; }).join(" \u00b7 ");
+}
+/* One grid item per collection with at least one member that passes the tab, search and filters. It sorts like a plugin: best tier of
+   those members, their Verified generations and newest test, the collection's total downloads, its title. */
+function collItem(c) {
+  var q = state.q.toLowerCase(), own = !!q && [c.title, c.author, c.summary].join(" ").toLowerCase().indexOf(q) >= 0;
+  var hit = c.mem.filter(function (p) { return match(p, own); });
+  if (!hit.length) return null;
+  var inTab = c.mem.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); });
+  var best = hit.slice().sort(function (a, b) { return TIERS[tierOf(a)].rank - TIERS[tierOf(b)].rank; })[0], gens = {}, td = "";
+  hit.forEach(function (p) { verifiedOn(p).forEach(function (g) { gens[g] = 1; }); if (testedDate(p) > td) td = testedDate(p); });
+  return { coll: c, hit: hit, inTab: inTab, id: c.id, name: c.title, author: c.author, kind: tabKindOf(inTab[0] || hit[0]),
+           featured: hit.some(function (p) { return p.featured; }), tier: tierOf(best), verified_on: Object.keys(gens).sort(), testedDate: td,
+           downloads: typeof c.downloads === "number" ? c.downloads : c.mem.reduce(function (n, p) { return n + (p.downloads || 0); }, 0),
+           updated: c.updated || "", added: c.added || "", versions: [] };
+}
+function collShot(c, list, big) {   /* the collection's screenshot, else a collage of up to four members' */
+  var href = 'p/c/' + encodeURIComponent(c.id) + '.html', open = big ? "" : ' href="' + href + '" data-coll="' + esc(c.id) + '" title="Open ' + esc(c.title) + '"';
+  var img = function (u, alt) { return '<img src="' + esc(u) + '" alt="' + esc(alt) + '" loading="' + (big ? "eager" : "lazy") + '" onerror="this.remove()">'; };
+  if (c.screenshot && safeUrl(c.screenshot) !== "#") return '<' + (big ? 'div' : 'a') + ' class="shot"' + open + '>' + img(c.screenshot, c.title + " screenshot").replace("this.remove()", "this.parentNode.remove()") + '</' + (big ? 'div' : 'a') + '>';
+  var shots = list.filter(function (p) { return p.screenshot && safeUrl(p.screenshot) !== "#"; }).slice(0, 4);
+  if (!shots.length) return "";
+  return '<' + (big ? 'div' : 'a') + ' class="shot collage n' + shots.length + '"' + open + '>' + shots.map(function (p) { return img(p.screenshot, p.name + " screenshot"); }).join("") + '</' + (big ? 'div' : 'a') + '>';
+}
+function collCard(it) {
+  /* the members the search or a filter picked out are listed ("2 of 20 match"); hiding experimental ones by default is not a search */
+  var s = state, narrowed = !!(s.q || s.style || s.dev || s.lic || s.dist || s.os || s.gen || (s.tier && s.tier !== "all"));
+  var c = it.coll, href = 'p/c/' + encodeURIComponent(c.id) + '.html', filtered = narrowed && it.hit.length < it.inTab.length, max = filtered ? 8 : 4;
+  var tags = ['<span class="tag coll" title="Several plugins from one repo, each with its own release, version and install checkbox">Collection</span>'].concat(tierTags(it));
+  var chips = it.hit.slice(0, max).map(function (p) { return '<a class="chip" href="p/' + encodeURIComponent(p.id) + '.html" data-open="' + esc(p.id) + '">' + esc(p.name) + '</a>'; }).join("") +
+    (it.hit.length > max ? '<a class="chip more" href="' + href + '" data-coll="' + esc(c.id) + '" title="See all ' + it.inTab.length + '">+' + (it.hit.length - max) + '</a>' : '');
+  return '<article class="card coll" data-tier="' + tierOf(it) + '" data-collection="' + esc(c.id) + '">' + collShot(c, it.inTab, false) +
+    '<header><div><h2><a class="open" href="' + href + '" data-coll="' + esc(c.id) + '">' + esc(c.title) + '</a></h2><div class="by">by ' + esc(c.author) + '</div></div>' +
+    '<span class="ver" title="Plugins in this collection">' + it.inTab.length + ' plugins</span></header>' +
+    '<div class="tags">' + tags.join("") + '</div><p class="counts">' + esc(kindCount(it.inTab)) + '</p><p>' + esc(c.summary) + '</p>' +
+    (filtered ? '<p class="line matchline">' + it.hit.length + ' of ' + it.inTab.length + ' match your search and filters:</p>' : '') +
+    '<div class="chips">' + chips + '</div>' +
+    '<div class="actions"><a class="btn-l primary" href="' + href + '" data-coll="' + esc(c.id) + '">View all</a><a class="btn-l" href="https://github.com/' + esc(c.repo) + '">Source</a></div></article>';
+}
+/* The collection view (the popup, #c=<id>; share page p/c/<id>.html): every member grouped by kind, each with its install checkbox, and
+   Pick all per group. Ticks go to the same install list as the cards. */
+function groupsOf(c) { return KIND_ORDER.map(function (k) { return { k: k, ps: c.mem.filter(function (p) { return tabKindOf(p) === k; }) }; }).filter(function (g) { return g.ps.length; }); }
+function pickAllLabel(ps) { var can = ps.filter(canPick); return can.length && can.every(function (p) { return state.sel.indexOf(p.id) >= 0; }) ? "Unpick all" : "Pick all"; }
+function collDetail(c) {
+  var best = c.mem.slice().sort(function (a, b) { return TIERS[tierOf(a)].rank - TIERS[tierOf(b)].rank; })[0];
+  var gens = {}; c.mem.forEach(function (p) { verifiedOn(p).forEach(function (g) { gens[g] = 1; }); });
+  var tags = ['<span class="tag coll">Collection</span>'].concat(tierTags({ tier: tierOf(best), verified_on: Object.keys(gens).sort() }));
+  var groups = groupsOf(c).map(function (g) {
+    var can = g.ps.filter(canPick).length;
+    return '<section class="cgroup" data-kind="' + g.k + '"><div class="cg-head"><h3>' + esc(KINDS[g.k]) + ' (' + g.ps.length + ')</h3>' +
+      (can ? '<button type="button" class="linkbtn" data-pickall="' + g.k + '">' + pickAllLabel(g.ps) + '</button>' : '') + '</div><ul class="members">' +
+      g.ps.map(function (p) {
+        var v = shown(p);
+        return '<li class="member" data-tier="' + tierOf(p) + '">' + (canPick(p) ? '<label class="pick"><input type="checkbox" data-pick="' + esc(p.id) + '" aria-label="Add ' + esc(p.name) + ' to install list"' +
+          (state.sel.indexOf(p.id) >= 0 ? " checked" : "") + '></label>' : '<span></span>') + '<div><div class="mrow"><a class="nm" href="p/' + encodeURIComponent(p.id) + '.html" data-open="' + esc(p.id) + '">' + esc(p.name) + '</a>' +
+          (v ? '<span class="ver">v' + esc(v.version) + (v.channel === "beta" ? " beta" : "") + '</span>' : '<span class="ver">' + (isBY(p) ? "build it yourself" : p.latest_beta ? "beta only" : "no release") + '</span>') + tierTags(p).join("") + '</div>' +
+          '<div class="sum">' + esc(p.summary) + '</div></div></li>';
+      }).join("") + '</ul></section>';
+  }).join("");
+  return '<article class="card big coll" data-tier="' + tierOf(best) + '">' + collShot(c, c.mem, true) +
+    '<header><div><h2 id="modal-title">' + esc(c.title) + '</h2><div class="by">by ' + esc(c.author) + '</div></div><span class="ver">' + c.mem.length + ' plugins</span></header>' +
+    '<div class="tags">' + tags.join("") + '</div><p class="counts">' + esc(kindCount(c.mem)) + '</p><p>' + esc(c.summary) + '</p>' +
+    '<dl class="meta"><dt>Updated</dt><dd>' + esc(c.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + (c.downloads || 0).toLocaleString() + ' (all members)</dd><dt>Source</dt><dd>' + esc(c.repo) + '</dd></dl>' +
+    '<p class="line">Each plugin has its own release and version. Tick the ones you want: they join the install list below the catalog.</p>' + groups +
+    '<div class="actions"><a class="btn-l" href="https://github.com/' + esc(c.repo) + '">Source</a></div></article>';
+}
 function card(p, big) {
-  var by = isBY(p), v = shown(p), tags = [];
+  var by = isBY(p), v = shown(p), tags = [], col = big && collOf(p);
   if (by) tags.push('<span class="tag build" title="No download: you build it from your own files">Build it yourself</span>');
-  if (tierOf(p) === "verified") verifiedOn(p).forEach(function (g) { tags.push('<span class="tag tier-verified" data-gen="' + g + '" title="' + esc(GENS[g].tip) + '">' + GENS[g].label + '</span>'); });
-  else if (tierOf(p) !== "listed") tags.push('<span class="tag tier-' + tierOf(p) + '" title="' + esc(TIERS[tierOf(p)].tip) + '">' + TIERS[tierOf(p)].label + '</span>');
+  tags = tags.concat(tierTags(p));
   tags.push(p.kind === "addin" ? '<span class="tag" title="Loaded into MPC when it starts (LD_PRELOAD), not a plugin on a track">addin</span>' : '<span class="tag">' + esc(p.kind) + '</span>');
   if (p.style) tags.push('<span class="tag">' + esc(title(p.style)) + '</span>');
   tags.push('<span class="tag">' + esc(p.license) + '</span>');
@@ -276,7 +364,8 @@ function card(p, big) {
   var img = '<img src="' + esc(p.screenshot) + '" alt="' + esc(p.name) + ' screenshot" loading="' + (big ? "eager" : "lazy") + '" onerror="this.parentNode.remove()">';
   var shot = !(p.screenshot && safeUrl(p.screenshot) !== "#") ? "" : big ? '<div class="shot">' + img + '</div>'
     : '<a class="shot" href="p/' + encodeURIComponent(p.id) + '.html" data-open="' + esc(p.id) + '" title="Open ' + esc(p.name) + '">' + img + '</a>';
-  var head = '<article class="card' + (by ? " by" : "") + (big ? " big" : "") + '" data-tier="' + tierOf(p) + '">' + shot + '<header><div><h2' + (big ? ' id="modal-title">' + esc(p.name)
+  var crumb = col ? '<nav class="crumb" aria-label="Breadcrumb">Part of <a href="p/c/' + encodeURIComponent(col.id) + '.html" data-coll="' + esc(col.id) + '">' + esc(col.title) + '</a></nav>' : '';
+  var head = '<article class="card' + (by ? " by" : "") + (big ? " big" : "") + '" data-tier="' + tierOf(p) + '">' + shot + crumb + '<header><div><h2' + (big ? ' id="modal-title">' + esc(p.name)
     : '><a class="open" href="p/' + encodeURIComponent(p.id) + '.html" data-open="' + esc(p.id) + '">' + esc(p.name) + '</a>') + '</h2><div class="by">by ' + esc(p.author) + '</div></div>' +
     (v ? '<span class="ver" title="Latest ' + (by ? "tag" : esc(v.channel) + " release") + '">v' + esc(v.version) + (v.channel === "beta" ? " beta" : "") + '</span>' : '<span class="ver">' + (by ? "no tag" : "no release") + '</span>') + '</header>' +
     '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>' + barLine(p);
@@ -308,22 +397,24 @@ function card(p, big) {
     '</div>' + hist + '</article>';
 }
 function render() {
-  var out = P.filter(match), so = SORTS[state.sort];
+  var out = P.filter(function (p) { return !collOf(p) && match(p); }), so = SORTS[state.sort];
+  C.forEach(function (c) { var it = collItem(c); if (it) out.push(it); });
   out.sort(function (a, b) { var r = so.cmp(a, b); return (so.desc ? -r : r) * (state.rev ? -1 : 1); });
-  $("grid").innerHTML = out.map(function (p) { return card(p); }).join("");
+  $("grid").innerHTML = out.map(function (p) { return p.coll ? collCard(p) : card(p); }).join("");
   $("empty").hidden = out.length > 0;
+  var nOut = out.reduce(function (n, p) { return n + (p.coll ? p.hit.length : 1); }, 0);   /* plugins, counting each collection member */
   var hid = !state.tier ? P.filter(function (p) { return tierOf(p) === "experimental" && (PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab)); }).length : 0;
   $("exp").hidden = !hid; $("exp-n").textContent = hid;
   PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return inTabKind(p, k); }).length; });
   var inTab = P.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); }).length;
-  $("count").textContent = out.length + " of " + inTab + " " + (state.tab === "midi" ? "MIDI plugins" : state.tab === "all" ? "plugins" : (KINDS[state.tab] || "plugins").toLowerCase());
+  $("count").textContent = nOut + " of " + inTab + " " + (state.tab === "midi" ? "MIDI plugins" : state.tab === "all" ? "plugins" : (KINDS[state.tab] || "plugins").toLowerCase());
   var down = so.desc !== state.rev;
   $("dir").textContent = down ? "Z-A / high-low" : "A-Z / low-high";
   $("dir").title = "Sorted " + (down ? "descending" : "ascending");
   save();
 }
 function url() {
-  var d = { tab: state.tab === "all" ? "" : state.tab, q: state.q, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, gen: state.gen, tier: state.tier, sort: state.sort === "recommended" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(","), p: state.open || "" }, q = [];
+  var d = { tab: state.tab === "all" ? "" : state.tab, q: state.q, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, gen: state.gen, tier: state.tier, sort: state.sort === "recommended" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(","), c: state.coll || "", p: state.open || "" }, q = [];
   Object.keys(d).forEach(function (k) { if (d[k]) q.push(k + "=" + encodeURIComponent(d[k])); });
   return q.length ? "#" + q.join("&") : location.pathname + location.search;
 }
@@ -331,11 +422,12 @@ function save() {
   try { history.replaceState(null, "", url()); } catch (e) {}
 }
 function load() {
-  state.open = "";
+  state.open = ""; state.coll = "";
   location.hash.replace(/^#/, "").split("&").forEach(function (kv) {
     var i = kv.indexOf("="); if (i < 0) return;
     var k = kv.slice(0, i), v = decodeURIComponent(kv.slice(i + 1));
     if (k === "rev" || k === "beta") state[k] = v === "1";
+    else if (k === "c") state.coll = ID_RE.test(v) && COLL[v] ? v : "";
     else if (k === "p") state.open = ID_RE.test(v) && P.some(function (p) { return p.id === v; }) ? v : "";
     else if (k === "sel") state.sel = v.split(",").filter(function (id) { return ID_RE.test(id) && P.some(function (p) { return p.id === id && !isBY(p); }); });
     else if (k in state) state[k] = v;
@@ -373,45 +465,69 @@ document.querySelector(".tabs").addEventListener("keydown", function (e) {
 addEventListener("hashchange", function () { load(); sync(); render(); showTab(state.tab); modal(); });
 /* Plugin popup: the screenshot opens the card over a dark backdrop. Its link is the page's hash plus p=<catalog id> (ids never
    change), so it can be shared; Back, Escape, the backdrop and the close button all close it. */
-var pushed = false, returnTo = null;
+var pushed = 0, returnTo = null;   /* pushed: popup states this page added to the history (a member opened from a collection is two) */
 function modal() {
-  var p = state.open && P.filter(function (x) { return x.id === state.open; })[0];
-  $("modal-body").innerHTML = p ? card(p, true) : "";
-  $("modal").hidden = !p;
-  document.body.classList.toggle("modal-open", !!p);
-  if (p) $("modal-x").focus();
+  var p = state.open && BYID[state.open], c = !p && state.coll && COLL[state.coll];
+  $("modal-body").innerHTML = p ? card(p, true) : c ? collDetail(c) : "";
+  $("modal").hidden = !(p || c);
+  document.body.classList.toggle("modal-open", !!(p || c));
+  if (p || c) $("modal-x").focus();
   else if (returnTo) {   /* looked up by id because closing via Back redraws the grid */
     var a = $("grid").querySelector(returnTo); if (a) a.focus({ preventScroll: true });
     returnTo = null;
   }
 }
 function openPlugin(id, from) {
-  state.open = id; returnTo = from ? '[data-open="' + id + '"].' + from.className.split(" ")[0] : null;
-  try { history.pushState(null, "", url()); pushed = true; } catch (e) {}
+  state.open = id; if (!from) returnTo = null; else if (from.closest("#grid")) returnTo = '[data-open="' + id + '"].' + from.className.split(" ")[0];
+  try { history.pushState(null, "", url()); pushed++; } catch (e) {}
+  modal();
+}
+function openColl(id, from) {   /* the collection view; from a member's breadcrumb it replaces the member's popup */
+  if (state.open && state.coll === id && pushed > 0) { closePlugin(); return; }   /* back to the collection it was opened from */
+  state.open = ""; state.coll = id; if (!from) returnTo = null; else if (from.closest("#grid")) returnTo = '[data-coll="' + id + '"].' + from.className.split(" ")[0];
+  try { history.pushState(null, "", url()); pushed++; } catch (e) {}
   modal();
 }
 function closePlugin() {
-  if (!state.open) return;
-  if (pushed) { pushed = false; history.back(); return; }
-  state.open = ""; save(); modal();
+  if (!state.open && !state.coll) return;
+  if (pushed) { history.back(); return; }
+  if (state.open) state.open = ""; else state.coll = "";
+  save(); modal();
 }
-addEventListener("popstate", function () { pushed = false; });   /* the hashchange that follows reloads the state */
+addEventListener("popstate", function () { if (pushed) pushed--; });   /* the hashchange that follows reloads the state */
+function plainClick(e) { return e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey; }
 $("grid").addEventListener("click", function (e) {
-  var a = e.target.closest("[data-open]");
-  if (!a || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-  e.preventDefault(); openPlugin(a.getAttribute("data-open"), a);
+  var a = e.target.closest("[data-open], [data-coll]");
+  if (!a || !plainClick(e)) return;
+  e.preventDefault();
+  if (a.hasAttribute("data-coll")) openColl(a.getAttribute("data-coll"), a); else openPlugin(a.getAttribute("data-open"), a);
+});
+$("modal-body").addEventListener("click", function (e) {
+  var all = e.target.closest("[data-pickall]");
+  if (all && state.coll && COLL[state.coll]) {   /* Pick all / Unpick all: the group's members that can be installed */
+    var k = all.getAttribute("data-pickall"), ps = groupsOf(COLL[state.coll]).filter(function (g) { return g.k === k; })[0].ps.filter(canPick);
+    var off = pickAllLabel(ps) === "Unpick all";
+    ps.forEach(function (p) { var i = state.sel.indexOf(p.id); if (off && i >= 0) state.sel.splice(i, 1); else if (!off && i < 0) state.sel.push(p.id); });
+    $("modal-body").innerHTML = collDetail(COLL[state.coll]);
+    var b = $("modal-body").querySelector('[data-pickall="' + k + '"]'); if (b) b.focus();
+    render(); panel(); return;
+  }
+  var a = e.target.closest("a[data-open], a[data-coll]");
+  if (!a || !plainClick(e)) return;
+  e.preventDefault();
+  if (a.hasAttribute("data-coll")) openColl(a.getAttribute("data-coll"), a); else openPlugin(a.getAttribute("data-open"), a);
 });
 /* The link to share is p/<id>.html (catalog_site.py share_page): link previews read its Open Graph tags, which a #p= hash can't carry. */
 $("modal-share").addEventListener("click", function () {
-  var b = this, link = new URL("p/" + encodeURIComponent(state.open) + ".html", location.href).href;
-  var name = (P.filter(function (x) { return x.id === state.open; })[0] || {}).name;
+  var b = this, link = new URL(state.open ? "p/" + encodeURIComponent(state.open) + ".html" : "p/c/" + encodeURIComponent(state.coll) + ".html", location.href).href;
+  var name = state.open ? (BYID[state.open] || {}).name : (COLL[state.coll] || {}).title;
   var done = function () { b.textContent = "Link copied"; setTimeout(function () { b.textContent = "Copy link"; }, 2000); };
   if (navigator.share && matchMedia("(pointer: coarse)").matches) navigator.share({ title: name, url: link }).catch(function () {});
   else if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(link).then(done, function () { prompt("Copy this link", link); });
   else prompt("Copy this link", link);
 });
 $("modal").addEventListener("click", function (e) { if (e.target === $("modal") || e.target.closest("#modal-x")) closePlugin(); });
-addEventListener("keydown", function (e) { if (e.key === "Escape" && state.open) closePlugin(); });
+addEventListener("keydown", function (e) { if (e.key === "Escape" && (state.open || state.coll)) closePlugin(); });
 function filterApps() {
   var q = $("a-q").value.trim().toLowerCase(), pl = $("a-plat").value, n = 0;
   Array.prototype.forEach.call($("apps").children, function (c) {
@@ -426,7 +542,7 @@ Object.keys(map).forEach(function (id) { $(id).addEventListener(id === "q" ? "in
 $("show-exp").addEventListener("click", function () { state.tier = "all"; sync(); render(); });
 $("beta").addEventListener("change", function () { state.beta = $("beta").checked; render(); });
 $("dir").addEventListener("click", function () { state.rev = !state.rev; render(); });
-$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: state.sel, open: "" }; sync(); render(); });
+$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: state.sel, open: "", coll: "" }; sync(); render(); });
 function sync() { Object.keys(map).forEach(function (id) { $(id).value = state[map[id]]; }); $("beta").checked = state.beta; }
 load(); sync(); render(); showTab(state.tab); filterApps(); modal();
 
@@ -457,7 +573,10 @@ function pick(e) {
   var id = e.target.getAttribute && e.target.getAttribute("data-pick"); if (!id) return;
   var i = state.sel.indexOf(id);
   if (e.target.checked && i < 0) state.sel.push(id); else if (!e.target.checked && i >= 0) state.sel.splice(i, 1);
-  if (e.currentTarget.id === "modal-body") render();   /* keep the grid's checkbox in step */
+  if (e.currentTarget.id === "modal-body") {   /* keep the grid's checkbox, and the collection view's Pick all, in step */
+    render();
+    if (state.coll && !state.open && COLL[state.coll]) groupsOf(COLL[state.coll]).forEach(function (g) { var b = $("modal-body").querySelector('[data-pickall="' + g.k + '"]'); if (b) b.textContent = pickAllLabel(g.ps); });
+  }
   panel(); save();
 }
 $("grid").addEventListener("change", pick);

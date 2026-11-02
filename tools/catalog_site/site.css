@@ -222,3 +222,36 @@ footer { margin-top: 36px; color: var(--muted); font-size: 12px; border-top: 1px
 [role=tabpanel] { padding-top: 20px; }
 .tabintro { color: var(--muted); max-width: 70ch; margin: 0 0 16px; }
 [hidden] { display: none !important; }
+
+/* Collections (docs/CATALOG.md, "Collections"): one card for several plugins from one repo, drawn as a small stack of cards.
+   The popup (#c=<id>) lists every member by kind with its install checkbox and Pick all per group. */
+.card.coll { border-color: color-mix(in srgb, var(--fg) 45%, var(--line)); box-shadow: 5px 5px 0 -1px var(--panel), 5px 5px 0 0 var(--line); }
+.card.coll.big { box-shadow: 0 24px 60px rgba(0, 0, 0, .45); }
+.tag.coll { color: var(--lcd-fg); background: var(--lcd-bg); border-color: var(--lcd-bg); }
+.card .counts { flex: none; font: 600 14px/1.3 var(--display); letter-spacing: .06em; text-transform: uppercase; }
+.card .matchline { color: var(--fg); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 13px/1 var(--text); text-decoration: none; background: var(--panel-2); border: 1px solid var(--line); border-radius: 14px; padding: 7px 11px; }
+.chip:hover { border-color: var(--fg); }
+.chip.more { color: var(--accent); border-color: var(--accent); font-weight: 700; }
+.card .shot.collage { display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(0, 1fr); gap: 2px; }
+.card .shot.collage.n1 { grid-template-columns: 1fr; }
+.card .shot.collage.n3 img:first-child { grid-row: span 2; }
+.card .shot.collage img { min-height: 0; height: 100%; object-fit: cover; }
+.card.big .shot.collage { aspect-ratio: 2 / 1; }
+.card .shot:empty { display: none; }
+.crumb { flex: none; font: 600 12px/1.3 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.crumb a { color: var(--accent); }
+.cgroup { border-top: 1px solid var(--line); padding-top: 12px; }
+.cg-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.cg-head h3 { font: 700 18px/1.2 var(--display); text-transform: uppercase; letter-spacing: .06em; margin: 0; }
+.members { list-style: none; margin: 6px 0 0; padding: 0; }
+.member { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 6px; align-items: start; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+.member:last-child { border-bottom: 0; }
+.member .pick { padding: 2px 4px; }
+.member .mrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.member .nm { font: 700 17px/1.2 var(--display); text-transform: uppercase; letter-spacing: .02em; text-decoration: none; }
+.member .nm:hover { color: var(--accent); }
+.member .ver { padding: 4px 6px; font-size: 11px; }
+.member .tag { padding: 4px 6px; }
+.member .sum { font-size: 13px; color: var(--muted); margin-top: 2px; }
