@@ -3,6 +3,7 @@
   "name": "Airwindows kCathedral5",
   "author": "mmiroshnikov",
   "repo": "mmiroshnikov/mpc-airwindows",
+  "collection": "mpc-airwindows",
   "kind": "effect",
   "style": "reverb",
   "tags": [

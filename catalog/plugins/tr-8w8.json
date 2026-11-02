@@ -1,4 +1,4 @@
-{ "id": "tr-8w8", "name": "8W8", "author": "athousanddetails", "repo": "sd88me/mpc-vst-TR-MPC",
+{ "id": "tr-8w8", "name": "8W8", "author": "athousanddetails", "repo": "sd88me/mpc-vst-TR-MPC", "collection": "tr-mpc",
   "kind": "instrument", "style": "drum-machine", "tags": ["tr-808"], "license": "GPL-3.0-only",
   "asset_pattern": "8W8-*-mpc-armv7.zip",
   "summary": "MPC/Force port of athousanddetails' schwung-8W8 TR-808 drum machine: 15 of 16 voices circuit-modelled from the service notes. Touchscreen skin and Q-Links.",

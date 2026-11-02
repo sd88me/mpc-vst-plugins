@@ -3,6 +3,7 @@
   "name": "Airwindows Density2",
   "author": "mmiroshnikov",
   "repo": "mmiroshnikov/mpc-airwindows",
+  "collection": "mpc-airwindows",
   "kind": "effect",
   "style": "saturation",
   "tags": [

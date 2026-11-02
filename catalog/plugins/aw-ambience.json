@@ -3,6 +3,7 @@
   "name": "Airwindows Collection: Ambience",
   "author": "sd88me",
   "repo": "sd88me/mpc-vst-airwindows",
+  "collection": "airwindows-collection",
   "kind": "effect",
   "style": "delay",
   "tags": [

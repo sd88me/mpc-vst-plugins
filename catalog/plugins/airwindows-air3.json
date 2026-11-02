@@ -3,6 +3,7 @@
   "name": "Airwindows Air3",
   "author": "mmiroshnikov",
   "repo": "mmiroshnikov/mpc-airwindows",
+  "collection": "mpc-airwindows",
   "kind": "effect",
   "style": "eq",
   "tags": [

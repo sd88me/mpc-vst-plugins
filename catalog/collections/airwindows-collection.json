@@ -1,0 +1,7 @@
+{
+  "id": "airwindows-collection",
+  "title": "Airwindows Collection",
+  "author": "sd88me",
+  "repo": "sd88me/mpc-vst-airwindows",
+  "summary": "The Airwindows library grouped by category, one plugin per category (Reverb, Ambience, Consoles, Filter, Dynamics, Saturation, Tape and more), each holding every effect of its category with its own panel, Q-Link badges and built-in manual."
+}
