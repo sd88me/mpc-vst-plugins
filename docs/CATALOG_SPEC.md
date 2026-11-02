@@ -90,6 +90,18 @@ Warnings (need a human look): `install.sh`/`uninstall.sh`/`plugin_list.awk` diff
 when `license` is not on the open-source list; the site shows a "Restricted use" badge.
 No version fields: they are read from the releases (or, for `build-yourself`, the git tags). `id` must equal the manifest `id`, `repo` the manifest
 `source_repo`. Stable releases are GitHub releases that are not prereleases; prereleases form the beta channel.
+`collection` is optional: the id of a `collections/<id>.json` with the same `repo` (below).
+
+### Collections: `collections/<id>.json` (2026-11-02, offline)
+```json
+{ "id": "my-pack", "title": "My Pack", "author": "Someone", "repo": "someone/my-pack",
+  "summary": "One line about the set.", "screenshot": "optional https URL" }
+```
+Several entries from one repo shown as one card. A member entry sets `"collection": "my-pack"`; nothing else about it changes (own
+release, versions, checks, tier, uid and download). Rules (`catalog_build.py`): the file exists and is named `<id>.json`, every member's `repo`
+equals the collection's, at least 2 members, `summary` at most 350 characters, no other fields. More than 5 entries sharing a `repo` and
+`author` without a `collection` is a registry error (per author, so a repo hosting ports credited to different authors is not forced
+into one).
 
 ### Build-yourself entries
 For a plugin that cannot publish a zip because the build embeds the user's own firmware. Schema 1 is unchanged: the
@@ -143,6 +155,12 @@ Every plugin also has `distribution`. For `build-yourself` plugins the record ca
 `build` and `components`, and each version is `{version, tag, date, channel: "stable", source_url, yanked, downloads: 0,
 warnings, tested, notes: ""}`: no `url`, `size`, `sha256`, `param_compat` or `manifest`. Readers must treat those
 keys as absent for such entries (an installer must skip them: there is nothing to download).
+
+`collections` (2026-11-02, offline; absent when there are none): `[{id, title, author, repo, summary, screenshot?, members, kinds, tier,
+verified_on, downloads, updated, added}]`. `members` are plugin ids (by name), `kinds` a count per `kind`, `tier` the best member tier,
+`verified_on` the generations of its verified members, `downloads` the members' total, `updated` the newest member update and `added` the
+oldest member's. A member plugin carries `collection` (the id). The plugins themselves stay in `plugins` unchanged, so installers and
+`catalog.tsv` need nothing new; only the site groups them.
 
 ## Addins (`kind: "addin"`)
 An addin is a library MPC preloads (`docs/ADDINS.md`), released with `tools/release_addin.py`. Schema 1 is unchanged; an addin's

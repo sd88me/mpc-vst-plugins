@@ -3,6 +3,7 @@
   "name": "Airwindows ZAcidLowpass",
   "author": "mmiroshnikov",
   "repo": "mmiroshnikov/mpc-airwindows",
+  "collection": "mpc-airwindows",
   "kind": "effect",
   "style": "filter",
   "tags": [

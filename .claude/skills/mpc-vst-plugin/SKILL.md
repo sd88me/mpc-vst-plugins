@@ -270,6 +270,8 @@ docs/SKIN_VARIANTS.md.
 Every release must be catalog-conformant: `tools/release.py ... --repo owner/name --license <SPDX> [--id x] [--requires "..."]`
 (CI inputs `plugin_id`, `license`, `requires`), then `tools/catalog_check.py <zip> --catalog` must say OK. A new port also needs
 one `catalog/plugins/<id>.json` PR and public source + licence (docs/PORTING.md section 5, docs/CATALOG.md, catalog/README.md).
+More than 5 entries by one author from one repo need a collection (`catalog/collections/<id>.json`, `"collection"` on each entry) or
+`--check-registry` fails.
 Publish drafts only after a device smoke test, and ask before installing (it restarts MPC).
 
 ## Device patches

@@ -1,0 +1,8 @@
+{
+  "id": "mpc-airwindows",
+  "title": "Airwindows Singles",
+  "author": "mmiroshnikov",
+  "repo": "mmiroshnikov/mpc-airwindows",
+  "summary": "Single Airwindows effects ported one plugin each: reverbs (Galactic, Verbity, kCathedral), delays, EQs and filters, compressors, saturation and console channels, each with its own MPC skin.",
+  "screenshot": "https://raw.githubusercontent.com/mmiroshnikov/mpc-airwindows/main/docs/screenshots/Galactic3.jpg"
+}

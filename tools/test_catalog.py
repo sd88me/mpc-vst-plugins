@@ -903,6 +903,127 @@ class BuildTest(Base):
         self.assertEqual([os.path.basename(f) for f, _ in catalog_build.stray_files(self.tmp)], ["test-synth.json"])
 
 
+class CollectionTest(Base):
+    """Collections (catalog/collections/<id>.json): several entries from one repo shown as one card (docs/CATALOG.md)."""
+    COL = {"id": "acme-pack", "title": "Acme Pack", "author": "A", "repo": "acme/pack", "summary": "Everything from Acme."}
+
+    def entry(self, i, **kw):
+        return dict(BuildTest.ENTRY, id="pack-%d" % i, name="Pack %d" % i, repo="acme/pack", asset_pattern="P%d-*-mpc-armv7.zip" % i, **kw)
+
+    def write(self, entries, cols):
+        reg, cdir = os.path.join(self.tmp, "plugins"), os.path.join(self.tmp, "collections")
+        for d in (reg, cdir):
+            shutil.rmtree(d, ignore_errors=True)
+            os.makedirs(d)
+        for e in entries:
+            json.dump(e, open(os.path.join(reg, e["id"] + ".json"), "w"))
+        for c in cols:
+            json.dump(c, open(os.path.join(cdir, c["id"] + ".json"), "w"))
+        entries, problems = catalog_build.load_registry(reg)
+        self.assertEqual(problems, [])
+        return catalog_build.load_collections(cdir, entries, reg)
+
+    def test_collection_file_rules(self):
+        self.assertEqual(catalog_build.check_collection(self.COL, "x/acme-pack.json"), [])
+        self.assertEqual(catalog_build.check_collection(dict(self.COL, screenshot="https://x/y.png")), [])
+        bad = [{k: v for k, v in self.COL.items() if k != "title"}, dict(self.COL, id="Acme Pack"), dict(self.COL, repo="acme"),
+               dict(self.COL, summary="x" * (catalog_build.MAX_SUMMARY + 1)), dict(self.COL, screenshot="http://x/y.png"),
+               dict(self.COL, members=["a"]), [1]]
+        for c in bad:
+            self.assertTrue(catalog_build.check_collection(c), c)
+        self.assertTrue(catalog_build.check_collection(self.COL, "x/other.json"))   # file name must be <id>.json
+        self.assertTrue(catalog_build.check_entry(dict(BuildTest.ENTRY, collection="Not A Slug")))
+        self.assertEqual(catalog_build.check_entry(dict(BuildTest.ENTRY, collection="acme-pack")), [])
+
+    def test_members_must_match_an_existing_collection_of_their_repo(self):
+        cols, problems = self.write([self.entry(i, collection="acme-pack") for i in range(3)], [self.COL])
+        self.assertEqual((sorted(cols), problems), (["acme-pack"], []))
+        _, problems = self.write([self.entry(0, collection="nope"), self.entry(1)], [])
+        self.assertEqual(len(problems), 1)
+        self.assertIn("has no file catalog/collections/nope.json", problems[0][1])
+        other = dict(self.entry(2, collection="acme-pack"), repo="acme/other")
+        cols, problems = self.write([self.entry(0, collection="acme-pack"), self.entry(1, collection="acme-pack"), other], [self.COL])
+        self.assertEqual(len(problems), 1, problems)
+        self.assertTrue(problems[0][0].endswith("pack-2.json") and "one repo's entries" in problems[0][1], problems)
+        self.assertIn("acme-pack", cols)   # still two good members
+
+    def test_a_collection_needs_two_members(self):
+        for n in (0, 1):
+            cols, problems = self.write([self.entry(i, collection="acme-pack") for i in range(n)], [self.COL])
+            self.assertEqual(cols, {})
+            self.assertEqual(len(problems), 1)
+            self.assertIn("at least 2 member entries", problems[0][1])
+            self.assertTrue(problems[0][0].endswith("acme-pack.json"))
+
+    def test_more_than_five_entries_from_one_repo_need_a_collection(self):
+        n = catalog_build.MAX_UNCOLLECTED
+        _, problems = self.write([self.entry(i) for i in range(n)], [])
+        self.assertEqual(problems, [])
+        _, problems = self.write([self.entry(i) for i in range(n + 1)], [])
+        self.assertEqual(len(problems), 1)
+        self.assertIn("%d entries from acme/pack by A have no collection" % (n + 1), problems[0][1])
+        # counted per author: a repo hosting ports credited to different authors (TR-MPC) needs none
+        _, problems = self.write([self.entry(i) for i in range(n)] + [self.entry(n + i, author="B") for i in range(n)], [])
+        self.assertEqual(problems, [])
+        _, problems = self.write([self.entry(i) for i in range(n)] + [self.entry(n + i, author=" a ") for i in range(1)], [])
+        self.assertEqual(len(problems), 1)   # the same author, however it is spaced or capitalised
+        # in a collection they are fine, and up to five may stay outside it
+        _, problems = self.write([self.entry(i, collection="acme-pack") for i in range(20)] + [self.entry(20 + i) for i in range(n)], [self.COL])
+        self.assertEqual(problems, [])
+
+    def test_check_registry_fails_on_the_rule(self):
+        reg = os.path.join(self.tmp, "catalog", "plugins")
+        os.makedirs(reg)
+        for i in range(6):
+            json.dump(self.entry(i), open(os.path.join(reg, "pack-%d.json" % i), "w"))
+        run = lambda: subprocess.run([sys.executable, os.path.join(HERE, "catalog_build.py"), "--check-registry", "--registry", reg,
+                                      "--added", os.path.join(self.tmp, "none.json")], capture_output=True, text=True)
+        r = run()
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("have no collection", r.stderr)
+        os.makedirs(os.path.join(self.tmp, "catalog", "collections"))
+        json.dump(self.COL, open(os.path.join(self.tmp, "catalog", "collections", "acme-pack.json"), "w"))
+        for i in range(6):
+            json.dump(self.entry(i, collection="acme-pack"), open(os.path.join(reg, "pack-%d.json" % i), "w"))
+        r = run()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("1 collections", r.stdout)
+
+    def test_the_live_registry_follows_the_rules(self):
+        root = os.path.dirname(HERE)
+        entries, problems = catalog_build.load_registry(os.path.join(root, "catalog", "plugins"))
+        cols, cproblems = catalog_build.load_collections(os.path.join(root, "catalog", "collections"), entries)
+        self.assertEqual(problems + cproblems, [])
+        self.assertIn("mpc-airwindows", cols)
+
+    def test_build_emits_collections(self):
+        entries = [self.entry(0, collection="acme-pack"), self.entry(1, collection="acme-pack", kind="effect"),
+                   self.entry(2, collection="acme-pack"), self.entry(3), dict(self.entry(4, collection="ghost"))]
+        cols = {"acme-pack": dict(self.COL, screenshot="https://x/s.png")}
+        cat, _ = catalog_build.build(entries, FakeGitHub({}, {}), os.path.join(self.tmp, "cache"), set(), collections=cols)
+        by = {p["id"]: p for p in cat["plugins"]}
+        self.assertEqual([by["pack-%d" % i].get("collection") for i in range(5)], ["acme-pack"] * 3 + [None, None])
+        self.assertEqual(len(cat["collections"]), 1)
+        c = cat["collections"][0]
+        self.assertEqual({k: c[k] for k in ("id", "title", "author", "repo", "summary", "screenshot")}, cols["acme-pack"])
+        self.assertEqual((c["members"], c["kinds"], c["tier"], c["downloads"]), (["pack-0", "pack-1", "pack-2"], {"instrument": 2, "effect": 1}, "experimental", 0))
+        # a catalog built without collections has no collections[] and no member links (older clients see no change)
+        cat, _ = catalog_build.build(entries, FakeGitHub({}, {}), os.path.join(self.tmp, "cache"), set())
+        self.assertNotIn("collections", cat)
+        self.assertFalse(any("collection" in p for p in cat["plugins"]))
+
+    def test_best_tier_and_totals(self):
+        mk = lambda i, tier, dl, upd, gens=(): {"id": "m%d" % i, "kind": "instrument" if i % 2 else "effect", "tier": tier, "downloads": dl,
+                                               "updated": upd, "added": "2026-10-0%d" % (i + 1), "collection": "c", "verified_on": list(gens)}
+        plugins = [mk(0, "experimental", 5, "2026-10-01"), mk(1, "verified", 7, "2026-10-09", ["gen2"]), mk(2, "listed", 1, "2026-10-03"),
+                   mk(3, "verified", 0, "", ["gen1"]), dict(mk(4, "verified", 100, "2026-11-01"), collection=None)]
+        c = catalog_build.collections_of(plugins, {"c": dict(self.COL, id="c")})[0]
+        self.assertEqual((c["tier"], c["verified_on"], c["downloads"], c["updated"], c["added"]), ("verified", ["gen1", "gen2"], 13, "2026-10-09", "2026-10-01"))
+        self.assertEqual(c["kinds"], {"effect": 2, "instrument": 2})
+        plugins = [mk(0, "listed", 1, ""), mk(1, "experimental", 1, "")]
+        self.assertEqual(catalog_build.collections_of(plugins, {"c": dict(self.COL, id="c")})[0]["tier"], "listed")
+
+
 import catalog_issues  # noqa: E402
 
 
@@ -980,6 +1101,51 @@ class SiteTest(unittest.TestCase):
         doc = xml.dom.minidom.parseString(catalog_site.atom(cat, "https://e.io/x/"))
         self.assertEqual(len(doc.getElementsByTagName("entry")), 1)
         self.assertIn("A <&>", doc.getElementsByTagName("title")[1].firstChild.data)
+
+    def collection_catalog(self):
+        v = lambda ver, date, ch="stable": {"version": ver, "date": date, "url": "https://x/%s.zip" % ver, "yanked": False, "channel": ch}
+        m = lambda i, vers, col="pack": {"id": "m%d" % i, "name": "Member %d" % i, "author": "Z", "summary": "s%d" % i, "kind": "effect",
+                                        "collection": col, "versions": vers}
+        return {"schema": 1, "generated": "g", "plugins": [
+            m(1, [v("2.0.0", "2026-10-30"), v("1.0.0", "2026-10-01")]), m(2, [v("2.0.0", "2026-10-30"), v("1.0.0", "2026-10-01")]),
+            m(3, [v("1.1.0", "2026-10-30"), v("1.2.0-b", "2026-10-30", "beta"), v("1.0.0", "2026-10-02")]),
+            {"id": "solo", "name": "Solo", "author": "Y", "summary": "s", "versions": [v("1.0.0", "2026-10-30")]}],
+            "collections": [{"id": "pack", "title": "Pack <&>", "author": "Z", "repo": "z/pack", "summary": "p", "members": ["m1", "m2", "m3"]}]}
+
+    def test_atom_feed_one_entry_per_collection_release(self):
+        import xml.dom.minidom
+        doc = xml.dom.minidom.parseString(catalog_site.atom(self.collection_catalog(), "https://e.io/x/"))
+        entries = {e.getElementsByTagName("id")[0].firstChild.data: e for e in doc.getElementsByTagName("entry")}
+        self.assertEqual(sorted(entries), sorted(["tag:mpc-vst-catalog,2026:c/pack@2026-10-30", "tag:mpc-vst-catalog,2026:m3@1.2.0-b",
+                                                  "tag:mpc-vst-catalog,2026:c/pack@2026-10-01", "tag:mpc-vst-catalog,2026:m3@1.0.0",
+                                                  "tag:mpc-vst-catalog,2026:solo@1.0.0"]))
+        e = entries["tag:mpc-vst-catalog,2026:c/pack@2026-10-30"]
+        title = e.getElementsByTagName("title")[0].firstChild.data
+        self.assertEqual(title, "Pack <&>: 3 plugins updated")   # mixed versions: no version in the title
+        self.assertEqual(e.getElementsByTagName("summary")[0].firstChild.data, "Member 1 2.0.0, Member 2 2.0.0, Member 3 1.1.0")
+        self.assertEqual(e.getElementsByTagName("link")[0].getAttribute("href"), "https://e.io/x/p/c/pack.html")
+        same = entries["tag:mpc-vst-catalog,2026:c/pack@2026-10-01"].getElementsByTagName("title")[0].firstChild.data
+        self.assertEqual(same, "Pack <&> 1.0.0: 2 plugins updated")
+        # a one-member "collection release" is that member's own entry (m3's beta and its 1.0.0 above)
+        self.assertEqual(entries["tag:mpc-vst-catalog,2026:m3@1.2.0-b"].getElementsByTagName("title")[0].firstChild.data, "Member 3 1.2.0-b (beta)")
+        # without a base URL the link is the repo's releases page; without collections[] every member is its own entry
+        doc = xml.dom.minidom.parseString(catalog_site.atom(self.collection_catalog()))
+        self.assertIn("https://github.com/z/pack/releases", [l.getAttribute("href") for l in doc.getElementsByTagName("link")])
+        cat = self.collection_catalog()
+        del cat["collections"]
+        self.assertEqual(len(xml.dom.minidom.parseString(catalog_site.atom(cat)).getElementsByTagName("entry")), 8)
+
+    def test_collection_share_pages(self):
+        cat = self.collection_catalog()
+        col = cat["collections"][0]
+        page = catalog_site.share_page(cat["plugins"][0], col)
+        self.assertIn('Part of <a href="c/pack.html">Pack &lt;&amp;&gt;</a>', page)
+        self.assertNotIn("Part of", catalog_site.share_page(cat["plugins"][3]))
+        page = catalog_site.collection_page(col, cat["plugins"][:3])
+        self.assertIn('location.replace("../../index.html#c=pack")', page)
+        self.assertIn('<h2>Effects (3)</h2>', page)
+        self.assertIn('<a href="../m2.html">Member 2</a>', page)
+        self.assertIn('content="Pack &lt;&amp;&gt; by Z"', page)
 
     def test_registry_style_and_source_available(self):
         e = dict(BuildTest.ENTRY, license="MAME license")

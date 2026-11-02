@@ -23,6 +23,23 @@ Design: `docs/CATALOG.md`. Formats: `docs/CATALOG_SPEC.md`.
 3. CI checks the entry and your latest release. Once merged, new releases appear automatically (nightly, or
    run the "Catalog build" workflow).
 
+## Many plugins from one repo: a collection
+If your repo publishes several plugins (each with its own release zip and `asset_pattern`), group them so the catalog shows one card
+instead of one per plugin. **More than 5 entries from one repo by the same `author` without a collection fail the registry check (CI).** Entries
+credited to different authors are counted separately, so a repo that hosts a few ports of other people's plugins is not forced into one.
+1. Add `catalog/collections/<id>.json`:
+   ```json
+   { "id": "my-pack", "title": "My Pack", "author": "Your name", "repo": "you/my-pack",
+     "summary": "One line about the set.", "screenshot": "optional https URL" }
+   ```
+2. Add `"collection": "my-pack"` to each member's `catalog/plugins/<id>.json`. Every member must have the collection's `repo`, and a
+   collection needs at least 2 members. Nothing else changes: each member keeps its own release, versions, checks, tier and download.
+
+The card shows the collection's screenshot (or a collage of the members'), how many instruments and effects it holds, and the first few
+members; View all opens a list grouped by kind where people tick members (or Pick all) for the install list. The collection appears under
+each tab its members cover, sorted by its best member tier and total downloads. A release that updates several members on one day is one
+feed entry. (2026-11-02, offline.)
+
 Open-source licenses (list in `tools/catalog_build.py`) or public source with `source_available` set. No versions or
 checksums go in the entry.
 
@@ -104,14 +121,15 @@ is hidden or demoted because of it. The items:
   a Gen2 build
 
 ## Feed
-The site publishes `feed.xml` (Atom, newest 50 non-yanked releases).
+The site publishes `feed.xml` (Atom, newest 50 non-yanked releases). Members of a collection released on the same day are one entry.
 
 ## Yank a release
 Add `"<id>@<version>"` (or `"<id>@*"` for all versions) to `yanked.json`. It stays in the catalog marked yanked and is
 never offered as the latest.
 
 ## Build locally
-`python3 tools/catalog_build.py --check-registry` validates entries (and fails on any `*.json` directly in `catalog/` other than
+`python3 tools/catalog_build.py --check-registry` validates entries and `catalog/collections/` (and fails on more than 5 entries
+from one repo by one author without a collection, and on any `*.json` directly in `catalog/` other than
 `added.json`, `apps.json`, `patches.json` and `yanked.json`: an entry put one folder too high); without the flag it fetches releases (set
 `GITHUB_TOKEN` to avoid API limits) and writes `catalog/dist/catalog.json` and `problems.json`.
 In `problems.json`, `superseded: true` marks a failing release that a newer, unyanked release of the same plugin
