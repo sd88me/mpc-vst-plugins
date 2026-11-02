@@ -3,6 +3,7 @@
   "name": "Airwindows Collection: Filter",
   "author": "sd88me",
   "repo": "sd88me/mpc-vst-airwindows",
+  "collection": "airwindows-collection",
   "kind": "effect",
   "style": "filter",
   "tags": [

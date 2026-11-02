@@ -1,0 +1,19 @@
+{
+  "id": "ghost",
+  "name": "GHOST",
+  "author": "MPC-EURO",
+  "repo": "carballocba/MPC-EURO-",
+  "kind": "effect",
+  "license": "GPL-3.0-only",
+  "summary": "Live buffer manipulation, rhythmic stutter and generative glitch with independent and combined Random Repeat modes.",
+  "style": "glitch",
+  "tags": [
+    "buffer",
+    "stutter",
+    "reverse",
+    "generative",
+    "performance"
+  ],
+  "asset_pattern": "GHOST-2.4.2-installer2-rc3-mpc-armv7.zip",
+  "tier": "experimental"
+}

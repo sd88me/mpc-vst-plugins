@@ -3,6 +3,7 @@
   "name": "Airwindows Console7Channel",
   "author": "mmiroshnikov",
   "repo": "mmiroshnikov/mpc-airwindows",
+  "collection": "mpc-airwindows",
   "kind": "effect",
   "style": "saturation",
   "tags": [

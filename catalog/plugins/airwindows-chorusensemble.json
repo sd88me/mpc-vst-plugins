@@ -3,6 +3,7 @@
   "name": "Airwindows ChorusEnsemble",
   "author": "mmiroshnikov",
   "repo": "mmiroshnikov/mpc-airwindows",
+  "collection": "mpc-airwindows",
   "kind": "effect",
   "style": "chorus",
   "tags": [

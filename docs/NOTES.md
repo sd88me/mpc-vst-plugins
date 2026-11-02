@@ -1357,7 +1357,7 @@ Two probe runs on the same unit (root via two different unofficial boot methods,
 A beta tester of the Hakai VST Manager, testing the Crate Digger aarch64 test release, reports that MPC's plugin browser on a real Gen2 only shows a registered aarch64 `.so` when its entry is under `<VALUE name="pluginList-arm-64bit">`; an entry under `pluginList-arm` sits in `MPC.settings` but never appears in the browser. We have **not** reproduced this ourselves (no aarch64 pilot has loaded on hardware yet), and the one real Gen2 `MPC.settings` we've read offline (above) has only `pluginList-arm`, holding factory plugins — consistent with either key naming being right for third-party `.so` files. Treating it as credible but unconfirmed: `plugin_list.awk` now takes an optional `-v listkey=...`, and `install.sh`/`sync.sh` pick `pluginList-arm-64bit` for an `aarch64` package and `pluginList-arm` otherwise (`tools/desktop/sync.sh` and `tools/desktop/plugin_list.awk` kept identical to the `tools/release/` copies, as `test_catalog.py` checks). **Must be confirmed or corrected on real hardware** by the aarch64 pilot port (docs/GEN2.md item 3) before calling this settled either way.
 
 ## 2026-10-09: Maschine Group on an MPC Live (device)
-GROUP and SETUP screenshots in `ports/maschine/docs/` (`tools/screenshot.sh --plugin`). Writing packed evdev events to the ILI2116 node updates absinfo but does not move MPC's UI (the main thread has that node open). Tab switches for the shots were done on the glass. SETUP showed the copied library path and the How to Add NI Groups copy. GROUP showed the kit list, 4×4 pads and pattern cells with 8-Ball Kit loaded (3 samples missing). Writing `/tmp/maschine-pattern.mid` cannot feed GRID Shift+Paste: `/usr/bin/MPC` has no system clipboard, and GRID reads MPC's own event buffer.
+GROUP and SETUP screenshots, now in the plugin's own repo (mmiroshnikov/mpc-maschine-group, `docs/`), taken with `tools/screenshot.sh --plugin`. Writing packed evdev events to the ILI2116 node updates absinfo but does not move MPC's UI (the main thread has that node open). Tab switches for the shots were done on the glass. SETUP showed the copied library path and the How to Add NI Groups copy. GROUP showed the kit list, 4×4 pads and pattern cells with 8-Ball Kit loaded (3 samples missing). Writing `/tmp/maschine-pattern.mid` cannot feed GRID Shift+Paste: `/usr/bin/MPC` has no system clipboard, and GRID reads MPC's own event buffer.
 
 ### 2026-10-10: installer app Apply / Undo on the Force (device, user-reported; PR #260)
 The Force (MPC 3.9.1.2, drum-pad layout patch already applied, stock backup present, `status` read over SSH before the test) was driven through the 0.0.0-applytest build of the desktop app, step 7. The user reported that it "works well". What was and was not checked by us: before the test, `status` printed `STATE state=patched supported=1 backup=1 checksum=7cf96599ec61b1079688f253f3b65b9f` over SSH (read only); the click-through itself (Undo then Apply, typed `UNDO` / `APPLY`) was done by the user, and the checksums after each step were not read back by us. Only the drum-pad patch was tried; the drive exec and button remap patches have no Apply/Undo run yet, and the app offers default settings only (no per-patch options).
@@ -2061,3 +2061,58 @@ Fixes (offline-tested; not yet on a device): the manager's keys get the same 250
 - **"Last apply: 1 done, 2 failed" + garbage after a successful uninstall (Live III, device):** the result file held one `ok` line. MPC
   creates the plugin more than once and each instance refreshes; two instances parsing the file with `strtok` at the same moment corrupt
   each other. `show_result` now claims the file by renaming it (one instance reports it) and result/history parsing use `strtok_r`.
+
+## 2026-10-30: desktop VST3 build of a port (offline only; no device involved)
+
+- **What:** `tools/build_vst3.sh` builds a generic-wrapper port as a Linux VST3 (`wrapper/vst3_wrap.c`); docs/DESKTOP_VST3.md. MPC OS
+  still loads only VST2 (2026-09-24 above), so this is for desktop DAWs only.
+- **ABI:** the hand-written structs in `wrapper/vst3_abi.h` have the same sizes and offsets as the VST3 SDK's headers (3.8, x86_64
+  Linux, checked with a scratch build against the SDK; now `_Static_assert`s). Linux IIDs are plain big-endian bytes and
+  `kNoInterface` is -1 (no COM compatibility).
+- **Steinberg `validator -e`** (built from the SDK outside the repo, `validator` target only): Keyscope 537 passed, 0 failed, including
+  rates from 1234.5678 Hz to 1234567.8 Hz. It wants a bypass parameter that survives state (now added) and readout text it can read back.
+- **Resampling:** Keyscope (passes audio unchanged) gives its input back at exactly the reported latency (128 / 179 / 355 frames at
+  44.1 / 48 / 96 kHz); error -86 dB at 44.1 kHz (the engine's int16), -85 / -84 dB at 48 / 96 kHz.
+- **Engines report option values as indices:** an option named "0" (a list "-1, 0, +1") must not be read as the option named "0".
+  Engine values parse index first; text a person types parses option names first.
+- **Not yet:** any DAW by hand (only the validator and `tools/vst3_host_test.c` have loaded it).
+
+## 2026-10-30: the desktop VST3 editor draws the MPC skin (offline only; no device involved)
+
+- **What:** `wrapper/vst3_editor.c` draws the port's built skin (flattened by `tools/desktop_skin.py`) in the plugin window as an
+  X11 view, with live values, mouse input and a tab strip; docs/DESKTOP_VST3.md.
+- **Tests:** `tools/test_vst3.sh` opens it in an X11 window that is never mapped, with a fake host run loop. It passed for
+  Keyscope, Chordsmith, Groover, Tuner, DrumGizmo and Stompbox under ASan. Steinberg `validator -e` gives 537/537 for each.
+- **cairo:** an image painted onto an Xlib surface keeps an uploaded copy cached on the image. That copy holds the X connection
+  open after the window closes (6 device references at `removed()`, LeakSanitizer reports in libcairo). Drawing into one image
+  backbuffer, freed before the connection closes, fixes it.
+- **Name labels:** studio.py preview shows a component's name. On MPC a Name label shows the parameter's name, which a
+  `dynamic_name` parameter takes from the engine (Stompbox's per-model knob names). The editor does the same.
+- **Reaper 7.82 (Linux, Hyprland, Reaper under Xwayland), 2026-10-30, desktop only:** all six ports loaded from `~/.vst3`, and
+  their editors opened and drew their skins. Reaper gives the view an `IRunLoop`, and a tiled window scaled the page. Not
+  clicked in Reaper. Screenshots: docs/images/desktop-vst3/.
+- **Groover's map (skin order, open):** in Groover's `TUI.json` the five full-page per-style images (`art ... when=style:`)
+  come after the 25 map pictures (`picture key=mapdot`). They are opaque, so drawn in file order they hide the map dot; the
+  editor and studio.py both show no dot. On a device this is not checked (Groover TESTING.md row 5). If the dot shows
+  there, MPC does not stack in file order. If not, the per-style images should come before the picture in the layout.
+
+## 2026-10-31: desktop VST3 review fixes (offline only; no device involved)
+
+- **Big host blocks:** the output FIFOs held 9216 frames plus the latency, so a host block larger than that (16384, an offline
+  render) hung an instrument in `fill_out()` and dropped part of an effect's output (Keyscope's passthrough error went from
+  -86 dB to -2 dB in `vst3_host_test.c` with one 16384-frame block). `process()` now runs a host block in pieces of 4096.
+- **Repeated controller values:** a CC with the same value as the last one was dropped, which lost NRPN data entry (CC 6 = 64
+  for two parameters in a row). Every controller move is sent now.
+- **Also fixed:** a half-failed `init_audio` left buffers behind that `process()` then used; engine-side changes were cleared
+  when the host passed no `outputParameterChanges`; program 0 could not be picked on a fresh instance; FreeType was shut down
+  while cairo's font cache still held faces (each face now owns its library); without an `IRunLoop`, the editor's thread and
+  the host's `onSize()` drew and resized the same window unlocked; each redraw read every value from the engine twice.
+- **Tests:** `test_vst3.sh` passes for Keyscope (`--passthrough`), Chordsmith, Tuner, Groover, DrumGizmo and Stompbox
+  (`build/gen/vst.json`, with `alloc_dealloc_mismatch=0` for guitarix's generated chorus code) under ASan/UBSan, editor
+  window included. Steinberg's `validator` was not rerun (not built on this machine).
+
+## 2026-10-31: desktop VST3 for Windows (prepared)
+
+Offline only: `VST3_TARGET=windows` in `tools/build_vst3.sh` and `tools/test_vst3.sh` cross-builds the wrapper with mingw-w64
+and runs the host test under Wine 11 (passes for `poc/uiprobe`). Not tried on real Windows or in a DAW; no editor on Windows;
+the Maschine engine does not compile (`dlfcn.h`). Details: docs/DESKTOP_VST3.md, "Windows".
