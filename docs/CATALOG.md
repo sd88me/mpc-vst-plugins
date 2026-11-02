@@ -61,7 +61,7 @@ Length limits (checked by `tools/catalog_build.py`): `summary` at most 350 chara
 readable. Put the full feature list in the repo README. Maintainers may edit a summary or tags for length and consistency, but do not
 change claims about testing or safety without the author.
 
-### Collections (2026-11-02, offline: unit tests and a headless-browser check, not yet published)
+### Collections (2026-11-02; live 2026-11-02 (catalog build #770, checked on the published catalog.json, feed.xml and page))
 One repo can publish many entries (22 from `mmiroshnikov/mpc-airwindows`, 20 more in PR #685 from `Bombest-Audio/op1-fx`), which floods
 the grid. A **collection** shows them as one card. `catalog/collections/<id>.json` holds `id`, `title`, `author`, `repo`, `summary` and an
 optional `https://` `screenshot`; each member entry adds `"collection": "<id>"`. Members are otherwise unchanged: own release, versions,
@@ -73,6 +73,10 @@ checks, `tested.json` tier, uid and download; `catalog.tsv`, the installer and `
   `sd88me/mpc-vst-TR-MPC` lists 4 drum machines by athousanddetails beside 2 plugins by sd88me, which are not one set and stay separate
   cards. When the rule was added (2026-11-02) two repos were over it and got collections: `mpc-airwindows` (22 entries) and
   `airwindows-collection` (`sd88me/mpc-vst-airwindows`, 11).
+- **First live build (2026-11-02, run #770):** 182 plugins on 148 cards, both collections listed (Airwindows Singles: 22 effects, Verified;
+  Airwindows Collection: 11 effects, Listed), the TR-MPC entries as separate cards, `catalog.tsv` unchanged, the Airwindows Collection 0.1.0
+  release as one feed entry ("11 plugins updated"), `p/c/<id>.html` share pages and the "Part of" breadcrumb present. Checked on the copy the
+  build pushes to `open-mpc/open-mpc.github.io`, loaded in headless Chromium.
 - **`catalog.json`:** `collections[]` with members, kind counts, best member tier, total downloads (`docs/CATALOG_SPEC.md`).
 - **Site:** one card per collection (its screenshot, else a collage of up to four member screenshots; title, author, Collection badge,
   "13 instruments · 7 effects", best tier, the first member chips and +N, View all and Source). It shows under each tab its members cover,
@@ -239,7 +243,7 @@ here first and move to its own repo (recommended, for community ownership) once 
 - [x] (2026-10-09, offline: browser-checked at desktop and phone width, not yet published) The catalog page has tabs: All, Instruments, MIDI, Effects and Addins (2026-10-10; All is every plugin together; since 2026-10-14, offline, All is the first tab and the landing tab, so a link without `tab=` opens on All and an Instruments link carries `#tab=instrument`: MIDI is the optional registry field `role: "midi"`, tagged by hand on 14 sequencers/generators and listed there instead of under Instruments; the other tabs are the old single Plugins tab split by kind; they share the filter bar and grid, a bundle shows under each kind it installs, old `#tab=plugins` links open Instruments), Device patches (the `patches.html` cards) and
       Companion apps (`catalog/apps.json`, `tools/app_check.py`; issue #232, MPC Link first). The tab is in the URL hash (`#tab=apps`). The site is named "Open MPC - Plugin Catalog" and the footer links the Discord.
 - [x] (2026-10-09, tested offline against MPC Link v0.4.0 and a fake GitHub; the first nightly run is unverified) Companion app downloads are read from each app's newest stable GitHub release by `tools/app_resolve.py` (`assets` rules in `catalog/apps.json`), run by `catalog.yml`; pinned `downloads` are the fallback.
-- [x] (2026-11-02, offline: unit tests and a headless-browser check) Collections: one card per repo's set of entries, the more-than-5 rule,
+- [x] (2026-11-02, live the same day) Collections: one card per repo's set of entries, the more-than-5 rule,
       `collections[]` in `catalog.json`, the collection view with Pick all, a grouped feed (see Collections above).
 - [ ] Announce to the community; collect what people actually ask for before building Phase 4.
 

@@ -71,9 +71,8 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
 - [ ] **Update notices honour `param_compat`** (a major bump warns that saved projects will change).
 - [ ] **Catalog quality plan** (trust tiers, a visible bar, new entries start Experimental, trusted verifiers): steps in `docs/CATALOG_QUALITY.md`.
 - [ ] **Announce to the community** and collect what people ask for before building more.
-- [ ] **Collections: publish and check** (built 2026-11-02, offline: unit tests and a headless-browser check). Check the first live build
-      (two collections: Airwindows Singles, Airwindows Collection), then give PR #685 (`Bombest-Audio/op1-fx`, 20 entries) a
-      `catalog/collections/` file before it merges. Not done: the desktop installer app and `mpc-store.sh list` still list members one by one.
+- [ ] **Collections in the installers.** The site groups collections (live 2026-11-02, docs/CATALOG.md "Collections"); the desktop
+      installer app, the Plugin Manager and `mpc-store.sh list` still list members one by one (they can read `collections[]` in `catalog.json`).
 
 ## Companion apps (catalog)
 - [ ] A custom domain for the site (the old `github.io` URL is hardcoded in `tools/mpc-store.sh`, the page template's `SITE` fallback, the desktop app and the README).
@@ -100,6 +99,8 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
       and `tools/probe_device.sh` after firmware updates. Needs the hardware.
 
 ## Done
+- [x] **Catalog collections** (live 2026-11-02, PR #686): a set of plugins from one repo is one card with its own view (members by
+      kind, install ticks, Pick all) and one feed entry per release; more than 5 entries by one author in one repo need one. docs/CATALOG.md.
 - [x] **Desktop VST3 build** (2026-10-30, offline): `tools/build_vst3.sh` builds any generic-wrapper port as a Linux VST3
       (`wrapper/vst3_wrap.c`, resampling, latency, bypass, presets, MIDI CC mapping, state), `tools/test_vst3.sh` tests it. Its editor
       (`wrapper/vst3_editor.c`) draws the port's MPC skin in the plugin window on Linux/X11, with mouse input. docs/DESKTOP_VST3.md.

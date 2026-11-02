@@ -38,7 +38,7 @@ credited to different authors are counted separately, so a repo that hosts a few
 The card shows the collection's screenshot (or a collage of the members'), how many instruments and effects it holds, and the first few
 members; View all opens a list grouped by kind where people tick members (or Pick all) for the install list. The collection appears under
 each tab its members cover, sorted by its best member tier and total downloads. A release that updates several members on one day is one
-feed entry. (2026-11-02, offline.)
+feed entry. (Live since 2026-11-02.)
 
 Open-source licenses (list in `tools/catalog_build.py`) or public source with `source_available` set. No versions or
 checksums go in the entry.

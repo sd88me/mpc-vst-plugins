@@ -54,7 +54,7 @@ own plugins (Force, MPC OS 3.9.1, recorded 2026-10-10; 56 Verified, 50 Listed, 1
 - **Experimental:** no stable release yet, or capped by a maintainer (`"tier": "experimental"` in the registry entry). Hidden from the default view.
 - Default sort "Recommended": featured, then Verified, then Listed. Ties: Verified on both generations first, then the newest
   hardware-test date, then downloads, then name (2026-10-14, offline). A collection card (docs/CATALOG.md, "Collections") sorts by the
-  best tier among its shown members and its members' total downloads (2026-11-02, offline).
+  best tier among its shown members and its members' total downloads (live 2026-11-02).
 - Rejected on purpose: star ratings, comments, upvotes as a quality signal (few users, needs a backend and moderation).
 
 ## Steps
