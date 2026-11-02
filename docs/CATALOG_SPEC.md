@@ -99,8 +99,9 @@ No version fields: they are read from the releases (or, for `build-yourself`, th
 ```
 Several entries from one repo shown as one card. A member entry sets `"collection": "my-pack"`; nothing else about it changes (own
 release, versions, checks, tier, uid and download). Rules (`catalog_build.py`): the file exists and is named `<id>.json`, every member's `repo`
-equals the collection's, at least 2 members, `summary` at most 350 characters, no other fields. More than 5 entries sharing a `repo`
-without a `collection` is a registry error.
+equals the collection's, at least 2 members, `summary` at most 350 characters, no other fields. More than 5 entries sharing a `repo` and
+`author` without a `collection` is a registry error (per author, so a repo hosting ports credited to different authors is not forced
+into one).
 
 ### Build-yourself entries
 For a plugin that cannot publish a zip because the build embeds the user's own firmware. Schema 1 is unchanged: the

@@ -15,8 +15,8 @@ declared build script. A GitHub release that carries a *-mpc-armv7.zip asset is 
 licence position). No zip is fetched or validated.
 
 Collections (catalog/collections/<id>.json): several entries from one repo shown as one card on the site. A member entry sets
-"collection": "<id>"; it keeps its own release, versions, checks and tier. More than MAX_UNCOLLECTED entries from one repo without a
-collection is a registry error. catalog.json gets a collections[] list (members, kind counts, best tier, total downloads).
+"collection": "<id>"; it keeps its own release, versions, checks and tier. More than MAX_UNCOLLECTED entries from one repo by one
+author without a collection is a registry error. catalog.json gets a collections[] list (members, kind counts, best tier, total downloads).
 
 GITHUB_TOKEN (optional) raises the API rate limit. --check-registry only validates the registry files, and that no stray *.json sits beside them in catalog/ (for PRs).
 Standard library only. See docs/CATALOG.md and docs/CATALOG_SPEC.md.
@@ -47,7 +47,7 @@ ZIP_PATTERN = "*-mpc-armv7.zip"
 # SPDX ids accepted as open source; anything else needs a human decision (edit this list in the PR that adds it).
 MAX_SUMMARY = 350   # characters; longer detail belongs in the repo README (docs/CATALOG.md)
 MAX_TAGS = 8
-MAX_UNCOLLECTED = 5   # entries one repo may list without a collection (docs/CATALOG.md, "Collections")
+MAX_UNCOLLECTED = 5   # entries one repo may list per author without a collection (docs/CATALOG.md, "Collections")
 COLLECTION_FIELDS = ("id", "title", "author", "repo", "summary")
 CATALOG_FILES = {"added.json", "apps.json", "patches.json", "yanked.json"}   # the only JSON directly in catalog/; plugin entries live in plugins/
 OPEN_LICENSES = {"MIT", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Apache-2.0", "GPL-2.0-only", "GPL-2.0-or-later",
@@ -292,7 +292,9 @@ def check_collection(c, fname=None):
 def load_collections(path, entries, registry=None):
     """-> ({id: collection}, problems [(file, message)]). Reads catalog/collections/*.json and checks them against the registry
     entries: each member's collection exists and has the member's repo, each collection has at least two members, and no repo
-    lists more than MAX_UNCOLLECTED entries without a collection. A member whose collection is broken keeps its own listing
+    lists more than MAX_UNCOLLECTED entries by one author without a collection. Counting per author leaves alone a repo that hosts
+    a few ports credited to different authors (sd88me/mpc-vst-TR-MPC: four drum machines by athousanddetails beside its own kit
+    and FX), and still catches one author flooding the grid. A member whose collection is broken keeps its own listing
     (build() drops the link); the problem fails --check-registry."""
     cols, problems = {}, []
     for f in sorted(glob.glob(os.path.join(path, "*.json"))):
@@ -329,12 +331,12 @@ def load_collections(path, entries, registry=None):
     loose = {}
     for e in entries:
         if not e.get("collection"):
-            loose.setdefault(e["repo"].lower(), []).append(e["id"])
-    for repo, ids in sorted(loose.items()):
-        if len(ids) > MAX_UNCOLLECTED:
-            problems.append((registry or "catalog/plugins", "%d entries from %s have no collection (the limit is %d): add "
+            loose.setdefault((e["repo"].lower(), e["author"].strip().lower()), []).append(e)
+    for (repo, _), es in sorted(loose.items()):
+        if len(es) > MAX_UNCOLLECTED:
+            problems.append((registry or "catalog/plugins", "%d entries from %s by %s have no collection (the limit is %d per author): add "
                              "catalog/collections/<id>.json and set \"collection\" on them (%s), see catalog/README.md"
-                             % (len(ids), repo, MAX_UNCOLLECTED, ", ".join(sorted(ids)))))
+                             % (len(es), repo, es[0]["author"].strip(), MAX_UNCOLLECTED, ", ".join(sorted(e["id"] for e in es)))))
     ok = {cid: {k: v for k, v in c.items() if k != "_file"} for cid, c in cols.items() if len(members.get(cid, [])) >= 2}
     return ok, problems
 

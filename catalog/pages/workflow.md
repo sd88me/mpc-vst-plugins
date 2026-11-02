@@ -106,7 +106,7 @@ Open a pull request to [mpc-vst-plugins](https://github.com/sd88me/mpc-vst-plugi
 | `screenshot` | Optional. An `https://` link to an image, shown at the top of your card; see [Screenshots](#screenshots). |
 | `homepage` | Optional link |
 | `asset_pattern` | Optional. Which release file to use. The default is `*-mpc-armv7.zip`. |
-| `collection` | Optional. The id of a `catalog/collections/<id>.json` for your repo, so several plugins show as one card. Needed when one repo lists more than 5 plugins; see [catalog/README.md](https://github.com/sd88me/mpc-vst-plugins/blob/main/catalog/README.md#many-plugins-from-one-repo-a-collection). |
+| `collection` | Optional. The id of a `catalog/collections/<id>.json` for your repo, so several plugins show as one card. Needed when one repo lists more than 5 plugins by the same author; see [catalog/README.md](https://github.com/sd88me/mpc-vst-plugins/blob/main/catalog/README.md#many-plugins-from-one-repo-a-collection). |
 
 Do not put versions or checksums in this file. The catalog reads them from your release.
 

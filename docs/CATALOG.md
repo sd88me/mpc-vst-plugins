@@ -68,12 +68,14 @@ optional `https://` `screenshot`; each member entry adds `"collection": "<id>"`.
 checks, `tested.json` tier, uid and download; `catalog.tsv`, the installer and `catalog_check.py` do not know about collections.
 - **Rules** (`catalog_build.py`, `load_collections`): the collection file must exist, every member's `repo` must equal the collection's, a
   collection needs at least 2 members, and its `summary` has the plugin limit (350 characters).
-- **N-entry rule (N = 5, `MAX_UNCOLLECTED`):** more than 5 entries sharing a `repo` without a `collection` fails `--check-registry`, and so CI.
-  When the rule was added (2026-11-02) three repos were over it and got collections: `mpc-airwindows` (22 entries), `airwindows-collection`
-  (`sd88me/mpc-vst-airwindows`, 11) and `tr-mpc` (`sd88me/mpc-vst-TR-MPC`, 6).
+- **N-entry rule (N = 5, `MAX_UNCOLLECTED`):** more than 5 entries sharing a `repo` **and `author`** without a `collection` fails
+  `--check-registry`, and so CI. Counted per author so that a repo hosting a few ports credited to different authors is left alone:
+  `sd88me/mpc-vst-TR-MPC` lists 4 drum machines by athousanddetails beside 2 plugins by sd88me, which are not one set and stay separate
+  cards. When the rule was added (2026-11-02) two repos were over it and got collections: `mpc-airwindows` (22 entries) and
+  `airwindows-collection` (`sd88me/mpc-vst-airwindows`, 11).
 - **`catalog.json`:** `collections[]` with members, kind counts, best member tier, total downloads (`docs/CATALOG_SPEC.md`).
 - **Site:** one card per collection (its screenshot, else a collage of up to four member screenshots; title, author, Collection badge,
-  "5 instruments · 1 effect", best tier, the first member chips and +N, View all and Source). It shows under each tab its members cover,
+  "13 instruments · 7 effects", best tier, the first member chips and +N, View all and Source). It shows under each tab its members cover,
   with counts and chips for that kind, and sorts by its best member tier and total downloads. Search and filters match the members and list the ones that
   match; a search for the collection's title lists all of them. `#c=<id>`, shared as `p/c/<id>.html`, opens the collection view:
   members by kind, each with its install checkbox and a Pick all per group, feeding the same install list. A member's popup and its

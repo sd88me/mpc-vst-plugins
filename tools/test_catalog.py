@@ -961,7 +961,12 @@ class CollectionTest(Base):
         self.assertEqual(problems, [])
         _, problems = self.write([self.entry(i) for i in range(n + 1)], [])
         self.assertEqual(len(problems), 1)
-        self.assertIn("%d entries from acme/pack have no collection" % (n + 1), problems[0][1])
+        self.assertIn("%d entries from acme/pack by A have no collection" % (n + 1), problems[0][1])
+        # counted per author: a repo hosting ports credited to different authors (TR-MPC) needs none
+        _, problems = self.write([self.entry(i) for i in range(n)] + [self.entry(n + i, author="B") for i in range(n)], [])
+        self.assertEqual(problems, [])
+        _, problems = self.write([self.entry(i) for i in range(n)] + [self.entry(n + i, author=" a ") for i in range(1)], [])
+        self.assertEqual(len(problems), 1)   # the same author, however it is spaced or capitalised
         # in a collection they are fine, and up to five may stay outside it
         _, problems = self.write([self.entry(i, collection="acme-pack") for i in range(20)] + [self.entry(20 + i) for i in range(n)], [self.COL])
         self.assertEqual(problems, [])

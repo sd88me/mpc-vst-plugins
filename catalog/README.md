@@ -25,7 +25,8 @@ Design: `docs/CATALOG.md`. Formats: `docs/CATALOG_SPEC.md`.
 
 ## Many plugins from one repo: a collection
 If your repo publishes several plugins (each with its own release zip and `asset_pattern`), group them so the catalog shows one card
-instead of one per plugin. **More than 5 entries from one repo without a collection fail the registry check (CI).**
+instead of one per plugin. **More than 5 entries from one repo by the same `author` without a collection fail the registry check (CI).** Entries
+credited to different authors are counted separately, so a repo that hosts a few ports of other people's plugins is not forced into one.
 1. Add `catalog/collections/<id>.json`:
    ```json
    { "id": "my-pack", "title": "My Pack", "author": "Your name", "repo": "you/my-pack",
@@ -128,7 +129,7 @@ never offered as the latest.
 
 ## Build locally
 `python3 tools/catalog_build.py --check-registry` validates entries and `catalog/collections/` (and fails on more than 5 entries
-from one repo without a collection, and on any `*.json` directly in `catalog/` other than
+from one repo by one author without a collection, and on any `*.json` directly in `catalog/` other than
 `added.json`, `apps.json`, `patches.json` and `yanked.json`: an entry put one folder too high); without the flag it fetches releases (set
 `GITHUB_TOKEN` to avoid API limits) and writes `catalog/dist/catalog.json` and `problems.json`.
 In `problems.json`, `superseded: true` marks a failing release that a newer, unyanked release of the same plugin

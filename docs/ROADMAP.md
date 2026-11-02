@@ -72,7 +72,7 @@ The catalog, its site and the installer app are live (see Done). Still open, in 
 - [ ] **Catalog quality plan** (trust tiers, a visible bar, new entries start Experimental, trusted verifiers): steps in `docs/CATALOG_QUALITY.md`.
 - [ ] **Announce to the community** and collect what people ask for before building more.
 - [ ] **Collections: publish and check** (built 2026-11-02, offline: unit tests and a headless-browser check). Check the first live build
-      (three collections: Airwindows Singles, Airwindows Collection, TR-MPC), then give PR #685 (`Bombest-Audio/op1-fx`, 20 entries) a
+      (two collections: Airwindows Singles, Airwindows Collection), then give PR #685 (`Bombest-Audio/op1-fx`, 20 entries) a
       `catalog/collections/` file before it merges. Not done: the desktop installer app and `mpc-store.sh list` still list members one by one.
 
 ## Companion apps (catalog)

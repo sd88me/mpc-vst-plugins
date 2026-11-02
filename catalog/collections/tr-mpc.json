@@ -1,8 +1,0 @@
-{
-  "id": "tr-mpc",
-  "title": "TR-MPC",
-  "author": "sd88me",
-  "repo": "sd88me/mpc-vst-TR-MPC",
-  "summary": "Ports of athousanddetails' circuit-modelled drum machines (6W6, 8W8, 9W9, CW-78), the TR-MPC kit that plays any of their voices in 16 slots, and Tap FX to send a slot out on its own MPC track.",
-  "screenshot": "https://raw.githubusercontent.com/sd88me/mpc-vst-TR-MPC/7e704c6f3be14b661c887631e203494d8cc3f74f/docs/img/tr-mpc-slots.png"
-}
