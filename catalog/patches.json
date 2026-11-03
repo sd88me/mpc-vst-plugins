@@ -68,6 +68,23 @@
       "backup": "/data/mpc-vst-plugins/backups",
       "restarts_mpc": true,
       "reversible": true
+    },
+    {
+      "id": "addin-restore",
+      "title": "MPC Add-Ins patch for 3.10: restore addins after a reboot",
+      "summary": "On MPC OS 3.10 (Gen2), addins load through a systemd drop-in in /run (tmpfs) that is lost after every reboot. This patch installs a Lua device script on the persistent content drive that MPC runs at every start. If addins in /data/mpc-addins are not loaded, it writes the /run drop-in and restarts MPC once. The user sees one automatic restart after a reboot; after that, all addins work. Does not modify the system image. Tested on a Live III (MPC OS 3.10, 2026-11-03): survives a full reboot, five addins restored.",
+      "author": "sd88me",
+      "license": "MIT",
+      "docs": "tools/mpc_patch/addin_restore/README.md",
+      "script": {
+        "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/c5a1a5e42eef0f6b561d14f11f96cf0d16c6fc95/tools/mpc_patch/addin_restore/addin-restore-patch.sh",
+        "sha256": "e412105d511cadae08d97fd13d0ed2c5a18faa8194cbafb7496a5050e434f19b"
+      },
+      "supports": {"os": "MPC OS 3.10 Gen2 (tested on Live III, 2026-11-03)", "arch": "aarch64"},
+      "modifies": ["/nvme/MPC Documents/Devices/Addin Restore/addin_restore.ini", "/nvme/MPC Documents/Devices/Addin Restore/addin_restore.lua", "/nvme/MPC Documents/Devices/Addin Restore/addin_restore.so", "/sdcard/MPC Documents/Devices/Addin Restore/addin_restore.ini", "/sdcard/MPC Documents/Devices/Addin Restore/addin_restore.lua", "/sdcard/MPC Documents/Devices/Addin Restore/addin_restore.so"],
+      "backup": "none (files are new, nothing overwritten)",
+      "restarts_mpc": false,
+      "reversible": true
     }
   ]
 }
