@@ -32,7 +32,7 @@ ours() { echo "$SYSTEMD_ROOT$DROPIN_ROOT/systemd/system/$1.service.d/$DROPIN_NAM
 # root is writable, or can be made so with a remount; otherwise /run (tmpfs: it does not survive a reboot, so an
 # addin installed this way needs reinstalling after one -- e.g. by re-running install.sh from an autorun stick).
 # Gen2's Live III is the first device seen with no writable /etc at all: a verity rootfs, remount refused outright, and on
-# MPC OS 3.10.1 an /etc overlay mounted ro (no upper layer),
+# MPC OS 3.10 an /etc overlay mounted ro (no upper layer),
 # unlike a plain ro mount (which boot_reload_add already handles by remounting around its own, separate write).
 resolve_dropin_root() {   # service
     if [ -f "$SYSTEMD_ROOT/etc/systemd/system/$1.service.d/$DROPIN_NAME" ]; then DROPIN_ROOT=/etc; return; fi
@@ -175,7 +175,7 @@ BOOT_UNIT=mpc-addins-reload.service
 BOOT_MARK="mpc-vst-plugins addin installer"
 ADDIN_MOUNTS="${ADDIN_MOUNTS:-/proc/mounts}"
 etc_overlay() { awk '$2 == "/etc" && $3 == "overlay" { f = 1 } END { exit !f }' "$ADDIN_MOUNTS" 2>/dev/null; }
-# An /etc overlay can be written only when it is mounted rw (it has an upper layer). MPC OS 3.10.1 on the Live III mounts it ro
+# An /etc overlay can be written only when it is mounted rw (it has an upper layer). MPC OS 3.10 on the Live III mounts it ro
 # with lower layers only (verified 2026-11-03): then the drop-in goes to /run like on any other read-only /etc.
 etc_overlay_rw() { awk '$2 == "/etc" && $3 == "overlay" && $4 ~ /(^|,)rw(,|$)/ { f = 1 } END { exit !f }' "$ADDIN_MOUNTS" 2>/dev/null; }
 root_ro() { awk '$2 == "/" && $4 ~ /(^|,)ro(,|$)/ { f = 1 } END { exit !f }' "$ADDIN_MOUNTS" 2>/dev/null; }

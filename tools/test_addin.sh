@@ -267,17 +267,17 @@ ADDIN_REMOUNT_FAILS=1 run a uninstall.sh
 [ ! -e "$RUNDROP" ] && ok "remount refused: uninstall removes the /run drop-in the same way" || bad "run drop-in left: $(ls "$(dirname "$RUNDROP")" 2>&1)"
 export ADDIN_MOUNTS="$T/mounts-plain"
 
-# 17. MPC OS 3.10.1 on the Live III (device 2026-11-03): verity root (remount refused) AND /etc an overlay mounted ro with lower
+# 17. MPC OS 3.10 on the Live III (device 2026-11-03): verity root (remount refused) AND /etc an overlay mounted ro with lower
 # layers only. The overlay must not be taken for a writable /etc: the drop-in goes to /run, and no boot-reload unit is written
 printf '/dev/root / ext4 ro,relatime 0 0\noverlay /etc overlay ro,relatime,lowerdir=/usr/lib/az0x/user-access/etc-overlay:/etc 0 0\n' > "$T/mounts-310"
 export ADDIN_MOUNTS="$T/mounts-310"
 fresh; unit 'Environment=LD_PRELOAD=/usr/lib/x.so'; ro a-w
 RUNDROP="$T/root/run/systemd/system/acvs.service.d/90-mpc-addins.conf"
 ADDIN_REMOUNT_FAILS=1 run a install.sh
-grep -qx "Environment=LD_PRELOAD=/usr/lib/x.so:$A" "$RUNDROP" && [ ! -e "$DROP" ] && ok "3.10.1 (ro /etc overlay): the drop-in goes to /run" || bad "3.10.1 run fallback: $(cat "$T/out")"
-[ ! -e "$T/root/usr/lib/systemd/system/mpc-addins-reload.service" ] && ok "3.10.1: no boot-reload unit on a read-only /etc" || bad "3.10.1: boot unit written"
+grep -qx "Environment=LD_PRELOAD=/usr/lib/x.so:$A" "$RUNDROP" && [ ! -e "$DROP" ] && ok "3.10 (ro /etc overlay): the drop-in goes to /run" || bad "3.10 run fallback: $(cat "$T/out")"
+[ ! -e "$T/root/usr/lib/systemd/system/mpc-addins-reload.service" ] && ok "3.10: no boot-reload unit on a read-only /etc" || bad "3.10: boot unit written"
 ADDIN_REMOUNT_FAILS=1 run a uninstall.sh
-[ ! -e "$RUNDROP" ] && ok "3.10.1: uninstall removes the /run drop-in" || bad "3.10.1: run drop-in left"
+[ ! -e "$RUNDROP" ] && ok "3.10: uninstall removes the /run drop-in" || bad "3.10: run drop-in left"
 export ADDIN_MOUNTS="$T/mounts-plain"
 
 [ $fails = 0 ] && echo "installer: all passed" || { echo "installer: $fails FAILED"; exit 1; }
