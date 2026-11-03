@@ -78,7 +78,7 @@
       "docs": "tools/mpc_patch/addin_restore/README.md",
       "script": {
         "url": "https://raw.githubusercontent.com/sd88me/mpc-vst-plugins/main/tools/mpc_patch/addin_restore/addin-restore-patch.sh",
-        "sha256": "f870162fb3be6d6641baa3f1a5f1c82f7213108f477c7f784706f96962bd8a52"
+        "sha256": "e412105d511cadae08d97fd13d0ed2c5a18faa8194cbafb7496a5050e434f19b"
       },
       "supports": {"os": "MPC OS 3.10 Gen2 (tested on Live III, 2026-11-03)", "arch": "aarch64"},
       "modifies": ["<content root>/MPC Documents/Devices/Addin Restore/ (3 files on the persistent content drive)"],
