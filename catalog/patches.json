@@ -81,7 +81,7 @@
         "sha256": "e412105d511cadae08d97fd13d0ed2c5a18faa8194cbafb7496a5050e434f19b"
       },
       "supports": {"os": "MPC OS 3.10 Gen2 (tested on Live III, 2026-11-03)", "arch": "aarch64"},
-      "modifies": ["/nvme/MPC Documents/Devices/Addin Restore/addin_restore.ini", "/nvme/MPC Documents/Devices/Addin Restore/addin_restore.lua", "/nvme/MPC Documents/Devices/Addin Restore/addin_restore.so"],
+      "modifies": ["/nvme/MPC Documents/Devices/Addin Restore/addin_restore.ini", "/nvme/MPC Documents/Devices/Addin Restore/addin_restore.lua", "/nvme/MPC Documents/Devices/Addin Restore/addin_restore.so", "/sdcard/MPC Documents/Devices/Addin Restore/addin_restore.ini", "/sdcard/MPC Documents/Devices/Addin Restore/addin_restore.lua", "/sdcard/MPC Documents/Devices/Addin Restore/addin_restore.so"],
       "backup": "none (files are new, nothing overwritten)",
       "restarts_mpc": false,
       "reversible": true
