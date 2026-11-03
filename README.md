@@ -5,13 +5,6 @@
 Native plugins for **Akai MPC OS standalone devices** (MPC Live/One/X/Key, Force): a catalog to find and install them,
 an installer app, and the tools to build, test and release your own.
 
-> **MPC OS 2.x and 3.x.** Plugins here are built and tested on **MPC OS 3.x**. On **MPC OS 2.x** a plugin loads and its
-> Q-Links work, but its touchscreen page only appears if the plugin's skin is written in the older format 2.x reads. The
-> catalog checks from its files whether each release can work on 2.x, and marks one tested on a 2.x unit **MPC OS 2.x tested**
-> (3.x, the standard, gets no badge); the installers warn before putting a 3.x-only plugin on a device that looks like 2.x.
-> A 3.x-only plugin becomes 2.x-capable when its developer re-releases it with a compatible skin
-> (how, and what the catalog checks: [MPC OS 2.x vs 3.x](#mpc-os-2x-vs-3x) below).
-
 ## Plugin catalog
 
 **[Open MPC - Plugin Catalog](https://open-mpc.github.io/)**: one browsable list of the community's VST2
