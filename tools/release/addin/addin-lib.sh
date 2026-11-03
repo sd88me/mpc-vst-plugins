@@ -31,12 +31,13 @@ ours() { echo "$SYSTEMD_ROOT$DROPIN_ROOT/systemd/system/$1.service.d/$DROPIN_NAM
 # Where the shared drop-in goes. One already there (from an install earlier in this boot) wins; otherwise /etc if
 # root is writable, or can be made so with a remount; otherwise /run (tmpfs: it does not survive a reboot, so an
 # addin installed this way needs reinstalling after one -- e.g. by re-running install.sh from an autorun stick).
-# Gen2's Live III is the first device seen with no writable /etc at all: a verity rootfs, remount refused outright,
+# Gen2's Live III is the first device seen with no writable /etc at all: a verity rootfs, remount refused outright, and on
+# MPC OS 3.10 an /etc overlay mounted ro (no upper layer),
 # unlike a plain ro mount (which boot_reload_add already handles by remounting around its own, separate write).
 resolve_dropin_root() {   # service
     if [ -f "$SYSTEMD_ROOT/etc/systemd/system/$1.service.d/$DROPIN_NAME" ]; then DROPIN_ROOT=/etc; return; fi
     if [ -f "$SYSTEMD_ROOT/run/systemd/system/$1.service.d/$DROPIN_NAME" ]; then DROPIN_ROOT=/run; return; fi
-    if ! root_ro || etc_overlay; then DROPIN_ROOT=/etc
+    if ! root_ro || etc_overlay_rw; then DROPIN_ROOT=/etc
     elif remount_root rw; then remount_root ro; DROPIN_ROOT=/etc
     else DROPIN_ROOT=/run; fi
 }
@@ -138,7 +139,7 @@ preload_add() {   # service unit so
         rm -f "$2.prev"
     else
         f=$(ours "$1")
-        was_ro=0; [ "$DROPIN_ROOT" = /etc ] && root_ro && ! etc_overlay && was_ro=1
+        was_ro=0; [ "$DROPIN_ROOT" = /etc ] && root_ro && ! etc_overlay_rw && was_ro=1
         if [ $was_ro = 1 ] && ! remount_root rw; then die "/ is read-only and could not be remounted: can't write $f"; fi
         sync_ours "$1" "$3" ""
         sync
@@ -157,7 +158,7 @@ preload_remove() {   # service so: out of every writable file that lists it, the
         done
     done
     if [ -f "$o" ]; then
-        was_ro=0; [ "$DROPIN_ROOT" = /etc ] && root_ro && ! etc_overlay && was_ro=1
+        was_ro=0; [ "$DROPIN_ROOT" = /etc ] && root_ro && ! etc_overlay_rw && was_ro=1
         if [ $was_ro = 1 ] && ! remount_root rw; then die "/ is read-only and could not be remounted: can't update $o"; fi
         sync_ours "$1" "" "$2"
         sync
@@ -174,6 +175,9 @@ BOOT_UNIT=mpc-addins-reload.service
 BOOT_MARK="mpc-vst-plugins addin installer"
 ADDIN_MOUNTS="${ADDIN_MOUNTS:-/proc/mounts}"
 etc_overlay() { awk '$2 == "/etc" && $3 == "overlay" { f = 1 } END { exit !f }' "$ADDIN_MOUNTS" 2>/dev/null; }
+# An /etc overlay can be written only when it is mounted rw (it has an upper layer). MPC OS 3.10 on the Live III mounts it ro
+# with lower layers only (verified 2026-11-03): then the drop-in goes to /run like on any other read-only /etc.
+etc_overlay_rw() { awk '$2 == "/etc" && $3 == "overlay" && $4 ~ /(^|,)rw(,|$)/ { f = 1 } END { exit !f }' "$ADDIN_MOUNTS" 2>/dev/null; }
 root_ro() { awk '$2 == "/" && $4 ~ /(^|,)ro(,|$)/ { f = 1 } END { exit !f }' "$ADDIN_MOUNTS" 2>/dev/null; }
 remount_root() {   # rw | ro (logged under test; ADDIN_REMOUNT_FAILS=1 simulates a verity root that refuses it)
     if [ -n "$ADDIN_INSTALL_TEST" ]; then
@@ -193,7 +197,7 @@ boot_paths() {   # service: sets BU (the unit) and BW (its link in the service's
     BU="$SYSTEMD_ROOT/usr/lib/systemd/system/$BOOT_UNIT"; BW="$SYSTEMD_ROOT/usr/lib/systemd/system/$1.service.wants/$BOOT_UNIT"
 }
 boot_reload_add() {   # service: when the shared drop-in is in use on an /etc overlay
-    [ -f "$(ours "$1")" ] && etc_overlay || return 0
+    [ -f "$(ours "$1")" ] && etc_overlay_rw || return 0
     boot_paths "$1"
     if [ -f "$BU" ] && [ "$(cat "$BU")" = "$(boot_unit_text "$1")" ] && [ -L "$BW" ]; then return 0; fi
     if [ -f "$BU" ] && ! grep -qF "$BOOT_MARK" "$BU"; then echo "warning: $BU exists and was not written by this installer: left alone" >&2; return 0; fi

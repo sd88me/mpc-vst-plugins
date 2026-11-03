@@ -102,8 +102,15 @@ itself is unaffected (it is on `/data`, which does persist), so the fix is cheap
 and `mpc-plugin.json` for exactly this). The USB stick (`docs/USB_STICK.md`) does this for every installed addin on each
 boot it is inserted for, so reinserting it restores both root/SSH access and every addin in one step.
 
-Tests: case 15 (remount succeeds, so `/etc` is used) and case 16 (remount refused, so `/run` is used) in
-`tools/test_addin.sh`; case 3c there covers the folder's own `install.sh` redoing the `/run` entry after a simulated
+**MPC OS 3.10 (Live III, device 2026-11-03):** `/etc` is still an overlay, but mounted `ro` with lower layers only
+(`lowerdir=/usr/lib/az0x/user-access/etc-overlay:/etc`, no `upperdir`). Installers before this fix took any `/etc` overlay
+for a writable one, tried `/etc/systemd/system/<service>.service.d/` and failed ("Read-only file system"). The overlay now
+counts only when it is mounted `rw` (`etc_overlay_rw()`), so 3.10 gets the `/run` drop-in like the case above, and no
+boot-reload unit. Addin folders installed from older releases carry the older `addin-lib.sh`: re-run the install from a
+current release (or copy a current `addin-lib.sh` next to the folder's `install.sh`).
+
+Tests: case 15 (remount succeeds, so `/etc` is used), case 16 (remount refused, so `/run` is used) and case 17 (3.10's
+read-only `/etc` overlay, so `/run` is used) in `tools/test_addin.sh`; case 3c there covers the folder's own `install.sh` redoing the `/run` entry after a simulated
 reboot, without the original release.
 
 ## When an addin stops MPC from starting
