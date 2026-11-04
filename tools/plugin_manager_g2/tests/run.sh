@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Offline tests in the gcc:12 Docker image (needs network: they read the live catalog and download one zip).
-#   ONLY=<section> tests/run.sh   one section (devices addins links pick theme safety arch) in a minute or two; no ONLY: everything (about 9 minutes)
+#   ONLY=<section> tests/run.sh   one section (devices addins links pick theme safety arch web) in a minute or two; no ONLY: everything (about 9 minutes)
 #   tests/run.sh            the wrapper host test, each fake device in tests/devices/, then the addin flow against
 #                           an offline fixture (tests/fixture.py: three addin packages and a file:// catalog)
 # A fake device is a shell script that builds the device's files inside the container: MPC.settings (the real format,
@@ -11,10 +11,10 @@ here="$(cd "$(dirname "$0")/.." && pwd)"
 MV="${MPC_VST:-$here/../..}"
 python3 "$MV/tools/gen_vst.py" "$here/vst/vst.json" --params-h >/dev/null
 MPC_VST="$MV" python3 "$here/tests/fixture.py"
-docker run --rm -e ONLY -e TRACE -e DEV -v "$here":/p -v "$MV":/mv:ro -w /p gcc:12 bash -c '
+docker run --rm -e ONLY -e TRACE -e DEV -e PM_CFLAGS -v "$here":/p -v "$MV":/mv:ro -w /p gcc:12 bash -c '
 set -eo pipefail; [ -z "$TRACE" ] || set -x
-SAN="-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1"
-want() { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }   # ONLY=safety: just that section (devices, addins, links, pick, theme, safety, arch)
+SAN="-fsanitize=address,undefined -fno-omit-frame-pointer -g -O1 ${PM_CFLAGS:-}"   # PM_CFLAGS: extra -D flags for a test build
+want() { [ -z "$ONLY" ] || [ "$ONLY" = "$1" ]; }   # ONLY=safety: just that section (devices, addins, links, pick, theme, safety, arch, web)
 export PM_TAPMS=40   # the double-tap window, short (FS_ANY builds only)
 export PM_GLIBC=2.39   # a Gen2 / MPC OS 3.x glibc: the container has 2.36, which reads as OS 2.x and refused the live catalog packages (a 120 s wait per device)
 gcc $SAN -std=gnu11 -w -Ivst/build src/manager.c /mv/tools/host_test.c /mv/wrapper/vst2_wrap.c -lpthread -ldl -lm -o /tmp/host_test
@@ -40,6 +40,10 @@ for dev in tests/devices/${DEV:-*}.sh; do
   while IFS= read -r line; do
     grep -qxF -- "$line" /tmp/openmpc-pm/device.txt || { echo "FAIL $dev: device.txt lacks: $line"; exit 1; }
   done < "$exp"
+  absent="${dev%.sh}.absent"   # lines that must NOT be in device.txt (e.g. a second path to the same folder)
+  if [ -f "$absent" ]; then while IFS= read -r line; do
+    ! grep -qxF -- "$line" /tmp/openmpc-pm/device.txt || { echo "FAIL $dev: device.txt has: $line"; exit 1; }
+  done < "$absent"; fi
 done
 fi # devices
 if want addins; then
@@ -87,7 +91,7 @@ printf "x /sdcard ext4 rw,relatime 0 0\n" > /tmp/pm-mounts   # the card is gone
 rm -rf /tmp/openmpc-pm; /tmp/drive_addins pickshow > /tmp/pickgone.out
 grep -qF "/sdcard/Synths" /tmp/openmpc-pm/apply.sh && ! grep -qF "/media/CARD" /tmp/openmpc-pm/apply.sh || { cat /tmp/pickgone.out; exit 1; }
 grep -qx "/media/CARD/Synths" /media/az01-internal/.openmpcpm-target
-# the same choice from the storage readout (a drive menu; the usable Synths folders)
+# the same choice from the storage readout (a drive menu: the usable Synths folders)
 rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir -p /media
 sh tests/devices/two-targets.sh
 /tmp/drive_addins drives > /tmp/drives-old.out
@@ -240,10 +244,42 @@ echo "== arch (offline fixture): the aarch64 zip on Gen2, the armv7 one otherwis
 rm -rf /tmp/openmpc-pm; PM_ARCH=aarch64 /tmp/drive_addins arch > /tmp/arch-64.out
 grep -q "card 1: DU" /tmp/arch-64.out      # Dual only: Armonly has no aarch64 zip
 ! grep -q "card 1: AR\|card 2: DU" /tmp/arch-64.out
+grep -q "\"id\":\"dual\"" /tmp/arch-64.out && ! grep -q "\"id\":\"armonly\"" /tmp/arch-64.out   # the web page leaves it out too
 grep -q "apply_state 3" /tmp/arch-64.out   # the aarch64 zip downloaded and verified
 rm -rf /tmp/openmpc-pm; /tmp/drive_addins arch 2 > /tmp/arch-32.out
 grep -q "card 1: AR" /tmp/arch-32.out && grep -q "card 2: DU" /tmp/arch-32.out
+grep -q "\"id\":\"armonly\"" /tmp/arch-32.out
 grep -q "apply_state 4" /tmp/arch-32.out   # Dual'"'"'s armv7 zip is missing: the install fails
 echo "arch OK"
 fi # arch
+if want web; then
+echo "== web (offline fixture): the read-only page, its JSON, and a second instance taking the port over"
+rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir -p /media
+sh tests/devices/mpc-one.sh && sh tests/addins.sh && /tmp/drive_addins web > /tmp/web.out
+grep -q "Content-Type: application/json" /tmp/web.out
+grep -q "\"plugins\":\[{\"id\":" /tmp/web.out
+grep -q "<h1>Plugin Manager</h1>" /tmp/web.out
+grep -q "^screen status: On your phone or computer: http://[0-9.]*:8790$" /tmp/web.out   # the address on the screen
+grep -q "404 Not Found" /tmp/web.out
+[ "$(grep -c "403 Forbidden" /tmp/web.out)" = 2 ]                  # no X-PM header; a foreign Origin
+grep -q "\"queued\":1," /tmp/web.out && grep -q "\"id\":\"beta-addin\",[^}]*\"state\":\"q_install\"" /tmp/web.out   # the page queues like a card press
+grep -q "\"targets\":\[{\"name\":" /tmp/web.out && grep -q "^no such drive" /tmp/web.out
+grep -q "409 Conflict" /tmp/web.out && grep -q "^unknown plugin" /tmp/web.out && grep -q "^nothing queued" /tmp/web.out
+grep -q "async function load" /tmp/web.out
+[ "$(grep -c "GET /api/state:" /tmp/web.out)" = 3 ] && ! grep -q "no answer" /tmp/web.out   # the second instance answered after the first closed
+echo "-- ROM uploads (live catalog: MPC Plaits on the fake MPC One, with user_files rules added)"
+gcc $SAN -DFS_ANY=1 -std=gnu11 -w src/manager.c tests/drive.c -lpthread -ldl -o /tmp/drive_web
+rm -rf /media /sdcard /nvme /synths /data /tmp/openmpc-pm /tmp/pm-mounts; mkdir -p /media
+sh tests/devices/mpc-one.sh
+P="/media/az01-internal/Synths/poloq - VST - MPC Plaits"
+echo '"'"'{"schema": 1, "id": "mpc-plaits", "version": "1.0.0", "user_files": [{"path": "roms", "label": "ROMs", "rules": [{"label": "Test ROM", "ext": [".bin"], "size": 4}]}]}'"'"' > "$P/mpc-plugin.json"
+/tmp/drive_web webfiles > /tmp/webfiles.out
+grep -q "\"id\":\"mpc-plaits\",[^}]*\"files\":1" /tmp/webfiles.out        # the page offers its files
+grep -q "\"id\":\"acid\",[^}]*\"files\":0" /tmp/webfiles.out
+grep -q "\[{\"name\":\"My ROM.bin\",\"size\":4}\]" /tmp/webfiles.out
+[ "$(grep -c "this plugin has no such folder for your files" /tmp/webfiles.out)" = 2 ]   # other, acid
+grep -q "^bad folder" /tmp/webfiles.out && grep -q "^that file name cannot be used" /tmp/webfiles.out && grep -q "^refused: not from this page" /tmp/webfiles.out
+[ ! -e "$P/x.bin" ] && [ ! -e "$P/evil.bin" ] && [ -z "$(ls -A "$P/roms")" ]   # nothing escaped, the delete removed the file
+echo "web OK"
+fi # web
 '
