@@ -137,6 +137,9 @@ footer { margin-top: 36px; color: var(--muted); font-size: 12px; border-top: 1px
 .doc pre code { background: none; border: 0; padding: 0; color: inherit; font-size: 13px; line-height: 1.55; overflow-wrap: normal; }
 .doc blockquote { margin: 16px 0; padding: 10px 14px; border-left: 3px solid var(--amber); background: color-mix(in srgb, var(--amber) 12%, var(--panel)); border-radius: 0 var(--radius) var(--radius) 0; }
 .doc blockquote p { margin: 4px 0; }
+.doc figure.shot { margin: 14px 0; }
+.doc figure.shot img { display: block; max-width: 100%; height: auto; border: 1px solid var(--line, #8884); border-radius: var(--radius); }
+.doc figure.shot img[src*="phone"] { max-width: 320px; }
 .tablewrap { overflow-x: auto; margin: 14px 0; }
 .doc table { border-collapse: collapse; width: 100%; font-size: 14px; }
 .doc th, .doc td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
@@ -255,3 +258,35 @@ footer { margin-top: 36px; color: var(--muted); font-size: 12px; border-top: 1px
 .member .ver { padding: 4px 6px; font-size: 11px; }
 .member .tag { padding: 4px 6px; }
 .member .sum { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+/* Install page guide (guide.js): the desktop installer's question cards */
+.doc .guide{margin:22px 0 28px}
+.doc .gcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 24px 18px;max-width:720px}
+.doc .gdots{display:flex;gap:6px;margin:0 0 14px}.doc .gdots i{height:4px;flex:1;background:var(--line);border-radius:2px}.doc .gdots i.on{background:var(--accent)}
+.doc .gcard h2.gq{font-size:24px;margin:0 0 6px;border:0;padding:0}
+.doc .gsub{color:var(--muted);margin:0 0 12px;font-size:14px}
+.doc .ggrp{font:600 11px "Titillium Web",sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}
+.doc .gmodels{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+.doc .gopts{display:grid;gap:10px}
+.doc .gopt{display:flex;align-items:center;text-align:left;width:100%;background:#fff;border:1px solid var(--line);border-radius:8px;padding:14px 16px;font:400 15px/1.4 Roboto,sans-serif;color:var(--fg);cursor:pointer}
+.doc .gopt:hover{border-color:var(--fg)}.doc .gopt b{display:block;font-weight:600}.doc .gopt small{display:block;color:var(--muted);font-size:13px}
+.doc .gopts .gopt b{font-size:16px;font-weight:700}
+.doc ol.gplan{max-width:none;counter-reset:s;list-style:none;padding:0;margin:4px 0 14px}
+.doc ol.gplan li{counter-increment:s;display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line);margin:0}
+.doc ol.gplan li::before{content:counter(s);flex:0 0 26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-fg);display:grid;place-items:center;font:700 14px "Titillium Web",sans-serif}
+.doc ol.gplan li>span{flex:1;max-width:none}.doc ol.gplan li>small{flex:none;color:var(--muted);font-size:12px;white-space:nowrap;padding-top:3px}
+.doc details.gway{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:8px 0;background:#fff}
+.doc details.gway summary{cursor:pointer}.doc details.gway summary small{color:var(--muted)}
+.doc details.gothers{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}.doc details.gothers summary{cursor:pointer;color:var(--muted);margin-bottom:8px}
+.doc .gdl{margin:6px 0 12px}
+.doc .gbtn{display:inline-block;padding:9px 14px;border-radius:8px;background:var(--accent);color:var(--accent-fg);text-decoration:none;font-weight:600;margin-bottom:8px}
+.doc .gnav{display:flex;gap:14px;align-items:center;margin-top:16px}
+.doc .gback{background:none;border:1px solid var(--line);border-radius:8px;padding:7px 14px;cursor:pointer;font:inherit;color:var(--fg)}
+.doc .gfor{color:var(--muted);font-size:13px}
+.doc .gcard li,.doc .gcard p{max-width:none}
+.doc details.sec>summary h2{display:inline;margin:0;padding:0;border:0;font-size:20px}
+.doc .gwrite{border:1px solid var(--accent);border-radius:10px;padding:12px 14px;margin:12px 0;background:#fff}
+.doc .gwrow{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.doc .gwrow .gbtn{margin:0;border:0;cursor:pointer;font:600 15px Roboto,sans-serif}
+.doc .gwrow .gbtn:disabled{opacity:.45;cursor:default}
+.doc .gstatus{margin:8px 0 0;font-size:14px}.doc .gstatus.ok{color:#1d7a3a;font-weight:600}.doc .gstatus.bad{color:var(--accent);font-weight:600}
+.doc .gthen{display:block;font-style:normal;color:var(--muted);font-size:13.5px;margin-top:3px}

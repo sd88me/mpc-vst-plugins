@@ -117,12 +117,20 @@ def nav_html(pages, current):
     return "".join('<li><a href="%s"%s>%s</a></li>' % (h, ' aria-current="page"' if k == current else "", html_escape(t)) for h, t, k in items)
 
 
+def easy_pin():
+    """The 3.9.1 Plugin Manager stick the desktop installer writes (tools/desktop/g2stick-pin.json: our own autorun stick, one prompt
+    installs and registers the Plugin Manager), for the page's guide."""
+    pin = json.load(open(os.path.join(HERE, "desktop", "g2stick-pin.json")))
+    return json.dumps({"url": pin["url"], "sha256": pin["sha256"], "version": pin["version"],
+                       "need": ["autorun/autorun.json", "autorun/autorun.check", "autorun/open.sh", "autorun/runtime/run.sh", "autorun/runtime/payload.sha256", ".mpc-g2-stick"]})
+
+
 def render_page(page, pages):
     """A guide page as full HTML."""
     body = '<h1>%s</h1>\n<p class="lede">%s</p>\n%s' % (html_escape(page["title"]), catalog_md.inline(page["summary"]), page["html"] if "html" in page else catalog_md.render(page["body"]))
     tpl = read("page.template.html")
     for k, v in (("/*NAV*/", nav_html(pages, page["slug"])), ("/*TITLE*/", html_escape(page["title"])),
-                 ("/*DESC*/", html_escape(page["summary"], quote=True)), ("/*SITE_CSS*/", read("site.css")), ("/*BODY*/", body)):
+                 ("/*DESC*/", html_escape(page["summary"], quote=True)), ("/*SITE_CSS*/", read("site.css")), ("/*GUIDE_JS*/", read("drivewrite.js") + "\n" + read("guide.js").replace("/*EASY_PIN*/null", easy_pin())), ("/*BODY*/", body)):
         tpl = tpl.replace(k, v)
     return tpl
 
@@ -307,6 +315,9 @@ def main():
         raise SystemExit("unsupported catalog schema %r" % catalog.get("schema"))
     os.makedirs(a.out, exist_ok=True)
     pages = load_pages(a.pages)
+    img = os.path.join(a.pages, "img")
+    if os.path.isdir(img):
+        shutil.copytree(img, os.path.join(a.out, "img"), dirs_exist_ok=True)
     patches_doc = None
     if os.path.isfile(a.patches):   # the installer app reads it from next to catalog.json; a manifest that fails its checks is not published
         import patch_check

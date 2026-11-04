@@ -3,6 +3,7 @@
 tools/catalog_check.py accepts it and rejects tampered copies. No device, no toolchain: python3 tools/test_catalog.py"""
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1199,7 +1200,9 @@ class PagesTest(unittest.TestCase):
         self.assertNotIn('id="plugins-you-build-yourself"', inst)
         self.assertIn('href="build.html#plugins-you-build-yourself"', inst)   # a pointer, not the steps
         self.assertIn('id="with-termius-click-instead-of-type"', inst)
-        self.assertIn('id="check-that-you-can-reach-your-device"', inst)
+        self.assertIn('id="mpc-os-3-10-beta"', inst)
+        self.assertIn('id="mpc-os-3-9-1-or-earlier"', inst)
+        self.assertIn('id="the-desktop-installer-app"', inst)
         self.assertNotIn("setup.html", inst + build)
         idx = catalog_site.render({"schema": 1, "generated": "x", "plugins": []}, pages)
         self.assertIn("Run this on your computer (needs Docker), not on the device.", idx)
@@ -1229,10 +1232,36 @@ class PagesTest(unittest.TestCase):
         self.assertTrue(html.index("</details>") < html.index("After"))
         self.assertEqual(html.count("<details"), 1)
 
+    def test_images(self):
+        html = catalog_md.render('![A "shot" <x>](img/a-1.png)\n\n![b](https://e.io/b.webp)\n\n![c](javascript:alert(1))\n\n![d](../secret.png)\n\nx ![e](img/e.png) inline')
+        self.assertIn('<figure class="shot"><img src="img/a-1.png" alt="A &quot;shot&quot; &lt;x&gt;" loading="lazy"></figure>', html)
+        self.assertIn('<img src="https://e.io/b.webp"', html)
+        self.assertNotIn('="javascript', html)
+        self.assertEqual(html.count("<img"), 2)
+
+    def test_folds(self):
+        html = catalog_md.render("intro\n\n::: folds\n\n## A b\n\nx\n\n## C\n\ny")
+        self.assertIn('<p>intro</p>', html)
+        self.assertIn('<details class="fold sec" id="a-b"><summary><h2>A b</h2></summary>', html)
+        self.assertEqual(html.count("<details"), 2)
+        self.assertNotIn("<details", catalog_md.render("## A\n\nx"))
+
+    def test_install_guide(self):
+        self.assertIn('<div id="guide" class="guide" hidden></div>', catalog_md.render("x\n\n::: guide\n\ny"))
+        pages = catalog_site.load_pages(os.path.join(HERE, "..", "catalog", "pages"))
+        html = catalog_site.render_page(next(p for p in pages if p["slug"] == "install"), pages)
+        self.assertEqual(html.count('id="guide"'), 1)
+        self.assertNotIn("/*GUIDE_JS*/", html)
+        js = open(os.path.join(HERE, "catalog_site", "guide.js")).read()
+        self.assertNotIn("innerHTML", js)
+        ids = set(re.findall(r'id="([^"]+)"', html))
+        for a in re.findall(r'"#([a-z0-9-]+)"', js):  # every link the guide gives lands on the page
+            self.assertIn(a, ids)
+
     def test_repo_pages_render_with_nav(self):
         pages = catalog_site.load_pages(os.path.join(HERE, "..", "catalog", "pages"))
         self.assertGreaterEqual(len(pages), 3)
-        self.assertEqual([p["slug"] for p in pages], ["install", "build", "workflow"])
+        self.assertEqual([p["slug"] for p in pages], ["install", "faq", "build", "workflow"])
         for p in pages:
             html = catalog_site.render_page(p, pages)
             self.assertIn('aria-current="page"', html)

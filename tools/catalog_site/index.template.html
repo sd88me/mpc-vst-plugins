@@ -228,11 +228,19 @@ function osTag(v) {
 function tested2(v) { return !!(v && (v.tested || []).some(function (t) { return /gen\s*2/i.test(t.device || ""); })); }
 function genTag(v) {
   if (!v || !v.gen2) return "";
-  if (v.gen2_only) return '<span class="tag gen" title="' + esc("Built for Gen2 (aarch64) MPC devices only: MPC Live III and kin. " + (tested2(v) ? "Tested on a Gen2 unit." : "Not yet tested on a Gen2 unit.")) + '">Gen2 only</span>';
+  if (v.gen2_only) return '<span class="tag gen" title="' + esc("Built for Gen2 (aarch64) MPC devices only: MPC Live III, One G2, Key G2, XL. " + (tested2(v) ? "Tested on a Gen2 unit." : "Not yet tested on a Gen2 unit.")) + '">Gen2 only</span>';
   return '<span class="tag gen" title="' + esc("Also built for Gen2 (aarch64) MPC devices. " + (tested2(v) ? "Tested on a Gen2 unit." : "Not yet tested on a Gen2 unit.")) + '">Gen2 build</span>';
 }
 function genRow(v) {
   return v && v.gen2 ? '<dt>Gen2</dt><dd>' + (v.gen2_only ? "aarch64 only: no Gen1 or Force build (" : "aarch64 build available (") + (tested2(v) ? "tested on a Gen2 unit" : "not yet tested on a Gen2 unit") + ')</dd>' : "";
+}
+function userFiles(v) { return v && v.manifest && Array.isArray(v.manifest.user_files) ? v.manifest.user_files.filter(function (f) { return f && f.label && !/\(optional\)/i.test(f.label); }) : []; }
+function romRow(v) {
+  var f = userFiles(v); if (!f.length) return "";
+  return '<dt>Your files</dt><dd>Needs your own ' + f.map(function (x) { return esc(x.label); }).join(", ") + '. Add them in the Plugin Manager (Your files) or the installer app; none are included.</dd>';
+}
+function installRow(p) {
+  return p.kind === "addin" ? "" : '<dt>Install</dt><dd>With the <a href="install.html">OpenMPC Plugin Manager</a> on your MPC, or the installer app.</dd>';
 }
 function osRow(v) {
   var g = osGens(v); if (!g) return "";
@@ -356,6 +364,7 @@ function card(p, big) {
   if (p.source_available) tags.push('<span class="tag warn" title="Source is public but the license limits how it may be used">Restricted use</span>');
   if (!by && p.kind !== "addin" && osTag(v)) tags.push(osTag(v));
   if (!by && p.kind !== "addin" && genTag(v)) tags.push(genTag(v));
+  if (!by && userFiles(v).length) tags.push('<span class="tag warn" title="' + esc("Needs files you supply: " + userFiles(v).map(function (x) { return x.label; }).join(", ")) + '">Needs your own ROM</span>');
   (p.tags || []).forEach(function (t) { if (!(by && t === "firmware-derived")) tags.push('<span class="tag">' + esc(t) + '</span>'); });
   var hist = p.versions.length ? '<details class="vers"><summary>Versions (' + p.versions.length + ')</summary><table>' + p.versions.map(function (x) {
     var cols = by ? '<td><a href="' + esc(safeUrl(x.source_url)) + '">tag ' + esc(x.tag) + '</a></td>' : '<td>' + size(x.size) + '</td><td title="sha256 ' + esc(x.sha256) + '">' + esc(x.sha256.slice(0, 10)) + '</td>';
@@ -389,7 +398,7 @@ function card(p, big) {
       '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a></div>' + hist + '</article>';
   }
   return head +
-    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + (p.kind !== "addin" ? osRow(v) + genRow(v) : "") +
+    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + (p.kind !== "addin" ? osRow(v) + genRow(v) : "") + romRow(v) + installRow(p) +
     (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
     '<div class="actions">' + (v && !v.gen2_only ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
     (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="Gen2 MPC devices (aarch64, MPC OS 3.x)">Download (Gen2)</a>' : '') +
