@@ -54,7 +54,7 @@ fi
 [ "$SYNTHS" = /sdcard/Synths ] && [ ! -d /sdcard/Synths ] && [ -d /nvme ] && SYNTHS=/nvme/Synths
 # A Gen2 unit without NVMe (an MPC One, a Key 37) keeps user content on the loopback image mounted at /storage.
 [ "$SYNTHS" = /sdcard/Synths ] && [ ! -d /sdcard/Synths ] && [ -d /storage/Synths ] && SYNTHS=/storage/Synths
-SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
+SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings /data/Settings/*/*.settings 2>/dev/null | head -n 1)}"
 W="${MPC_STORE_TMP:-/tmp}/mpc-store.$$"; mkdir -p "$W" || die "cannot create $W"
 trap 'rm -rf "$W"' EXIT
 STATE="$SYNTHS/.mpc-store"
@@ -112,9 +112,10 @@ helper() {   # helper <file>: download a helper listed in the catalog and check 
     fetch "$BASE/$1" "$W/h/$1" || die "cannot download $1"
     [ "$(sha_of "$W/h/$1")" = "$want" ] || die "$1 does not match the hash in the catalog: not using it"
 }
-# MPC's service is acvs on stock firmware, inmusic-mpc on Hakai-enabled systems; use whichever exists (acvs if neither is found).
+# MPC's service: acvs on stock Gen1/Gen2/Force, ac50 on the MPC Sample, inmusic-mpc on Hakai-enabled systems.
 mpc_service() {
-    if systemctl cat acvs >/dev/null 2>&1; then echo acvs
+    if systemctl cat ac50 >/dev/null 2>&1; then echo ac50
+    elif systemctl cat acvs >/dev/null 2>&1; then echo acvs
     elif systemctl cat inmusic-mpc >/dev/null 2>&1; then echo inmusic-mpc
     else echo acvs; fi
 }
@@ -125,8 +126,8 @@ mpc_ctl() {   # stop | start; a test run logs the call to $MPC_TEST_LOG instead 
 stop_mpc() {
     mpc_ctl stop
     trap 'mpc_ctl start; rm -rf "$W"' EXIT
-    i=0; while pidof MPC >/dev/null 2>&1 && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done   # a test run has no MPC: it passes through
-    if pidof MPC >/dev/null 2>&1; then die "MPC did not stop"; fi   # an `if`: as the function's last command, a failing `pidof` would make `set -e` end the script
+    i=0; while { pidof MPC || pidof "MPC Sample"; } >/dev/null 2>&1 && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done
+    if { pidof MPC || pidof "MPC Sample"; } >/dev/null 2>&1; then die "MPC did not stop"; fi
 }
 confirm() {   # confirm <question>
     [ $YES = 1 ] && return 0

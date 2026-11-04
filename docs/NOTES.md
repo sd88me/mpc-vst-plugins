@@ -2116,6 +2116,19 @@ Fixes (offline-tested; not yet on a device): the manager's keys get the same 250
   (`build/gen/vst.json`, with `alloc_dealloc_mismatch=0` for guitarix's generated chorus code) under ASan/UBSan, editor
   window included. Steinberg's `validator` was not rerun (not built on this machine).
 
+## 2026-11-03: MPC Sample (AC50) support (offline)
+
+The MPC Sample is an aarch64 device on the same az0x platform as Gen2. Its JUCE host has VST2 support
+(a VST2 effect has been loaded on the device). Differences from Gen1/Gen2 relevant to the installer:
+
+- **Service:** `ac50.service` (not `acvs`). **Binary:** `MPC Sample` (note the space in the process name).
+- **Settings:** `/data/Settings/MPC Sample/MPC Sample.settings` (JUCE uses the application name).
+- **Plugin list key:** `pluginList-arm-64bit` (same as Gen2).
+- **Build:** aarch64, same as Gen2. An existing Gen2 aarch64 build should load.
+
+The installer scripts and desktop app now handle the Sample: `mpc_service()` tries `ac50` first, settings
+globs include `*/*.settings`, and `pidof` checks both `MPC` and `"MPC Sample"`. Not yet tested on hardware.
+
 ## 2026-10-31: desktop VST3 for Windows (prepared)
 
 Offline only: `VST3_TARGET=windows` in `tools/build_vst3.sh` and `tools/test_vst3.sh` cross-builds the wrapper with mingw-w64

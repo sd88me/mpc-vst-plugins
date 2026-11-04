@@ -242,7 +242,7 @@ func installScriptWith(synths, addins, tmp string, pkgs []*Package, settings, sy
 	var b strings.Builder
 	w := func(f string, a ...any) { fmt.Fprintf(&b, f+"\n", a...) }
 	w("T=%s; SYN=%s; STATE=\"$SYN/.mpc-store\"; rc=0", shQuote(tmp), shQuote(synths))
-	w("SVC=acvs; systemctl cat acvs >/dev/null 2>&1 || ! systemctl cat inmusic-mpc >/dev/null 2>&1 || SVC=inmusic-mpc") // acvs on stock firmware, inmusic-mpc on Hakai
+	w("SVC=acvs; if systemctl cat ac50 >/dev/null 2>&1; then SVC=ac50; elif ! systemctl cat acvs >/dev/null 2>&1 && systemctl cat inmusic-mpc >/dev/null 2>&1; then SVC=inmusic-mpc; fi")
 	// A zip built before its installer picked the service itself runs `systemctl stop acvs` and fails where there is no acvs. Put a
 	// systemctl in front of it that says the real unit where the installer says acvs (the plain name only, other arguments pass through).
 	w(`if [ "$SVC" != acvs ]; then mkdir -p "$T/bin"; REAL=$(command -v systemctl); printf '%%s\n' '#!/bin/sh' 'n=$#; while [ $n -gt 0 ]; do a=$1; shift; [ "$a" = acvs ] && a="'"$SVC"'"; set -- "$@" "$a"; n=$((n-1)); done' 'exec '"$REAL"' "$@"' > "$T/bin/systemctl"; chmod 755 "$T/bin/systemctl"; PATH="$T/bin:$PATH"; export PATH; fi`)
@@ -292,8 +292,8 @@ func installScriptWith(synths, addins, tmp string, pkgs []*Package, settings, sy
 	if anyDefer || syncRoots != "" { // MPC is stopped once for the batch and for registering
 		w("if [ $rc = 0 ]; then")
 		w("  systemctl stop $SVC")
-		w("  i=0; while pidof MPC >/dev/null && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done")
-		w(`  if pidof MPC >/dev/null; then echo "MPC did not stop: nothing was installed"; rc=3; fi`)
+		w("  i=0; while { pidof MPC || pidof 'MPC Sample'; } >/dev/null 2>&1 && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done")
+		w(`  if { pidof MPC || pidof 'MPC Sample'; } >/dev/null 2>&1; then echo "MPC did not stop: nothing was installed"; rc=3; fi`)
 		w("fi")
 		for i, p := range pkgs {
 			if !p.Defer {

@@ -15,9 +15,9 @@ svc() {   # systemctl, or a log line under test
     systemctl "$@"
 }
 
-# MPC's service: acvs on stock firmware, inmusic-mpc on some modified ones.
+# MPC's service: acvs on stock Gen1/Gen2/Force, ac50 on the MPC Sample, inmusic-mpc on some modified ones.
 mpc_service() {
-    for s in acvs inmusic-mpc; do
+    for s in ac50 acvs inmusic-mpc; do
         for d in $UNIT_DIRS; do
             [ -f "$SYSTEMD_ROOT$d/$s.service" ] && { echo "$s"; return; }
         done
@@ -340,7 +340,7 @@ check_loaded() {   # so
     [ -z "$ADDIN_INSTALL_TEST" ] || return 0
     i=0
     while [ $i -lt 40 ]; do
-        pid=$(pidof MPC 2>/dev/null | awk '{print $1}')
+        pid=$({ pidof MPC || pidof "MPC Sample"; } 2>/dev/null | awk '{print $1}')
         if [ -n "$pid" ] && [ -r "/proc/$pid/environ" ]; then
             tr '\0' '\n' < "/proc/$pid/environ" | grep -q '^LD_PRELOAD=' && break
         fi

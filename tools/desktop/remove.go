@@ -80,10 +80,10 @@ func removeScript(tmp, settings string, all []RemovePlan) string {
 	var b strings.Builder
 	w := func(f string, a ...any) { fmt.Fprintf(&b, f+"\n", a...) }
 	w("T=%s; SET=%s; rc=0", shQuote(tmp), shQuote(settings))
-	w("SVC=acvs; systemctl cat acvs >/dev/null 2>&1 || ! systemctl cat inmusic-mpc >/dev/null 2>&1 || SVC=inmusic-mpc") // acvs on stock firmware, inmusic-mpc on Hakai
+	w("SVC=acvs; if systemctl cat ac50 >/dev/null 2>&1; then SVC=ac50; elif ! systemctl cat acvs >/dev/null 2>&1 && systemctl cat inmusic-mpc >/dev/null 2>&1; then SVC=inmusic-mpc; fi")
 	w("systemctl stop $SVC")
-	w("i=0; while pidof MPC >/dev/null && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done")
-	w(`if pidof MPC >/dev/null; then echo "MPC did not stop: nothing was removed"; rc=3; fi`)
+	w("i=0; while { pidof MPC || pidof 'MPC Sample'; } >/dev/null 2>&1 && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done")
+	w(`if { pidof MPC || pidof 'MPC Sample'; } >/dev/null 2>&1; then echo "MPC did not stop: nothing was removed"; rc=3; fi`)
 	if len(plans) > 0 {
 		pluginsPart(w, plans)
 	}
