@@ -111,7 +111,7 @@
       var o = el("div", "gopts");
       o.appendChild(opt("3.0 to 3.9.1", "Recommended", function () { S.os = "old"; }));
       o.appendChild(opt("3.10", "Beta support", function () { S.os = "310"; }));
-      o.appendChild(opt("2.x", "", function () { S.os = "2x"; }));
+      if (S.gen !== 2) o.appendChild(opt("2.x", "", function () { S.os = "2x"; }));   /* Gen2 MPCs shipped with 3.x */
       c.appendChild(o);
     } else if (S.os === "2x") {
       c = card(3, 3, "MPC OS 2.x: install over SSH", "The Plugin Manager and its stick need MPC OS 3.x. On 2.x you install plugins over SSH (root SSH access to the MPC).");
@@ -121,7 +121,7 @@
       var x2 = el("p", "gsub", "Or update the MPC to MPC OS 3.x first, or install by hand: ");
       x2.appendChild(link("MPC OS 2.x", "#mpc-os-2-x")); c.appendChild(x2);
     } else if (S.os === "310") {
-      c = card(3, 3, "MPC OS 3.10: beta support", "The Plugin Manager works on 3.10, but installing it there is still in beta. The recommended way is to install it on MPC OS 3.9.1 first, then update the MPC to 3.10: the Plugin Manager and your plugins stay installed.");
+      c = card(3, 3, "MPC OS 3.10: beta support", "The Plugin Manager works on 3.10, but installing it there is still in beta. For now, the recommended way is to install it on MPC OS 3.9.1 first, then update the MPC to 3.10: the Plugin Manager and your plugins stay installed.");
       c.appendChild(plan([["Install MPC OS 3.9.1 on the MPC (Akai's update, from akaipro.com)", MPC, "Your projects and samples stay where they are."],
         ["Install the Plugin Manager with the 3.9.1 stick (next step)", MPC, "MPC restarts with the Plugin Manager."],
         ["Update the MPC to 3.10 again", MPC, "The Plugin Manager and the plugins it installed are still there."]]));

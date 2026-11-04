@@ -24,7 +24,7 @@ This is the recommended way, on every MPC and the Force: a **Plugin Manager USB 
 > The web page has no password: anyone on your Wi-Fi can use it while the Plugin Manager is on a track. Remove it from the track when you are done.
 
 ## MPC OS 3.10 (beta)
-The Plugin Manager runs on MPC OS 3.10, but installing it there is still in **beta**. The recommended way:
+The Plugin Manager runs on MPC OS 3.10, but installing it there is still in **beta**. For now, the recommended way is:
 
 1. Install **MPC OS 3.9.1** on the MPC (Akai's update, from akaipro.com). Your projects and samples stay where they are.
 2. Install the Plugin Manager with the stick: see [MPC OS 3.9.1 or earlier](#mpc-os-3-9-1-or-earlier).
@@ -33,7 +33,7 @@ The Plugin Manager runs on MPC OS 3.10, but installing it there is still in **be
 To stay on 3.10, try the [desktop installer app](#the-desktop-installer-app)'s **Plugin manager stick** (it also works on 3.10, in beta). Tell us in the community how it went.
 
 ## MPC OS 2.x
-The Plugin Manager and its USB stick are for **MPC OS 3.x**, and the stick refuses a 2.x MPC. On 2.x you install plugins over SSH (root SSH access to the MPC):
+Only first-generation MPCs run MPC OS 2.x. The Plugin Manager and its USB stick are for **MPC OS 3.x**, and the stick refuses a 2.x MPC. On 2.x you install plugins over SSH (root SSH access to the MPC):
 
 1. In the [catalog](index.html), pick plugins whose card says **MPC OS: 2.x and 3.x**. Plugins made only for 3.x don't show their screen on 2.x.
 2. Install them with the [desktop installer app](#the-desktop-installer-app) over Wi-Fi: **Connect** with the MPC's IP address and pick plugins. It warns you before installing a plugin made only for 3.x. Or install each one [by hand with ssh and scp](#by-hand-with-ssh-and-scp-download-copy-run) or [fully by hand](#fully-by-hand-without-the-installer-script).

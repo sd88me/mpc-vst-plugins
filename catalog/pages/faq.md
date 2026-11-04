@@ -8,7 +8,7 @@ summary: MPC OS 3.10 (beta), Gen1 or Gen2, the Plugin Manager's web page and mor
 Start with [Install the Plugin Manager](install.html). Still stuck? Ask in the community with your MPC model, MPC OS version and what you see.
 
 ::: details Does it work on MPC OS 3.10?
-Yes, in beta. The recommended way is to install the Plugin Manager on MPC OS 3.9.1 with the Plugin Manager stick, then update the MPC to 3.10: the Plugin Manager and your plugins stay installed. See [MPC OS 3.10 (beta)](install.html#mpc-os-3-10-beta).
+Yes, in beta. For now, the recommended way is to install the Plugin Manager on MPC OS 3.9.1 with the Plugin Manager stick, then update the MPC to 3.10: the Plugin Manager and your plugins stay installed. See [MPC OS 3.10 (beta)](install.html#mpc-os-3-10-beta).
 :::
 
 ::: details Does it work on MPC OS 2.x?
