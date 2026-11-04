@@ -47,7 +47,7 @@ A small app for Windows, Mac and Linux. It can:
 - install the Plugin Manager and other plugins straight onto the MPC over Wi-Fi (with root SSH);
 - on 3.9.1 or earlier: remove plugins, register plugin folders, clean up settings backups and apply device patches.
 
-**Download:** open [the latest release](https://github.com/open-mpc/mpc-vst-plugins/releases/latest) and get the file for your computer from **Assets**:
+**Download:** open [the installer release (1.1.2)](https://github.com/open-mpc/mpc-vst-plugins/releases/tag/desktop-v1.1.2) and get the file for your computer from **Assets**:
 
 | Your computer | File ending in |
 |---|---|

@@ -43,7 +43,7 @@
   }
   function installer(c, why) {
     var b = el("div", "gdl"), k = computer();
-    b.appendChild(link("Download the desktop installer app", REL + "/latest", "gbtn"));
+    b.appendChild(link("Download the desktop installer app", REL + "/tag/desktop-v1.1.2", "gbtn")   /* not /latest: that is whichever release came last */);
     var p = el("p", "gsub", why + " " + (k ? "For " + k[0] + ", get the file ending in " + k[1] + ". " : "") + "Unpack it and double-click mpc-installer. ");
     p.appendChild(link("How to start it", "#the-desktop-installer-app")); b.appendChild(p); c.appendChild(b);
   }
