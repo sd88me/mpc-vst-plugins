@@ -84,6 +84,8 @@ typedef struct {
     long long size;
     char installed[24];   /* "" not installed, "?" installed (version unknown), else the version */
     char synths[200];     /* the Synths folder it is installed in; an addin: its own folder under ADDINS_DIR */
+    int ufiles;           /* its mpc-plugin.json declares user_files (ROMs the user adds): the web page offers them */
+    char folder[256];     /* its plugin folder (the .so's), "" not installed: the web page's ROM upload writes in it */
     char uids[4][16];     /* build-yourself components' VST uids (catalog "components") */
     int legacy;           /* registered, but not from a plugin folder (old /sdcard/vst layout); an addin folder
                            * without uninstall.sh (made by hand): either is updated in place, not removed */
@@ -127,6 +129,8 @@ typedef struct {
     unsigned rev;   /* bumped whenever the worker changes text, polled by the wrapper as "display_rev" */
     char status[160];
     device_t *dev;   /* probed by the worker on each refresh */
+    pthread_t web;   /* the local web page (web.c) */
+    int web_on;
 } mgr_t;
 
 /* ---- small helpers ---- */
@@ -729,6 +733,18 @@ static void attr(const char *tag, const char *end, const char *name, char *out, 
     if ((q = strchr(p, '"')) && q < end) snprintf(out, n, "%.*s", (int)(q - p), p);
 }
 
+/* /proc/mounts writes a space, tab, newline or backslash in a mount point as \040, \011, \012, \134 (a USB drive labelled "My HDD" is
+ * /media/My\040HDD): decode it in place, or the drive never matches its own path (a user's MPC One, 2026-11-03: "/media is tmpfs"). */
+static void mount_unescape(char *s) {
+    char *o = s;
+    for (const char *i = s; *i; ) {
+        if (i[0] == '\\' && i[1] >= '0' && i[1] <= '3' && i[2] >= '0' && i[2] <= '7' && i[3] >= '0' && i[3] <= '7') {
+            *o++ = (char)((i[1] - '0') * 64 + (i[2] - '0') * 8 + (i[3] - '0')); i += 4;
+        } else *o++ = *i++;
+    }
+    *o = 0;
+}
+
 /* the filesystem a path is on, from /proc/mounts (longest matching mount point); why it can't hold a plugin, or NULL.
  * A plugin needs a mount that is read-write and not noexec, and that keeps its files: so there is no list of
  * allowed filesystems (Gen2's internal /nvme is exFAT, and a user's SD card may be too), only a few that lose or never
@@ -744,6 +760,7 @@ static const char *bad_fs(const char *path, char *why, size_t n) {
     int ok = 0;
     snprintf(why, n, "not on a mounted filesystem");
     while (f && fscanf(f, "%127s %255s %31s %511s %*d %*d", dev, mnt, type, opts) == 4) {
+        mount_unescape(mnt);
         size_t l = strlen(mnt);
         if (strncmp(path, mnt, l) || (path[l] && path[l] != '/' && l > 1) || l < best) continue;
         best = l;
@@ -769,6 +786,7 @@ static int internal_device(const char *path) {
     char dev[128], mnt[256], type[32], opts[512], best_dev[128] = "";
     size_t best = 0;
     while (f && fscanf(f, "%127s %255s %31s %511s %*d %*d", dev, mnt, type, opts) == 4) {
+        mount_unescape(mnt);
         size_t l = strlen(mnt);
         if (strncmp(path, mnt, l) || (path[l] && path[l] != '/' && l > 1) || l < best) continue;
         best = l;
@@ -807,6 +825,26 @@ static const char *bad_target(const char *path, char *why, size_t n) {
     if (bad_fs(at, why, n)) return why;
     if (statvfs(at, &sv) || (unsigned long long)sv.f_bavail * sv.f_frsize < 64ull << 20) return "under 64 MB free";
     return NULL;
+}
+
+static int folder_id(const char *p, dev_t *dv, ino_t *in, int *made) {
+    struct stat st;
+    char par[200];
+    *made = stat(p, &st) == 0;
+    if (!*made) {
+        snprintf(par, sizeof par, "%s", p);
+        char *sl = strrchr(par, '/');
+        if (!sl || sl == par || stat((*sl = 0, par), &st)) return 0;
+    }
+    *dv = st.st_dev; *in = st.st_ino;
+    return 1;
+}
+static int same_folder(const char *a, const char *b) {
+    dev_t da, db; ino_t ia, ib; int ma, mb;
+    if (!folder_id(a, &da, &ia, &ma) || !folder_id(b, &db, &ib, &mb) || ma != mb || da != db || ia != ib) return 0;
+    if (ma) return 1;
+    const char *x = strrchr(a, '/'), *y = strrchr(b, '/');   /* both not made yet: same parent and same last name */
+    return x && y && !strcmp(x, y);
 }
 
 static int good_target(const char *loc) {
@@ -867,7 +905,7 @@ static void theme_save(const mgr_t *m) {   /* tmp, then rename */
 }
 
 /* where a new install goes: the location picked on the restart prompt, else the first usable one */
-/* the places a new install can go (the usable Synths folders) and their names in the drive menu */
+/* the places a new install can go: the usable Synths folders */
 static int ntargets(const mgr_t *m) { return m->dev->nusable; }
 static const char *target_at(const mgr_t *m, int k) { return m->dev->usable[k]; }
 static const char *target_name(const mgr_t *m, int k) { return m->dev->uname[k]; }
@@ -992,8 +1030,10 @@ static void probe_device(device_t *d) {
             char u[200];
             snprintf(u, sizeof u, "%s", d->loc[i]);
             for (size_t l = strlen(u); l > 1 && u[l - 1] == '/'; ) u[--l] = 0;   /* a trailing "/" is the same folder */
+            /* the same folder by another path (a Force's /sdcard and /media/az01-internal-sd, a bind mount) counts once: compared by
+             * device and inode, of the folder or, when it is not made yet, of its parent */
             int dup = 0;
-            for (int k = 0; k < d->nusable; k++) if (!strcmp(d->usable[k], u)) dup = 1;
+            for (int k = 0; k < d->nusable; k++) if (!strcmp(d->usable[k], u) || same_folder(d->usable[k], u)) dup = 1;
             if (!dup && d->nusable < 8) {
                 const char *lab = !strncmp(u, "/media/", 7) && !internal ? u + 7 : NULL;
                 snprintf(d->uname[d->nusable], sizeof d->uname[0], "%.*s", lab ? (int)strcspn(lab, "/") : 8, lab ? lab : "Internal");
@@ -1097,6 +1137,7 @@ static void write_report(const device_t *d) {
         const char *bad = bad_target(d->loc[i], why, sizeof why);
         fprintf(f, "location: %s  (%s)\n", d->loc[i], bad ? bad : "usable");
     }
+    for (int k = 0; k < d->nusable; k++) fprintf(f, "usable: %s\n", d->usable[k]);
     own_synths(own, sizeof own);
     fprintf(f, "manager folder: %s\ninstall target: %s%s%s%s\n", own[0] ? own : "(unknown)", d->target[0] ? d->target : "(none)",
             d->via[0] ? "  (from " : "", d->via, d->via[0] ? ")" : "");
@@ -1317,7 +1358,7 @@ static void hist_record(const device_t *d, const char *id, const char *act, cons
 }
 
 static void scan_installed(const device_t *d, pkg_t *pkg, int n) {
-    for (int i = 0; i < n; i++) pkg[i].installed[0] = pkg[i].synths[0] = 0, pkg[i].legacy = 0;
+    for (int i = 0; i < n; i++) pkg[i].installed[0] = pkg[i].synths[0] = pkg[i].folder[0] = 0, pkg[i].legacy = 0, pkg[i].ufiles = 0;
     for (int k = 0; k < d->nent; k++) {
         const entry_t *en = &d->ent[k];
         char folder[256], mpath[300];
@@ -1328,7 +1369,13 @@ static void scan_installed(const device_t *d, pkg_t *pkg, int n) {
         manifest_t mf = {{0}, {0}};
         snprintf(mpath, sizeof mpath, "%s/mpc-plugin.json", folder);
         char *js = slurp(mpath, 64 << 10);
-        if (js) { jobject(js, manifest_member, &mf); free(js); }
+        int uf = 0;
+        if (js) {
+            const char *u = strstr(js, "\"user_files\"");
+            if (u && (u = strchr(u, '['))) { u++; while (isspace((unsigned char)*u)) u++; uf = *u == '{'; }
+            jobject(js, manifest_member, &mf);
+            free(js);
+        }
         for (int i = 0; i < n; i++) {
             pkg_t *p = &pkg[i];
             if (is_addin(p)) continue;
@@ -1336,6 +1383,8 @@ static void scan_installed(const device_t *d, pkg_t *pkg, int n) {
             for (int c = 0; c < 4 && !hit; c++) hit = p->uids[c][0] && !strcasecmp(p->uids[c], en->uid);
             if (!hit || p->installed[0]) continue;
             snprintf(p->installed, sizeof p->installed, "%s", mf.version[0] ? mf.version : "?");
+            snprintf(p->folder, sizeof p->folder, "%s", folder);
+            p->ufiles = uf;
             const char *base = strrchr(folder, '/');
             if (base && strstr(base, " - VST - ")) snprintf(p->synths, sizeof p->synths, "%.*s", (int)(base - folder), folder);
             else p->legacy = 1;
@@ -1485,7 +1534,9 @@ static void do_refresh(mgr_t *m) {
     detect_orphans(m->dev);
     l.n = add_orphans(m->dev, tmp, l.n);
     struct statvfs sv;   /* the header's storage readout: the drive plugins go to */
-    const char *disk = dest(m)[0] ? dest(m) : "/media/az01-internal";
+    char disk[220];
+    snprintf(disk, sizeof disk, "%s", dest(m)[0] ? dest(m) : "/media/az01-internal");
+    if (!is_dir(disk) && strrchr(disk, '/') && strrchr(disk, '/') != disk) *strrchr(disk, '/') = 0;   /* the folder not made yet: its drive */
     float used = 0;
     char freebuf[32] = "";
     if (statvfs(disk, &sv) == 0 && sv.f_blocks) {
@@ -1721,7 +1772,7 @@ static void prepare(mgr_t *m, pkg_t *q) {
             const char *synths = target;
             char fo[200] = "", dirp[560] = "";   /* the folder the installer writes (the package's "folder"), snapshotted for a rollback */
             if (is_addin(p)) snprintf(dirp, sizeof dirp, "%s", target);
-            else if (manifest_str(p->dir, "folder", fo, sizeof fo), fo[0] && safe(fo))
+            else if (manifest_str(p->dir, "folder", fo, sizeof fo), (fo[0] || (manifest_str(p->dir, "skin", fo, sizeof fo), fo[0])) && safe(fo))
                 snprintf(dirp, sizeof dirp, "%s/%s", target, strrchr(fo, '/') ? strrchr(fo, '/') + 1 : fo);
             if (!synths[0] || !safe(synths) || (is_addin(p) && !m->dev->addins[0])) { err = "has no install location"; break; }
             if (is_addin(p) && p->queued == Q_INSTALL)
@@ -1729,12 +1780,13 @@ static void prepare(mgr_t *m, pkg_t *q) {
                         p->id, p->latest, p->id, dirp, p->latest, p->dir, synths, p->id, p->id);
             else if (is_addin(p))
                 fprintf(f, "echo '-- remove %s'\nitem '%s' '%s' remove '' sh '%s/uninstall.sh' -y -n -t '%s'\n", p->id, p->id, dirp, synths, synths);
-            else if (p->queued == Q_INSTALL)
+            else if (p->queued == Q_INSTALL) {
                 fprintf(f, "echo '-- install %s %s'\nitem '%s' '%s' install '%s' sh '%s/install.sh' -y $(batch '%s/install.sh') -t '%s' && setstate '%s' '%s' && rm -rf '" WORK "/%s' '" WORK "/%s.zip'\n",
                         p->id, p->latest, p->id, dirp, p->latest, p->dir, p->dir, synths, p->id, p->latest, p->id, p->id);
-            else
+            } else {
                 fprintf(f, "echo '-- remove %s'\nitem '%s' '%s' remove '' sh '%s/uninstall.sh' -y $(batch '%s/uninstall.sh') -t '%s' && setstate '%s' '' && rm -rf '" WORK "/%s' '" WORK "/%s.zip'\n",
                         p->id, p->id, dirp, p->dir, p->dir, synths, p->id, p->id, p->id);
+            }
         }
         if (theme_dirty(m)) {   /* MPC is stopped: copy the wanted skin over "Plugin Skins" (staged, then swapped; the old one goes last) */
             const char *w = m->theme ? "light" : "dark";
@@ -1924,7 +1976,7 @@ static int count_updates(const mgr_t *m) {
 }
 
 static int count_queued(const mgr_t *m) {
-    int n = theme_dirty(m);   /* a theme change is applied like an install: stop MPC, swap the skin, start MPC */
+    int n = theme_dirty(m);   /* a theme change is applied like an install: stop MPC, ..., start MPC */
     for (int i = 0; i < m->npkg; i++) n += m->pkg[i].queued != 0;
     return n;
 }
@@ -1940,17 +1992,30 @@ static void changes_text(const mgr_t *m, char *b, int n) {   /* the restart prom
             k += snprintf(b + k, n - k, "%s%s %s > %s", sep, p->name, p->installed, p->latest);
         else if (p->queued) k += snprintf(b + k, n - k, "%s+ %s %s", sep, p->name, p->latest);
     }
-    if (theme_dirty(m) && k < n) snprintf(b + k, n - k, "%sTheme: %s", k ? "\xc2\xa0\xc2\xb7  " : "", m->theme ? "light" : "dark");
+    if (theme_dirty(m) && k < n) k += snprintf(b + k, n - k, "%sTheme: %s", k ? "\xc2\xa0\xc2\xb7  " : "", m->theme ? "light" : "dark");
 }
+
+/* the web page's address while one instance serves it (web.c), shared by every instance: the one on screen may not be the one
+ * holding the port */
+static pthread_mutex_t web_mu = PTHREAD_MUTEX_INITIALIZER;
+static char web_url[64];
 
 static void queue_text(const mgr_t *m, char *b, int n) {
     int q = count_queued(m), k;
-    if (!q) { snprintf(b, n, "Nothing queued. Pick INSTALL or UPDATE on a plugin."); return; }
+    if (!q) {
+        char u[64];
+        pthread_mutex_lock(&web_mu);
+        snprintf(u, sizeof u, "%s", web_url);
+        pthread_mutex_unlock(&web_mu);
+        if (u[0]) snprintf(b, n, "On your phone or computer: %s", u);
+        else snprintf(b, n, "Nothing queued. Pick INSTALL or UPDATE on a plugin.");
+        return;
+    }
     k = snprintf(b, n, "%d change%s queued:", q, q > 1 ? "s" : "");
     for (int i = 0; i < m->npkg && k < n; i++)
         if (m->pkg[i].queued)
             k += snprintf(b + k, n - k, "  %s%s", m->pkg[i].queued == Q_REMOVE ? "\xe2\x88\x92" : "+", m->pkg[i].name);
-    if (theme_dirty(m) && k < n) snprintf(b + k, n - k, "  Theme: %s", m->theme ? "light" : "dark");
+    if (theme_dirty(m) && k < n) k += snprintf(b + k, n - k, "  Theme: %s", m->theme ? "light" : "dark");
 }
 
 static void initials(const char *name, char *b) {   /* first letters of the first two words that start with a letter */
@@ -2050,6 +2115,8 @@ static void card_field(const mgr_t *m, int i, const char *f, char *b, int n) {
     else snprintf(b, n, "0");   /* the triggers */
 }
 
+static void *web_thread(void *ud);   /* web.c, included below the actions it calls */
+
 /* ---- engine interface ---- */
 
 static void *mgr_create(const char *data_dir) {
@@ -2065,6 +2132,7 @@ static void *mgr_create(const char *data_dir) {
     m->dev = calloc(1, sizeof *m->dev);
     if (!m->dev) { free(m); return NULL; }
     if (pthread_create(&m->th, NULL, worker, m)) { free(m->dev); free(m); return NULL; }
+    m->web_on = !getenv("PM_NO_WEB") && !pthread_create(&m->web, NULL, web_thread, m);
     return m;
 }
 
@@ -2075,6 +2143,7 @@ static void mgr_destroy(void *inst) {
     pthread_cond_signal(&m->cv);
     pthread_mutex_unlock(&m->mu);
     pthread_join(m->th, NULL);
+    if (m->web_on) pthread_join(m->web, NULL);
     free(m->dev);
     free(m);
 }
@@ -2126,6 +2195,8 @@ static int repeated(long long *last, int ms) {
     *last = now;
     return 0;
 }
+
+#include "web.c"
 
 /* the trigger params (a tap), not the option params the host steps on purpose (kind, sort, ...), the keyboard keys or THEME (its own window) */
 static int is_button(const char *key) {
@@ -2243,7 +2314,7 @@ static void mgr_set_param(void *inst, const char *key, const char *val) {
         if (k < ntargets(m) && k != m->tsel % ntargets(m)) {
             m->tsel = k;
             target_save(m);   /* remembered, as a pick on the restart prompt is */
-            m->ready = 0;     /* a prepared apply.sh names the old place */
+            m->ready = 0;     /* a prepared apply.sh names the old drive */
             post(m, J_REFRESH);   /* the readout shows the new drive's free space */
         }
     } else if (!strcmp(key, "d_back")) { m->detail[0] = 0; m->menu = -1; }
@@ -2312,7 +2383,11 @@ static int mgr_get_param(void *inst, const char *key, char *b, int n) {
         int k = key[3] - '1';
         if (k < ntargets(m)) {
             struct statvfs dv;
-            if (statvfs(target_at(m, k), &dv) == 0) snprintf(b, n, "%s  \xc2\xb7  %.1f GB free", target_name(m, k), (double)dv.f_bavail * dv.f_frsize / 1e9);
+            char r[220];
+            snprintf(r, sizeof r, "%s", target_at(m, k));
+            char *sl = strrchr(r, '/');
+            if (!is_dir(r) && sl && sl != r) *sl = 0;   /* the folder not made yet: its drive */
+            if (statvfs(r, &dv) == 0) snprintf(b, n, "%s  \xc2\xb7  %.1f GB free", target_name(m, k), (double)dv.f_bavail * dv.f_frsize / 1e9);
             else snprintf(b, n, "%s", target_name(m, k));
         } else snprintf(b, n, " ");
     }

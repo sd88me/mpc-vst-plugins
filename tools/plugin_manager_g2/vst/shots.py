@@ -93,10 +93,11 @@ def main():
 
     pj = os.path.join(HERE, "params.json")
     p = json.load(open(pj))
-    p["params"] = [x for x in p["params"] if not re.match(r"(r\d|d)_shot$", x["key"])]
-    for r in range(1, ROWS + 1):
-        p["params"].append({"key": "r%d_shot" % r, "name": "Card %d screenshot" % r, "options": ["none"] + ids})
-    p["params"].append({"key": "d_shot", "name": "Detail screenshot", "options": ["hidden", "none"] + ids})
+    # Replace the options in place: saved projects and skins bind parameters by index (params.lock), so they must not move.
+    new = {"r%d_shot" % r: {"key": "r%d_shot" % r, "name": "Card %d screenshot" % r, "options": ["none"] + ids} for r in range(1, ROWS + 1)}
+    new["d_shot"] = {"key": "d_shot", "name": "Detail screenshot", "options": ["hidden", "none"] + ids}
+    have = {x["key"] for x in p["params"]}
+    p["params"] = [new.get(x["key"], x) for x in p["params"]] + [v for k, v in new.items() if k not in have]
     open(pj, "w").write(json.dumps(p, indent=1) + "\n")
 
     # one image button per thumbnail, right after its card: MPC draws baked art (picture) under the cards, so the

@@ -1,0 +1,9 @@
+{
+  "_comment": "Files the catalog site copies from their releases into dl/, so the Install page can write them to a drive in the browser (tools/site_downloads.py, docs/CATALOG.md). Pinned by SHA-256: update the pin when the release changes. A file whose release is missing is skipped with a warning; a checksum mismatch fails the build.",
+  "files": [
+    {
+      "id": "pm-stick",
+      "pin": "tools/desktop/g2stick-pin.json"
+    }
+  ]
+}

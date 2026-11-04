@@ -1450,6 +1450,11 @@ A community developer's on-device installer ("Plugin Manager USB", MIT, its own 
 - **Our own stick (offline, 2026-10-13):** `tools/usb_stick/` (see `docs/USB_STICK.md`): a generator that scans the user's firmware for the salt (found once or twice, identical, in the stock Gen1 and Force images, raw or as an update image; no false hits over whole root filesystems), writes the same `autorun` layout, and a stick script that runs `mpc-store.sh` (plugin manager by default). The check formula was reproduced exactly against Eurikon's published stick. Ten offline tests with a made-up salt. Not run on a device yet.
 - **Our stick on a Force (device, 2026-10-13):** generated from the stock Force 3.9.1 `MPC`, FAT32 stick, MPC OS 3.9.1.2 with four `LD_PRELOAD` addins. Prompt appeared; Install ran `open.sh` as root via `az01-script-runner`, which started `mpc-usb-install.service` (RAM copy of the runtime); `mpc-store.sh` fetched `plugin-manager` 1.2.0 with `wget` (no TLS validation, hashes checked), stopped and started `acvs`, and added the plugin entry. Done in 5 s, MPC running afterwards, `plugin_manager.so` and its entry present, backup beside `MPC.settings`. Addins untouched. Plugin Manager then loaded on a track and worked (user-reported).
 
+## 2026-11-04: the Plugin Manager stick on Gen2 (owner-reported)
+The repo owner ran the one-prompt Plugin Manager stick on a Gen2 MPC on MPC OS 3.9.1 around the desktop installer's 1.0 and 1.1
+releases: accepted and installed (device, owner-reported; not repeated for the 0.9.0 stick, which is built the same way with both the
+armv7 and aarch64 Plugin Manager zips). This closes the "no Gen2 autorun stick run by us" gap below.
+
 ## 2026-10-20: autorun route confirmed on Gen2 (community-reported; not run by us)
 
 TheKikGen's MPC-LiveXplore wiki published a write-up of the autorun-stick mechanism (same mechanism as the 2026-10-13
