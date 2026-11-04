@@ -49,7 +49,7 @@ MAX_SUMMARY = 350   # characters; longer detail belongs in the repo README (docs
 MAX_TAGS = 8
 MAX_UNCOLLECTED = 5   # entries one repo may list per author without a collection (docs/CATALOG.md, "Collections")
 COLLECTION_FIELDS = ("id", "title", "author", "repo", "summary")
-CATALOG_FILES = {"added.json", "apps.json", "patches.json", "yanked.json"}   # the only JSON directly in catalog/; plugin entries live in plugins/
+CATALOG_FILES = {"added.json", "apps.json", "downloads.json", "patches.json", "yanked.json"}   # the only JSON directly in catalog/; plugin entries live in plugins/
 OPEN_LICENSES = {"MIT", "BSD-2-Clause", "BSD-3-Clause", "ISC", "Apache-2.0", "GPL-2.0-only", "GPL-2.0-or-later",
                  "GPL-3.0-only", "GPL-3.0-or-later", "LGPL-2.1-only", "LGPL-2.1-or-later", "LGPL-3.0-only",
                  "LGPL-3.0-or-later", "AGPL-3.0-only", "AGPL-3.0-or-later", "MPL-2.0", "Unlicense", "CC0-1.0", "Zlib"}
