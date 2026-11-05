@@ -11,6 +11,7 @@
     "drum"
   ],
   "license": "MIT",
+  "depends": ["percolator>=2.0.0"],
   "asset_pattern": "FX-Percolator-OUT-*-mpc-armv7.zip",
   "summary": "Companion to Percolator: plays one of its OUT 1-4 on its own MPC track (an audio track will do), so a voice gets that track's fader, inserts and outputs, in time with the kit. Needs Percolator 2.0.0 or later in the same project.",
   "screenshot": "https://raw.githubusercontent.com/saustin2010/mpc-vst-percolator/v2.1.0/percolatorout/screenshots/page_0.png"
