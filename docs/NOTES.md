@@ -2116,13 +2116,88 @@ Fixes (offline-tested; not yet on a device): the manager's keys get the same 250
   (`build/gen/vst.json`, with `alloc_dealloc_mismatch=0` for guitarix's generated chorus code) under ASan/UBSan, editor
   window included. Steinberg's `validator` was not rerun (not built on this machine).
 
+## 2026-11-04: MPC Sample (AC50) on the device: plugins load from a project, screen drawing, input (device)
+
+First hands-on day with an MPC Sample (MPC Sample app 1.3.0.12, az07 base 5.0.14 scarthgap, kernel 6.12.60-rt, 4x Cortex-A55,
+aarch64). Corrects the 2026-11-03 entry below where they differ.
+- **Settings:** `/data/Settings/Akai/MPC Sample/MPC Sample.settings` (one folder deeper than assumed). `/data/Settings/MPC Sample/`
+  holds only `MPC Sample.running`, so the `/data/Settings/*/*.settings` glob misses it. No `recentProject*` keys are written.
+- **Version:** the app reports "MPC Sample 1.3.0" (its own version line, not MPC OS 3.x); `/tmp/com.akai.mpcsample.version`
+  holds `1.3.0.12` (`com.akaipro.mpc.version` does not exist).
+- **No place to install by default:** `/` is read-only (`/synths` empty), the only drive is the SD card at `/media/MPCSD`
+  (exfat, `noexec`). A bind mount of `/media/MPCSD/Synths` remounted `exec` made it loadable (lost at reboot). `/data` is exec
+  but not a plugin location. The installer's noexec check (df of the folder) still warned on the bind-mounted folder.
+- **Registration:** an entry under `pluginList-arm-64bit` (installer run with `MPC_INSTALL_TEST=1 MPC_SETTINGS=...`, MPC stopped)
+  was kept, and MPC added `/media/MPCSD/Synths` to `SynthContentLocations` itself on the next start. `cp -a` onto exfat prints
+  ownership errors (harmless).
+- **The Sample's UI cannot pick a third-party plugin.** Its only effect picker (SHIFT + KNOB FX) is a fixed list of 25 built-in
+  effects; the `AC50*` UI classes have no plugin browser. The VST2 host is in the binary (shared MPC code).
+- **A plugin loads from the project file.** The open project is a working copy, `/data/TempProjects/Temp-Project.xpj` (gzip,
+  header `ACVS / 1.3.0.12 / SerialisableProjectData / json / Linux`, saved as you go; the first line of
+  `original_project_data.txt` beside it is the project's name, the second where it was saved). Adding an insert to
+  `data.mixer.outputs[0].mixable.inserts.effects` (or `data.mixer.input...`) with `pluginFormatName: "VST"`,
+  `fileOrIdentifier: <.so path>`, `uid: <VST2 uniqueID as int>`, `state: ""`, then restarting MPC with that file in place, loaded
+  it ("Attempting to load VST", "Creating VST instance", "Initialising VST"). Done for Tuner 1.0.0, Stompbox 1.0.0 and a local
+  aarch64 build of NAM 1.0.10 (`-mcpu=cortex-a55`, models with lite A2 submodels at Quality Lite, and nano). Audio thread:
+  about 25% of one core with Stompbox's default chain or NAM (Clean Tone, Lite), stopped transport. NAM on the input chain with
+  `AC50AudioRecordingProperties.InputEffectsEnabled=1` and Monitor on: guitar heard through it (user, by ear).
+- **Commander** (addin branch with "MPC Sample" process name, settings fallback, Sample version file and working-copy project)
+  showed and drove these plugins live from the desktop app.
+- **Screen:** 320x240 ST7796S SPI panel (`st7796s` DRM driver), one plane, XR24, rotation 0. MPC double-buffers: its DRM
+  ioctls over its first 30 s (logged by mpc-addin-sample-draw-handler 0.1.0) were `CREATE_DUMB` x3, `ADDFB` x2, `PAGE_FLIP`
+  x13 and no `DIRTYFB`; it flips only when its UI changes (an idle screen made no flip in 16 s). A separate process writing
+  into the buffer on screen got only slivers onto the glass. `DRM_IOCTL_MODE_DIRTYFB` is refused (EACCES) on a non-master fd;
+  on MPC's own master fd (borrowed with `pidfd_getfd` for the test; code inside MPC can use it directly) it is accepted and
+  the drawn box shows on the panel at once (seen by the user).
+- **mpc-addin-sample-draw-handler 0.1.0 (device):** wraps `ioctl` in MPC; on each of MPC's page flips it saves MPC's new frame
+  and paints the owning client's layer over it, and a client's present() copies its rectangle and calls `DIRTYFB` on MPC's
+  fd. Its test pattern (`/test?on=1` on port 6740) held the screen while MPC changed page underneath (two flips), and
+  `/test?on=0` brought back MPC's screen showing the page it changed to.
+- **Input:** MPC reads the buttons and the dial from `/dev/snd/midiC0D0` (rawmidi). Subscribing to the control surface's
+  sequencer port (client 16) from another process fails with EAGAIN while MPC holds it, so a plugin cannot listen alongside MPC.
+- **Addins** load through a drop-in in `/run/systemd/system/ac50.service.d/` (tmpfs): gone at reboot.
+- **Page button (draw handler 0.2.0):** it wraps `read`/`poll`/`ppoll` on MPC's `/dev/snd/midiC0D0` fd. A short press still
+  reached MPC; a long hold (800 ms) cycled the screen (MPC -> test pattern -> MPC), and MPC never saw it. First tried on note 0,
+  which is KNOB FX (it has its own hold action), not PAD FX: see the control map below.
+- **MPC reads the surface port in ALSA's timestamped framing** (draw handler 0.3.0, logged raw): 32-byte frames, byte 1 the
+  MIDI length (1-16), the timestamp at 4-15, the MIDI at offset 16. Read as a plain byte stream the timestamps looked like
+  stray notes (the "note 207 ch 12" lines of 0.2.0) and made a short press of the page button fail; 0.3.0 cuts taken controls
+  out of whole frames and holds back the page button's press frame until release.
+- **Control map (channel 1, by finger, 2026-11-04):** PAD FX note 1 (now the page button: short tap = MPC's, long hold =
+  next page), KNOB FX note 0, the three keys above the screen notes 12/13/14, the data dial CC 100 relative (1 = +1,
+  127 = -1) and pressed in note 111, K1-K3 CC 16/17/18 absolute (0-127). Pads are channel 10 notes. Releases are note offs.
+- **Draw handler input (0.3.0 API 2, 0.4.0 API 3):** the client with the screen can take the three keys, the dial (turn and,
+  0.4, press) and K1-K3; MPC then never sees them. A client is told where the knobs are when it gets the screen (for
+  pickup). 0.4.0 adds `show(name)`: one page hands the screen to another, and a long hold there comes back. NAM's page
+  (models on the dial and keys, three knob banks with pickup) and the RACK addin use them; seen on the panel.
+- **The project's mixer copies are what MPC loads:** inserts live in `data.mixer` (input, outputs, submixes) and in each
+  track's `program.mixable`; the input/output/submix programs of type 8/9 elsewhere in the file mirror the mixer copy and
+  are ignored. An insert is `{index (slot 0-3), plugin {..}, enable}`. MPC rewrites the working copy at start and on
+  changes, not on stop, so an edit made with MPC stopped survives into the next start.
+- **No project-load command from outside:** the Sample's web server (port 80, `/api/v1/subtree`, `object-meta`,
+  `object-properties`, `object-method`) answers with an empty tree and "DataModel: Client not found" for objects, so
+  adding or removing a plugin means editing the working copy and restarting `ac50.service`.
+- **mpc-addin-sample-rack 0.1.0 (device):** the RACK page lists every channel's inserts from the working copy and the effect
+  plugins MPC knows (`pluginList-arm-64bit`), queues add / remove / on-off, and APPLY runs a helper outside MPC's cgroup
+  (`systemd-run`, as `ac50.service` is `KillMode=control-group`) that stops MPC, edits the file (keeping `.rack-backup`) and
+  starts it. Used by the user: removed NAM from the input, then added Stompbox there; both came back after the restart.
+- **Page button = the manager (draw handler 0.5.0, user's call):** a long hold of PAD FX opens RACK and closes it again
+  instead of cycling through every page; a plugin page opened from RACK (dial press) goes back to RACK on a hold. Conf
+  `page_home` (default RACK; `-` = the old cycle, also used when RACK isn't open). Offline tests; deployed.
+- **NAM's own page** (`wrapper/sample_draw.h`, NAM built in arm64v8/gcc:12-bookworm for glibc 2.36; a host cross g++ linked
+  glibc 2.43 libmvec symbols): NAM opened a client named "NAM" on load; granted the screen, it drew model, live in/out
+  meters and knob values on the panel (17 presents in about 1.5 s, none failed), and release gave MPC's screen back.
+- **vst.json `"sample_page"` (offline only so far):** the wrapper's own page for a port (`wrapper/sample_page.h`), configured
+  per port: Tuner (needle drawn by the engine), Keyscope (key, chord and readouts as lines), Stompbox (presets on the dial).
+  Seen in a stand-in host with the addin preloaded and a file as the screen; not yet on the panel.
+
 ## 2026-11-03: MPC Sample (AC50) support (offline)
 
 The MPC Sample is an aarch64 device on the same az0x platform as Gen2. Its JUCE host has VST2 support
-(a VST2 effect has been loaded on the device). Differences from Gen1/Gen2 relevant to the installer:
+(see 2026-11-04 above: plugins load from a project, not from the Sample's own UI). Differences from Gen1/Gen2 relevant to the installer:
 
 - **Service:** `ac50.service` (not `acvs`). **Binary:** `MPC Sample` (note the space in the process name).
-- **Settings:** `/data/Settings/MPC Sample/MPC Sample.settings` (JUCE uses the application name).
+- **Settings:** wrong here; it is `/data/Settings/Akai/MPC Sample/MPC Sample.settings` (2026-11-04, device).
 - **Plugin list key:** `pluginList-arm-64bit` (same as Gen2).
 - **Build:** aarch64, same as Gen2. An existing Gen2 aarch64 build should load.
 
