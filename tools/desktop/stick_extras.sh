@@ -29,15 +29,17 @@ for d in "${MPC_ADDINS_DIR:-/data/mpc-addins}"/*/; do
 done
 
 if [ "$reapplied" -gt 0 ] && [ -z "${MPC_USB_TEST:-}" ]; then
-    want=$(systemctl show acvs -p Environment --value 2>/dev/null | tr ' ' '\n' | grep '^LD_PRELOAD=' || true)
-    pid=$(systemctl show acvs -p MainPID --value 2>/dev/null || true)
+    # MPC's service and process: acvs and MPC on stock Gen1/Gen2/Force, ac50 and "MPC Sample" on the MPC Sample
+    svc=acvs; if systemctl cat ac50 >/dev/null 2>&1; then svc=ac50; elif ! systemctl cat acvs >/dev/null 2>&1 && systemctl cat inmusic-mpc >/dev/null 2>&1; then svc=inmusic-mpc; fi
+    want=$(systemctl show "$svc" -p Environment --value 2>/dev/null | tr ' ' '\n' | grep '^LD_PRELOAD=' || true)
+    pid=$(systemctl show "$svc" -p MainPID --value 2>/dev/null || true)
     have=""
     [ -z "$pid" ] || [ "$pid" = 0 ] || have=$(tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | grep '^LD_PRELOAD=' || true)
     if [ -n "$want" ] && [ "$want" != "$have" ]; then
         echo "Restarting MPC once so the addins load"
-        systemctl restart acvs || echo "warning: restarting MPC failed"
+        systemctl restart "$svc" || echo "warning: restarting MPC failed"
         i=0
-        while ! pidof MPC >/dev/null 2>&1 && [ "$i" -lt 60 ]; do sleep 1; i=$((i + 1)); done
+        while ! { pidof MPC || pidof "MPC Sample"; } >/dev/null 2>&1 && [ "$i" -lt 60 ]; do sleep 1; i=$((i + 1)); done
     fi
 fi
 echo "Done."
