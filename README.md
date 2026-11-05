@@ -242,6 +242,8 @@ screen shows. If you are comfortable in a terminal and on 2.x, the output of thi
   filmstrips (`tools/skin_assets.py`). See [docs/SKIN_STUDIO.md](docs/SKIN_STUDIO.md).
 - `tools/test_port.sh` + `tools/host_test.c`: the offline x86 test of a port under ASan (instances, params, options,
   popups, MIDI→audio, legacy `process()`, chunks), PASSED/FAILED.
+- `tools/test_sample_page.sh` + `tools/sample_page_test.c`: the offline test of a port's MPC Sample page under
+  ThreadSanitizer, with a stand-in draw handler.
 - `tools/build_vst3.sh` + `wrapper/vst3_wrap.c`: the same port as a VST3 for a desktop DAW (Linux), for local use, with
   `wrapper/vst3_editor.c` drawing its MPC skin (flattened by `tools/desktop_skin.py`) in the plugin window;
   `tools/test_vst3.sh` + `tools/vst3_host_test.c` test it offline under ASan. See [docs/DESKTOP_VST3.md](docs/DESKTOP_VST3.md).

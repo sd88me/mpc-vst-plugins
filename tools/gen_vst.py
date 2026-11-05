@@ -49,6 +49,7 @@ Keep uid and so fixed across releases, and never reorder the list (saved project
 """
 import json
 import os
+import re
 import shlex
 import sys
 
@@ -387,9 +388,16 @@ def sample_lines(cfg, params, key_to_index):
     for ln in sp.get("lines") or []:
         if isinstance(ln, str):
             ln = {"key": ln}
+        if not isinstance(ln, dict) or not ln.get("key"):
+            raise SystemExit("vst.json sample_page lines: %r needs a \"key\" (a parameter)" % (ln,))
+        size = ln.get("size", 1)
+        if not isinstance(size, int) or isinstance(size, bool) or not 1 <= size <= 4:
+            raise SystemExit("vst.json sample_page lines %r: \"size\" is a whole number from 1 to 4" % ln["key"])
         col = ln.get("color", "")
-        colv = int(col.lstrip("#"), 16) if col else 0
-        lr.append("{%d, %d, %d, 0x%06x}" % (idx(ln["key"], "lines"), int(ln.get("size", 1)), int(bool(ln.get("label"))), colv))
+        if col and not (isinstance(col, str) and re.fullmatch(r"#[0-9a-fA-F]{6}", col)):
+            raise SystemExit("vst.json sample_page lines %r: \"color\" is \"#rrggbb\", not %r" % (ln["key"], col))
+        colv = (int(col[1:], 16) | 0x1000000) if col else 0   # bit 24: a colour was given (so #000000 is black, not the default)
+        lr.append("{%d, %d, %d, 0x%07x}" % (idx(ln["key"], "lines"), size, int(bool(ln.get("label"))), colv))
     out += ["typedef struct { int param, size, label; unsigned color; } sample_line_t;",
             "#define SAMPLE_NLINES %d" % len(lr)]
     if lr:
