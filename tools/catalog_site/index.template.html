@@ -20,7 +20,7 @@
   <section class="mast">
     <div>
       <h1>Community plugins for Akai MPC OS</h1>
-      <p>Open VST2 instruments and effects that run natively on standalone MPC and Force, plus addins that extend MPC OS. Each listing links to its source and license and ships as a checksummed release.</p>
+      <p>Open VST2 instruments and effects for standalone MPC and Force, plus addins that extend MPC OS. Every listing links to its source and license and ships as a checksummed release.</p>
     </div>
     <svg class="mpc" viewBox="0 0 560 334" role="img" aria-label="Line drawing of an MPC: screen with four Q-Link encoders and buttons beneath it, a jog wheel below, and sixteen pads on the left">
       <rect class="body" x="4" y="4" width="552" height="326" rx="18"/>
@@ -89,7 +89,7 @@
   <details class="install" id="inst" hidden>
     <summary><span id="inst-count"></span><span class="hint">Get the install command</span></summary>
     <div class="body">
-      <p>Needs SSH access as <b>root</b> to your device (a modded unit). Save your project first: the script asks before it stops MPC, installs everything you ticked, and starts MPC once.</p>
+      <p>Needs root SSH access to a modded device. Save your project first: the script asks before stopping MPC, installs everything you ticked, then starts MPC once.</p>
       <label class="ipl">Your device's IP address<input id="ip" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="e.g. 192.168.1.20"></label>
       <p class="ipbad" id="ipbad" role="alert" hidden>Use the address as numbers and dots (or a host name): letters, digits, dots and hyphens only.</p>
       <p class="lab">Paste this into a terminal (Terminal on Mac, PowerShell on Windows 10 or later)</p>
@@ -97,14 +97,14 @@
       <div class="actions"><button class="btn-l primary" type="button" id="copy-main">Copy command</button><span class="copied" id="copied" role="status"></span></div>
       <details class="how">
         <summary>Read the script first (recommended)</summary>
-        <p>It is one plain shell script. Download it, read it, check its hash, then run it:</p>
+        <p>One plain shell script. Download it, read it, check its hash, then run it:</p>
         <pre class="cmd"><code id="cmd-review"></code></pre>
         <p class="also" id="hashline"></p>
-        <p class="also"><a id="script-link" href="mpc-store.sh">Open mpc-store.sh in your browser</a>. It only installs what you name, checks each download against the checksum in the catalog, and never restarts MPC without asking.</p>
+        <p class="also"><a id="script-link" href="mpc-store.sh">Open mpc-store.sh in your browser</a>. It installs only what you name, checks each download against the catalog checksum, and asks before restarting MPC.</p>
       </details>
       <details class="how">
         <summary>Other commands</summary>
-        <p class="also">Same first part, different last word: <code>list</code> (what is available and installed), <code>update</code> (newer versions of what you installed with this script), <code>remove &lt;id&gt;</code>, <code>prune</code> (delete old backups of MPC's settings), <code>sync</code> (register plugin folders you copied into Synths by hand).</p>
+        <p class="also">Same start, different last word: <code>list</code> (what is available and installed), <code>update</code> (newer versions of what you installed with this script), <code>remove &lt;id&gt;</code>, <code>prune</code> (delete old backups of MPC's settings), <code>sync</code> (register plugin folders you copied into Synths by hand).</p>
         <pre class="cmd"><code id="cmd-more"></code></pre>
       </details>
     </div>
@@ -112,12 +112,12 @@
   </div>
 
   <div role="tabpanel" id="panel-patches" aria-labelledby="tab-patches" hidden>
-    <p class="tabintro">Advanced and optional. These change the device itself, so they are never part of the plugin install: the installer app lists them read-only, and each is run by hand with the script shown. <a href="patches.html">Open as its own page</a></p>
+    <p class="tabintro">Advanced and optional. These change the device itself, so they are never part of the plugin install. Run each by hand with its script; the installer app only lists them. <a href="patches.html">Open as its own page</a></p>
     /*PATCHES_HTML*/
   </div>
 
   <div role="tabpanel" id="panel-apps" aria-labelledby="tab-apps" hidden>
-    <p class="tabintro">Desktop tools that work alongside a standalone MPC but are not plugins. Nothing here is installed on the device by the catalog: each links to its own release page.</p>
+    <p class="tabintro">Desktop tools for use alongside a standalone MPC. Not plugins, and the catalog installs none of them: each links to its own release page.</p>
     <div class="tools">
       <label class="search">Search<input id="a-q" type="search" placeholder="Name, developer or description"></label>
       <label>Platform<select id="a-plat"><option value="">All platforms</option><option value="macos">macOS</option><option value="windows">Windows</option><option value="linux">Linux</option></select></label>
@@ -394,7 +394,7 @@ function collDetail(c) {
     collBar(c, c.downloads || 0, true) +
     '<div class="tags">' + tags.join("") + '</div><p class="counts">' + esc(kindCount(c.mem)) + '</p><p>' + esc(c.summary) + '</p>' +
     '<dl class="meta"><dt>Updated</dt><dd>' + esc(c.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + (c.downloads || 0).toLocaleString() + ' (all members)</dd><dt>Source</dt><dd>' + esc(c.repo) + '</dd></dl>' +
-    '<p class="line">Each plugin has its own release and version. Tick the ones you want: they join the install list below the catalog.</p>' + groups +
+    '<p class="line">Each plugin has its own release and version. Tick the ones you want to add them to the install list below.</p>' + groups +
     '<div class="actions"><a class="btn-l" href="https://github.com/' + esc(c.repo) + '">Source</a></div></article>';
 }
 /* The downloads figure (all versions) in the bar under the title, so it stays visible while the details are folded. With the community preview on, that bar
