@@ -1,0 +1,4 @@
+{ "id": "potentialpatina", "name": "PotentialPatina", "author": "PotentialBreaks", "repo": "PotentialBreakfast/mpc-vst-potentialpatina", "kind": "effect",
+  "style": "saturation", "tags": ["lo-fi", "vinyl", "tape", "bitcrusher", "wobble"], "license": "MIT",
+  "summary": "Retro-colour insert effect: vinyl and tape noise, wow and flutter, tape/tube/cassette drive, bit and sample-rate crush, a tone tilt and a small room, with presets from subtle dust to old radio.",
+  "screenshot": "https://raw.githubusercontent.com/PotentialBreakfast/mpc-vst-potentialpatina/a64e56fb32abe9f25e7c6b2316a50676f3cd1b53/docs/images/potentialpatina.png" }
