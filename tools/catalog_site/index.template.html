@@ -729,7 +729,7 @@ put("pads", h);
     on = localStorage.getItem(PREVIEW) === "1";
   } catch (e) { on = /(^|[?&])signals=1(&|$)/.test(location.search); }
   if (!on) return;
-  var API = String(window.__SIGNALS_API || "https://openmpc-signals.openmpc-signals.workers.dev").replace(/\/$/, "");
+  var API = String(window.__SIGNALS_API || "https://openmpc-signals.open-mpc.workers.dev").replace(/\/$/, "");
   var TOKEN = "openmpc-signals-token", LAST = "openmpc-signals-last", GH = "openmpc-gh:", REPO_RE = /^[\w.-]+\/[\w.-]+$/;
   var DEVICES = ["MPC Live", "MPC Live II", "MPC Live III", "MPC One", "MPC One+", "MPC X", "MPC Key 37", "MPC Key 61", "Force"];
   var counts = null, me = null, token = null, details = {}, toastTimer = 0;
