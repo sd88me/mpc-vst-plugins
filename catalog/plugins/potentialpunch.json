@@ -1,0 +1,4 @@
+{ "id": "potentialpunch", "name": "PotentialPunch", "author": "PotentialBreaks", "repo": "PotentialBreakfast/mpc-vst-potentialpunch", "kind": "effect",
+  "style": "compressor", "tags": ["transient-shaper", "drums", "punch", "breaks", "dynamics"], "license": "MIT",
+  "summary": "Transient shaper: more or less punch at the start of every hit and more or less tail after it, level-independent with no threshold, speed and focus (full/lows/highs), soft clip, live meter and 12 one-tap presets for drums, breaks and more.",
+  "screenshot": "https://raw.githubusercontent.com/PotentialBreakfast/mpc-vst-potentialpunch/bc8c16e76af90924607b3b7995a8b2e4f72416a6/docs/images/potentialpunch.png" }
