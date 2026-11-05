@@ -98,7 +98,7 @@ func RunInstall(dev *Device, root Root, items []Item, workDir string, j *Job, re
 	var pkgs []*Package
 	for _, it := range items {
 		if it.Catalog != nil {
-			c, err := it.Catalog.ForArch(dev.Info.Arch)
+			c, err := it.Catalog.ForDevice(dev.Info.Arch, dev.Info.Device())
 			if err != nil {
 				return err
 			}

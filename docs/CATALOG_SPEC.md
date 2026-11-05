@@ -147,8 +147,9 @@ no valid tag, script missing at the newest tag, and (loudly, `LICENCE RISK`) a G
 newest first. A record is what `catalog_check.py --json` prints (`version`, `size`, `sha256` of the zip,
 `param_compat`, `max_glibc`, `os_compat`, `os_compat_why`, `cpu`, `defer`, `requires`, `manifest`, and for an addin `hooks`) plus `url`, `date`, `channel` (`stable`|`beta`), `notes`, `yanked`
 and `tested` (`[{device, firmware, date}]`), added by the builder. `tier` is `verified`|`listed`|`experimental`; `verified_on`
-(`[]`, or `gen1` and/or `gen2`) says which device generations the newest stable release was tested on: a `tested` device naming Gen2 is
-`gen2` (only on a version with an aarch64 build), any other is `gen1`. Readers must treat a missing `verified_on` on a verified plugin as `["gen1"]`.
+(`[]`, or `gen1`, `gen2` and/or `sample`) says which devices the newest stable release was tested on: a `tested` device naming the MPC
+Sample is `sample` and one naming Gen2 is `gen2` (both only on a version with an aarch64 build), any other is `gen1`. `devices` (optional,
+from the registry) lists the only devices the plugin is for (`"mpc-sample"`); clients must not offer it on others. Readers must treat a missing `verified_on` on a verified plugin as `["gen1"]`.
 A version may also carry `assets.aarch64` and `gen2: true` (a Gen2 build beside the armv7 zip, docs/GEN2.md). **Gen2 only:** an entry whose `asset_pattern` names the
 aarch64 zip and no armv7 one (`"*-mpc-aarch64.zip"`) lists that zip alone: `assets: {aarch64: {...}}`, `gen2: true`, `gen2_only: true`, and `url`/`sha256`/`size` are the
 aarch64 zip (a reader that knows no `gen2_only` still parses it); in `catalog.tsv` the size, sha256 and url columns are `-`. A client on a Gen1 device or a Force must not offer a
@@ -225,7 +226,8 @@ zip uses `layout: "addin"`:
   (1 for the newest stable), `kind`, `name`, `skin`, `uid`, `param_compat`, `size`, `sha256`, `url`, `user_data` (comma list), `defer` (1 when the
   installer understands `-n`), `os_compat` (`2.x,3.x`, `3.x` or `-`), `max_glibc` (the newest glibc the library needs, or `-`), `size64`, `sha256_64`,
   `url64` (the Gen2 zip), `requires` (the version's `requires`), `shares_hooks` (comma list of the addin ids in `shares_hooks`, 2026-10-26), `depends` (`id:rules:pick:pick64`
-  joined by `;`, rules as `>=1.0.0,<2.0.0` or `*` for any version, a missing pick `-`) and `conflicts` (comma list of ids). `mpc-store.sh` and the
+  joined by `;`, rules as `>=1.0.0,<2.0.0` or `*` for any version, a missing pick `-`), `conflicts` (comma list of ids) and `devices` (comma list
+  of the only devices it is for, `mpc-sample`, or `-` for every MPC; 2026-11-05). `mpc-store.sh` and the
   desktop app use `os_compat` and `max_glibc` to warn about a plugin that will not load on the device (it needs a newer glibc than the device has) or is 3.x only on
   a device that looks like MPC OS 2.x (glibc below 2.34); they warn and never block.
 - **`catalog.tsv`, addins:** `skin` and `uid` are `-`. `mpc-store.sh` installs an addin to `/data/mpc-addins/<id>` and reads the installed

@@ -918,6 +918,50 @@ class BuildTest(Base):
         self.assertNotIn("tested-gen2", plugin([g1], gen2=False)["bar_missing"])
         self.assertEqual(plugin([])["verified_on"], [])
 
+    def test_an_mpc_sample_test_is_its_own_verification(self):
+        def plugin(tested, entry=None, gen2=True):
+            rel = self.gen2_release("v1.0.0", 1, 2) if gen2 else self.rel("v1.0.0", 1)
+            gh = FakeGitHub({"acme/test-synth": [rel]}, {1: self.build("1.0.0"), 2: self.build("1.0.0", machine=183, elf_class=2)})
+            gh.tested = lambda repo: tested
+            return catalog_build.build([entry or self.ENTRY], gh, os.path.join(self.tmp, "s%d" % len(os.listdir(self.tmp))), set())[0]["plugins"][0]
+        smp = {"version": "1.0.0", "device": "MPC Sample", "firmware": "1.3.0"}
+        g1 = {"version": "1.0.0", "device": "MPC Key 37", "firmware": "3.9.1"}
+        p = plugin([smp])   # not Gen1 (it was counted as Gen1 before the Sample had its own badge), not Gen2
+        self.assertEqual((p["tier"], p["verified_on"]), ("verified", ["sample"]))
+        self.assertIn("tested", p["bar_missing"])
+        self.assertIn("tested-gen2", p["bar_missing"])
+        self.assertEqual(plugin([smp, g1])["verified_on"], ["gen1", "sample"])
+        self.assertEqual(plugin([smp], gen2=False)["verified_on"], [])   # the Sample runs the aarch64 build: none, nothing verified
+        # an entry for the Sample only: devices carried to the catalog, and the bar asks for a Sample test, not Gen1/Gen2 ones
+        only = {**self.ENTRY, "devices": ["mpc-sample"]}
+        p = plugin([], only)
+        self.assertEqual(p["devices"], ["mpc-sample"])
+        self.assertIn("tested-sample", p["bar_missing"])
+        self.assertFalse({"tested", "tested-gen2"} & set(p["bar_missing"]))
+        self.assertNotIn("tested-sample", plugin([smp], only)["bar_missing"])
+        self.assertNotIn("devices", plugin([g1]))
+
+    def test_a_dependency_limited_to_some_devices_is_only_for_dependents_limited_to_them(self):
+        base = {**self.ENTRY, "id": "draw", "devices": ["mpc-sample"]}
+        rack = {**self.ENTRY, "id": "rack", "devices": ["mpc-sample"], "depends": ["draw>=0.3.0"]}
+        tool = {**self.ENTRY, "id": "tool", "depends": ["draw"]}   # offered on every MPC, but its dependency isn't
+        self.assertEqual(catalog_build.device_dependency_problems([base, rack]), [])
+        probs = catalog_build.device_dependency_problems([base, rack, tool])
+        self.assertEqual([f for f, _ in probs], ["tool.json"])
+        self.assertIn("only for the MPC Sample", probs[0][1])
+        # built versions: the unlimited dependent loses its builds (nothing it is offered on can have the dependency), the other keeps them
+        def built(pid, devices=None, depends=()):
+            v = {"version": "1.0.0", "channel": "stable", "yanked": False, "assets": {"aarch64": {"url": "u"}}, "gen2": True,
+                 "depends": [{"id": d, "rules": []} for d in depends]}
+            return {"id": pid, "distribution": "release", "versions": [v], **({"devices": devices} if devices else {})}
+        plugins = [built("draw", ["mpc-sample"]), built("rack", ["mpc-sample"], ["draw"]), built("tool", None, ["draw"])]
+        problems = []
+        self.assertTrue(catalog_build.apply_dependencies(plugins, problems))
+        by = {p["id"]: p for p in plugins}
+        self.assertEqual(by["rack"]["versions"][0]["depends"][0]["pick"], {"aarch64": "1.0.0"})
+        self.assertEqual(by["tool"]["versions"], [])
+        self.assertTrue(any("only for the MPC Sample" in str(x) for x in problems), problems)
+
     def test_quality_bar(self):
         gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1)]}, {1: self.build("1.0.0")})
         cat, _ = catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "bar"), set())
@@ -955,6 +999,9 @@ class BuildTest(Base):
         self.assertEqual(catalog_build.check_entry({**self.ENTRY, "tier": "experimental", "featured": True}, "x/test-synth.json"), [])
         self.assertTrue(catalog_build.check_entry({**self.ENTRY, "tier": "verified"}))
         self.assertTrue(catalog_build.check_entry({**self.ENTRY, "featured": "yes"}))
+        self.assertEqual(catalog_build.check_entry({**self.ENTRY, "devices": ["mpc-sample"]}, "x/test-synth.json"), [])
+        for bad in ([], ["live3"], "mpc-sample", ["mpc-sample", "mpc-sample"]):
+            self.assertTrue(catalog_build.check_entry({**self.ENTRY, "devices": bad}, "x/test-synth.json"), bad)
 
     def test_dependencies_come_from_the_manifest_else_the_registry_and_unmet_ones_hide_the_version(self):
         dep = self.build("2.0.0", extra=("--id", "other-plugin"))
@@ -1931,7 +1978,7 @@ class StoreTest(Base):
         open(self.settings_path, "w").write(SyncTest.ONLY_OTHER)
         self.log = os.path.join(self.tmp, "mpc_ctl.log")
 
-    def write_catalog(self, published, addins=(), gen2=None, gen2_only=False, requires="", shares_hooks=(), depends=None, conflicts=()):
+    def write_catalog(self, published, addins=(), gen2=None, gen2_only=False, requires="", shares_hooks=(), depends=None, conflicts=(), devices=()):
         """depends: {synth version: [{id, rules, pick}]} as catalog_build.py resolves them; conflicts: the synth's, on every version."""
         vs = []
         for v, path in self.versions:
@@ -1950,7 +1997,7 @@ class StoreTest(Base):
                     vs[-1].update(gen2=True, gen2_only=True)
         vs.sort(key=lambda x: [int(n) for n in x["version"].split(".")], reverse=True)
         cat = {"schema": 1, "plugins": [{"id": "test-synth", "name": "Test Synth", "kind": "instrument", "distribution": "release",
-                                          "latest": vs[0]["version"], "versions": vs},
+                                          "latest": vs[0]["version"], "versions": vs, **({"devices": list(devices)} if devices else {})},
                                          {"id": "byo", "name": "Build Yourself", "kind": "instrument", "distribution": "build-yourself", "versions": []}]}
         avs = []
         for v in addins:   # (version, zip) of the test addin
@@ -2084,6 +2131,21 @@ class StoreTest(Base):
         self.assertIn("[Gen2 only]", self.store("list", env_extra={"MPC_STORE_ARCH": "armv7l"}).stdout)
         r = self.store("install", "test-synth", env_extra={"MPC_STORE_ARCH": "aarch64"})
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_a_plugin_for_the_mpc_sample_installs_only_there(self):
+        z64 = self.build(version="1.2.0", machine=183, elf_class=2)
+        shutil.copy(z64, self.web)
+        self.write_catalog(["1.2.0"], gen2=os.path.join(self.web, os.path.basename(z64)), devices=["mpc-sample"])
+        self.assertIn("mpc-sample", open(os.path.join(self.web, "catalog.tsv")).read().splitlines()[-1].split("\t")[23])
+        g2 = {"MPC_STORE_ARCH": "aarch64", "MPC_STORE_DEVICE": ""}
+        r = self.store("install", "test-synth", env_extra=g2)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)   # skipped, not an error, like a missing build
+        self.assertIn("only for mpc-sample", r.stdout + r.stderr)
+        self.assertFalse(os.path.exists(os.path.join(self.synths, self.SKIN)))
+        self.assertIn("[only for: mpc-sample]", self.store("list", env_extra=g2).stdout)
+        r = self.store("install", "test-synth", env_extra={"MPC_STORE_ARCH": "aarch64", "MPC_STORE_DEVICE": "mpc-sample"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(os.path.exists(os.path.join(self.synths, self.SKIN, "test_synth.so")))
 
     def test_a_gen2_device_installs_the_aarch64_zip(self):
         self.with_gen2()

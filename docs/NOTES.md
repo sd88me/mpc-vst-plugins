@@ -2325,3 +2325,22 @@ Not a dependency: Monomodule FX processes any audio and only mentions Monomodule
   grandchild called. With only raw `syscall()`s between fork and exec (mpc-addin-filebrowser), two restarts showed the
   addins' start-up only in MPC, one MIDI client, every port held by MPC. Rule for any addin that spawns: fork as late as
   possible, and between fork and exec call nothing a preload may override. Not reproduced on a desktop glibc.
+
+## 2026-11-05: the catalog knows the MPC Sample: device-limited entries, a Verified Sample badge, dependencies (offline)
+
+- **Why:** the Sample takes Gen2 (aarch64) zips, so the catalog treated it as Gen2: the draw handler and rack addins would have been
+  offered to a Live III, where they load and do nothing, and a `tested.json` entry naming the Sample counted as a Gen1 test.
+- **What changed:** registry `devices` (`["mpc-sample"]`), carried to `catalog.json` and a 24th `catalog.tsv` column; `mpc-store.sh` and the
+  desktop app offer such an entry only on that device (told by its settings file); the site shows "MPC Sample only" and a "Verified Sample"
+  badge and filter; a Sample test counts as `sample` in `verified_on`. Details: CATALOG.md "Device-limited entries".
+- **With the dependency system (from #675):** a dependency on a device-limited entry is allowed only from an entry limited to the same
+  devices (`--check-registry`, and the builder hides a version that breaks it, whether the dependency is in the registry or the zip). The
+  rack depends on the draw handler (`sample-draw-handler>=0.3.0`). Plugins with a Sample page don't depend on the draw handler: the page
+  is optional. The draw handler replaces `close`, `ioctl`, `poll`, `ppoll` and `read`; the build's hook-overlap check (`shares_hooks`)
+  covers it like any addin once it has a release.
+- **Registry entries** `sample-draw-handler` and `sample-rack` are added; they list nothing until their repos publish a release (each needs
+  a release workflow calling `addin-release.yml`, which can only run once this branch is in open-mpc).
+- **Checked offline:** `test_catalog.py` (all pass, with new tests for devices, the Sample badge, the bar, the store and the dependency rule),
+  the desktop Go tests (a new `ForDevice` test), the site browser test (a Sample-only, Sample-verified fixture), `--check-registry` clean.
+- **Test pitfall:** stand-in processes named `MPC Sample` left running from a page test make every store test that stops MPC fail with
+  "MPC did not stop" (the store waits for `MPC` or `MPC Sample` to exit). Kill them before running the suite.

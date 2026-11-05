@@ -41,6 +41,15 @@ func defaultConfig() Config {
 		LibcPaths: "/lib/libc.so.6 /lib/arm-linux-gnueabihf/libc.so.6 /usr/lib/libc.so.6 /lib/libc-*.so /usr/lib/libc-*.so"}
 }
 
+// Device is the catalog's id for this device when an entry can be limited to it (registry "devices"): "mpc-sample" for the MPC Sample
+// (its settings file is "MPC Sample.settings"), "" for any other MPC.
+func (i DeviceInfo) Device() string {
+	if strings.Contains(i.Settings, "MPC Sample") {
+		return "mpc-sample"
+	}
+	return ""
+}
+
 type DeviceInfo struct {
 	Host        string                       `json:"host"`
 	Arch        string                       `json:"arch"`
