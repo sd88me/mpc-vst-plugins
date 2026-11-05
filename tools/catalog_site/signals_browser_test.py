@@ -85,6 +85,16 @@ with sync_playwright() as p:
     check("no flag: no signals UI, no service calls", pg.locator(".sig:not(.stat)").count() == 0 and pg.locator("#sig-in").count() == 0 and not svc.calls, svc.calls)
     check("no flag: no sort options added", "Most liked" not in pg.locator("#sort").inner_text())
     ctx.close()
+    # 1b. the switch is remembered (sign-in comes back to the page address without its query string) and ?signals=0 turns it off
+    svc = Service(); ctx, pg, errs, gh = page(b, svc)
+    check("?signals=1 shows the preview", pg.locator("#sig-in").count() == 1)
+    pg.goto(URL); pg.wait_for_timeout(300)
+    check("the same browser keeps the preview on after a visit without the query string", pg.locator("#sig-in").count() == 1)
+    pg.goto(URL + "?signals=0"); pg.wait_for_timeout(300)
+    check("?signals=0 turns it off", pg.locator("#sig-in").count() == 0)
+    pg.goto(URL); pg.wait_for_timeout(300)
+    check("and it stays off", pg.locator("#sig-in").count() == 0)
+    ctx.close()
     # 2. signed out: header button, strip placement, counts, sorts
     svc = Service(); ctx, pg, errs, gh = page(b, svc)
     check("Sign in is a button in the sticky header", pg.locator(".bar #sig-in").is_visible())

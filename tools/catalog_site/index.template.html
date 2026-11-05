@@ -720,7 +720,15 @@ put("pads", h);
    is down the cards simply show no counts. The token lives in localStorage only and is sent to nothing but the service. GitHub is read
    straight from the browser (no token), on demand, cached for ten minutes. */
 (function () {
-  if (!/(^|[?&])signals=1(&|$)/.test(location.search)) return;
+  /* Preview switch: ?signals=1 turns it on and the browser remembers it (sign-in comes back to the page address without its query string);
+     ?signals=0 turns it off again. Removed together with the gate when the preview ends. */
+  var PREVIEW = "openmpc-signals-preview", on = false;
+  try {
+    if (/(^|[?&])signals=1(&|$)/.test(location.search)) localStorage.setItem(PREVIEW, "1");
+    else if (/(^|[?&])signals=0(&|$)/.test(location.search)) localStorage.removeItem(PREVIEW);
+    on = localStorage.getItem(PREVIEW) === "1";
+  } catch (e) { on = /(^|[?&])signals=1(&|$)/.test(location.search); }
+  if (!on) return;
   var API = String(window.__SIGNALS_API || "https://openmpc-signals.openmpc-signals.workers.dev").replace(/\/$/, "");
   var TOKEN = "openmpc-signals-token", LAST = "openmpc-signals-last", GH = "openmpc-gh:", REPO_RE = /^[\w.-]+\/[\w.-]+$/;
   var DEVICES = ["MPC Live", "MPC Live II", "MPC Live III", "MPC One", "MPC One+", "MPC X", "MPC Key 37", "MPC Key 61", "Force"];
