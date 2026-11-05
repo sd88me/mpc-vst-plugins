@@ -1,0 +1,17 @@
+{
+  "id": "sample-draw-handler",
+  "name": "MPC Sample Draw Handler",
+  "author": "jacob-sabella",
+  "repo": "jacob-sabella/mpc-addin-sample-draw-handler",
+  "kind": "addin",
+  "style": "utility",
+  "tags": [
+    "screen",
+    "plugin-pages",
+    "mpc-sample"
+  ],
+  "license": "MIT",
+  "summary": "Shares the MPC Sample's screen with plugins and addins, which the Sample otherwise gives no way to draw on: a plugin built with a Sample page shows its knobs, dial and readouts there, and a long hold of PAD FX opens the RACK page. Control and screenshots on a local port. MPC Sample only.",
+  "asset_pattern": "MPC-Sample-draw-handler-addin-*-mpc-aarch64.zip",
+  "devices": ["mpc-sample"]
+}

@@ -1,0 +1,18 @@
+{
+  "id": "sample-rack",
+  "name": "MPC Sample Rack",
+  "author": "jacob-sabella",
+  "repo": "jacob-sabella/mpc-addin-sample-rack",
+  "kind": "addin",
+  "style": "utility",
+  "tags": [
+    "plugins",
+    "inserts",
+    "mpc-sample"
+  ],
+  "license": "MIT",
+  "summary": "Adds, removes and turns off the plugins in an MPC Sample project's inserts from a RACK page on its screen (or from MPC Commander's browser UI). The Sample can't load a plugin into a running project, so APPLY saves, restarts MPC and edits the project: save first. Needs the Sample draw handler. MPC Sample only.",
+  "asset_pattern": "MPC-Sample-rack-addin-*-mpc-aarch64.zip",
+  "devices": ["mpc-sample"],
+  "depends": ["sample-draw-handler>=0.3.0"]
+}
