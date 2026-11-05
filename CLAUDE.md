@@ -8,7 +8,7 @@ built-in JUCE plugin host, with native MPC screen skins. Start here:
 2. `docs/PORTING.md`: the checklist for porting an engine or app to a plugin. Emulator ports (firmware/DSP emulation): also
    `docs/EMULATOR_PORTS.md` (big.LITTLE pinning with `wrapper/fast_cores.h`, ring ahead of the host, measuring in MPC, PGO).
 3. `docs/BENCH.md` (CPU check) and `docs/RELEASING.md` (release zip + installer) before shipping a port.
-   `docs/ROADMAP.md`: repo features still to do. `docs/DESKTOP_VST3.md`: the same ports as a VST3 for a desktop DAW (local use). `docs/COMMUNITY_SKINS.md`: design techniques from other people's ports. `docs/ADDINS.md`: addins (libraries MPC preloads) in the catalog. `docs/MPC_OS_REFERENCE.md`: a third-party
+   `docs/ROADMAP.md`: repo features still to do. `docs/DESKTOP_VST3.md`: the same ports as a VST3 for a desktop DAW (local use). `docs/MPC_HOST.md`: plan for a desktop host that runs released MPC `.so` files unchanged. `docs/COMMUNITY_SKINS.md`: design techniques from other people's ports. `docs/ADDINS.md`: addins (libraries MPC preloads) in the catalog. `docs/MPC_OS_REFERENCE.md`: a third-party
    map of MPC OS internals (boot, mounts, services, formats, protocols), unverified unless NOTES says so.
 4. `.claude/skills/mpc-vst-plugin/SKILL.md`: the build → skin → register → test workflow and gotchas.
 

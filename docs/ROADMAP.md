@@ -44,6 +44,8 @@ Building on parameter-driven visibility (`IndexedEnabling`, NOTES "Conditional v
       VST2** (NOTES.md "Native picker (menu overlay): not available to VST2", 2026-09-24) under its real
       component name, not a new option — `popup` stays the way to do a list. Not separately verified.
 ## Porting and tooling
+- [ ] **Desktop host for MPC plugins as released (Windows/macOS).** A VST3 that runs the ARM `.so` under an in-process JIT
+      (dynarmic) with an ELF loader and libc thunks, and browses plugins like MPC. Plan and import survey: [docs/MPC_HOST.md](MPC_HOST.md).
 - [ ] **Catalog: MPC OS 2.x / 3.x compatibility field.** Derived by the release and catalog checks (glibc 2.32 or less, and the skin only uses
       versions 2.15.1's own skins use); badge and filter on the site, badge and warning in the installer app; developers opt in with the
       2.x skin shape. Plan and phases: [docs/OS2_SKINS.md](OS2_SKINS.md) ("Proposed direction").
