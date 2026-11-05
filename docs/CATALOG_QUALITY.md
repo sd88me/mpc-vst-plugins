@@ -12,6 +12,11 @@ own plugins (Force, MPC OS 3.9.1, recorded 2026-10-10; 56 Verified, 50 Listed, 1
 ("Listed is now just in the catalog, no badge") is the maintainer's to add to the thread.
 **Not started:** Steps 3 to 5 below. Step 3 is on hold on purpose until the maintainer decides, after the community has had a few days.
 
+### Community signals: under discussion (2026-11-04)
+With 200+ plugins listed, the maintainer asked the community whether to add feedback on top of the tiers. Posted on Discord and Facebook
+on 2026-11-04 as questions only. **Nothing is built and nothing is decided; wait for the replies before starting.** Details below
+("Community signals proposal").
+
 ### What to do next, in order
 1. **Tidy-ups that need no decision** (do any time):
    - Fix the 5 stale checks in `tools/catalog_site/browser_test.py` (filter 2x/3x, device gen2, Gen2 card, Gen2 buttons): they count
@@ -53,10 +58,21 @@ own plugins (Force, MPC OS 3.9.1, recorded 2026-10-10; 56 Verified, 50 Listed, 1
   "Verified Sample" (an MPC Sample, on a release with a Gen2 build), and an entry limited to the Sample (`devices`) is asked for that test only.
 - **Listed:** a valid release that passed the catalog's release checks; no recorded test for the newest release. Shown with no badge (since 2026-10-11): in the catalog and not Verified means Listed.
 - **Experimental:** no stable release yet, or capped by a maintainer (`"tier": "experimental"` in the registry entry). Hidden from the default view.
-- Default sort "Recommended": featured, then Verified, then Listed. Ties: Verified on both generations first, then the newest
-  hardware-test date, then downloads, then name (2026-10-14, offline). A collection card (docs/CATALOG.md, "Collections") sorts by the
+- Default sort "Recommended": featured, then Verified, then Listed. Within Verified (2026-11-05, offline; replaces the 2026-10-14
+  "both generations before one" rule): a plugin whose every shipped generation is verified first (so a Gen1-only build tested on Gen1
+  equals a dual build tested on both), then a dual build verified on one generation only.
+  **Changed the same day (maintainer decision 2026-11-05):** the ranking is evidence points, not tiers: complete Verified 3, partly verified
+  1.5, Listed 0, plus community points when the preview is on (each person reporting the newest release working 1, only an older release
+  0.25, each like 0.1). So 4 people confirming a Listed plugin beat a Verified badge with no reports, 2 do not; experimental is always last.
+  Reasoning: a badge is one person's record (usually the author's) of one device, several independent confirmations are broader. Risks
+  noted: a new plugin starts at 0 and ranks below older ones until reports arrive; reports must come from real sign-ins (Discord, Google, one
+  person once); reports of an older release count a quarter so an update does not inherit full credit. This reverses the earlier "community
+  counts never lift a plugin" principle for the Recommended sort only: the Verified badge and tier are unchanged, and the card still says
+  community reports are not hardware verification. Revisit the weights (3, 1, 0.25, 0.1) once there is real data. A collection takes its best matching member's score, not the members' sum. A collection card (docs/CATALOG.md, "Collections") sorts by the
   best tier among its shown members and its members' total downloads (live 2026-11-02).
-- Rejected on purpose: star ratings, comments, upvotes as a quality signal (few users, needs a backend and moderation).
+- Rejected on purpose (2026-10-10): star ratings, comments, upvotes as a quality signal (few users, needs a backend and moderation).
+  Revisited 2026-11-04 now that there are 200+ plugins: stars stay rejected, but a separate "reported working" count and likes are
+  proposed (see "Community signals proposal"). Neither would change a tier.
 
 ## Steps
 Each step stands alone. Stop after any of them.
@@ -101,7 +117,67 @@ Each step stands alone. Stop after any of them.
 - A within-tier tiebreaker (reactions or "N people use this"), never a way into a higher tier.
 - A hand-picked Featured row (`"featured": true`, already supported).
 
+## Community signals proposal (2026-11-04, research only, nothing built)
+Context: Step 4 (compatibility reports) and Step 5 (tiebreaker) were already planned. Two other community catalogs were studied;
+what is below comes from their public pages and the Modwerk repo (source read, not run). Not measured on any device.
+
+**What others do**
+- *Firmware Hub* (FM-1 firmware, thefirmwarehub.com): gates entry (maintainer review, real-device test required, open source or a
+  link card), 1-5 star ratings with a count, "Top rated" default sort, favourites and wishes, optional passwordless emailed-link
+  account, installing needs no account. Their rating details beyond that are not on the page.
+- *Modwerk* (Elektron modules, modwerk.app, github.com/repeat98/modwerk): two separate signals per card, **reported working** (the
+  tick count: distinct members who confirmed it, across versions, tooltip says it is not hardware qualification) and **likes** (heart),
+  each with its own sort ("Most reported working", "Most liked"). Also downloads, "In regular use", estimated load gauges, per-module
+  Discussion and Issues tabs, Follow updates, Bookmark, a "Works for me" and a "Report an issue" button. Needs a verified account to
+  post, like or report; everyone can read.
+- Modwerk's backend is a Cloudflare Worker + D1 (SQLite) with Better Auth. Working reports are unique per (user, module, context),
+  where context is device + OS + module versions; a quick press stores the catalog version at that moment and does not claim the user
+  tested it. Public bugs go to GitHub as the single tracker (private details kept on the site, only the agreed public fields
+  mirrored), with webhooks notifying the reporter. Per-IP and per-member throttles. **Its backend is Elastic-2.0 licensed: study
+  the design, do not copy code.**
+
+**Proposed for us (a proposal, awaiting replies)**
+1. "Works on my device": device + OS + plugin version, one per person per plugin and context, shown as "N people report working".
+   Sits beside the tier, never changes it, labelled as not hardware qualification. Reports are tied to a version.
+2. Likes: browsing and sorting only (the Step 5 tiebreaker), never a way into a higher tier.
+3. "Report an issue": a pre-filled link (device, OS, plugin version) to the plugin's repo.
+4. No star ratings (scores bunch at the top, and they measure taste, not "does it load on my MPC").
+5. Verified stays exactly as it is (author's `tested.json`).
+
+**Why not GitHub-only voting:** most MPC users have no GitHub account, so counts would be tiny and skewed to developers. Decided
+2026-11-04 that a small service with its own sign-in is needed if this goes ahead.
+
+**Sign-in:** Discord and Google (Gmail) first, an emailed link only if people ask. Discord and Google need no outgoing mail. Link
+accounts by verified email so one person counts once; a Discord user without a verified email could double-count via Google.
+Optional rule to consider: only Discord or Google accounts (or aged email accounts) count toward the public number.
+Better Auth supports these providers per Modwerk's use of it; its current docs and Google's OAuth consent-screen setup for outside
+users were **not** checked.
+
+**Cost (searched 2026-11-04, official docs where noted, not tested):** about $0 at our size.
+- Cloudflare Workers Free: 100,000 requests/day. D1 Free: 5M rows read/day, 100k rows written/day, 5 GB total and 500 MB per
+  database. Since 2026-09-01 D1 queries on the free plan **fail** after the daily limit until midnight UTC, so vote and count queries
+  need indexes (a 5,000-row scan counts as 5,000 reads).
+- Email path only, if added: Resend free is 100 emails/day and 3,000/month, Brevo free is 300/day (adds a footer). A sending domain
+  (about $10-15 a year, unless the catalog already has one) is needed for deliverability. Skipped entirely with Discord/Google only.
+- The real cost is maintainer time: abuse handling, hiding a bad report, deleting an account on request.
+
+**Posted 2026-11-04** (Discord discussion, shortened to Facebook): the idea, the three sign-in options, and six questions (would you
+use it and sign in with Discord/Google; likes as well; need email; follow a plugin for updates; anyone to moderate or verify;
+anything you would rather not see). The post says that if most prefer the catalog as it is, it stays as it is.
+
+**Update 2026-11-05:** replies were positive, so the buildable design is drafted in `docs/COMMUNITY_SIGNALS.md` (architecture,
+D1 schema, endpoints, counting rules, build order). Still nothing built; its "Open questions" need the maintainer first.
+
+**Next:**
+1. Read the replies. Count who would sign in, and note whether anyone offers to moderate.
+2. If it is a no, record that here and stay with tiers alone. If yes, design the Worker first (schema, throttles, hide and delete
+   paths, version-tied reports) and check Better Auth and Google OAuth setup before announcing a date.
+3. Decide where "Report an issue" points for ports that live in other people's repos (central issues in this repo vs the author's repo).
+4. Announce first, then build (principle 5).
+
 ## Open decisions
+- Whether to build community signals at all (waiting on the 2026-11-04 replies), and the sign-in set (Discord + Google, email later?).
+- Where issue reports go for ports in other authors' repos.
 - Who may verify besides the author, and when.
 - The exact "meets the bar" list for Step 1 (above is a draft).
 - Whether the existing Listed plugins keep their tier as is (assumed yes: they were the baseline).
