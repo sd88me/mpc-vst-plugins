@@ -1486,7 +1486,7 @@ class PagesTest(unittest.TestCase):
     def test_repo_pages_render_with_nav(self):
         pages = catalog_site.load_pages(os.path.join(HERE, "..", "catalog", "pages"))
         self.assertGreaterEqual(len(pages), 3)
-        self.assertEqual([p["slug"] for p in pages], ["install", "faq", "build", "workflow"])
+        self.assertEqual([p["slug"] for p in pages], ["install", "faq", "build", "workflow", "privacy"])
         for p in pages:
             html = catalog_site.render_page(p, pages)
             self.assertIn('aria-current="page"', html)
