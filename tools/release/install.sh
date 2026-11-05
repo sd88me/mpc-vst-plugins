@@ -49,8 +49,12 @@ SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /dat
 sha256sum -c SHA256SUMS >/dev/null 2>&1 || die "files damaged (SHA256SUMS mismatch): copy the folder again"
 mkdir -p "$SYNTHS" || die "cannot create $SYNTHS"
 # MPC cannot load a .so from a noexec mount (a Force's SSD is one): the plugin is listed but only shows "Load Plugin"
-MP=$(df -kP "$SYNTHS" 2>/dev/null | awk 'NR==2 {m = $6; for (i = 7; i <= NF; i++) m = m " " $i; print m}' | sed 's/ /\\040/g')
-if [ -n "$MP" ] && MP="$MP" awk '$2 == ENVIRON["MP"] {print $4}' /proc/mounts 2>/dev/null | grep -q '\(^\|,\)noexec\(,\|$\)'; then
+# The mount that applies is the longest mount point the folder is in (the last one listed of equal length): a bind mount
+# remounted exec over a noexec drive (the MPC Sample's SD card, docs/NOTES.md) counts as exec. BusyBox df names the drive.
+OPTS=$(cd "$SYNTHS" 2>/dev/null && D=$(pwd -P) awk '{ m = $2; gsub(/\\040/, " ", m)
+    if ((ENVIRON["D"] == m || index(ENVIRON["D"], m (m == "/" ? "" : "/")) == 1) && length(m) >= best) { best = length(m); o = $4 } }
+    END { print o }' /proc/mounts 2>/dev/null)
+if printf '%s\n' "$OPTS" | grep -q '\(^\|,\)noexec\(,\|$\)'; then
     echo "warning: $SYNTHS is on a noexec mount, so MPC will not be able to load this plugin from it. Install on the internal drive (-t /sdcard/Synths), or on Gen1 apply the drive exec patch (tools/mpc_patch/drive_exec) and then run its verify."
 fi
 # MPC draws a plugin's skin only if its folder is under a listed content location (the plugin loads either way; device test, MPC 3.10.0, docs/NOTES.md 2026-10-27).
