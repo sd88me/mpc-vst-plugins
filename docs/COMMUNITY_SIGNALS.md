@@ -187,8 +187,8 @@ setting `hidden`; counts exclude hidden rows. State this in the announcement so 
     `browser_test.py` has 2 failures and a timeout that are identical on `main`, so they are not from this change.
   - **Not done:** the per-plugin and collection static share pages (`p/<id>.html`, `p/c/<id>.html`) show no signals; the other site pages
     (Install, FAQ) have no header button; "Recommended" ignores the counts (the plan allows them only as a tiebreaker inside a tier);
-    the popup does not show discussion threads, only GitHub issues and a Discussions link; the service address is a placeholder
-    (`REPLACE-ME`).
+    the popup does not show discussion threads, only GitHub issues and a Discussions link; the Worker is deployed (2026-11-05, Cloudflare free plan,
+    `openmpc-signals.openmpc-signals.workers.dev`); Discord is configured, Google is not yet, and no real sign-in has been tried.
 
 ## Update notifications ("follow a plugin") - plan, 2026-11-05
 Goal: people can subscribe to hear about a plugin's new releases and revisions.
