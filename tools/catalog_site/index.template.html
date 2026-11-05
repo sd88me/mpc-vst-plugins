@@ -128,7 +128,7 @@
 
   <footer>Community-provided software. Installing runs a script as root on your device: check the source and the checksum first. Not affiliated with or endorsed by Akai Professional. Use at your own risk, with no warranty: a plugin or patch can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Back up first.<br>
     Questions, testing and release news: <a href="https://discord.gg/sRRysZSgu3">Open MPC on Discord</a>.<br>
-    Catalog generated <span id="gen"></span>. <a href="catalog.json">catalog.json</a></footer>
+    Catalog generated <span id="gen"></span>. <a href="catalog.json">catalog.json</a>. <a href="privacy.html">Privacy</a>.</footer>
 </main>
 
 <script id="data" type="application/json">/*CATALOG_JSON*/</script>
@@ -774,16 +774,18 @@ put("pads", h);
       '<span class="sig-n" title="' + esc("The most people to confirm any one plugin in this set works on their device" + (a.top ? " (" + a.top + ")" : "") + ". Community reports, not hardware verification.") + '"><span aria-hidden="true">&#10003;</span> <strong>' + a.working + '</strong> working</span>' +
       '<span class="sig-v" title="The most likes on any one plugin in this set">&#9825; ' + a.likes + '</span>' +
       (typeof downloads === "number" ? '<span class="sig-v" title="Downloads of every plugin in the collection">&#8681; ' + downloads.toLocaleString() + '</span>' : '') +
-      '<span class="sig-v sig-line">Best of ' + a.n + ' plugins (' + a.covered + ' with reports). ' + (big ? "Report on each plugin below, or follow the whole set." : "Open the set to report on a plugin.") + '</span></div>';
+      '<span class="sig-v sig-line">Best of ' + a.n + ' plugins, ' + a.covered + ' with reports.' + (big ? " Report on each plugin below." : "") + '</span></div>';
   };
   window.signalsTop = function (p, big, mini) {
     if (!counts || p.coll || !ID_RE.test(p.id)) return "";
     var c = sig(p), mine = myReports(p.id).length, on = liked(p.id);
-    return '<div class="sig' + (mini ? " mini" : "") + '" data-sig="' + esc(p.id) + '">' +
+    /* one row: the readouts on the left, the two buttons together on the right */
+    return '<div class="sig' + (mini ? " mini" : "") + '" data-sig="' + esc(p.id) + '"><span class="sig-read">' +
       '<span class="sig-n" title="People who confirmed this plugin works on their own device. Community reports, not hardware verification."><span aria-hidden="true">&#10003;</span> <strong>' + c.working + '</strong> working</span>' +
-      '<button type="button" class="sig-like" data-sig-like="' + esc(p.id) + '" aria-pressed="' + on + '" aria-label="Like (' + c.likes + ' likes)" title="Like">' + (on ? "&#9829;" : "&#9825;") + ' ' + c.likes + '</button>' +
       (mini || typeof p.downloads !== "number" ? "" : '<span class="sig-v" title="Downloads of every version"><span aria-hidden="true">&#8681;</span> ' + p.downloads.toLocaleString() + '</span>') +
-      '<button type="button" class="sig-btn' + (mine ? " done" : "") + '" data-sig-work="' + esc(p.id) + '">' + (mine ? "You reported this" : "Works for me") + '</button></div>';
+      '</span><span class="sig-acts">' +
+      '<button type="button" class="sig-like" data-sig-like="' + esc(p.id) + '" aria-pressed="' + on + '" aria-label="Like (' + c.likes + ' likes)" title="Like">' + (on ? "&#9829;" : "&#9825;") + ' ' + c.likes + '</button>' +
+      '<button type="button" class="sig-btn' + (mine ? " done" : "") + '" data-sig-work="' + esc(p.id) + '"' + (mine ? ' title="You reported this plugin as working"' : "") + '>' + (mine ? "Reported &#10003;" : "Works for me") + '</button></span></div>';
   };
 
   /* ---- the Community section of the popup ---- */
@@ -1009,8 +1011,8 @@ put("pads", h);
   dlg.addEventListener("click", function (e) { if (e.target === dlg) dlg.close(); });
   function open(html) { dlg.innerHTML = html; if (!dlg.open) dlg.showModal(); }
   function signInDialog() {
-    open('<h2>Sign in</h2><p>Sign in to confirm a plugin works on your device, like it or report a problem. We store only your sign-in provider, its id and your email, to count you once; reading the catalog never needs an account. You can delete your account at any time.</p>' +
-      '<div class="actions"><button type="button" class="btn-l primary" data-sig-provider="discord">Sign in with Discord</button><button type="button" class="btn-l primary" data-sig-provider="google">Sign in with Google</button><button type="button" class="btn-l primary" data-sig-provider="github">Sign in with GitHub</button><button type="button" class="btn-l" data-sig-close>Cancel</button></div>');
+    open('<h2>Sign in</h2><ul class="sig-points"><li>Report that a plugin works, like it, follow updates.</li><li>We keep your provider, its id and your email.</li><li>Browsing needs no account. <a href="privacy.html">Privacy</a>.</li></ul>' +
+      '<div class="actions"><button type="button" class="btn-l primary" data-sig-provider="discord">Discord</button><button type="button" class="btn-l primary" data-sig-provider="google">Google</button><button type="button" class="btn-l primary" data-sig-provider="github">GitHub</button><button type="button" class="btn-l" data-sig-close>Cancel</button></div>');
   }
   /* A normal navigation to the service, not a fetch: the OAuth "state" cookie has to be set while the browser is on the service's own site
      (github.io and workers.dev are different sites, so a cross-site fetch cannot keep it and the provider's return fails with state_mismatch). */

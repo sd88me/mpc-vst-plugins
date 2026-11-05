@@ -2,6 +2,7 @@
 title: Privacy
 nav: Privacy
 order: 90
+hidden: true
 summary: What the catalog stores if you sign in to report that a plugin works or to like it, and how to delete it.
 ---
 

@@ -1489,7 +1489,7 @@ class PagesTest(unittest.TestCase):
         self.assertEqual([p["slug"] for p in pages], ["install", "faq", "build", "workflow", "privacy"])
         for p in pages:
             html = catalog_site.render_page(p, pages)
-            self.assertIn('aria-current="page"', html)
+            if not p.get("hidden"): self.assertIn('aria-current="page"', html)   # a hidden page (Privacy) has no menu entry, only a footer link
             for marker in ("/*NAV*/", "/*TITLE*/", "/*DESC*/", "/*BODY*/", "/*SITE_CSS*/"):
                 self.assertNotIn(marker, html)
         idx = catalog_site.render({"schema": 1, "generated": "x", "plugins": []}, pages)

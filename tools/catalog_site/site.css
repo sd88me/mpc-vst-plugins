@@ -293,11 +293,15 @@ footer { margin-top: 36px; color: var(--muted); font-size: 12px; border-top: 1px
 .doc .gthen{display:block;font-style:normal;color:var(--muted);font-size:13.5px;margin-top:3px}
 
 /* Community signals (preview, ?signals=1): docs/COMMUNITY_SIGNALS.md */
-.sig { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 10px 0 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-size: 14px; }
+.sig { display: flex; flex-wrap: nowrap; align-items: center; justify-content: space-between; gap: 6px 8px; margin: 10px 0 2px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-size: 14px; }
 .sig-n { white-space: nowrap; }
 .sig-n strong { font-size: 16px; }
-.sig-btn, .sig-like, .sig-who { font: 600 12px/1 var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 8px 10px; min-height: 34px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 6px; cursor: pointer; }
-.sig .sig-btn { margin-left: auto; }
+.sig-btn, .sig-like, .sig-who { font: 600 12px/1 var(--display); letter-spacing: .03em; text-transform: uppercase; padding: 7px 7px; min-height: 32px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 6px; cursor: pointer; }
+.sig[data-sig-coll] { flex-wrap: wrap; justify-content: flex-start; gap: 4px 12px; }
+.sig-read { display: flex; align-items: center; gap: 2px 10px; flex-wrap: wrap; flex: 1 1 0; min-width: 0; }
+.sig-acts { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; margin-left: auto; }
+.sig-points { margin: 0 0 12px; padding-left: 18px; font-size: 14px; line-height: 1.45; }
+.sig-points li { margin: 3px 0; }
 .sig-btn.done { color: var(--muted); }
 .sig-primary { background: var(--amber); color: var(--fg); border-color: var(--amber); }   /* the theme's yellow, so it is not mistaken for the red current-page tab */
 .sig-primary:hover, .sig-primary:focus-visible { background: color-mix(in srgb, var(--amber) 85%, #000); border-color: color-mix(in srgb, var(--amber) 85%, #000); }

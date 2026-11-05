@@ -5,7 +5,7 @@
 
 Writes feed.xml (Atom; a collection's same-day release is one entry), index.html (one self-contained page: the catalog is embedded, filtering and sorting run in the browser),
 catalog.json (for installers and other tools), p/<id>.html and p/c/<collection>.html (share pages) and .nojekyll. Deploy the folder with GitHub Pages.
-Guide pages: every catalog/pages/*.md becomes <name>.html (front matter: title, nav, order, summary; Markdown subset in
+Guide pages: every catalog/pages/*.md becomes <name>.html (front matter: title, nav, order, summary, hidden; Markdown subset in
 tools/catalog_md.py) and joins the menu. Standard library only. Templates and CSS: tools/catalog_site/. See docs/CATALOG.md.
 """
 import argparse
@@ -38,7 +38,8 @@ def load_pages(pages_dir):
         meta, src = catalog_md.front_matter(open(f, encoding="utf-8").read())
         name = os.path.splitext(os.path.basename(f))[0]
         pages.append({"slug": name, "title": meta.get("title", name), "nav": meta.get("nav", meta.get("title", name)),
-                      "order": int(meta.get("order", 50)), "summary": meta.get("summary", ""), "body": src})
+                      "order": int(meta.get("order", 50)), "summary": meta.get("summary", ""), "body": src,
+                      "hidden": str(meta.get("hidden", "")).lower() == "true"})   # hidden: no menu entry and no card; linked from the footer
     return sorted(pages, key=lambda p: (p["order"], p["slug"]))
 
 

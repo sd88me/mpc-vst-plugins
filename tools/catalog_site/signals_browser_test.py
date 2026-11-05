@@ -141,7 +141,7 @@ with sync_playwright() as p:
     pg.locator('#sig-form button[type=submit]').click(); pg.wait_for_timeout(300)
     sent = json.loads([c for c in svc.calls if c[0] == "POST" and c[1] == "/api/working"][-1][2])
     check("the report is sent as typed", sent == {"plugin": "test-synth", "version": "1.1.0", "device": "MPC Live II", "os": "3.9.1"}, sent)
-    check("the count goes up once and the button says so", "8" in pg.locator('.sig[data-sig="test-synth"] .sig-n').inner_text() and "you reported this" in pg.locator('[data-sig-work="test-synth"]').inner_text().lower())
+    check("the count goes up once and the button says so", "8" in pg.locator('.sig[data-sig="test-synth"] .sig-n').inner_text() and "reported" in pg.locator('[data-sig-work="test-synth"]').inner_text().lower())
     pg.locator('[data-sig-like="test-synth"]').click(); pg.wait_for_timeout(200)
     check("like fills the heart and counts", pg.locator('[data-sig-like="test-synth"]').get_attribute("aria-pressed") == "true" and "4" in pg.locator('[data-sig-like="test-synth"]').inner_text())
     pg.locator('[data-sig-like="test-synth"]').click(); pg.wait_for_timeout(200)
@@ -219,7 +219,7 @@ with sync_playwright() as p:
     # 5c. collections: an aggregate on the card, per-plugin reporting inside, Follow all, sorting
     svc = Service(); ctx, pg, errs, gh = page(b, svc, signed_in=True)
     cs = pg.locator('.sig[data-sig-coll="acme-pack"]')
-    check("the collection card shows its best plugin's figures, not a sum, with no buttons", cs.count() == 1 and "5" in cs.locator(".sig-n").inner_text() and "10" not in cs.inner_text() and "Best of 5 plugins (3 with reports)" in cs.inner_text() and cs.locator("button").count() == 0 and "Open the set" in cs.inner_text(), cs.inner_text() if cs.count() else "")
+    check("the collection card shows its best plugin's figures, not a sum, with no buttons", cs.count() == 1 and "5" in cs.locator(".sig-n").inner_text() and "10" not in cs.inner_text() and "Best of 5 plugins, 3 with reports" in cs.inner_text() and cs.locator("button").count() == 0, cs.inner_text() if cs.count() else "")
     check("its tooltip names the plugin that has the most reports", "Pack Kick" in cs.locator(".sig-n").get_attribute("title"))
     check("the collection strip shows the total downloads of its members", "55" in cs.inner_text(), cs.inner_text())
     ccard = pg.locator("article.card.coll", has=cs); order = ccard.evaluate("el => [...el.children].map(c => c.className.split(' ')[0] || c.tagName.toLowerCase())")
