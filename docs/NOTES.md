@@ -2181,6 +2181,18 @@ aarch64). Corrects the 2026-11-03 entry below where they differ.
   plugins MPC knows (`pluginList-arm-64bit`), queues add / remove / on-off, and APPLY runs a helper outside MPC's cgroup
   (`systemd-run`, as `ac50.service` is `KillMode=control-group`) that stops MPC, edits the file (keeping `.rack-backup`) and
   starts it. Used by the user: removed NAM from the input, then added Stompbox there; both came back after the restart.
+- **No Wi-Fi or Bluetooth hardware (checked 2026-11-04):** the network interfaces are `lo` and `usb0` (the USB gadget link SSH
+  runs over). The device tree (`inmusic,ac50`, `inmusic,az07`, `rockchip,rk3566`) has no Wi-Fi or Bluetooth node, and its two
+  MMC hosts are the eMMC and the SD card, with no SDIO device. The shared az07 image still ships the Broadcom 43456 firmware,
+  `brcmfmac`, `btbcm`, `wpa_supplicant` and connman. It has no USB Wi-Fi drivers either (`rtl8150`, USB Ethernet, only).
+- **Hardware, read from the device (2026-11-04):** Rockchip RK3566, 4x A55 at 1.8 GHz (governor `performance`), 2 GB RAM,
+  7.6 GB eMMC (`/content` 3.9 GB with the factory Demos and Kits, `/data` 1.7 GB, `/factory`), mains power only (no battery;
+  `generic-adc-mains-supply` on the SAR ADC). Audio: one AK4558 stereo codec on I2S (card 2, S32 2 ch 44.1 kHz, period 128),
+  jack detection for headphones and line out as input events; the factory test list also has a built-in mic and speakers,
+  a sync out, MIDI loopback (a serial "External MIDI" port, card 1) and an RTC (AT8563S, keeps time). The panel and its
+  buttons, pads and pots are a separate controller on a UART (card 0, "Control Surface"). USB-C is a gadget with UAC2
+  audio, MIDI and NCM networking (the SSH link) at once. Also: RGA (`/dev/video0`), a hardware RNG, the RK817 PMIC's
+  power key as `event0`. No NPU device node.
 - **Page button = the manager (draw handler 0.5.0, user's call):** a long hold of PAD FX opens RACK and closes it again
   instead of cycling through every page; a plugin page opened from RACK (dial press) goes back to RACK on a hold. Conf
   `page_home` (default RACK; `-` = the old cycle, also used when RACK isn't open). Offline tests; deployed.
@@ -2255,3 +2267,58 @@ Not a dependency: Monomodule FX processes any audio and only mentions Monomodule
   build) and installing it anyway without force gets 409, nothing changed. For real: installing Incipience OUT installed and registered it
   and Incipience with one MPC stop and start (journal); removing Incipience alone got 409 while OUT was installed; removing both took one
   restart and left `MPC.settings` byte-identical to its copy from before the test. Not tried on a device: anything on Gen2.
+
+## 2026-11-05: MPC Sample: a reboot loses the `exec` bind mount, and every plugin then fails silently (device)
+
+- **Symptom:** the Commander addin (and any dlsym-hook addin) saw 0 plugin instances although the open project held Stompbox, NAM
+  and Gain PoC. MPC logged "Attempting to load VST: ..." for each and nothing after it (no "Creating VST instance"), the `.so`
+  was not mapped, and no `VSTPluginMain` lookup ever reached the hook (a debug build logging every lookup stayed silent).
+- **Cause:** `/media/MPCSD` is `exfat ... noexec`. After a reboot the bind mount from 2026-11-04 is gone, so MPC cannot map the
+  plugin: `/usr/lib/ld-linux-aarch64.so.1 --list <plugin>.so` prints "failed to map segment from shared object". Checked on the
+  device: the Sample had rebooted ~3 min before the test; `/run` (the addin installer's LD_PRELOAD drop-in) was empty too.
+- **Fix that worked:** `mount --bind /media/MPCSD/Synths /media/MPCSD/Synths && mount -o remount,bind,exec /media/MPCSD/Synths`,
+  then restart MPC: NAM loaded ("Creating VST instance", "Initialising VST") and Commander listed it with its skin. Both the bind
+  mount and the drop-in are lost again at the next reboot.
+- **Debugging tip:** when a plugin "attempts to load" but never appears, run the loader on the file (`ld-linux-aarch64.so.1 --list`)
+  before suspecting a hook; it names a `noexec` mount at once.
+
+## 2026-11-05: MPC Sample: the installer finds its settings file; the Sample page's threads (device and offline)
+
+- **Settings lookup (device):** the install, sync, uninstall and store scripts and the desktop app looked for
+  `/data/Settings/*/*.settings`, one folder short of the Sample's `/data/Settings/Akai/MPC Sample/MPC Sample.settings`, so
+  they stopped with "MPC.settings not found" there. That pattern could also pick another `*.settings` file before
+  `MPC.settings` on other devices (`ls` sorts all its matches). The lookup now names the Sample's file
+  (`/data/Settings/*/MPC?Sample/MPC?Sample.settings`). Checked on the Sample (finds that file) and on a Gen1 Key 37 (still
+  `/data/Settings/MPC/MPC.settings`); `sync.sh --dry-run` ran on both with nothing to do. A real install of a Tuner
+  aarch64 zip on the Sample (`install.sh -y -t /media/MPCSD/Synths`, run from `systemd-run` because SSH there lives inside
+  `ac50`) stopped and started MPC, backed up the settings and re-registered Tuner (the same entry, moved to the end of
+  `pluginList-arm-64bit`).
+- **`install.sh` noexec warning:** it warned that `/media/MPCSD/Synths` was `noexec` although the exec bind mount was in
+  place: BusyBox `df` names `/media/MPCSD`, the drive under it. The check now takes the longest mount point the folder is
+  in from `/proc/mounts`. On the device: the Sample's Synths folder reads exec, `/media/MPCSD` noexec; on the Key 37,
+  `/media/acvs-content/Synths` exec and its exfat card noexec.
+- **`stick_extras.sh`** restarts MPC's own service (`acvs`, `ac50` or `inmusic-mpc`) and waits for `MPC` or `MPC Sample`.
+- **Sample page (offline):** the page set params and loaded presets from the draw handler's threads, alongside MPC's
+  threads (the held parameter 0, the CC "absolute" flag, Q-Link counters). It now posts its changes and the wrapper applies
+  them at the start of the next audio block (a preset after the held parameter 0, as effSetProgram does). The page opens at
+  the first effMainsChanged, so a scan or probe instance opens none; it draws from a copy of its state taken under its lock;
+  a programs dial stops at the last program; a bank key keeps its arrow. The held parameter 0 is now read and written
+  atomically, and the CC flag is per thread (both were races before the page, between the host's thread and the audio
+  thread). `tools/test_sample_page.sh` (TSan, a stand-in draw handler) passes for Tuner, Keyscope and Stompbox, and reports
+  races and a page at creation on the previous wrapper.
+- **Sample page (device, the same day):** Stompbox, Tuner and Keyscope built with this wrapper, with the draw handler 0.6.0
+  (`/snap` reads the screen back) and the rack addin 0.2.0. The handler listed one page per plugin, so the lazy open holds in
+  MPC. On Stompbox the dial showed the pending preset and loaded it once still; it stopped at the last of 41 programs; a bank
+  key moved the page on with its arrow kept; K2 ignored the knob until it reached the value, then followed it. The test
+  programs (`host_test`, and `sample_page_test` with its stand-in handler) also ran natively on the Sample (aarch64) and on a
+  Gen1 Key 37 (armv7) against the built plugins: all passed.
+- **Rack from a browser (device):** with mpc-addin-commander's browser UI and the rack addin's exports, adding Stompbox and
+  Tuner on the input and Keyscope on the main out, then turning Tuner off and removing Keyscope, each applied in one MPC
+  restart (the project's working copy edited, its previous copy kept), and MPC created exactly the plugins left on.
+- **Key 37 regression (device, Gen1 armv7):** Commander, Tuner, Keyscope and Stompbox armv7 builds with this wrapper installed
+  in one pass (settings entries only rewritten); Commander served its UI with no Rack button (`/rack`: unavailable).
+- **Key 37, not new:** at each MPC restart (not at boot), a second process that the FileBrowser addin starts (it ends up as
+  `/bin/sh filebrowser-run`) also runs the other preloaded addins' constructors, so for a moment it holds their ports (6720,
+  6730, 6740, 6750). Addins that retry their bind get the port back; one that binds once (the Lua addin, 6740) keeps losing
+  it after restarts. The same happened with Commander 1.0.0, so it is not these changes; the old FileBrowser helper also
+  outlives the restart. Not fixed: an addin that spawns a helper should drop `LD_PRELOAD` from its environment first.
