@@ -2317,8 +2317,11 @@ Not a dependency: Monomodule FX processes any audio and only mentions Monomodule
   restart (the project's working copy edited, its previous copy kept), and MPC created exactly the plugins left on.
 - **Key 37 regression (device, Gen1 armv7):** Commander, Tuner, Keyscope and Stompbox armv7 builds with this wrapper installed
   in one pass (settings entries only rewritten); Commander served its UI with no Rack button (`/rack`: unavailable).
-- **Key 37, not new:** at each MPC restart (not at boot), a second process that the FileBrowser addin starts (it ends up as
-  `/bin/sh filebrowser-run`) also runs the other preloaded addins' constructors, so for a moment it holds their ports (6720,
-  6730, 6740, 6750). Addins that retry their bind get the port back; one that binds once (the Lua addin, 6740) keeps losing
-  it after restarts. The same happened with Commander 1.0.0, so it is not these changes; the old FileBrowser helper also
-  outlives the restart. Not fixed: an addin that spawns a helper should drop `LD_PRELOAD` from its environment first.
+- **Key 37, not new, and fixed (device):** at each MPC restart a second process ran the other preloaded addins' start-up
+  and for a moment bound their ports (Commander 6730, Lua 6740, Hermes 6750) and made a second "MPC Commander" MIDI client;
+  whichever lost the race lost its port (Lua binds once, so it could stay without one). It was FileBrowser's grandchild,
+  between its fork and its exec: the fork runs in FileBrowser's constructor, before the other preloads' constructors (the last
+  preload is initialised first), and the device's MIDI injector preload overrides `open()` and `close()`, which the
+  grandchild called. With only raw `syscall()`s between fork and exec (mpc-addin-filebrowser), two restarts showed the
+  addins' start-up only in MPC, one MIDI client, every port held by MPC. Rule for any addin that spawns: fork as late as
+  possible, and between fork and exec call nothing a preload may override. Not reproduced on a desktop glibc.
