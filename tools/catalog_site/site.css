@@ -85,7 +85,8 @@ a { color: inherit; }
 .modal-x { position: absolute; top: -46px; right: -4px; width: 40px; height: 40px; border: 0; background: none; color: #fff;
   font: 400 34px/1 var(--text); cursor: pointer; opacity: .8; }
 .modal-x:hover, .modal-x:focus-visible { opacity: 1; }
-.modal-share { position: absolute; top: -40px; left: 0; height: 30px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, .35); border-radius: 15px;
+.modal-tools { position: absolute; top: -40px; left: 0; display: flex; gap: 8px; }
+.modal-share { height: 30px; display: inline-flex; align-items: center; text-decoration: none; padding: 0 12px; border: 1px solid rgba(255, 255, 255, .35); border-radius: 15px;
   background: none; color: #fff; font: 500 13px/1 var(--text); letter-spacing: .02em; cursor: pointer; opacity: .85; }
 .modal-share:hover, .modal-share:focus-visible { opacity: 1; border-color: #fff; }
 .card.big { box-shadow: 0 24px 60px rgba(0, 0, 0, .45); }
@@ -290,3 +291,66 @@ footer { margin-top: 36px; color: var(--muted); font-size: 12px; border-top: 1px
 .doc .gwrow .gbtn:disabled{opacity:.45;cursor:default}
 .doc .gstatus{margin:8px 0 0;font-size:14px}.doc .gstatus.ok{color:#1d7a3a;font-weight:600}.doc .gstatus.bad{color:var(--accent);font-weight:600}
 .doc .gthen{display:block;font-style:normal;color:var(--muted);font-size:13.5px;margin-top:3px}
+
+/* Community signals (preview, ?signals=1): docs/COMMUNITY_SIGNALS.md */
+.sig { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 10px 0 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); font-size: 14px; }
+.sig-n { white-space: nowrap; }
+.sig-n strong { font-size: 16px; }
+.sig-btn, .sig-like, .sig-who { font: 600 12px/1 var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 8px 10px; min-height: 34px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 6px; cursor: pointer; }
+.sig .sig-btn { margin-left: auto; }
+.sig-btn.done { color: var(--muted); }
+.sig-primary { background: var(--amber); color: var(--fg); border-color: var(--amber); }   /* the theme's yellow, so it is not mistaken for the red current-page tab */
+.sig-primary:hover, .sig-primary:focus-visible { background: color-mix(in srgb, var(--amber) 85%, #000); border-color: color-mix(in srgb, var(--amber) 85%, #000); }
+.sig-like { letter-spacing: 0; font-size: 14px; }
+.sig-like[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.sig-acct { position: relative; list-style: none; }
+.sig-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; display: grid; min-width: 180px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, .25); padding: 4px; }
+.sig-menu[hidden] { display: none; }
+.sig-menu button { text-align: left; font: 600 13px/1 var(--text); padding: 10px; border: 0; background: none; color: var(--fg); cursor: pointer; border-radius: 6px; }
+.sig-menu button:hover, .sig-menu button:focus-visible { background: var(--bg); }
+.sig-toast { position: fixed; z-index: 120; top: 66px; right: 16px; max-width: min(360px, calc(100vw - 32px)); padding: 10px 14px; border-radius: 8px; background: #222; color: #fff; font-size: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); }
+.sig-toast[hidden] { display: none; }
+.sig-detail { margin: 14px 0 4px; padding-top: 4px; border-top: 1px solid var(--line); }
+.sig-detail h3 { font: 700 13px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 14px 0 8px; }
+.sig-head { margin: 0 0 6px; font-size: 15px; }
+.sig-v { color: var(--muted); font-size: 13px; }
+.sig-table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 10px; }
+.sig-table caption { text-align: left; font-weight: 600; color: var(--muted); padding: 4px 0; }
+.sig-table td { padding: 4px 8px 4px 0; border-top: 1px solid var(--line); vertical-align: top; }
+.sig-issues, .sig-mine { margin: 4px 0; padding-left: 18px; font-size: 14px; }
+.sig-issues li { margin: 4px 0; }
+.sig-links { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 10px 0 2px; }
+.sig-note { color: var(--muted); font-size: 13px; margin: 4px 0; }
+.sig-dialog { max-width: min(440px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: 10px; padding: 18px; background: var(--bg); color: var(--fg); }
+.sig-dialog::backdrop { background: rgba(0, 0, 0, .45); }
+.sig-dialog h2 { margin: 0 0 8px; font-size: 18px; }
+.sig-dialog form { display: grid; gap: 10px; margin: 12px 0; }
+.sig-dialog label { display: grid; gap: 4px; font-size: 13px; }
+.sig-dialog select, .sig-dialog input { font: inherit; padding: 8px; min-height: 40px; }
+.sig-err { color: var(--accent); font-size: 13px; min-height: 1em; margin: 6px 0 0; }
+.sig-vc { white-space: nowrap; color: var(--muted); }
+.sig-vi td { padding: 2px 0 8px 18px; border: 0; }
+.sig-vi[hidden] { display: none; }
+.sig-closed, .sig-closed a { color: var(--muted); }
+.sig-closed a { text-decoration: line-through; text-decoration-thickness: 1px; }
+
+button.tag { appearance: none; cursor: pointer; }
+button.tag:hover, button.tag:focus-visible { border-color: var(--accent); color: var(--accent); }
+.tagbar { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.tagx { font: 600 12px/1 var(--display); letter-spacing: .06em; text-transform: uppercase; padding: 7px 10px; border: 1px solid var(--accent); border-radius: 999px; background: none; color: var(--accent); cursor: pointer; }
+.modal-share[aria-pressed="true"] { border-color: #fff; background: rgba(255, 255, 255, .2); opacity: 1; }
+.sig-dialog input[readonly] { width: 100%; box-sizing: border-box; font: 13px/1.3 monospace; }
+.sig-dialog h3 { font: 700 13px/1 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin: 14px 0 6px; }
+.sig.mini { margin: 6px 0 0; padding: 4px 8px; font-size: 13px; gap: 4px 10px; }
+.sig.mini .sig-n strong { font-size: 14px; }
+.sig.mini .sig-btn, .sig.mini .sig-like { min-height: 28px; padding: 6px 8px; }
+.sig-who { border-color: var(--amber); color: var(--fg); }
+.sig .sig-v { white-space: nowrap; }
+.sig .sig-line { white-space: normal; flex-basis: 100%; font-size: 12px; }
+details.more { margin: 10px 0 0; }
+details.more > summary { cursor: pointer; list-style: none; font: 700 12px/1.3 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); padding: 6px 0; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: "\25B8"; display: inline-block; margin-right: 6px; transition: transform .15s; }
+details.more[open] > summary::before { transform: rotate(90deg); }
+details.more > summary .hint { font: 400 13px/1.3 var(--text); letter-spacing: 0; text-transform: none; margin-left: 10px; }
+details.more > dl.meta { margin-top: 4px; }
