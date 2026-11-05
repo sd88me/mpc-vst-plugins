@@ -33,7 +33,7 @@ are from searches on 2026-11-04, not tested. Items marked **DECIDE** are the mai
 - The page loads counts with one cached request, `GET /api/counts`, a JSON object `{plugin_id: {working, likes}}`, and merges
   them into the cards. On failure it shows no counts and no error. Cache 5 minutes at the edge so card views do not hit D1.
 - Sign-in only happens when someone presses a button. Reading never needs an account.
-- Sign-in with **Discord and Google** first; an emailed link only if people ask (adds a mail quota and a sending domain).
+- Sign-in with **Discord and Google** first (GitHub added 2026-11-05 as an optional third, no mail needed); an emailed link only if people ask (adds a mail quota and a sending domain).
   Candidate library: Better Auth (Modwerk uses it). **Not yet checked:** its current docs and licence, and Google's OAuth consent
   screen setup for users outside our own account. Check both before committing to it.
 - Where it lives (**DECIDE**): `tools/community_signals/` in this repo (one place, shared CI) or a separate repo (clean licence and

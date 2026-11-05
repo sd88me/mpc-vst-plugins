@@ -1010,7 +1010,7 @@ put("pads", h);
   function open(html) { dlg.innerHTML = html; if (!dlg.open) dlg.showModal(); }
   function signInDialog() {
     open('<h2>Sign in</h2><p>Sign in to confirm a plugin works on your device, like it or report a problem. We store only your sign-in provider, its id and your email, to count you once; reading the catalog never needs an account. You can delete your account at any time.</p>' +
-      '<div class="actions"><button type="button" class="btn-l primary" data-sig-provider="discord">Sign in with Discord</button><button type="button" class="btn-l primary" data-sig-provider="google">Sign in with Google</button><button type="button" class="btn-l" data-sig-close>Cancel</button></div>');
+      '<div class="actions"><button type="button" class="btn-l primary" data-sig-provider="discord">Sign in with Discord</button><button type="button" class="btn-l primary" data-sig-provider="google">Sign in with Google</button><button type="button" class="btn-l primary" data-sig-provider="github">Sign in with GitHub</button><button type="button" class="btn-l" data-sig-close>Cancel</button></div>');
   }
   /* A normal navigation to the service, not a fetch: the OAuth "state" cookie has to be set while the browser is on the service's own site
      (github.io and workers.dev are different sites, so a cross-site fetch cannot keep it and the provider's return fails with state_mismatch). */

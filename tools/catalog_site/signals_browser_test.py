@@ -116,7 +116,7 @@ with sync_playwright() as p:
     names = pg.locator("#grid article.card h2").all_inner_texts()
     check("most reported working puts the 12 before the 7", names.index("TESTED TWO") < names.index("TEST SYNTH") if "TESTED TWO" in names and "TEST SYNTH" in names else False, names)
     pg.locator('[data-sig-work="test-synth"]').click()
-    check("signed out: Works for me opens the sign-in dialog", pg.locator("#sig-dialog").is_visible() and pg.locator("[data-sig-provider]").count() == 2)
+    check("signed out: Works for me opens the sign-in dialog", pg.locator("#sig-dialog").is_visible() and pg.locator("[data-sig-provider]").count() == 3)
     pg.locator('[data-sig-provider="discord"]').click()
     try: pg.wait_for_url("**/api/signin/start?**", timeout=5000)
     except Exception: pass
@@ -191,7 +191,7 @@ with sync_playwright() as p:
     f = pg.locator("#modal-follow")
     check("preview on: the popup button is a Follow toggle", f.inner_text().strip().endswith("Follow") and "Follow updates" not in f.inner_text() and f.get_attribute("aria-pressed") == "false", f.inner_text())
     f.click()
-    check("signed out: Follow asks you to sign in (and does not leave the page)", pg.locator("#sig-dialog").is_visible() and pg.locator("[data-sig-provider]").count() == 2 and pg.url.startswith("file://"))
+    check("signed out: Follow asks you to sign in (and does not leave the page)", pg.locator("#sig-dialog").is_visible() and pg.locator("[data-sig-provider]").count() == 3 and pg.url.startswith("file://"))
     ctx.close()
     svc = Service(); ctx, pg, errs, gh = page(b, svc, signed_in=True)
     pg.locator('a[data-open="test-synth"]').first.click(); pg.wait_for_timeout(500)
@@ -249,10 +249,10 @@ with sync_playwright() as p:
     svc = Service(); ctx, pg, errs, gh = page(b, svc)
     pg.locator('h2 a[data-coll="acme-pack"]').first.click(); pg.wait_for_timeout(400)
     pg.locator('#modal-body [data-sig-work="pack-kick"]').click(); pg.wait_for_timeout(200)
-    a_ok = pg.locator("#sig-dialog").is_visible() and pg.locator("[data-sig-provider]").count() == 2
+    a_ok = pg.locator("#sig-dialog").is_visible() and pg.locator("[data-sig-provider]").count() == 3
     pg.locator("[data-sig-close]").click(); pg.wait_for_timeout(100)
     pg.locator("#modal-follow").click(); pg.wait_for_timeout(200)
-    check("signed out: reporting on a member or following all asks you to sign in", a_ok and pg.locator("#sig-dialog").is_visible() and pg.locator("[data-sig-provider]").count() == 2)
+    check("signed out: reporting on a member or following all asks you to sign in", a_ok and pg.locator("#sig-dialog").is_visible() and pg.locator("[data-sig-provider]").count() == 3)
     ctx.close()
     svc = Service(up=False); ctx, pg, errs, gh = page(b, svc)
     check("service down: the collection card has no strip", pg.locator("article.card.coll .sig:not(.stat)").count() == 0 and "55" in pg.locator("article.card.coll .sig.stat").inner_text())
