@@ -54,7 +54,7 @@ fi
 [ "$SYNTHS" = /sdcard/Synths ] && [ ! -d /sdcard/Synths ] && [ -d /nvme ] && SYNTHS=/nvme/Synths
 # A Gen2 unit without NVMe (an MPC One, a Key 37) keeps user content on the loopback image mounted at /storage.
 [ "$SYNTHS" = /sdcard/Synths ] && [ ! -d /sdcard/Synths ] && [ -d /storage/Synths ] && SYNTHS=/storage/Synths
-SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings /data/Settings/*/*.settings 2>/dev/null | head -n 1)}"
+SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings /data/Settings/*/MPC?Sample/MPC?Sample.settings 2>/dev/null | head -n 1)}"
 W="${MPC_STORE_TMP:-/tmp}/mpc-store.$$"; mkdir -p "$W" || die "cannot create $W"
 trap 'rm -rf "$W"' EXIT
 STATE="$SYNTHS/.mpc-store"

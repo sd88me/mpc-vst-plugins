@@ -37,7 +37,7 @@ func defaultConfig() Config {
 	// One, a Key 37; the firmware mounts /nvme or /storage from device tree flags). The extra entries are harmless on
 	// Gen1/Force (neither exists); SettingsGlob already finds /data. The first SynthsAlt found is promoted to the primary
 	// "internal drive" when /sdcard is absent (see readInfo).
-	return Config{Port: "22", User: "root", RemoteTmp: "/tmp", SynthsDir: "/sdcard/Synths", SynthsAlt: "/nvme/Synths /storage/Synths", RootGlobs: "/sdcard/Synths /nvme/Synths /storage/Synths /media/*/Synths", DriveGlob: "/media/* /nvme /storage", MountsFile: "/proc/mounts", SettingsGlob: "/media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings /data/Settings/*/*.settings", AddinsDir: "/data/mpc-addins",
+	return Config{Port: "22", User: "root", RemoteTmp: "/tmp", SynthsDir: "/sdcard/Synths", SynthsAlt: "/nvme/Synths /storage/Synths", RootGlobs: "/sdcard/Synths /nvme/Synths /storage/Synths /media/*/Synths", DriveGlob: "/media/* /nvme /storage", MountsFile: "/proc/mounts", SettingsGlob: "/media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings /data/Settings/*/MPC?Sample/MPC?Sample.settings", AddinsDir: "/data/mpc-addins",
 		LibcPaths: "/lib/libc.so.6 /lib/arm-linux-gnueabihf/libc.so.6 /usr/lib/libc.so.6 /lib/libc-*.so /usr/lib/libc-*.so"}
 }
 
