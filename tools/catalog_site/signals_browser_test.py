@@ -36,7 +36,7 @@ class Service:
         if path == "/api/counts": return j(200, {"counts": self.counts})
         if path.startswith("/api/plugin?id="): pid = path.split("=")[1]; return j(200, {**self.detail, "id": pid} if pid == "test-synth" else {"id": pid, "working": 0, "likes": 0, "versions": {}, "devices": [], "recent": []})
         if path == "/api/auth/one-time-token/verify": return j(200, {}, {"set-auth-token": self.token_ok}) if body.get("token") == "abc" else j(400, {"error": "Invalid token"})
-        if path == "/api/auth/sign-in/social": return j(200, {"url": "https://provider.test/authorize?x=1", "redirect": True})
+        if path.startswith("/api/signin/start?"): return route.fulfill(status=200, content_type="text/html", body="start")
         if path == "/api/auth/sign-out": return j(200, {})
         if not authed: return j(401, {"error": "Sign in first."})
         if path == "/api/me" and req.method == "GET": return j(200, self.me)
@@ -107,9 +107,12 @@ with sync_playwright() as p:
     check("most reported working puts the 12 before the 7", names.index("TESTED TWO") < names.index("TEST SYNTH") if "TESTED TWO" in names and "TEST SYNTH" in names else False, names)
     pg.locator('[data-sig-work="test-synth"]').click()
     check("signed out: Works for me opens the sign-in dialog", pg.locator("#sig-dialog").is_visible() and pg.locator("[data-sig-provider]").count() == 2)
-    pg.locator('[data-sig-provider="discord"]').click(); pg.wait_for_timeout(300)
-    body = json.loads([c for c in svc.calls if c[1] == "/api/auth/sign-in/social"][-1][2])
-    check("sign-in asks for discord with a return address, then goes to the provider", body["provider"] == "discord" and "/api/signin/done?return=" in body["callbackURL"] and pg.url.startswith("https://provider.test/"), body)
+    pg.locator('[data-sig-provider="discord"]').click()
+    try: pg.wait_for_url("**/api/signin/start?**", timeout=5000)
+    except Exception: pass
+    starts = [c[1] for c in svc.calls if c[1].startswith("/api/signin/start?")]
+    check("sign-in is a navigation to the service's start route (so the state cookie is first-party), with a return address", len(starts) == 1 and "provider=discord" in starts[0] and "&return=" in starts[0] and "/api/signin/start?provider=discord" in pg.url, [starts, pg.url])
+    check("sign-in no longer uses a cross-site fetch to /api/auth/sign-in/social", not any(c[1] == "/api/auth/sign-in/social" for c in svc.calls))
     ctx.close()
     # 3. handoff, bad token
     svc = Service(); ctx, pg, errs, gh = page(b, svc, hash_="#ott=abc")

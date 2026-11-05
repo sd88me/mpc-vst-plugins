@@ -226,3 +226,9 @@ the live deployment, dated and marked offline or live.
 - Whether to show all-version and newest-version counts, or one.
 - Where issue reports go for ports in other repos.
 - Who moderates, and whether trusted verifiers (Step 4) should also be able to hide reports.
+
+
+## Sign-in start (2026-11-05, found on the first real try)
+The page must start sign-in by **navigating** to `<service>/api/signin/start?provider=<p>&return=<page>`, not with a cross-site `fetch` to
+`/sign-in/social`: Better Auth's `state` cookie has to be set while the browser is on the service's own site, otherwise the provider's return fails
+with `state_mismatch` (github.io and workers.dev are different sites; the offline tests missed it because their client kept cookies).
