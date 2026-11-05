@@ -35,7 +35,7 @@ type CatPlugin struct {
 	Name        string          `json:"name"`
 	Author      string          `json:"author"`
 	Kind        string          `json:"kind"`
-	Role        string          `json:"role,omitempty"` // "midi": a MIDI generator or sequencer (listed under its own tab)
+	Role        string          `json:"role,omitempty"`    // "midi": a MIDI generator or sequencer (listed under its own tab)
 	Devices     []string        `json:"devices,omitempty"` // the only devices it is for ("mpc-sample"); empty for every MPC
 	Summary     string          `json:"summary"`
 	Version     string          `json:"version"`
