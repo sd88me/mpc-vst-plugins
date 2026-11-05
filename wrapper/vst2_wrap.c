@@ -158,6 +158,7 @@ typedef struct {
     int cc_report;           /* frames until CC-driven changes are reported again */
     int update_wait;         /* frames until another audioMasterUpdateDisplay may be sent (see housekeeping) */
     int program;             /* NPRESETS: the preset last picked (not in the engine's state; 0 after a reload) */
+    void *spage;             /* SAMPLE_PAGE: the page on the MPC Sample's screen (sample_page.h), or NULL */
 #if SAMPLE_ACCURATE
     struct { int32_t frame; uint8_t msg[3]; } evq[WRAP_EVQ];   /* this block's MIDI, sorted by frame (see queue_midi) */
     int nev;
@@ -747,6 +748,40 @@ static void program_name(wrap_t *w, int idx, char *out) {
 #endif
 }
 
+/* A parameter's name and value as the host shows them (effGetParamName / effGetParamDisplay, and the MPC Sample page). */
+static void param_name_text(wrap_t *w, int idx, char *out, int n) {
+    char buf[64], k2[96];
+    out[0] = 0;
+    if (idx < 0 || idx >= NPARAMS) return;
+    /* "dynamic_name" params: the DSP may rename them (e.g. a drum machine's per-machine knob
+     * labels); MPC re-reads names on audioMasterUpdateDisplay (docs/NOTES.md). */
+    snprintf(k2, sizeof k2, "%s_name", PARAMS[idx].key);
+    if (PARAMS[idx].dynamic_name && eng_get(w, k2, buf, sizeof buf) > 0) copy_str(out, buf, n);
+    else copy_str(out, PARAMS[idx].name, n);
+}
+
+static void param_value_text(wrap_t *w, int idx, char *out, int n) {
+    char buf[PARAM_TEXT_MAX > 64 ? PARAM_TEXT_MAX : 64];
+    out[0] = 0;
+    if (idx < 0 || idx >= NPARAMS) return;
+    const param_t *pp = &PARAMS[idx];
+    char k2[96];
+    snprintf(k2, sizeof k2, "%s_display", pp->key);
+    if (pp->dynamic_display && eng_get(w, k2, buf, sizeof buf) > 0) {
+        copy_str(out, buf, n);   /* text the DSP composes (e.g. a destination's own name) */
+    } else if (pp->nopts) {
+        int k = (int)lroundf(get_norm(w, idx) * (pp->nopts - 1));
+        copy_str(out, pp->opts[k], n);
+    } else if (eng_get(w, pp->key, buf, sizeof buf) > 0) {
+        if (pp->string_display) copy_str(out, buf, n);   /* real text (a name, a status), not a number */
+        else snprintf(out, n < 24 ? n : 24, "%.*f", (pp->int_display || fabs(pp->max - pp->min) > 20) ? 0 : 1, atof(buf));
+    }
+}
+
+#ifdef SAMPLE_PAGE
+#include "sample_page.h"
+#endif
+
 /* Vendor opcode answered only by the framework's own bench (tools/bench.c): 1 when parameter idx is a
  * one-shot trigger ("momentary": true), 0 otherwise. MPC never sends it, and a plugin built before
  * this existed returns 0 from the default branch, which the bench reads as "no triggers known". */
@@ -760,6 +795,9 @@ static intptr_t dispatcher(AEffect *e, int32_t op, int32_t idx, intptr_t v, void
     case EFF_MPC_IS_MOMENTARY:
         return (idx >= 0 && idx < NPARAMS && PARAMS[idx].momentary) ? 1 : 0;
     case effClose:
+#ifdef SAMPLE_PAGE
+        sample_page_close(w->spage);   /* first: its thread reads the engine */
+#endif
         g_api->destroy(w->dsp);
         pthread_mutex_destroy(&w->lock);
         free(w);
@@ -776,36 +814,16 @@ static intptr_t dispatcher(AEffect *e, int32_t op, int32_t idx, intptr_t v, void
     case effGetVstVersion: return 2400;
     case effCanBeAutomated: return idx >= 0 && idx < NPARAMS;
     case effGetParamName:
-        if (idx >= 0 && idx < NPARAMS) {
-            char buf[64], k2[96];
-            /* "dynamic_name" params: the DSP may rename them (e.g. a drum machine's per-machine knob
-             * labels); MPC re-reads names on audioMasterUpdateDisplay (docs/NOTES.md). */
-            snprintf(k2, sizeof k2, "%s_name", PARAMS[idx].key);
-            if (PARAMS[idx].dynamic_name && eng_get(w, k2, buf, sizeof buf) > 0) copy_str(p, buf, 32);
-            else copy_str(p, PARAMS[idx].name, 32);
-        }
+        if (idx >= 0 && idx < NPARAMS) param_name_text(w, idx, p, 32);
         return 1;
     case effGetParamLabel:
         if (idx >= 0 && idx < NPARAMS) copy_str(p, PARAMS[idx].unit, 8);
         return 1;
-    case effGetParamDisplay: {
-        char buf[PARAM_TEXT_MAX > 64 ? PARAM_TEXT_MAX : 64];
+    case effGetParamDisplay:
         if (idx < 0 || idx >= NPARAMS) return 0;
         if (idx == 0) flush_pend0(e);
-        const param_t *pp = &PARAMS[idx];
-        char k2[96];
-        snprintf(k2, sizeof k2, "%s_display", pp->key);
-        if (pp->dynamic_display && eng_get(w, k2, buf, sizeof buf) > 0) {
-            copy_str(p, buf, PARAM_TEXT_MAX);   /* text the DSP composes (e.g. a destination's own name) */
-        } else if (pp->nopts) {
-            int k = (int)lroundf(get_norm(w, idx) * (pp->nopts - 1));
-            copy_str(p, pp->opts[k], PARAM_TEXT_MAX);
-        } else if (eng_get(w, pp->key, buf, sizeof buf) > 0) {
-            if (pp->string_display) copy_str(p, buf, PARAM_TEXT_MAX);   /* real text (a name, a status), not a number */
-            else snprintf(p, 24, "%.*f", (pp->int_display || fabs(pp->max - pp->min) > 20) ? 0 : 1, atof(buf));
-        }
+        param_value_text(w, idx, p, PARAM_TEXT_MAX);
         return 1;
-    }
     case effSetSampleRate: case effSetBlockSize: case effMainsChanged: return 1;
     case effProcessEvents: {
         VstEvents *ev = p;
@@ -905,5 +923,8 @@ __attribute__((visibility("default"))) AEffect *VSTPluginMain(audioMasterCallbac
     e->uniqueID = PLUG_UID;
     e->version = PLUG_VERSION;
     e->object = w;
+#ifdef SAMPLE_PAGE
+    w->spage = sample_page_open(w);   /* only on an MPC Sample with mpc-addin-sample-draw-handler */
+#endif
     return e;
 }

@@ -122,6 +122,9 @@ design.
 - Controls the engine moves by itself (a worker thread, MIDI on a port of its own) followed on the screen.
 - Updating a plugin without restarting MPC: replace the file, remove every copy from the project, insert it again.
 - Shipping a plugin as one zip with an install script.
+- On the MPC Sample, whose UI shows no plugin pages: a page of the plugin's own on its screen, with the keys, dial and
+  knobs (vst.json `"sample_page"`; needs the mpc-addin-sample-draw-handler addin; offline-tested for wrapper ports, a
+  hand-written page seen on the device).
 
 ## Limitations
 

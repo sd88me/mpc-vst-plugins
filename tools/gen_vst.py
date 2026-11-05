@@ -34,6 +34,9 @@ vst.json (paths are relative to the vst.json's folder):
       "build": {"root": "..", "sources": ["src/engine.c"], "cflags": ["-Isrc"], "libs": ["-lm"]}
                                                  #   "cflags_arm": [..] -- extra flags for the armhf device build only (not the x86 host test), e.g. ["-mfpu=neon"]
                                                  #   "cflags_aarch64": [..] -- the same for the Gen2 (aarch64) build
+      "sample_page": {"dial": "preset", "banks": [{"name": "AMP", "knobs": ["gain", "bass", "treble"]}],
+                      "lines": [{"key": "status", "size": 2, "label": false, "color": "#22e6ff"}], "fps": 15},
+                                                 # optional: a page on the MPC Sample's screen (wrapper/sample_page.h; sample_lines())
       "targets": ["armv7", "aarch64"],           # optional: device builds tools/build_port.sh makes (default ["armv7"] = Gen1 MPC / Force;
                                                  #   aarch64 = Gen2, docs/GEN2.md). `build_port.sh vst.json aarch64` builds just one.
     }
@@ -243,6 +246,7 @@ def gen_params(cfg, params, out, shown=None):
         lines.append("#define PLUG_EFFECT 1")
     lines += program_lines(cfg, params, key_to_index)
     lines += cc_lines(cfg, params, key_to_index)
+    lines += sample_lines(cfg, params, key_to_index)
     open(out, "w").write("\n".join(lines) + "\n")
 
 
@@ -330,6 +334,66 @@ def cc_lines(cfg, params, key_to_index):
                     "#define HAS_CC_MAP 1"]
     if cfg.get("nrpn", True):
         out.append("#define HAS_NRPN 1")
+    return out
+
+
+def sample_lines(cfg, params, key_to_index):
+    """vst.json "sample_page": the port's own page on the MPC Sample (wrapper/sample_page.h; needs
+    mpc-addin-sample-draw-handler on the device, and is inert anywhere else):
+       "dial": key       -- optional: a whole-number or option param (or the "programs" param) the data dial and the
+                            < > keys step, shown large at the top; a programs param loads once the dial stops
+       "banks": [{"name": "AMP", "knobs": [k1, k2, k3]}]   -- the knobs K1-K3, a bank at a time ("" or null: unused);
+                            the third key (with a dial) or < > (without) change bank. Not triggers or text readouts.
+       "lines": [key | {"key", "size": 1-4, "label": bool, "color": "#rrggbb"}]   -- readouts below the dial value
+       "fps": 1-30 (default 15)
+    The space left between the lines and the knobs goes to the engine's mpc_engine_sample_draw() if it has one."""
+    sp = cfg.get("sample_page")
+    if not sp:
+        return []
+    def idx(k, what):
+        if k not in key_to_index:
+            raise SystemExit("vst.json sample_page %s: %r is not a parameter" % (what, k))
+        return key_to_index[k]
+    out = ["#define SAMPLE_PAGE 1", "#define SAMPLE_FPS %d" % max(1, min(30, int(sp.get("fps", 15))))]
+    dial = -1
+    if sp.get("dial"):
+        dial = idx(sp["dial"], "dial")
+        p = params[dial]
+        if not (p.get("options") or p.get("display") == "int"):
+            raise SystemExit("vst.json sample_page dial: %r must be an option list or a \"display\": \"int\" range" % sp["dial"])
+    out.append("#define SAMPLE_DIAL %d" % dial)
+    banks = sp.get("banks") or []
+    if not banks:
+        raise SystemExit("vst.json sample_page: needs at least one bank of knobs")
+    rows = []
+    for b in banks:
+        ks = list(b.get("knobs") or [])
+        if len(ks) > 3:
+            raise SystemExit("vst.json sample_page bank %r: at most 3 knobs" % b.get("name"))
+        ix = []
+        for k in ks + [None] * (3 - len(ks)):
+            if not k:
+                ix.append(-1)
+                continue
+            i = idx(k, "bank %r" % b.get("name"))
+            q = params[i]
+            if q.get("momentary") or q.get("display") == "string" or q.get("step_of"):
+                raise SystemExit("vst.json sample_page bank %r: %r is a trigger or a readout, not a knob" % (b.get("name"), k))
+            ix.append(i)
+        rows.append("{%s, {%s}}" % (c_str(str(b.get("name", "BANK %d" % (len(rows) + 1))).upper()[:8]), ", ".join(map(str, ix))))
+    out += ["typedef struct { const char *name; int knob[3]; } sample_bank_t;",
+            "static const sample_bank_t SAMPLE_BANKS[] = {%s};" % ", ".join(rows), "#define SAMPLE_NBANKS %d" % len(rows)]
+    lr = []
+    for ln in sp.get("lines") or []:
+        if isinstance(ln, str):
+            ln = {"key": ln}
+        col = ln.get("color", "")
+        colv = int(col.lstrip("#"), 16) if col else 0
+        lr.append("{%d, %d, %d, 0x%06x}" % (idx(ln["key"], "lines"), int(ln.get("size", 1)), int(bool(ln.get("label"))), colv))
+    out += ["typedef struct { int param, size, label; unsigned color; } sample_line_t;",
+            "#define SAMPLE_NLINES %d" % len(lr)]
+    if lr:
+        out.append("static const sample_line_t SAMPLE_LINES[] = {%s};" % ", ".join(lr))
     return out
 
 

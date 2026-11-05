@@ -62,7 +62,7 @@ esac
 if [ "$CXXPORT" = 0 ]; then
   docker run --rm --platform $PLAT -u "$U" -v "$ROOT":/b -v "$MV":/mv:ro -w /b $IMG bash -euc "
     gcc -O2 -Wall -Wextra -Wno-unused-parameter -fPIC -shared -fvisibility=hidden -std=gnu11 $CFLAGS $XF -I'$PORT/build' -I/mv/wrapper \
-        $SOURCES $ADAPTER_SRC /mv/wrapper/vst2_wrap.c $LIBS -lpthread -Wl,--no-undefined -o '$OUT/$SO'
+        $SOURCES $ADAPTER_SRC /mv/wrapper/vst2_wrap.c $LIBS -lpthread -ldl -Wl,--no-undefined -o '$OUT/$SO'
     strip '$OUT/$SO'
     echo \"exported: \$(readelf --dyn-syms -W '$OUT/$SO' | grep -E ' GLOBAL .* [0-9]+ [A-Za-z]' | grep -v UND | awk '{print \$8}' | tr '\n' ' ')\"
     echo \"highest glibc: \$(readelf -V '$OUT/$SO' | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1) (device has 2.39)\"
@@ -83,7 +83,7 @@ else
       gcc -O2 -Wall -Wextra -fPIC -fvisibility=hidden -std=gnu11 -c '$ADAPTER_SRC' -o '$OUT/adapter.o'
       OBJS=\"\$OBJS $OUT/adapter.o\"
     fi
-    g++ -O2 -shared -fPIC -fvisibility=hidden \$OBJS '$OUT/vst2_wrap.o' $LIBS -lpthread -Wl,--no-undefined -o '$OUT/$SO'
+    g++ -O2 -shared -fPIC -fvisibility=hidden \$OBJS '$OUT/vst2_wrap.o' $LIBS -lpthread -ldl -Wl,--no-undefined -o '$OUT/$SO'
     strip '$OUT/$SO'
     echo \"exported: \$(readelf --dyn-syms -W '$OUT/$SO' | grep -E ' GLOBAL .* [0-9]+ [A-Za-z]' | grep -v UND | awk '{print \$8}' | tr '\n' ' ')\"
     echo \"highest glibc: \$(readelf -V '$OUT/$SO' | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1) (device has 2.39)\"
