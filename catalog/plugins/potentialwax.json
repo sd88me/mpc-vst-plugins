@@ -1,0 +1,4 @@
+{ "id": "potentialwax", "name": "PotentialWax", "author": "PotentialBreaks", "repo": "PotentialBreakfast/mpc-vst-potentialwax", "kind": "instrument",
+  "style": "sampler", "tags": ["chop", "melodic", "sampler", "time-stretch", "key-detection"], "license": "MIT",
+  "summary": "Melodic sampler in the spirit of Serato Sample: picks or browses songs from your own folders (MP3, WAV or FLAC), detects tempo and key, sets 16 cue points (phrases, bars or hits) on the pads and matches them to your tempo and key, with time-stretch or vinyl-style pitching. Save the chops as WAVs.",
+  "screenshot": "https://raw.githubusercontent.com/PotentialBreakfast/mpc-vst-potentialwax/edbcaf4d8ca332e3cb05a0603aa63d4124d6c220/docs/images/potentialwax.png" }

@@ -1,4 +1,4 @@
 { "id": "potentialbreaks", "name": "PotentialBreaks", "author": "PotentialBreaks", "repo": "PotentialBreakfast/mpc-vst-potentialbreaks", "kind": "instrument",
   "style": "sampler", "tags": ["breaks", "slicer", "drums", "chop"], "license": "MIT",
   "summary": "Drum-break slicer: picks a random break from your own break folders (WAV or FLAC), chops it to 8 or 16 slices or by hits across the pads and matches it to the project tempo, by re-pitching or stretching. Shuffle the slices and save the groove as MIDI.",
-  "screenshot": "https://raw.githubusercontent.com/PotentialBreakfast/mpc-vst-potentialbreaks/0a21900bf9b95201f10e0b4106a5303e6ce3d60e/docs/images/potentialbreaks.png" }
+  "screenshot": "https://raw.githubusercontent.com/PotentialBreakfast/mpc-vst-potentialbreaks/708f8f156ff4aae9ac35a56a27ca4bce1a81a76d/docs/images/potentialbreaks.png" }

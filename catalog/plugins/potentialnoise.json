@@ -1,0 +1,4 @@
+{ "id": "potentialnoise", "name": "PotentialNoise", "author": "PotentialBreaks", "repo": "PotentialBreakfast/mpc-vst-potentialnoise", "kind": "instrument",
+  "style": "utility", "tags": ["pink-noise", "mixing", "reference", "meter"], "license": "MIT",
+  "summary": "Calibrated pink noise reference for the pink-noise mixing method: one-tap RMS levels from -24 to -12 dB, mono or stereo, full or 40 Hz-16 kHz range, live RMS and peak reading and a level meter.",
+  "screenshot": "https://raw.githubusercontent.com/PotentialBreakfast/mpc-vst-potentialnoise/60512395e7a359614485d3029583f5e290984dda/docs/images/potentialnoise.png" }
