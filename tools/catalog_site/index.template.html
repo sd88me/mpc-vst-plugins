@@ -315,7 +315,7 @@ function safeUrl(u) { return /^https:\/\//.test(u) ? u : "#"; }
 function barLine(p) {
   var m = (p.bar_missing || []).filter(function (k) { return CAT.bar && CAT.bar[k]; });
   if (!m.length) return "";
-  return '<details class="how"><summary>To improve this listing (' + m.length + ')</summary><ul>' + m.map(function (k) { return '<li>' + esc(CAT.bar[k]) + '</li>'; }).join("") + '</ul></details>';
+  return '<details class="how fold"><summary>To improve this listing (' + m.length + ')</summary><ul>' + m.map(function (k) { return '<li>' + esc(CAT.bar[k]) + '</li>'; }).join("") + '</ul></details>';
 }
 function canPick(p) { return !isBY(p) && !!shown(p) && ID_RE.test(p.id); }
 function tierTags(p) {
@@ -458,7 +458,7 @@ function card(p, big) {
   else if (!by && p.kind !== "addin" && genTag(v)) tags.push(genTag(v));
   if (!by && userFiles(v).length) tags.push('<span class="tag warn" title="' + esc("Needs files you supply: " + userFiles(v).map(function (x) { return x.label; }).join(", ")) + '">Needs your own ROM</span>');
   (p.tags || []).forEach(function (t) { if (!(by && t === "firmware-derived")) tags.push(big ? '<span class="tag">' + esc(t) + '</span>' : '<button type="button" class="tag tag-btn" data-tag="' + esc(t) + '" title="Show plugins tagged ' + esc(t) + '">' + esc(t) + '</button>'); });
-  var hist = p.versions.length ? '<details class="vers"><summary>Versions (' + p.versions.length + ')</summary><table>' + p.versions.map(function (x) {
+  var hist = p.versions.length ? '<details class="vers fold"><summary>Versions (' + p.versions.length + ')</summary><table>' + p.versions.map(function (x) {
     var cols = by ? '<td><a href="' + esc(safeUrl(x.source_url)) + '">tag ' + esc(x.tag) + '</a></td>' : '<td>' + size(x.size) + '</td><td title="sha256 ' + esc(x.sha256) + '">' + esc(x.sha256.slice(0, 10)) + '</td>';
     return '<tr class="' + (x.yanked ? "y" : "") + '"><td>v' + esc(x.version) + '</td><td>' + esc(x.date) + '</td><td>' + esc(x.channel) + (x.yanked ? ", yanked" : "") + '</td>' + cols + '</tr>';
   }).join("") + '</table></details>' : "";
@@ -471,7 +471,7 @@ function card(p, big) {
     : '><a class="open" href="p/' + encodeURIComponent(p.id) + '.html" data-open="' + esc(p.id) + '">' + esc(p.name) + '</a>') + '</h2><div class="by">by ' + esc(p.author) + '</div></div>' +
     (v ? '<span class="ver" title="Latest ' + (by ? "tag" : esc(v.channel) + " release") + '">v' + esc(v.version) + (v.channel === "beta" ? " beta" : "") + '</span>' : '<span class="ver">' + (by ? "no tag" : "no release") + '</span>') + '</header>' +
     plugBar(p, big) +
-    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>' + hooksLine(p) + barLine(p) + (big && window.signalsDetail ? signalsDetail(p) : '');
+    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>' + hooksLine(p) + (big && window.signalsDetail ? signalsDetail(p) : '');
   if (by) {
     var b = p.build, docs = safeUrl(b.docs_url.replace("{tag}", v ? v.tag : "HEAD"));
     var names = p.requires_user_files.map(function (f) { return esc(f.name); }).join("; ");
@@ -488,17 +488,17 @@ function card(p, big) {
       '<p class="fw" role="note">' + esc(BY_WARNING) + '</p>' +
       '<p class="line">Updated ' + esc(p.updated || "n/a") + (v ? ' &middot; Tested on: ' + tested : '') + '</p>' +
       '<div class="actions"><a class="btn-l primary" href="' + esc(docs) + '">How to build</a>' +
-      '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a></div>' + hist + '</article>';
+      '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a></div><div class="folds">' + barLine(p) + hist + '</div></article>';
   }
   return head +
-    '<details class="more"' + (big ? " open" : "") + '><summary>Details<span class="hint">' + esc(detailsHint(v)) + '</span></summary>' +
-    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + needsRow(v) + depsRow(v) + (deviceTag(p) ? '<dt>Devices</dt><dd>' + esc(p.devices.map(function (x) { return DEVICES[x] || x; }).join(", ")) + ' only</dd>' : p.kind !== "addin" ? osRow(v) + genRow(v) : "") + romRow(v) + installRow(p) +
-    (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl></details>' +
     '<div class="actions">' + (v && !v.gen2_only && !deviceNames(p).length ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
     (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="' + (deviceNames(p).length ? esc("For the " + deviceNames(p).join(" and ") + " (aarch64)") : 'Gen2 MPC devices (aarch64, MPC OS 3.x)') + '">Download (' + (deviceNames(p).length ? esc(deviceNames(p).join(", ")) : 'Gen2') + ')</a>' : '') +
     '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a>' +
     (v && ID_RE.test(p.id) ? '<label class="pick"><input type="checkbox" data-pick="' + esc(p.id) + '"' + (state.sel.indexOf(p.id) >= 0 ? " checked" : "") + '> Add to install list</label>' : '') +
-    '</div>' + hist + '</article>';
+    '</div><div class="folds">' +
+    '<details class="more fold"' + (big ? " open" : "") + '><summary>Details<span class="hint">' + esc(detailsHint(v)) + '</span></summary>' +
+    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + needsRow(v) + depsRow(v) + (deviceTag(p) ? '<dt>Devices</dt><dd>' + esc(p.devices.map(function (x) { return DEVICES[x] || x; }).join(", ")) + ' only</dd>' : p.kind !== "addin" ? osRow(v) + genRow(v) : "") + romRow(v) + installRow(p) +
+    (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl></details>' + barLine(p) + hist + '</div></article>';
 }
 function render() {
   var out = P.filter(function (p) { return !collOf(p) && match(p); }), so = SORTS[state.sort];

@@ -358,3 +358,20 @@ details.more > summary::before { content: "\25B8"; display: inline-block; margin
 details.more[open] > summary::before { transform: rotate(90deg); }
 details.more > summary .hint { font: 400 13px/1.3 var(--text); letter-spacing: 0; text-transform: none; margin-left: 10px; }
 details.more > dl.meta { margin-top: 4px; }
+
+/* The card's folded sections (Details, To improve this listing, Versions) sit together under the buttons and look the same:
+   one row each, a divider between them, the same caret and label. */
+.card .folds { margin-top: 14px; border-top: 1px solid var(--line); }
+.card .folds > details.fold { margin: 0; padding: 0; border: 0; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.card .folds > details.fold > summary { cursor: pointer; list-style: none; display: flex; align-items: baseline; gap: 10px; padding: 9px 0;
+  font: 700 11px/1.4 var(--display); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.card .folds > details.fold > summary::-webkit-details-marker { display: none; }
+.card .folds > details.fold > summary::before { content: "\25B8"; display: inline-block; width: 10px; transition: transform .15s; }
+.card .folds > details.fold[open] > summary::before { transform: rotate(90deg); }
+.card .folds > details.fold > summary:hover { color: var(--fg); }
+.card .folds > details.fold > summary .hint { margin: 0 0 0 auto; font: 400 12px/1.4 var(--text); letter-spacing: 0; text-transform: none; }
+.card .folds > details.fold[open] { padding-bottom: 10px; }
+.card .folds > details.fold > :not(summary) { margin-top: 0; }
+.card .folds > details.fold ul { margin: 0; padding-left: 20px; }
+.card .folds > details.fold > summary::before { margin: 0; }
+.card .folds > details.fold > dl.meta { margin: 0; padding-top: 0; border-top: 0; }
