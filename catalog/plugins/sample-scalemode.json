@@ -1,0 +1,19 @@
+{
+  "id": "sample-scalemode",
+  "name": "MPC Sample Scale Mode",
+  "author": "jacob-sabella",
+  "repo": "jacob-sabella/mpc-addin-sample-scalemode",
+  "kind": "addin",
+  "style": "utility",
+  "tags": [
+    "scale",
+    "16-levels",
+    "notes",
+    "pads"
+  ],
+  "license": "MIT",
+  "summary": "Hold 16 Levels on the MPC Sample to play its 16 slots in a scale (8 scales, any root), starting from the sample's own root note. A SCALE page shows the notes and lights the one you play. Recorded hits keep their notes. Needs the MPC Sample Draw Handler for the page.",
+  "screenshot": "https://raw.githubusercontent.com/jacob-sabella/mpc-addin-sample-scalemode/7f5c90324dbc6f3458eb17466a265d5992d2fade/docs/screenshots/scale-page.png",
+  "asset_pattern": "MPC-Sample-Scale-Mode-*-mpc-aarch64.zip",
+  "devices": ["mpc-sample"]
+}
