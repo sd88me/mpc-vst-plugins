@@ -187,6 +187,10 @@ screen (the draw handler, the rack) loads and does nothing on a Live III. A regi
 - The site shows "MPC Sample only" in place of the Gen2 tag, and a Devices row in the popup. Its one download button is named for
   the device, "Download (MPC Sample)", with no Gen1 button (2026-11-06, offline: the site browser test). The card's badge is the device
   label, so its `tags` should not repeat it (no `mpc-sample` tag).
+- The catalog page's Device filter has an "MPC Sample" view (2026-11-06, offline: the site browser tests). Every other view hides the
+  entries limited to the Sample and says how many, with a link to the view ("N plugins for the MPC Sample only. Show the MPC Sample view").
+  The view shows those entries first, then instruments, effects and MIDI plugins with a Gen2 build, which the Sample loads the same way
+  (PR #706; addins are left out because they hook MPC itself), with a note that most are not tested on a Sample. The view is in the page address (`#gen=sample`), so it can be shared.
 - `mpc-store.sh` lists it as `[only for: mpc-sample]` and skips it (not an error) on other devices; the desktop app refuses it there
   (`CatPlugin.ForDevice`) and marks it. Both tell the Sample by its settings file (`MPC Sample.settings`); `MPC_STORE_DEVICE` overrides.
 - The quality bar asks for a Sample test (`tested-sample`) instead of Gen1 and Gen2 ones.

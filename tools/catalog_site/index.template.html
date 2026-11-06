@@ -73,6 +73,8 @@
     </span>
   </div>
 
+  <p class="line smpline" id="smp" hidden><span id="smp-n"></span> for the MPC Sample only. <button class="linkbtn" type="button" id="show-smp">Show the MPC Sample view</button></p>
+  <p class="line smpline" id="smp-note" hidden>MPC Sample view: plugins made for the Sample first, then instruments and effects with a Gen2 build, which the Sample loads the same way. Most of those are not tested on a Sample yet.</p>
   <div class="grid" id="grid"></div>
   <p class="empty" id="empty" hidden>No plugins match these filters.</p>
   <div class="modal" id="modal" hidden>
@@ -241,7 +243,7 @@ function inTabKind(p, k) { if (k === "all") return true; return kindsOf(p).some(
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
 fillSelect("f-tier", "Verified and unverified", TIER_FILTERS, function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "verified-gen1" ? "Verified on Gen1" : v === "verified-gen2" ? "Verified on Gen2" : v === "verified-sample" ? "Verified on MPC Sample" : v === "listed" ? "Not yet verified" : "Experimental only"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
-fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 only"; });
+fillSelect("f-gen", "Any MPC or Force", ["gen2", "gen1", "sample"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : v === "gen1" ? "Gen1 only" : "MPC Sample"; });
 fillSelect("f-style", "All styles", uniq(function (p) { return p.style; }), title);
 fillSelect("f-dev", "All developers", uniq(function (p) { return p.author; }));
 $("sort").innerHTML = Object.keys(SORTS).map(function (k) { return '<option value="' + k + '">' + SORTS[k].label + '</option>'; }).join("");
@@ -301,7 +303,12 @@ function match(p, anyText) {   /* anyText: the search already matched (a collect
   if (s.style && p.style !== s.style) return false;
   if (s.dev && p.author !== s.dev) return false;
   if (s.tags.length) { var pt = p.tags || []; if (!s.tags.every(function (t) { return pt.indexOf(t) >= 0; })) return false; }
-  if (s.gen) { var sv = shown(p); if (!sv || !!sv.gen2 !== (s.gen === "gen2")) return false; }
+  /* The MPC Sample view (Device filter "MPC Sample"): entries made for it (registry "devices") plus instruments, effects and MIDI plugins with a
+     Gen2 (aarch64) build, which it loads the same way (PR #706). Every other view hides the Sample-only entries; render() says how many and links to the Sample view. */
+  var sv = shown(p), only = deviceNames(p).length > 0;
+  if (s.gen === "sample") { if (!only && !(sv && sv.gen2 && p.kind !== "addin")) return false; }   /* addins hook MPC itself: only Sample ones */
+  else if (only) return false;
+  else if (s.gen) { if (!sv || !!sv.gen2 !== (s.gen === "gen2")) return false; }
   if (s.os) { var g = osGens(shown(p)); if (!g || (s.os === "2x") !== (g.indexOf("2.x") >= 0)) return false; }
   return true;
 }
@@ -504,11 +511,15 @@ function render() {
   var out = P.filter(function (p) { return !collOf(p) && match(p); }), so = SORTS[state.sort];
   C.forEach(function (c) { var it = collItem(c); if (it) out.push(it); });
   out.sort(function (a, b) { var r = so.cmp(a, b); return (so.desc ? -r : r) * (state.rev ? -1 : 1); });
+  if (state.gen === "sample") out = out.filter(function (p) { return !p.coll && deviceNames(p).length; }).concat(out.filter(function (p) { return p.coll || !deviceNames(p).length; }));   /* made for it first */
   $("grid").innerHTML = out.map(function (p) { return p.coll ? collCard(p) : card(p); }).join("");
   $("empty").hidden = out.length > 0;
   var nOut = out.reduce(function (n, p) { return n + (p.coll ? p.hit.length : 1); }, 0);   /* plugins, counting each collection member */
   var hid = !state.tier ? P.filter(function (p) { return tierOf(p) === "experimental" && (PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab)); }).length : 0;
   $("exp").hidden = !hid; $("exp-n").textContent = hid;
+  var smp = state.gen === "sample" ? 0 : P.filter(function (p) { return deviceNames(p).length && (PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab)); }).length;
+  $("smp").hidden = !smp; $("smp-n").textContent = smp + (smp === 1 ? " plugin" : " plugins");
+  $("smp-note").hidden = state.gen !== "sample";
   PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return inTabKind(p, k); }).length; });
   var inTab = P.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); }).length;
   $("count").textContent = nOut + " of " + inTab + " " + (state.tab === "midi" ? "MIDI plugins" : state.tab === "all" ? "plugins" : (KINDS[state.tab] || "plugins").toLowerCase());
@@ -655,6 +666,7 @@ $("f-tag").addEventListener("change", function () { var t = $("f-tag").value; if
 $("tagbar").addEventListener("click", function (e) { var b = e.target.closest("[data-untag]"); if (!b) return; var t = b.getAttribute("data-untag"); state.tags = t === "*" ? [] : state.tags.filter(function (x) { return x !== t; }); fillTags(); render(); });
 $("grid").addEventListener("click", function (e) { var b = e.target.closest("[data-tag]"); if (!b) return; var t = b.getAttribute("data-tag"); if (TAGN[t] && state.tags.indexOf(t) < 0) state.tags.push(t); fillTags(); render(); });
 $("show-exp").addEventListener("click", function () { state.tier = "all"; sync(); render(); });
+$("show-smp").addEventListener("click", function () { state.gen = "sample"; sync(); render(); });
 $("beta").addEventListener("change", function () { state.beta = $("beta").checked; render(); });
 $("dir").addEventListener("click", function () { state.rev = !state.rev; render(); });
 $("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", style: "", dev: "", tags: [], os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: state.sel, open: "", coll: "" }; sync(); render(); });
