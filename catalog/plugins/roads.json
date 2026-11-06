@@ -1,0 +1,5 @@
+{ "id": "roads", "name": "Roads", "author": "Aaron Quint", "repo": "quirkey/mpc-plugins",
+  "kind": "instrument", "style": "synth", "tags": ["electric-piano", "keys", "epiano", "polyphonic"], "license": "MIT",
+  "summary": "A 16-voice electric piano from mda ePiano's samples and modelling, with tine, reed and clav characters, tremolo / auto-pan, chorus, a note-triggered envelope filter and a 3-band EQ.",
+  "screenshot": "https://raw.githubusercontent.com/quirkey/mpc-plugins/roads-v1.2.2/docs/roads.png",
+  "asset_pattern": "Roads-*-mpc-armv7.zip" }
