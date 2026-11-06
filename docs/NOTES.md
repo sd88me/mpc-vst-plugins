@@ -2367,6 +2367,14 @@ through the draw handler's `/snap` and a webcam, audio from the Sample's USB aud
   128 instruments: begin/end at `+0x2808`/`+0x2810`), `instruments[pad]`, `+0x22e8` -> layer 1, `+0x4a8` -> sample (its name,
   a std::string, at `+0xa8`). Read 60 for an untagged WAV and the WAV's `smpl` unity note otherwise. A Moog lead tagged 62
   measured C# (MIDI 37), as its file name says: the tag, not MPC, was off.
+- **A sample's audio** (read for pitch detection): `sample+0x170` is its audio object, a `SampleImpl` subclass (RTTI names):
+  a `MemorySample` (a 1.2 s test tone, fully in RAM) or a `DiskSample` (a 3.6 s Moog lead, streamed from its file).
+  MemorySample: `+0x18` is the sample's data object again and `*(+0x28)` the frames, interleaved 32-bit floats; the data
+  object (a make_shared payload) has channels, frames, rate and bits (32) as ints at `+0x0`..`+0xc`. A DiskSample keeps only
+  pinned regions in RAM, in 36 KB extents of a separate page pool, so it was read from its file instead: `sample+0x120` is a
+  JUCE File, its path text (`/data/TempProjects/Temp-Project_[ProjectData]/<name>.WAV` for project samples). Which class a
+  sample gets wasn't mapped beyond these two (length is a guess). YIN on the frames read 48.00 for the C3 tone and 37.10 for
+  the Moog, as on the computer.
 - **Pad Perform:** forcing the PadPerform "supported" bool makes the Sample boot in Pad Perform, and MPC then refuses 16 Levels
   ("16 levels is not enabled because pad perform is active"). Its settings dialogue is built from touch components; the
   Sample has no touchscreen. (Scale Mode no longer forces it, and no longer adds Scale to the Type cycle: holding 16 Levels
