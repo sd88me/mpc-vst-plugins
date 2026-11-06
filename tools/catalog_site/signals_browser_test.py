@@ -1,4 +1,4 @@
-"""Browser test of the community-signals preview on the catalog page (docs/COMMUNITY_SIGNALS.md): off without ?signals=1; the sign-in button in the
+"""Browser test of the community-signals preview on the catalog page (docs/COMMUNITY_SIGNALS.md): public (no flag since 2026-11-06); the sign-in button in the
 sticky header; the strip between every card's title bar and its tag chips; the popup's Community and GitHub-issues sections; sign-in handoff, reports, likes, sign-out and
 account deletion; a dead service or a failing GitHub leave the page working; text from outside is escaped. Everything is MOCKED (the service and GitHub):
 no network, no real accounts. Run like browser_test.py:
@@ -65,7 +65,7 @@ class GitHub:
             return route.fulfill(status=200, headers=h, content_type="application/json", body=json.dumps(issues))
         return route.fulfill(status=200, headers=h, content_type="application/json", body=json.dumps({"has_issues": self.mode != "no-issues", "has_discussions": True, "open_issues_count": 99}))
 
-def page(b, svc, gh=None, query="?signals=1", hash_="", signed_in=False, size=(1280, 900)):
+def page(b, svc, gh=None, query="", hash_="", signed_in=False, size=(1280, 900)):
     ctx = b.new_context(viewport={"width": size[0], "height": size[1]})
     pg = ctx.new_page(); errors = []; gh = gh or GitHub()
     pg.on("pageerror", lambda e: errors.append(str(e)))
@@ -80,20 +80,10 @@ def box(loc): return loc.bounding_box()
 
 with sync_playwright() as p:
     b = p.chromium.launch()
-    # 1. off without the flag
+    # 1. public: on with no flag (the ?signals=1 gate was removed 2026-11-06)
     svc = Service(); ctx, pg, errs, gh = page(b, svc, query="")
-    check("no flag: no signals UI, no service calls", pg.locator(".sig:not(.stat)").count() == 0 and pg.locator("#sig-in").count() == 0 and not svc.calls, svc.calls)
-    check("no flag: no sort options added", "Most liked" not in pg.locator("#sort").inner_text())
-    ctx.close()
-    # 1b. the switch is remembered (sign-in comes back to the page address without its query string) and ?signals=0 turns it off
-    svc = Service(); ctx, pg, errs, gh = page(b, svc)
-    check("?signals=1 shows the preview", pg.locator("#sig-in").count() == 1)
-    pg.goto(URL); pg.wait_for_timeout(300)
-    check("the same browser keeps the preview on after a visit without the query string", pg.locator("#sig-in").count() == 1)
-    pg.goto(URL + "?signals=0"); pg.wait_for_timeout(300)
-    check("?signals=0 turns it off", pg.locator("#sig-in").count() == 0)
-    pg.goto(URL); pg.wait_for_timeout(300)
-    check("and it stays off", pg.locator("#sig-in").count() == 0)
+    check("no flag needed: the sign-in button and the community bars show", pg.locator("#sig-in").count() == 1 and pg.locator(".sig:not(.stat)").count() > 0, svc.calls)
+    check("no flag needed: the community sort options are added", "Most liked" in pg.locator("#sort").inner_text())
     ctx.close()
     # 2. signed out: header button, strip placement, counts, sorts
     svc = Service(); ctx, pg, errs, gh = page(b, svc)

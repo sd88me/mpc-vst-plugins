@@ -88,7 +88,7 @@ CREATE INDEX reports_plugin ON working_reports(plugin_id, hidden);
   count, a "Works for me" button and a "Report an issue" link. Buttons open the sign-in dialog when signed out.
 - Sort options "Most reported working" and "Most liked". **"Recommended" stays featured, then tier, then the existing ties**; the
   community count may only break ties inside a tier, never lift a plugin to a higher one.
-- Hidden behind a flag (`?signals=1`) until announced, so it can be tested on the live site without showing everyone.
+- Was hidden behind a flag (`?signals=1`) for testing on the live site; the flag was removed and the feature made public on 2026-11-06.
 - `browser_test.py` and `fixture-catalog.json` need counts added; the test must also cover the API-down path (cards render with
   no counts).
 
