@@ -20,7 +20,7 @@ class Service:
     """A stand-in for the Worker. `up=False` makes every call fail like a dead network."""
     def __init__(self, up=True):
         self.up, self.calls, self.token_ok = up, [], "tok-123"
-        self.counts = {"test-synth": {"working": 7, "likes": 3, "versions": {"1.1.0": 4, "1.0.0": 5}}, "tested-two": {"working": 12, "likes": 1, "versions": {"1.1.0": 12}},
+        self.counts = {"test-synth": {"working": 7, "likes": 3, "versions": {"1.1.0": 4, "1.0.0": 5}}, "tested-two": {"working": 12, "likes": 1, "versions": {"1.1.0": 12}, "sample": 1},
                        "pack-drive": {"working": 3, "likes": 1, "versions": {}}, "pack-gate": {"working": 2, "likes": 2, "versions": {}}, "pack-kick": {"working": 5, "likes": 0, "versions": {}}}
         self.detail = {"id": "test-synth", "working": 7, "likes": 3, "versions": {"1.1.0": 4, "1.0.0": 5},
                        "devices": [{"device": "MPC Live II", "os": "3.9.1", "n": 4}, {"device": "Force", "os": "3.9.1", "n": 3}],
@@ -84,6 +84,11 @@ with sync_playwright() as p:
     svc = Service(); ctx, pg, errs, gh = page(b, svc, query="")
     check("no flag needed: the sign-in button and the community bars show", pg.locator("#sig-in").count() == 1 and pg.locator(".sig:not(.stat)").count() > 0, svc.calls)
     check("no flag needed: the community sort options are added", "Most liked" in pg.locator("#sort").inner_text())
+    pg.click('[data-plat="sample"]'); pg.wait_for_timeout(200)
+    sv = pg.locator("#grid article.card h2").all_inner_texts()
+    check("MPC Sample view: a plugin someone reported working on a Sample is listed, Gen2 plugins without such evidence are not",
+          "TESTED TWO" in sv and "TEST SYNTH" not in sv and "SAMPLE ONLY" in sv, sv)
+    pg.click('[data-plat=""]'); pg.wait_for_timeout(100)
     ctx.close()
     # 2. signed out: header button, strip placement, counts, sorts
     svc = Service(); ctx, pg, errs, gh = page(b, svc)
@@ -126,7 +131,8 @@ with sync_playwright() as p:
     # 4. signed in: report, like, withdraw, header menu, sign out
     svc = Service(); ctx, pg, errs, gh = page(b, svc, signed_in=True)
     pg.locator('[data-sig-work="test-synth"]').click()
-    check("report dialog lists versions and devices", pg.locator('#sig-form select[name=version] option').count() == 2 and pg.locator('#sig-form select[name=device] option').count() >= 8)
+    check("report dialog lists versions and devices", pg.locator('#sig-form select[name=version] option').count() == 2 and pg.locator('#sig-form select[name=device] option').count() >= 8
+          and "MPC Sample" in pg.locator('#sig-form select[name=device]').inner_text())
     pg.fill('#sig-form input[name=os]', "3.9.1"); pg.select_option('#sig-form select[name=device]', "MPC Live II"); pg.select_option('#sig-form select[name=version]', "1.1.0")
     pg.locator('#sig-form button[type=submit]').click(); pg.wait_for_timeout(300)
     sent = json.loads([c for c in svc.calls if c[0] == "POST" and c[1] == "/api/working"][-1][2])

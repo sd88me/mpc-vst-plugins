@@ -44,7 +44,7 @@
 
   <div class="plat" role="group" aria-label="Device">
     <button type="button" data-plat="" aria-pressed="true">MPC / Force <span class="n" id="n-plat"></span></button>
-    <button type="button" data-plat="sample" aria-pressed="false" title="Made for the MPC Sample first, then instruments and effects with a Gen2 build: the Sample loads them the same way, but most are not tested on one yet">MPC Sample <span class="n" id="n-plat-sample"></span></button>
+    <button type="button" data-plat="sample" aria-pressed="false" title="Plugins made for the MPC Sample, tested on one by their author, or reported working on one">MPC Sample <span class="n" id="n-plat-sample"></span></button>
   </div>
   <div class="tabs" role="tablist" aria-label="Catalog sections">
     <button type="button" role="tab" id="tab-all" aria-controls="panel-plugins" aria-selected="true" data-tab="all">All <span class="n" id="n-all"></span></button>
@@ -296,11 +296,12 @@ function osRow(v) {
   if (g.indexOf("2.x") >= 0) return '<dt>MPC OS</dt><dd>2.x and 3.x (' + (tested2x(v) ? "tested on a 2.x unit" : "checked against 2.15.1's own skins, not yet tested on a 2.x unit") + ')</dd>';
   return '<dt>MPC OS</dt><dd>3.x only' + (osWhy(v) ? ' (' + esc(osWhy(v)) + ')' : '') + '</dd>';
 }
-/* Device switch: "MPC / Force" hides entries made only for the MPC Sample (registry "devices"); "MPC Sample" shows those, then instruments,
-   effects and MIDI plugins with a Gen2 (aarch64) build, which it loads the same way (PR #706). Addins not made for it are left out: they hook MPC itself. */
+/* Device switch: "MPC / Force" hides entries made only for the MPC Sample (registry "devices"). "MPC Sample" shows only entries with evidence
+   for it (maintainer decision 2026-11-06, evidence over opinion): made for it, a tested.json entry on a Sample (Verified Sample), or someone
+   reporting it working on a Sample (the community service). A Gen2 build alone is not enough: most have never been tried on one. */
+function onSample(p) { return deviceNames(p).length > 0 || verifiedOn(p).indexOf("sample") >= 0 || (window.sampleReports ? window.sampleReports(p) > 0 : false); }
 function platOk(p, plat) {
-  var only = deviceNames(p).length > 0, sv = shown(p);
-  return (plat === undefined ? state.plat : plat) === "sample" ? only || !!(sv && sv.gen2 && p.kind !== "addin") : !only;
+  return (plat === undefined ? state.plat : plat) === "sample" ? onSample(p) : !deviceNames(p).length;
 }
 function match(p, anyText) {   /* anyText: the search already matched (a collection's own title or summary) */
   var s = state, hay = [p.name, p.author, p.style || "", (p.tags || []).join(" "), p.summary].join(" ").toLowerCase();
@@ -519,6 +520,9 @@ function render() {
   if (state.plat === "sample") out = out.filter(function (p) { return !p.coll && deviceNames(p).length; }).concat(out.filter(function (p) { return p.coll || !deviceNames(p).length; }));   /* made for it first */
   $("grid").innerHTML = out.map(function (p) { return p.coll ? collCard(p) : card(p); }).join("");
   $("empty").hidden = out.length > 0;
+  $("empty").textContent = state.plat === "sample" && !P.some(function (p) { return onSample(p); })
+    ? "Nothing is confirmed on the MPC Sample yet. Have one? Find a plugin under MPC / Force and press Works for me with MPC Sample as the device."
+    : "No plugins match these filters.";
   var nOut = out.reduce(function (n, p) { return n + (p.coll ? p.hit.length : 1); }, 0);   /* plugins, counting each collection member */
   var hid = !state.tier ? P.filter(function (p) { return tierOf(p) === "experimental" && (PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab)); }).length : 0;
   $("exp").hidden = !hid; $("exp-n").textContent = hid;
@@ -745,7 +749,7 @@ put("pads", h);
 (function () {
   var API = String(window.__SIGNALS_API || "https://openmpc-signals.open-mpc.workers.dev").replace(/\/$/, "");
   var TOKEN = "openmpc-signals-token", LAST = "openmpc-signals-last", GH = "openmpc-gh:", REPO_RE = /^[\w.-]+\/[\w.-]+$/;
-  var DEVICES = ["MPC Live", "MPC Live II", "MPC Live III", "MPC One", "MPC One+", "MPC X", "MPC Key 37", "MPC Key 61", "Force"];
+  var DEVICES = ["MPC Live", "MPC Live II", "MPC Live III", "MPC One", "MPC One+", "MPC X", "MPC Key 37", "MPC Key 61", "Force", "MPC Sample"];
   var counts = null, me = null, token = null, details = {}, toastTimer = 0;
   function keep(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} return null; }
   token = keep(TOKEN);
@@ -908,6 +912,8 @@ put("pads", h);
 
   /* the Recommended sort adds this to the verification points: people reporting the newest release working (1 each), people who only reported
      older releases (a quarter), and likes (a tenth) */
+  /* people who reported a plugin working on an MPC Sample (the service's "sample" count): evidence for the MPC Sample view */
+  window.sampleReports = function (p) { return counts && counts[p.id] && counts[p.id].sample || 0; };
   window.communityScore = function (p) {
     if (!counts) return 0;
     var one = function (q) {
