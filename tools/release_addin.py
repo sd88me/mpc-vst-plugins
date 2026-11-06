@@ -89,8 +89,9 @@ def main():
         shutil.copy2(os.path.join(HERE, "release", "addin", f), os.path.join(root, f))
         os.chmod(os.path.join(root, f), 0o755)
     for f in [so] + ([conf] if conf else []) + files:
-        shutil.copy2(os.path.join(a.dir, f), os.path.join(root, f))
-        os.chmod(os.path.join(root, f), 0o644)
+        src = os.path.join(a.dir, f)
+        shutil.copy2(src, os.path.join(root, f))
+        os.chmod(os.path.join(root, f), 0o755 if os.access(src, os.X_OK) else 0o644)
 
     done = am.get("ADDIN_DONE", "")
     install_md = """# {name} {ver}
@@ -154,7 +155,8 @@ See `SHA256SUMS`. Made with [mpc-vst-plugins](https://github.com/open-mpc/mpc-vs
             info = zipfile.ZipInfo(top + "/" + f, date_time=(2026, 1, 1, 0, 0, 0))
             info.create_system = 3
             info.compress_type = zipfile.ZIP_DEFLATED
-            info.external_attr = (stat.S_IFREG | (0o755 if f in ADDIN_SCRIPTS else 0o644)) << 16
+            mode = 0o755 if f in ADDIN_SCRIPTS or os.access(p, os.X_OK) else 0o644
+            info.external_attr = (stat.S_IFREG | mode) << 16
             z.writestr(info, open(p, "rb").read())
     shutil.rmtree(stage)
     print("%s (%d files, %.1f MB)" % (zpath, len(names) + 1, os.path.getsize(zpath) / 1e6))

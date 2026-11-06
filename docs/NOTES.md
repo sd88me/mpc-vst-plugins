@@ -2344,3 +2344,47 @@ Not a dependency: Monomodule FX processes any audio and only mentions Monomodule
   the desktop Go tests (a new `ForDevice` test), the site browser test (a Sample-only, Sample-verified fixture), `--check-registry` clean.
 - **Test pitfall:** stand-in processes named `MPC Sample` left running from a page test make every store test that stops MPC fail with
   "MPC did not stop" (the store waits for `MPC` or `MPC Sample` to exit). Kill them before running the suite.
+
+## 2026-11-06: MPC Sample: 16 Levels, Scale Mode, sample root notes, display refresh cost (device)
+
+MPC Sample app 1.3.0.12, with mpc-addin-sample-scalemode 0.3.0 (`jacob-sabella/mpc-addin-sample-scalemode`, was Enable Scale
+Mode) and mpc-addin-sample-draw-handler 1.0.1. Checked remotely: presses injected into MPC's control-surface stream, the screen
+through the draw handler's `/snap` and a webcam, audio from the Sample's USB audio interface on a computer.
+
+- **Buttons:** the 16 Levels button and Shift arrive as notes 40 and 49 (ch 1). Shift+16 Levels cycles the 16 Levels Type
+  (on screen: Tune, Velocity, Filter; the int at `*(this+0x50)+0x34` steps 0 -> 2 -> 1); which value is which name isn't mapped.
+  The button's handler (base+0x1542260) tail-calls the Type cycle (base+0x1542030) when Shift is down. 16 Levels on/off is
+  bit 0 of the byte at `*(this+0x50)+0x2a3`.
+- **Button lights:** MPC lights buttons with CC on ch 1 to the surface (`b0 <button> <state>`): 16 Levels 40 (2 on, 1 off),
+  Play 82, Stop 81, Overdub 80 (records into the sequence), Rec 73. Rec is **audio** recording ("Tap pad to record") and
+  turns 16 Levels off; it is not sequence record.
+- **16 Levels slots and the note map:** with 16 Levels on, the note-mapping function (base+0x21472f0) is called from
+  base+0x211a5b8 with the 16 Levels object and the slot (0-15). That object's int at `+0x104` is the source pad's index.
+  Pads without a sample never reach it. The note setter's offsets are semitones from the sample's own pitch with a -24
+  base; an octave offset of +2 puts slot 0 on the root.
+- **Sample root note:** a sample's root note (the one MPC's root note setting edits; its setter is base+0x29458c0) is the int
+  at `*(sample+0x130)+0x3e4`. From the 16 Levels object: `+0x110` -> `+0x110` -> track, `+0xb8` -> program (a drum program's
+  128 instruments: begin/end at `+0x2808`/`+0x2810`), `instruments[pad]`, `+0x22e8` -> layer 1, `+0x4a8` -> sample (its name,
+  a std::string, at `+0xa8`). Read 60 for an untagged WAV and the WAV's `smpl` unity note otherwise. A Moog lead tagged 62
+  measured C# (MIDI 37), as its file name says: the tag, not MPC, was off.
+- **A sample's audio** (read for pitch detection): `sample+0x170` is its audio object, a `SampleImpl` subclass (RTTI names):
+  a `MemorySample` (a 1.2 s test tone, fully in RAM) or a `DiskSample` (a 3.6 s Moog lead, streamed from its file).
+  MemorySample: `+0x18` is the sample's data object again and `*(+0x28)` the frames, interleaved 32-bit floats; the data
+  object (a make_shared payload) has channels, frames, rate and bits (32) as ints at `+0x0`..`+0xc`. A DiskSample keeps only
+  pinned regions in RAM, in 36 KB extents of a separate page pool, so it was read from its file instead: `sample+0x120` is a
+  JUCE File, its path text (`/data/TempProjects/Temp-Project_[ProjectData]/<name>.WAV` for project samples). Which class a
+  sample gets wasn't mapped beyond these two (length is a guess). YIN on the frames read 48.00 for the C3 tone and 37.10 for
+  the Moog, as on the computer.
+- **Pad Perform:** forcing the PadPerform "supported" bool makes the Sample boot in Pad Perform, and MPC then refuses 16 Levels
+  ("16 levels is not enabled because pad perform is active"). Its settings dialogue is built from touch components; the
+  Sample has no touchscreen. (Scale Mode no longer forces it, and no longer adds Scale to the Type cycle: holding 16 Levels
+  toggles it.)
+- **Recording:** 16 Levels hits recorded into a sequence (Overdub while playing) store the source pad's note with
+  `modifierValue0` = 0.5 + semitones/240 (`Tuning (coarse)`, active), so Scale hits keep their scale notes; played back with
+  Scale off they sounded at exactly the stored pitches (17 of 17). The project working copy
+  (`/data/TempProjects/Temp-Project.xpj`) is written when MPC stops, not on each change.
+- **Display refresh cost:** MPC double-buffers (fb 41/42) and redraws only what changed in the buffer going out, so a page
+  over its screen needs a shadow per framebuffer (with one, the page stayed on the glass under MPC's waveform after release;
+  fixed in draw handler 1.0.1). A refresh is a synchronous transfer to the SPI panel that MPC's own screen updates wait on:
+  a page refreshing the whole screen 16 times a second made pad hits up to 80 ms late (18 ms on average, measured against
+  an exact grid of injected hits in the USB audio). Sending only the rectangles that change removed it (no measurable delay).

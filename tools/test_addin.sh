@@ -280,4 +280,12 @@ ADDIN_REMOUNT_FAILS=1 run a uninstall.sh
 [ ! -e "$RUNDROP" ] && ok "3.10: uninstall removes the /run drop-in" || bad "3.10: run drop-in left"
 export ADDIN_MOUNTS="$T/mounts-plain"
 
+# ADDIN_FILES tools copied without their execute bit (a FAT card or stick drops it): an ELF binary or a #! script is installed 755, data 644
+fresh; unit 'Restart=always'
+sed -i 's/^ADDIN_FILES=.*/ADDIN_FILES="a.dat tool run.sh"/' "$T/pkg-a/addin.manifest"
+elf "$T/pkg-a/tool" '\001\001' '\003\000' '\050\000'; printf '#!/bin/sh\necho hi\n' > "$T/pkg-a/run.sh"; chmod 644 "$T/pkg-a/tool" "$T/pkg-a/run.sh"
+run a install.sh
+[ -x "$T/addins/a/tool" ] && [ -x "$T/addins/a/run.sh" ] && [ ! -x "$T/addins/a/a.dat" ] && ok "tools without the bit installed executable, data not" \
+    || bad "modes: $(ls -l "$T/addins/a" | tr '\n' ' ')"
+
 [ $fails = 0 ] && echo "installer: all passed" || { echo "installer: $fails FAILED"; exit 1; }

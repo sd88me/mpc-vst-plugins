@@ -43,6 +43,11 @@ removes the addin later, and `sh /data/mpc-addins/<id>/install.sh -y -n -t /data
 in place, both without the release zip; `mpc-store.sh remove`/the desktop app use the former, and a device with no
 persistent `/etc` (below) needs the latter after every reboot.
 
+Files in `ADDIN_FILES` that are programs (an ELF binary or a `#!` script, by their first bytes, or already executable)
+are installed `755`, the rest `644`, so a command-line tool shipped beside the addin (Scale Mode's `padctl`) runs even
+after a copy through a FAT or exFAT card or stick, which keeps no file modes (2026-11-06, offline: `tools/test_addin.sh`;
+`release_addin.py` keeps the bit in the zip).
+
 Before anything changes, `install.sh` checks the `.so` on the device: it must be an ELF 32-bit little-endian ARM shared
 object, since anything else in `LD_PRELOAD` stops MPC from starting. The folder (`-t`, default
 `/data/mpc-addins/<id>`) must be an absolute path named after the addin (`.../<id>`), with no `.` or `..` segments.
