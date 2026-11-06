@@ -1,0 +1,18 @@
+{
+  "id": "pitonic",
+  "name": "πToniC",
+  "author": "Timo",
+  "repo": "timomacquis/piToniC-MPC",
+  "kind": "instrument",
+  "license": "MIT AND LicenseRef-Patternarium",
+  "source_available": true,
+  "summary": "Eight-voice percussion synthesizer with oscillator and noise sound design, 150 Patternarium kits, per-voice sends, shared reverb and delay.",
+  "style": "drum-machine",
+  "tags": [
+    "drum-machine",
+    "synth",
+    "percussion"
+  ],
+  "screenshot": "https://raw.githubusercontent.com/timomacquis/piToniC-MPC/v1.0.0/Cover.png",
+  "asset_pattern": "piToniC-*-mpc-armv7.zip"
+}
