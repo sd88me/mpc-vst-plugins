@@ -1,6 +1,6 @@
 # MPC plugin host for desktop DAWs (idea and import survey)
 
-**Status (2026-11-05): idea plus an offline survey. Nothing is built.**
+**Status (2026-11-06): a Linux x86-64 prototype plays Acid-303's released-style armv7 `.so` under dynarmic (offline; see "Prototype"). No VST3 shell yet.**
 
 The goal: one VST3 for desktop DAWs on Windows and macOS (Linux too) that loads MPC plugin `.so` files *as released*
 (armv7 Gen1/Force, aarch64 Gen2) and browses them like MPC's plugin list. No second build of each plugin. This is a
@@ -88,10 +88,53 @@ tiers of difficulty:
 So the first target is self-contained DSP ports like Acid-303. Shared-state and JIT ports come second. Ports that spawn
 processes come last, or never.
 
+## Prototype: Acid-303 runs emulated (2026-11-06, offline, x86-64 Linux)
+
+`poc/mpc_host/` (`build.sh` fetches dynarmic at a pinned commit, then builds `mpc_host`). It is about 600 lines:
+
+- **Guest memory** (`guest.cpp`) is one 4 GB host mapping, used as dynarmic's fastmem.
+- **Loader:** a small ELF32 loader handles the `RELATIVE`/`GLOB_DAT`/`JUMP_SLOT`/`ABS32` relocations and runs the
+  constructors.
+- **Imports:** each import gets a `svc #n; bx lr` thunk that runs a host function. About 150 libc, libm and C++ runtime
+  functions are covered. The armhf ABI is followed: floats and doubles go in VFP registers, varargs in core registers
+  and on the stack. `printf` formats are re-parsed against the guest's varargs. `operator new`/`delete` use a small
+  guest heap.
+- **Not covered:** the C++ exception functions (`__cxa_begin_catch`, `__gxx_personality_v0` and others) stop with a
+  message if they are called. Acid-303 never calls them.
+- **Driver** (`main.cpp`): calls `VSTPluginMain` with a host callback thunk, then `effOpen`, the rate and block size,
+  `effMainsChanged` and `effProcessEvents`. It runs `processReplacing` in the 32-bit AEffect layout (processReplacing is
+  at byte 80). It renders a 16th-note acid line at 120 BPM, and does the same with a native x86 build of the same port.
+
+```sh
+poc/mpc_host/build.sh
+poc/mpc_host/build/mpc_host <armv7 acid303.so> [x86 acid303.so] [seconds] [wav prefix]
+MPC_HOST_UNSAFE=1 ...        # dynarmic's unsafe float optimisations
+```
+
+Results, Acid-303 1.0.2 source, 10 s, 128-frame blocks at 44.1 kHz (a 2902 µs budget), on a 4-core Xeon VM at 2.1 GHz:
+
+| Build | Median per block | p99 | Share of the budget (median) |
+|---|---|---|---|
+| native x86 (`-O3`, SSE path) | 107-128 µs | 234-284 µs | 3.7-4.4% |
+| armv7 under dynarmic | 454-478 µs | 981-1062 µs | 15.6-16.5% |
+| armv7 under dynarmic, `MPC_HOST_UNSAFE=1` | 378 µs | 905-946 µs | 13.0% |
+
+- **Output:** the emulated and native renders differ by 91 dB less than the signal (max 3e-5). The voice takes its NEON path on ARM
+  and SSE on x86, so the result is not bit-exact. The emulated run needed nothing beyond A32 + NEON (no interpreter
+  fallback).
+- **Speed:** the emulated build is about 3.5-4.2 times slower than native, which is fine for one instance of a heavy
+  voice like this.
+- **Spikes:** single blocks reached 2-18 ms after warm-up, when the JIT compiles code it has not seen yet. A real host
+  should pre-render at load time to warm the JIT up, and render one block ahead.
+
+Found while building it: armv7 code uses `LDREX`/`STREX` (the C++ runtime's atomics), so dynarmic needs an
+`ExclusiveMonitor` even with one CPU. Not done yet: threads, files (`fopen` returns NULL), state chunks, parameter
+calls from the driver, aarch64 (Gen2) `.so` files, and Windows/macOS builds of the prototype.
+
 ## Next steps
 
 1. Run the same survey on every catalog release (`catalog/plugins/*.json` repos, armv7 and aarch64 zips), from a session
    that can reach those repos, and list the union of imports and syscalls.
-2. Prototype on Linux x86: dynarmic, the loader and thunks, with no DAW. Load `songpos.so`, render blocks, and compare CPU
-   against the native VST3 build.
+2. Done for Acid-303 (see "Prototype"). Next: params and state chunks, threads, the build on Windows (MSVC or mingw) and macOS
+   (arm64 host: dynarmic's arm64 back end).
 3. Then the helper process with shared-memory transport, the VST3 shell, the Windows/macOS builds and the editor windows.
