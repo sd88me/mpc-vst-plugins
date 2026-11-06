@@ -58,6 +58,36 @@ special handling, not a 1:1 thunk:
 | ALSA sequencer MIDI out (`snd_seq_*`) | NOTES.md | route to the host's MIDI out, or drop |
 | `/sdcard/...` and other absolute paths | ports | map to a library folder |
 
+## Three real ports (2026-11-06, offline, from source)
+
+Release zips were not downloadable from the session (HTTP 403), so the repos were cloned and read. Acid-303 was also built
+for armv7 with Ubuntu's cross g++ (same cflags as its `vst.json`, `-mcpu=cortex-a17 -mfpu=neon-vfpv4`). They show three
+tiers of difficulty:
+
+- **Acid-303 (`sd88me/mpc-vst-acid303`): easy.** Its NEEDED libraries are libstdc++, libm, libgcc_s and libc. About 65
+  imports: the probe set plus libm (`exp exp2 log log1p pow sin tan lrintf lround`), `memmove`, `strchr`, and the C++
+  runtime (`operator new`/`delete`, `__cxa_*` exception and guard helpers, `__gxx_personality_v0`,
+  `__aeabi_unwind_cpp_pr0/1`). The C++ runtime runs as guest code. One thing to check: the engine uses NEON intrinsics
+  (`voice.cpp`, `__ARM_NEON`), so dynarmic's AArch32 ASIMD coverage has to include them.
+- **Machinemodule (`sd88me/mpc-vst-machinedrum`): hard.**
+  - Two plugins share state. The tap effects find the Module with `dlopen("machinedrum_one.so", RTLD_NOLOAD)`, or
+    through `/proc/self/maps`, and use its statics. So every plugin instance must live in one guest address space, and
+    the loader must answer `RTLD_NOLOAD` lookups.
+  - The voice engine runs on parallel threads pinned with `sched_setaffinity`.
+  - Once per flash image it runs a helper program, `posix_spawn("/bin/sh", "ulimit -s 8192; exec helper ...")`. The host
+    would have to run a second guest executable, or ship the files that helper makes.
+  - The Gen1 build is made by the user from their own firmware; no binary is released. The Gen2 aarch64 build runs the
+    dsp56300 JIT, which writes arm64 code at run time. Under dynarmic that is a JIT inside a JIT: it needs `mmap`/`mprotect`
+    thunks with executable memory and cache invalidation on `IC IVAU`/`__clear_cache`, and it will be slow.
+- **Euclidier (`sd88me/mpc-vst-euclidier`): out of scope for in-process emulation.** The `.so` uses `posix_spawn` to
+  start a separate static `euclidier` executable (RtMidi, `-lasound`), drives it over an `AF_UNIX` control socket, and
+  routes MIDI through ALSA sequencer ports it opens itself. Hosting it means emulating a Linux process, its sockets and an
+  ALSA sequencer: a qemu-user-sized job. It is a better fit for a native desktop build (DESKTOP_VST3.md), or for a host
+  that speaks Euclidier's socket protocol itself.
+
+So the first target is self-contained DSP ports like Acid-303. Shared-state and JIT ports come second. Ports that spawn
+processes come last, or never.
+
 ## Next steps
 
 1. Run the same survey on every catalog release (`catalog/plugins/*.json` repos, armv7 and aarch64 zips), from a session
