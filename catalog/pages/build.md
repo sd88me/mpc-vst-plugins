@@ -7,7 +7,7 @@ summary: Get your computer ready, build a plugin that has no download, or turn a
 
 This page is for **building**: a plugin marked "Build it yourself" in the catalog, or a plugin of your own. If you only want to put a plugin from the catalog on your device, you do not need any of it: see [Install](install.html).
 
-You do not need to be a programmer. The commands are examples: for anything you install, the linked official pages have the current steps. Building never happens on the device; the device only receives the finished plugin.
+You do not need to be a programmer. Building happens on your computer, never on the device, which only receives the finished plugin. For anything you install, the linked official pages have the current steps.
 
 ## What you need to build
 - **A Linux-style shell:** Terminal on macOS, Ubuntu on Linux, or Ubuntu inside WSL on Windows.
@@ -40,7 +40,7 @@ Check: `docker run --rm hello-world` prints a short welcome message. If it does,
 On Windows with WSL, work inside your Ubuntu home folder (`cd ~`), not under `/mnt/c/`. Builds are much faster there and file permissions behave.
 
 ## Plugins you build yourself
-A plugin with the **Build it yourself** badge in the catalog has no download: its build embeds your own firmware, so nobody can publish the result. You build it once, on **your computer**, then install the result on your device. The device itself does not build anything.
+A plugin with the **Build it yourself** badge in the catalog has no download: its build embeds your own firmware, so nobody can publish the result. You build it once on **your computer**, then install the result on your device.
 
 **The process at a glance:**
 
@@ -54,10 +54,10 @@ A plugin with the **Build it yourself** badge in the catalog has no download: it
 
 In detail:
 
-1. **Get your own files.** The plugin's card lists them under "You need" (for example an Elektron OS `.syx` file). Download them from the manufacturer, or export them from your own hardware, and keep them in a folder whose path has no spaces. Use the exact version the card names: the build checks it.
-2. **Set up your computer.** You need Docker, git and Python 3, and a Linux-style shell: macOS, Ubuntu, or Ubuntu in WSL on Windows. "Get your computer ready" above walks through it, with a check after each step. This is a one-time job; every later build reuses it.
+1. **Get your own files.** The plugin's card lists them under "You need" (for example an Elektron OS `.syx` file). Download them from the manufacturer or export them from your own hardware, and keep them in a folder with no spaces in its path. Use the exact version the card names: the build checks it.
+2. **Set up your computer.** Follow "Get your computer ready" above. It is a one-time job; every later build reuses it.
 3. **Get the plugin's source on your computer.** This is the `git clone` step in the plugin's README: run `git clone --recursive https://github.com/<owner>/<plugin-repo>.git`, then `cd <plugin-repo>`. The card's Source link shows the repo. `--recursive` matters: it fetches the parts the build needs.
-4. **Run the build command** from the plugin's card, with the path to your own file in quotes. It builds inside Docker and takes a few minutes (some take longer; the first run also downloads what it needs). Leave the computer awake and watch the output. It stops at the first error and names the step, and it refuses to finish if its self-check fails, rather than giving you a build that is not verified. After fixing a problem, run the same command again: finished work is reused.
+4. **Run the build command** from the plugin's card, with the path to your own file in quotes. It builds inside Docker, usually in 5 to 30 minutes (the first run also downloads what it needs). Leave the computer awake and watch the output. It stops at the first error and names the step, and it refuses to finish if its self-check fails, rather than giving you a build that is not verified. After fixing a problem, run the same command again: finished work is reused.
 5. **Install it.** The build leaves a zip in the plugin's `dist/` folder. Start the [installer app](install.html), connect, and drop that zip into the box in step 2 of the page, then press Install. (If the build command has a `-d <device-ip>` option, adding it installs straight onto the device instead.) Save your project first: MPC restarts.
 6. **Keep the result to yourself.** It contains data derived from your firmware. Install it on your own devices only and never share or upload it.
 
@@ -66,12 +66,11 @@ To update later, pull the latest source (`git pull --recurse-submodules`) and ru
 The exact command, and any extra tools it needs, are on the plugin's card and in its README. Step-by-step versions for the two Elektron ports: [Monomodule](https://github.com/sd88me/mpc-vst-monomodule#install) and [Machinemodule](https://github.com/sd88me/mpc-vst-machinedrum#building).
 
 ## Build your own plugin from an engine
-An MPC OS plugin is a small Linux library (`.so`) for the device's ARM processor, plus a **skin**: a folder that describes the plugin's page on the MPC screen. This repo's tools build both from one small description file, and they test the result on your PC before it goes anywhere near a device.
+An MPC OS plugin is a small Linux library (`.so`) for the device's ARM processor, plus a **skin**: a folder describing the plugin's page on the MPC screen. This repo's tools build both from one description file and test the result on your PC first. You need no device until the last step.
 
 What you need on top of the tools above:
 - A checkout of [mpc-vst-plugins](https://github.com/open-mpc/mpc-vst-plugins). A plugin lives in its own repo next to it, and points at it with the `MPC_VST` variable.
 - An engine to wrap: a synth or effect core in C or C++, or an engine from Schwung (it plugs in through an adapter).
-- A device to try it on. Nothing here needs one until the very last step.
 
 ### 1. Pick your kind of plugin
 - **A block-rendering engine** (a synth or effect core): the common case. You provide `mpc_engine()` and the tools do the rest.
@@ -125,7 +124,7 @@ Live text can use two fonts, Titillium Web and Roboto. Anything else has to be b
 This builds the wrapper and your engine for your PC under a memory checker, and plays it: two instances, every parameter, options, notes into audio, and saving and restoring state. It must print `PASSED`.
 
 ### 6. Try it on a device
-Only now does a device come in. Follow the [release workflow](workflow.html): measure CPU, install with the real installer, and test. The reference ports, Maze Voice, JV-880 and Crate Digger, are good to copy from.
+Only now do you need a device. Follow the [release workflow](workflow.html): measure CPU, install with the real installer, and test. The reference ports, Maze Voice, JV-880 and Crate Digger, are good to copy from.
 
 ## When something fails
 | You see | Usually means |

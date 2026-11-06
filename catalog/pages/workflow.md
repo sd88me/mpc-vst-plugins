@@ -5,7 +5,7 @@ order: 30
 summary: The path from a working build to a tested, checksummed release, and how to get it listed in the catalog.
 ---
 
-Develop on your PC first, test on the device once, and let a workflow package the zip that people will actually install. The order matters because the device is somebody's live setup.
+Develop on your PC, test on the device once, and let a workflow package the zip people install. The order matters because the device is somebody's live setup.
 
 ## The loop
 1. **Build** with `tools/build_port.sh`. It produces the `.so`, the skin and the plugin-list entry.
@@ -45,7 +45,7 @@ jobs:
       about: One line about the plugin.
 ```
 
-Pin the same commit in both places. The steps that need a device, CPU and the smoke test, stay with you: run them on the draft's own zip, then publish it, so the zip you tested is the zip people get. Publishing the draft creates the tag.
+Pin the same commit in both places. The CPU check and smoke test need a device, so they stay with you: run them on the draft's own zip, then publish it. The zip you tested is then the zip people get. Publishing the draft creates the tag.
 
 ## Versions
 Use `X.Y.Z`.
@@ -59,7 +59,7 @@ Use `X.Y.Z`.
 Keep the plugin `uid` and the `.so` name fixed forever. Projects find the plugin by uid, and the installer replaces the entry with the same uid or file name.
 
 ## Say where you tested
-Add a `tested.json` at the root of your repo's default branch, and the catalog shows it on the release:
+Add a `tested.json` at the root of your repo's default branch to show it on the release:
 
 ```
 [ { "version": "1.2.0", "device": "MPC Live II", "firmware": "3.6.0", "date": "2026-09-29" } ]
@@ -139,10 +139,7 @@ Some plugins compile the user's own firmware into the plugin. Their build contai
 Your repo needs an open-source license and a root `LICENSE` file, a one-command build script and a `vX.Y.Z` git tag that contains it. Never put a `*-mpc-armv7.zip` on a GitHub release; the nightly build flags it. The pull request adds the same registry file with `"distribution": "build-yourself"` and three extra fields: `requires_user_files`, `build` and, for a build that installs several plugins, `components`. The [catalog README](https://github.com/open-mpc/mpc-vst-plugins/blob/main/catalog/README.md#if-your-plugin-cant-publish-a-zip-build-yourself) has a complete example.
 
 ### Keeping it working
-- Keep the `uid`, the `.so` name and the catalog id fixed across releases.
-- Raise the major version only when parameter positions change, because that breaks saved projects.
-- Add a `tested.json` to say which devices you tried. See the [release workflow](workflow.html).
-- To pull a bad release, open a pull request adding `"<id>@<version>"` to `catalog/yanked.json`. It stays listed as yanked and is never offered as the latest.
+Keep the `uid`, the `.so` name and the catalog id fixed, and follow the [versioning rules](#versions) above. To pull a bad release, open a pull request adding `"<id>@<version>"` to `catalog/yanked.json`. It stays listed as yanked and is never offered as the latest.
 
 ### Rules of the road
 This is community software that runs as root on people's devices. Say what the plugin does, keep the source public, and fix release problems quickly. Maintainers may remove a plugin that is unsafe or misleading.
@@ -151,4 +148,4 @@ This is community software that runs as root on people's devices. Say what the p
 A tool that runs on the user's computer next to an MPC (not a plugin, nothing installed on the device by the catalog) is listed on the **Companion apps** tab: add an entry to `catalog/apps.json` with your repo and, per platform, a pattern for the release asset: the nightly build then fills in the links, version and checksums from your newest stable release. See `catalog/README.md`.
 
 ## After the release
-The catalog finds new releases by itself every night. To list a plugin for the first time, see [List it in the catalog](#list-it-in-the-catalog) above. If a release fails the checks, it is left out, the previous version stays listed, and an issue is opened on the [catalog repository](https://github.com/open-mpc/mpc-vst-plugins/issues) saying why.
+The catalog finds new releases by itself every night, so there is nothing to submit. A failed release is explained in an issue on the [catalog repository](https://github.com/open-mpc/mpc-vst-plugins/issues) (see [What happens next](#3-what-happens-next)).
