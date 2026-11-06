@@ -35,7 +35,8 @@ type CatPlugin struct {
 	Name        string          `json:"name"`
 	Author      string          `json:"author"`
 	Kind        string          `json:"kind"`
-	Role        string          `json:"role,omitempty"` // "midi": a MIDI generator or sequencer (listed under its own tab)
+	Role        string          `json:"role,omitempty"`    // "midi": a MIDI generator or sequencer (listed under its own tab)
+	Devices     []string        `json:"devices,omitempty"` // the only devices it is for ("mpc-sample"); empty for every MPC
 	Summary     string          `json:"summary"`
 	Version     string          `json:"version"`
 	Size        int64           `json:"size"`
@@ -72,6 +73,29 @@ type SharedHooks struct {
 	Unchained []string `json:"unchained"`
 }
 
+// deviceNames are the catalog's device ids (catalog_build.py DEVICES) as people know them.
+var deviceNames = map[string]string{"mpc-sample": "MPC Sample"}
+
+// ForDevice is ForArch for a device that is device (DeviceInfo.Device: "mpc-sample", or "" for any other MPC), after refusing a plugin
+// limited to other devices (registry "devices"): an addin for the Sample's screen does nothing on a Live III.
+func (c CatPlugin) ForDevice(arch, device string) (CatPlugin, error) {
+	if len(c.Devices) > 0 {
+		ok := false
+		var names []string
+		for _, d := range c.Devices {
+			ok = ok || d == device
+			if n := deviceNames[d]; n != "" {
+				d = n
+			}
+			names = append(names, d)
+		}
+		if !ok {
+			return c, fmt.Errorf("%s %s is only for the %s", c.Name, c.Version, strings.Join(names, " and "))
+		}
+	}
+	return c.ForArch(arch)
+}
+
 // ForArch returns the plugin with the zip that fits a device whose `uname -m` is arch: the armv7 zip on Gen1 and Force, the aarch64
 // zip on Gen2 (an error when the version has none, so a Gen2 device never gets a library it cannot load).
 func (c CatPlugin) ForArch(arch string) (CatPlugin, error) {
@@ -96,6 +120,7 @@ type rawCatalog struct {
 		Author       string        `json:"author"`
 		Kind         string        `json:"kind"`
 		Role         string        `json:"role"`
+		Devices      []string      `json:"devices"`
 		Summary      string        `json:"summary"`
 		Distribution string        `json:"distribution"`
 		Latest       string        `json:"latest"`
@@ -165,7 +190,7 @@ func parseCatalog(data []byte) ([]CatPlugin, error) {
 			if v.Version == p.Latest {
 				latest = len(vs)
 			}
-			vs = append(vs, CatPlugin{ID: p.ID, Name: p.Name, Author: p.Author, Kind: p.Kind, Role: p.Role, Summary: p.Summary, Version: v.Version,
+			vs = append(vs, CatPlugin{ID: p.ID, Name: p.Name, Author: p.Author, Kind: p.Kind, Role: p.Role, Devices: p.Devices, Summary: p.Summary, Version: v.Version,
 				Size: v.Size, SHA256: v.SHA256, URL: v.URL, Skin: v.Manifest.Skin, ParamCompat: v.ParamCompat, UID: v.Manifest.UID, UserData: v.Manifest.UserData, UserFiles: v.Manifest.UserFiles, Defer: v.Defer,
 				OSCompat: v.OSCompat, OSWhy: v.OSWhy, MaxGlibc: v.MaxGlibc, Tested2x: tested2x, Gen2: a64 != nil, Aarch64: a64, Gen2Only: v.Gen2Only && a64 != nil,
 				Requires: req, SharesHooks: p.SharesHooks, Depends: v.Depends, Conflicts: v.Conflicts})

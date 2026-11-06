@@ -33,6 +33,8 @@ own **native MPC touchscreen page**. No bridge, no background app, no `LD_PRELOA
 - **App-like plugins** that use the network (HTTP/HTTPS), read and write files or run helper programs, such as a record-digging streamer.
 - **Native pages**: knobs, faders, switches, buttons, option selectors, pop-up lists, live text readouts and your own artwork
   (any font, knob style or Inkscape drawing, baked into the page).
+- **Pages on the MPC Sample**, whose own UI shows no plugin pages: a page of the plugin's own on the Sample's screen, driven by
+  its keys, dial and knobs (`vst.json` `"sample_page"`; needs the mpc-addin-sample-draw-handler addin). [docs/PORTING.md](docs/PORTING.md)
 - **Ports for the desktop**: the same port as a VST3 for local use in a DAW, showing its MPC skin. [docs/DESKTOP_VST3.md](docs/DESKTOP_VST3.md)
 
 ## The workflow

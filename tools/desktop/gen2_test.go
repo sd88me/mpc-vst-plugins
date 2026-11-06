@@ -278,3 +278,24 @@ func TestAGen2OnlyVersionIsRefusedOnGen1(t *testing.T) {
 		t.Errorf("Gen2: %+v %v", c, err)
 	}
 }
+
+// A plugin limited to the MPC Sample (registry "devices") installs only on a device whose settings file is the Sample's, with its aarch64 zip.
+func TestDevicesLimitWhereAPluginInstalls(t *testing.T) {
+	c := CatPlugin{Name: "Rack", Version: "0.2.0", Kind: "addin", Devices: []string{"mpc-sample"},
+		Aarch64: &Asset{URL: "https://example.com/rack-aarch64.zip"}}
+	live3 := DeviceInfo{Arch: "aarch64", Settings: "/data/Settings/MPC/MPC.settings"}
+	sample := DeviceInfo{Arch: "aarch64", Settings: "/data/Settings/Akai/MPC Sample/MPC Sample.settings"}
+	if live3.Device() != "" || sample.Device() != "mpc-sample" {
+		t.Fatalf("Device(): %q %q", live3.Device(), sample.Device())
+	}
+	if _, err := c.ForDevice(live3.Arch, live3.Device()); err == nil || !strings.Contains(err.Error(), "only for the MPC Sample") {
+		t.Fatalf("a Live III got a Sample-only addin: %v", err)
+	}
+	if got, err := c.ForDevice(sample.Arch, sample.Device()); err != nil || got.URL != "https://example.com/rack-aarch64.zip" {
+		t.Fatalf("the Sample: %v %q", err, got.URL)
+	}
+	any := CatPlugin{Name: "Tuner", Version: "1.0.0", URL: "https://example.com/t.zip"}
+	if _, err := any.ForDevice("armv7l", ""); err != nil {
+		t.Fatalf("an unlimited plugin was refused: %v", err)
+	}
+}

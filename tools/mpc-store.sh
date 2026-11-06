@@ -54,7 +54,12 @@ fi
 [ "$SYNTHS" = /sdcard/Synths ] && [ ! -d /sdcard/Synths ] && [ -d /nvme ] && SYNTHS=/nvme/Synths
 # A Gen2 unit without NVMe (an MPC One, a Key 37) keeps user content on the loopback image mounted at /storage.
 [ "$SYNTHS" = /sdcard/Synths ] && [ ! -d /sdcard/Synths ] && [ -d /storage/Synths ] && SYNTHS=/storage/Synths
-SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
+SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings /data/Settings/*/MPC?Sample/MPC?Sample.settings 2>/dev/null | head -n 1)}"
+# The catalog's id for this device when an entry is limited to some (catalog.tsv column 24, registry "devices"): the MPC Sample's
+# settings file is "MPC Sample.settings"; "" for any other MPC.
+DEVICE="${MPC_STORE_DEVICE-$(case "$SETTINGS" in *"MPC Sample"*) echo mpc-sample ;; esac)}"
+# for_device <devices column>: 0 when this device may have it ('-', or its id is in the comma list)
+for_device() { [ "$1" = "-" ] || [ -z "$1" ] || case ",$1," in *",$DEVICE,"*) [ -n "$DEVICE" ] ;; *) false ;; esac; }
 W="${MPC_STORE_TMP:-/tmp}/mpc-store.$$"; mkdir -p "$W" || die "cannot create $W"
 trap 'rm -rf "$W"' EXIT
 STATE="$SYNTHS/.mpc-store"
@@ -112,9 +117,10 @@ helper() {   # helper <file>: download a helper listed in the catalog and check 
     fetch "$BASE/$1" "$W/h/$1" || die "cannot download $1"
     [ "$(sha_of "$W/h/$1")" = "$want" ] || die "$1 does not match the hash in the catalog: not using it"
 }
-# MPC's service is acvs on stock firmware, inmusic-mpc on Hakai-enabled systems; use whichever exists (acvs if neither is found).
+# MPC's service: acvs on stock Gen1/Gen2/Force, ac50 on the MPC Sample, inmusic-mpc on Hakai-enabled systems.
 mpc_service() {
-    if systemctl cat acvs >/dev/null 2>&1; then echo acvs
+    if systemctl cat ac50 >/dev/null 2>&1; then echo ac50
+    elif systemctl cat acvs >/dev/null 2>&1; then echo acvs
     elif systemctl cat inmusic-mpc >/dev/null 2>&1; then echo inmusic-mpc
     else echo acvs; fi
 }
@@ -125,8 +131,8 @@ mpc_ctl() {   # stop | start; a test run logs the call to $MPC_TEST_LOG instead 
 stop_mpc() {
     mpc_ctl stop
     trap 'mpc_ctl start; rm -rf "$W"' EXIT
-    i=0; while pidof MPC >/dev/null 2>&1 && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done   # a test run has no MPC: it passes through
-    if pidof MPC >/dev/null 2>&1; then die "MPC did not stop"; fi   # an `if`: as the function's last command, a failing `pidof` would make `set -e` end the script
+    i=0; while { pidof MPC || pidof "MPC Sample"; } >/dev/null 2>&1 && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done
+    if { pidof MPC || pidof "MPC Sample"; } >/dev/null 2>&1; then die "MPC did not stop"; fi
 }
 confirm() {   # confirm <question>
     [ $YES = 1 ] && return 0
@@ -270,7 +276,7 @@ need_warnings() {
 
 do_list() {
     printf '%-18s %-9s %-10s %s\n' "ID" "LATEST" "INSTALLED" "NAME"
-    awk -F'\t' '$1 == "plugin" && $4 == 1 { print $2 "\t" $3 "\t" $6 "\t" $7 "\t" $5 "\t" $15 "\t" $19 "\t" $12 }' "$W/catalog.tsv" | while IFS=$TAB read -r id ver name skin kind os url64 url1; do
+    awk -F'\t' '$1 == "plugin" && $4 == 1 { print $2 "\t" $3 "\t" $6 "\t" $7 "\t" $5 "\t" $15 "\t" $19 "\t" $12 "\t" ($24 == "" ? "-" : $24) }' "$W/catalog.tsv" | while IFS=$TAB read -r id ver name skin kind os url64 url1 devs; do
         inst=$(installed_version "$id" || true)
         where="$SYNTHS/$skin"; [ "$kind" != addin ] || where="$ADDINS/$id"
         if [ -z "$inst" ]; then if [ -d "$where" ]; then inst="manual"; else inst="-"; fi; fi
@@ -279,6 +285,7 @@ do_list() {
         if [ "$os" = "3.x" ]; then mark="$mark  [MPC OS 3.x only]"; fi
         if [ "$ARCH" = aarch64 ] && { [ -z "$url64" ] || [ "$url64" = "-" ]; }; then mark="$mark  [no Gen2 build]"; fi
         if [ "$ARCH" != aarch64 ] && [ "$url1" = "-" ]; then mark="$mark  [Gen2 only]"; fi
+        for_device "$devs" || mark="$mark  [only for: $devs]"
         printf '%-18s %-9s %-10s %s%s\n' "$id" "$ver" "$inst" "$name" "$mark"
     done
 }
@@ -290,6 +297,10 @@ do_install_rows() {
     : > "$W/plan"; skipped=0
     for r in "$@"; do
         id=$(col "$r" 2); ver=$(col "$r" 3)
+        devs=$(col "$r" 24)
+        if ! for_device "$devs"; then
+            echo "skipping $id $ver: only for $devs, not this device"; skipped=$((skipped + 1)); continue
+        fi
         if [ "$ARCH" != aarch64 ] && [ "$(col "$r" 12)" = "-" ]; then
             echo "skipping $id $ver: Gen2 only (aarch64), no build for this device"; skipped=$((skipped + 1)); continue
         fi

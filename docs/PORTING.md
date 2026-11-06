@@ -199,6 +199,23 @@ for the pattern). This applies to every future port, not just ones that hit the 
 - [ ] Skin touch-ups the layout can't express (per-role live-text sizes/colours in `TUI.json`): a script named by
       vst.json `"skin_post"`, run on the built skin folder; make it fail when its targets are missing. Design ideas from
       other ports: `docs/COMMUNITY_SKINS.md`.
+- [ ] Optional, MPC Sample: the Sample shows no plugin skin (its UI has no plugin page). A wrapper port gets a 320x240 page
+      from vst.json `"sample_page"` (`tools/gen_vst.py` `sample_lines()`, `wrapper/sample_page.h`): a `"dial"` param
+      stepped by the data dial and the < > keys (a `"programs"` param loads once the dial stops), up to three knobs per
+      `"banks"` entry for K1-K3 with pickup (a knob moves its param only once it reaches the value), and `"lines"` readouts
+      (`"key"`, `"size"` 1-4, `"label"`, `"color"` `"#rrggbb"`; `gen_vst.py` rejects anything else). The page opens at the
+      host's first effMainsChanged, not at creation, so MPC's scan and probe instances open none; its knob, dial and preset
+      changes are applied at the start of the next audio block, never from the page's own threads.
+      Space left over goes to the engine's `mpc_engine_sample_draw()` (`wrapper/engine.h`, a weak symbol; Tuner draws its
+      needle there). The page needs mpc-addin-sample-draw-handler and is inert everywhere else; it is named after the
+      plugin, so the RACK addin's dial press opens it (a long hold of PAD FX opens and closes RACK). A plugin with its own wrapper
+      can use `wrapper/sample_draw.h` directly (header-only: open the page on create, close it in `effClose`; the render
+      function runs on the page's thread only while the page has the screen). Example: NAM's `sample_page_render`.
+      Offline: a stand-in "MPC Sample" host with the addin preloaded and `MPC_SDRAW_TEST_FB` (the addin's tests/) shows the
+      page in a file before it goes near a device. `tools/test_sample_page.sh <port>/vst.json` builds the port with a
+      stand-in draw handler and host under ThreadSanitizer: the page opens once, pickup, the dial (a programs dial loads
+      after 250 ms and stops at the last program), and input, drawing, audio and host writes at once without a data race.
+      Examples: Tuner, Keyscope, Stompbox.
 
 ## 4. Device
 - [ ] The plugin is one folder, `/sdcard/Synths/<vendor> - VST - <name>/`: the `.so`, `Plugin Skins/`, `version.xml` and any data next to the `.so`.

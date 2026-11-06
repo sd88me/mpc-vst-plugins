@@ -158,11 +158,20 @@ var TIERS = { verified: { rank: 0, label: "Verified", tip: "The newest release h
               experimental: { rank: 2, label: "Experimental", tip: "New, beta-only or unproven: it may not load, draw its skin or run well. Test it before relying on it." } };
 function tierOf(p) { return TIERS[p.tier] ? p.tier : "listed"; }
 /* Verified is per device generation (catalog_build.py verified_on): gen1 = a tested.json entry on a Gen1 device, gen2 = one whose device
-   names Gen2, on a version with an aarch64 build. Each gets its own badge. Catalogs built before the field: a verified plugin counts as Gen1. */
+   names Gen2, sample = one on an MPC Sample, the last two on a version with an aarch64 build. Each gets its own badge. Catalogs built
+   before the field: a verified plugin counts as Gen1. */
 var GENS = { gen1: { label: "Verified Gen1", tip: "The newest release has a recorded hardware test on a Gen1 device (see Tested on)." },
-             gen2: { label: "Verified Gen2", tip: "The newest release's Gen2 (aarch64) build has a recorded hardware test on a Gen2 MPC (see Tested on)." } };
+             gen2: { label: "Verified Gen2", tip: "The newest release's Gen2 (aarch64) build has a recorded hardware test on a Gen2 MPC (see Tested on)." },
+             sample: { label: "Verified Sample", tip: "The newest release has a recorded hardware test on an MPC Sample (see Tested on)." } };
 function verifiedOn(p) { return tierOf(p) !== "verified" ? [] : Array.isArray(p.verified_on) ? p.verified_on.filter(function (g) { return GENS[g]; }) : ["gen1"]; }
-var TIER_FILTERS = ["verified", "verified-gen1", "verified-gen2", "listed", "experimental", "all"];
+var TIER_FILTERS = ["verified", "verified-gen1", "verified-gen2", "verified-sample", "listed", "experimental", "all"];
+/* devices an entry can be limited to (registry "devices"): it is offered only there, and its card says so instead of "Gen2" */
+var DEVICES = { "mpc-sample": "MPC Sample" };
+function deviceNames(p) { return (p.devices || []).filter(function (x) { return DEVICES[x]; }).map(function (x) { return DEVICES[x]; }); }
+function deviceTag(p) {
+  var d = deviceNames(p);
+  return d.length ? '<span class="tag gen" title="' + esc("Only for the " + d.join(" and ") + ": the installers don't offer it on other MPCs.") + '">' + esc(d.join(", ")) + ' only</span>' : "";
+}
 /* Recommended tiebreaker: the date of the newest hardware test on the newest stable release ("" when none). */
 function testedDate(p) {
   if (p.coll) return p.testedDate;
@@ -193,7 +202,7 @@ var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin:
 function inTabKind(p, k) { if (k === "all") return true; return kindsOf(p).some(function (c) { return (c === "instrument" && p.role === "midi" && c === p.kind ? "midi" : c) === k; }); }
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
 fillSelect("f-dist", "Any distribution", ["release", "build-yourself"], function (v) { return v === "release" ? "Download a release zip" : "Build it yourself"; });
-fillSelect("f-tier", "Verified and unverified", TIER_FILTERS, function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "verified-gen1" ? "Verified on Gen1" : v === "verified-gen2" ? "Verified on Gen2" : v === "listed" ? "Not yet verified" : "Experimental only"; });
+fillSelect("f-tier", "Verified and unverified", TIER_FILTERS, function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "verified-gen1" ? "Verified on Gen1" : v === "verified-gen2" ? "Verified on Gen2" : v === "verified-sample" ? "Verified on MPC Sample" : v === "listed" ? "Not yet verified" : "Experimental only"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
 fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 only"; });
 fillSelect("f-style", "All styles", uniq(function (p) { return p.style; }), title);
@@ -387,7 +396,8 @@ function card(p, big) {
   tags.push('<span class="tag">' + esc(p.license) + '</span>');
   if (p.source_available) tags.push('<span class="tag warn" title="Source is public but the license limits how it may be used">Restricted use</span>');
   if (!by && p.kind !== "addin" && osTag(v)) tags.push(osTag(v));
-  if (!by && p.kind !== "addin" && genTag(v)) tags.push(genTag(v));
+  if (deviceTag(p)) tags.push(deviceTag(p));
+  else if (!by && p.kind !== "addin" && genTag(v)) tags.push(genTag(v));
   if (!by && userFiles(v).length) tags.push('<span class="tag warn" title="' + esc("Needs files you supply: " + userFiles(v).map(function (x) { return x.label; }).join(", ")) + '">Needs your own ROM</span>');
   (p.tags || []).forEach(function (t) { if (!(by && t === "firmware-derived")) tags.push('<span class="tag">' + esc(t) + '</span>'); });
   var hist = p.versions.length ? '<details class="vers"><summary>Versions (' + p.versions.length + ')</summary><table>' + p.versions.map(function (x) {
@@ -422,10 +432,10 @@ function card(p, big) {
       '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a></div>' + hist + '</article>';
   }
   return head +
-    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + needsRow(v) + depsRow(v) + (p.kind !== "addin" ? osRow(v) + genRow(v) : "") + romRow(v) + installRow(p) +
+    '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + needsRow(v) + depsRow(v) + (deviceTag(p) ? '<dt>Devices</dt><dd>' + esc(p.devices.map(function (x) { return DEVICES[x] || x; }).join(", ")) + ' only</dd>' : p.kind !== "addin" ? osRow(v) + genRow(v) : "") + romRow(v) + installRow(p) +
     (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
-    '<div class="actions">' + (v && !v.gen2_only ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
-    (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="Gen2 MPC devices (aarch64, MPC OS 3.x)">Download (Gen2)</a>' : '') +
+    '<div class="actions">' + (v && !v.gen2_only && !deviceNames(p).length ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
+    (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="' + (deviceNames(p).length ? esc("For the " + deviceNames(p).join(" and ") + " (aarch64)") : 'Gen2 MPC devices (aarch64, MPC OS 3.x)') + '">Download (' + (deviceNames(p).length ? esc(deviceNames(p).join(", ")) : 'Gen2') + ')</a>' : '') +
     '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a>' +
     (v && ID_RE.test(p.id) ? '<label class="pick"><input type="checkbox" data-pick="' + esc(p.id) + '"' + (state.sel.indexOf(p.id) >= 0 ? " checked" : "") + '> Add to install list</label>' : '') +
     '</div>' + hist + '</article>';

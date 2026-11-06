@@ -52,7 +52,8 @@ bundles a program under another licence, e.g. `MIT AND Apache-2.0`: open when ev
 (optional `https://` URL; the site ignores anything else), `asset_pattern` (default `*-mpc-armv7.zip`), `homepage` (optional),
 `tier` (optional, only `"experimental"`) and `featured` (optional bool); see Trust tiers below. `flags_reviewed` (optional list of
 risky-call categories a maintainer has looked at, e.g. `["network"]` for a remote-control plugin; see Validation), `collection` (optional, see
-Collections below). Nothing versioned.
+Collections below), `devices` (optional: the only devices it is for, today just `"mpc-sample"`; see "Device-limited entries" below).
+Nothing versioned.
 `catalog/added.json` (`{"<id>": "YYYY-MM-DD"}`) records when each entry joined the catalog, for the site's "Newest in catalog" sort. A
 maintainer adds a line when merging a new entry (not the contributor, so PRs don't conflict on one file); an entry without a line uses
 the date of its oldest release. Backfilled 2026-10-24 from the first commit that added each registry file.
@@ -125,7 +126,10 @@ headless-browser check): `verified_on` in `catalog.json` lists `gen1` and/or `ge
 entry whose `device` names Gen2 counts for `gen2`, and only when that version has an aarch64 build; any other entry counts for `gen1`.
 The card shows one badge per generation ("Verified Gen1", "Verified Gen2"), the Tier filter has "Verified on Gen1" and
 "Verified on Gen2", and the quality bar asks for a Gen2 test (`tested-gen2`) when a Gen2 build has none. The tier itself stays one
-value (verified on either generation), so the sort is unchanged. Catalogs built before the field read a verified plugin as Gen1. Catalogs built before the field read as `listed`. Deliberately not done:
+value (verified on either generation), so the sort is unchanged. Catalogs built before the field read a verified plugin as Gen1.
+Since 2026-11-05 (offline: unit tests and the headless-browser check) the MPC Sample has its own: a `tested.json` entry whose `device`
+names the MPC Sample counts for `sample` (on a version with an aarch64 build, which is what the Sample runs), not for `gen1` as before,
+with a "Verified Sample" badge and a "Verified on MPC Sample" Tier filter option. Catalogs built before the field read as `listed`. Deliberately not done:
 star ratings, comments, upvotes (few users, needs a backend and moderation; if wanted later, compatibility reports through
 GitHub Discussions that feed `tested.json` fit the static model better, with any vote count only a tiebreaker inside a tier).
 
@@ -165,6 +169,23 @@ each plugin, less the categories in its entry's `flags_reviewed`. `tools/catalog
 categories ("Catalog: <id> flagged for review (network, runs programs)"). Closing it is the review: it is never reopened, a later
 version with the same categories opens nothing, new categories open a new issue (2026-10-11, offline tests only; the first run
 opened one issue per version, 70 in all, which this replaced).
+
+### Device-limited entries (2026-11-05, offline: unit tests, Go tests, the site browser test)
+The MPC Sample (AC50) runs MPC OS on aarch64, so it takes a release's Gen2 zip, but it is not a Gen2 MPC: an addin written for its
+screen (the draw handler, the rack) loads and does nothing on a Live III. A registry entry can say so with `"devices": ["mpc-sample"]`
+(`DEVICES` in `catalog_build.py`; unknown ids are refused). Then:
+- `catalog.json` carries `devices`, and `catalog.tsv` a `devices` column (24th, comma list, `-` for every MPC).
+- The site shows "MPC Sample only" in place of the Gen2 tag, and a Devices row in the popup. Its one download button is named for
+  the device, "Download (MPC Sample)", with no Gen1 button (2026-11-06, offline: the site browser test). The card's badge is the device
+  label, so its `tags` should not repeat it (no `mpc-sample` tag).
+- `mpc-store.sh` lists it as `[only for: mpc-sample]` and skips it (not an error) on other devices; the desktop app refuses it there
+  (`CatPlugin.ForDevice`) and marks it. Both tell the Sample by its settings file (`MPC Sample.settings`); `MPC_STORE_DEVICE` overrides.
+- The quality bar asks for a Sample test (`tested-sample`) instead of Gen1 and Gen2 ones.
+- **Dependencies:** an entry may depend on a device-limited one only if it is limited to those devices too. `--check-registry` refuses
+  the registry dependency otherwise, and the builder hides a version whose dependency (registry or zip) is only for devices it is not
+  limited to, with the reason, so no installer can be asked to fetch a Sample-only addin for a Live III. The rack depends on the draw
+  handler (`sample-draw-handler>=0.3.0`), both Sample-only. A plugin with a Sample page (`"sample_page"`) does not depend on the draw
+  handler: the page is optional and the plugin works without it everywhere.
 
 ### Dependencies, requirements and addins that may break each other (2026-10-26, offline: unit tests, Go tests, the desktop addin UI test, the site browser test)
 - **Dependencies and conflicts** (declared, CATALOG_SPEC.md "Dependencies"): a version can need other catalog plugins

@@ -32,7 +32,7 @@ if [ -z "$MPC_INSTALL_TEST" ]; then
     [ "$(id -u)" = 0 ] || die "run as root"
     command -v systemctl >/dev/null || die "systemctl not found"
 fi
-SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null | head -n 1)}"
+SETTINGS="${MPC_SETTINGS:-$(ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings /data/Settings/*/MPC?Sample/MPC?Sample.settings 2>/dev/null | head -n 1)}"
 [ -n "$SETTINGS" ] && [ -f "$SETTINGS" ] || die "MPC.settings not found (not an MPC OS device?)"
 if [ -z "$ROOTS" ]; then
     ROOTS="/sdcard/Synths"
@@ -96,9 +96,10 @@ if [ $YES = 0 ]; then
     read -r ok; case "$ok" in y|Y|yes) ;; *) echo "cancelled"; exit 1 ;; esac
 fi
 
-# MPC's service is acvs on stock firmware, inmusic-mpc on Hakai-enabled systems; use whichever exists (acvs if neither is found).
+# MPC's service: acvs on stock Gen1/Gen2/Force, ac50 on the MPC Sample, inmusic-mpc on Hakai-enabled systems.
 mpc_service() {
-    if systemctl cat acvs >/dev/null 2>&1; then echo acvs
+    if systemctl cat ac50 >/dev/null 2>&1; then echo ac50
+    elif systemctl cat acvs >/dev/null 2>&1; then echo acvs
     elif systemctl cat inmusic-mpc >/dev/null 2>&1; then echo inmusic-mpc
     else echo acvs; fi
 }
@@ -107,13 +108,13 @@ mpc_ctl() {   # stop | start; a test run logs the call to $MPC_TEST_LOG instead 
     systemctl "$1" "$(mpc_service)"
 }
 if [ $DEFER = 1 ]; then
-    [ -n "$MPC_INSTALL_TEST" ] || ! pidof MPC >/dev/null || die "MPC is running: with -n stop it first (stop the MPC service first, see INSTALL.md)"
+    [ -n "$MPC_INSTALL_TEST" ] || ! { pidof MPC || pidof "MPC Sample"; } >/dev/null 2>&1 || die "MPC is running: with -n stop it first (stop the MPC service first, see INSTALL.md)"
 else
     mpc_ctl stop
     trap 'mpc_ctl start; rm -rf "$W"' EXIT
     if [ -z "$MPC_INSTALL_TEST" ]; then
-        i=0; while pidof MPC >/dev/null && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done
-        pidof MPC >/dev/null && die "MPC did not stop"
+        i=0; while { pidof MPC || pidof "MPC Sample"; } >/dev/null 2>&1 && [ $i -lt 30 ]; do sleep 1; i=$((i + 1)); done
+        { pidof MPC || pidof "MPC Sample"; } >/dev/null 2>&1 && die "MPC did not stop"
     fi
 fi
 

@@ -1,0 +1,18 @@
+{
+  "id": "sample-rack",
+  "name": "MPC Sample Rack",
+  "author": "jacob-sabella",
+  "repo": "jacob-sabella/mpc-addin-sample-rack",
+  "kind": "addin",
+  "style": "utility",
+  "tags": [
+    "plugins",
+    "inserts"
+  ],
+  "license": "MIT",
+  "summary": "Add, remove and turn on or off the plugins in a project's inserts from a RACK page on the Sample. APPLY saves and restarts MPC: save first.",
+  "screenshot": "https://raw.githubusercontent.com/jacob-sabella/mpc-addin-sample-rack/c2a988ddc52bf92dc3bf83f5f4283cadc78eeb47/docs/screenshots/rack-page.png",
+  "asset_pattern": "MPC-Sample-rack-addin-*-mpc-aarch64.zip",
+  "devices": ["mpc-sample"],
+  "depends": ["sample-draw-handler>=0.3.0"]
+}

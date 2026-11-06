@@ -427,6 +427,7 @@ function el(tag, cls, t) { var e = document.createElement(tag); if (cls) e.class
 
 function setConnected(c, info, problems) {
   S.connected = c; S.problems = problems || []; S.libc = c && info ? (info.libc || "") : ""; S.arch = c && info ? (info.arch || "") : "";
+  S.device = c && info && /MPC Sample/.test(info.settings || "") ? "mpc-sample" : "";   /* as DeviceInfo.Device in device.go */
   $("s2").classList.toggle("off", !c); $("s3").classList.toggle("off", !c); $("s4").classList.toggle("off", !c); $("s5").classList.toggle("off", !c); $("s6").classList.toggle("off", !c); $("s7").classList.toggle("off", !c); $("sf").classList.toggle("off", !c);
   S.patches = null; drawPatches();
   if (c) {
@@ -515,7 +516,10 @@ function osTagFor(p) {
   var g = p.os_compat || []; if (g.indexOf("2.x") < 0 || !p.tested_2x) return null;
   var t = el("span", "tag", "MPC OS 2.x tested"); t.title = "Tested on an MPC OS 2.x unit; its skin and library were also checked against MPC OS 2.15.1's own skins and glibc. Works on MPC OS 3.x too."; return t;
 }
+var DEVICE_NAMES = { "mpc-sample": "MPC Sample" };   /* catalog device ids (registry "devices") */
+function devicesOf(p) { return (p.devices || []).map(function (d) { return DEVICE_NAMES[d] || d; }).join(" and "); }
 function osNote(p) {   /* {level, text} when this plugin will not work as expected on the connected device, else null */
+  if (S.connected && (p.devices || []).length && p.devices.indexOf(S.device) < 0) return { level: "err", text: p.name + " is only for the " + devicesOf(p) + ", so it cannot be installed on this device." };
   if (S.arch === "aarch64" && !p.gen2) return { level: "err", text: p.name + " has no Gen2 (aarch64) build yet, so it cannot be installed on this device." };
   if (!S.libc) return null;
   if (p.max_glibc && vgt(p.max_glibc, S.libc)) return { level: "err", text: p.name + " needs glibc " + p.max_glibc + " but this device has " + S.libc + ": MPC will list it but it will not load." };
@@ -547,7 +551,8 @@ function drawCat() {
     if (p.update) b.appendChild(el("span", "tag up", "update: v" + p.installedVersion + " → v" + p.version));
     if (p.defer === false) { var dt = el("span", "tag", "restarts MPC itself"); dt.title = "This release has an older installer that restarts MPC on its own, so it adds a restart to the batch."; b.appendChild(dt); }
     var ot = p.kind === "addin" ? null : osTagFor(p); if (ot) b.appendChild(ot);
-    if (p.gen2) { var gt = el("span", "tag", "Gen2"); gt.title = "Also built for Gen2 (aarch64) MPC devices; the app installs the right zip for the connected device."; b.appendChild(gt); }
+    if ((p.devices || []).length) { var dt = el("span", "tag", devicesOf(p) + " only"); dt.title = "Only for the " + devicesOf(p) + ": the app won't install it on other MPCs."; b.appendChild(dt); }
+    else if (p.gen2) { var gt = el("span", "tag", "Gen2"); gt.title = "Also built for Gen2 (aarch64) MPC devices; the app installs the right zip for the connected device."; b.appendChild(gt); }
     t.appendChild(b); t.appendChild(el("span", "d", "v" + p.version + " by " + p.author + " · " + mb(p.size) + " · " + p.summary));
     var on = osNote(p); if (on) t.appendChild(el("span", "d osn " + on.level, on.text));
     needNotes(p).forEach(function (nn) { t.appendChild(el("span", "d osn " + nn.level, nn.text)); });

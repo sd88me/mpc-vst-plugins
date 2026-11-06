@@ -31,7 +31,7 @@ for b in $(command -v edisksd udisksd 2>/dev/null) /usr/libexec/udisks2/udisksd 
     echo "-- $b"; strings -n 4 "$b" 2>/dev/null | grep -i -E "noexec|nosuid|nodev|uhelper|mount_options|\.conf" | sort -u | head -n 25
 done
 say "does MPC see the same mounts as the shell (a different mount namespace would hide a remount)"
-p=$(pidof MPC)
+p=$(pidof MPC 2>/dev/null || pidof "MPC Sample" 2>/dev/null)
 if [ -n "$p" ]; then
     echo "MPC pid $p: namespace $(readlink /proc/$p/ns/mnt)   shell: $(readlink /proc/$$/ns/mnt)"
     grep -E " /media/" /proc/$p/mountinfo | cut -c1-200

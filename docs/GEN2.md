@@ -114,6 +114,8 @@ was tested on a Gen2 unit is in its hover text, the card's Gen2 row and the Veri
 "Download (Gen2)". A passing aarch64 build is not "tested": that needs the device string. Use e.g. `"device": "MPC Live III (Gen2)"` in `tested.json`.
 The same rule splits the Verified badge (2026-10-12, offline): the newest stable release gets "Verified Gen2" from such an entry (only when it
 has an aarch64 build) and "Verified Gen1" from any other entry, each its own badge and Tier filter option (`verified_on` in `catalog.json`).
+The MPC Sample also runs the aarch64 build but is not Gen2: since 2026-11-05 a test on it gives "Verified Sample", and an entry for the
+Sample only carries `devices` (CATALOG.md, "Device-limited entries").
 Checked in Chromium (Playwright) against a fixture catalog with two Gen2 versions.
 
 ## Developers

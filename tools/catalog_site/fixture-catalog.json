@@ -1059,6 +1059,169 @@
    ],
    "verified_on": [],
    "collection": "acme-pack"
+  },
+  {
+   "id": "sample-only",
+   "name": "Sample Only",
+   "author": "A",
+   "repo": "acme/test-synth",
+   "kind": "addin",
+   "license": "MIT",
+   "summary": "An addin for the MPC Sample only.",
+   "tags": [],
+   "source_available": false,
+   "distribution": "release",
+   "versions": [
+    {
+     "version": "1.1.0",
+     "size": 11799,
+     "defer": true,
+     "sha256": "922f0105745efa4e1097baed78a529b60cbb472f96af8b951edb3397d047ba34",
+     "param_compat": 1,
+     "max_glibc": "2.30",
+     "cpu": null,
+     "manifest": {
+      "schema": 1,
+      "id": "test-synth",
+      "name": "Test Synth",
+      "version": "1.1.0",
+      "kind": "instrument",
+      "uid": "1a2b3c4d",
+      "manufacturer": "Acme",
+      "layout": "portable",
+      "so": "test_synth.so",
+      "skin": "Acme - VST - Test Synth",
+      "folder": "portable/Acme - VST - Test Synth",
+      "extras": [],
+      "user_data": [],
+      "arch": "armv7",
+      "max_glibc": "2.30",
+      "os_compat": [
+       "2.x",
+       "3.x"
+      ],
+      "param_compat": 1,
+      "about": "",
+      "requires": "",
+      "source_repo": "acme/test-synth",
+      "license": "MIT",
+      "cpu": null
+     },
+     "url": "https://x/x-mpc-armv7.zip",
+     "date": "2026-09-29",
+     "channel": "stable",
+     "notes": "notes",
+     "yanked": false,
+     "warnings": [],
+     "downloads": 3,
+     "tested": [
+      {
+       "version": "1.1.0",
+       "device": "MPC Sample",
+       "firmware": "1.3.0",
+       "date": "2026-09-29"
+      }
+     ],
+     "gen2": true,
+     "assets": {
+      "armv7": {
+       "sha256": "922f0105745efa4e1097baed78a529b60cbb472f96af8b951edb3397d047ba34",
+       "size": 11799,
+       "url": "https://x/x-mpc-armv7.zip"
+      },
+      "aarch64": {
+       "sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+       "size": 12011,
+       "url": "https://x/x-mpc-aarch64.zip"
+      }
+     },
+     "depends": [
+      {
+       "id": "test-synth",
+       "rules": [
+        [
+         ">=",
+         "1.1.0"
+        ]
+       ],
+       "pick": {
+        "armv7": "1.1.0",
+        "aarch64": null
+       }
+      }
+     ],
+     "conflicts": [
+      "three-only"
+     ]
+    },
+    {
+     "version": "1.0.0",
+     "size": 11149,
+     "defer": true,
+     "sha256": "09dca1ea56512af81816e4c9cad3601ea7de3423234a0cd648b91f010b5ad91a",
+     "param_compat": 1,
+     "max_glibc": "2.30",
+     "cpu": null,
+     "manifest": {
+      "schema": 1,
+      "id": "test-synth",
+      "name": "Test Synth",
+      "version": "1.0.0",
+      "kind": "instrument",
+      "uid": "1a2b3c4d",
+      "manufacturer": "Acme",
+      "layout": "portable",
+      "so": "test_synth.so",
+      "skin": "Acme - VST - Test Synth",
+      "folder": "portable/Acme - VST - Test Synth",
+      "extras": [],
+      "user_data": [],
+      "arch": "armv7",
+      "max_glibc": "2.30",
+      "os_compat": [
+       "3.x"
+      ],
+      "param_compat": 1,
+      "about": "",
+      "requires": "",
+      "source_repo": "acme/test-synth",
+      "license": "MIT",
+      "cpu": null
+     },
+     "os_compat_why": [
+      "TUI.json has no pageData"
+     ],
+     "url": "https://x/x-mpc-armv7.zip",
+     "date": "2026-09-29",
+     "channel": "stable",
+     "notes": "notes",
+     "yanked": false,
+     "warnings": [],
+     "downloads": 3,
+     "tested": [
+      {
+       "version": "1.0.0",
+       "device": "MPC Sample",
+       "firmware": "1.3.0",
+       "date": "2026-09-29"
+      }
+     ]
+    }
+   ],
+   "latest": "1.1.0",
+   "latest_beta": null,
+   "downloads": 1,
+   "updated": "2026-09-29",
+   "added": "2026-10-05",
+   "tier": "verified",
+   "featured": false,
+   "bar_missing": [],
+   "verified_on": [
+    "sample"
+   ],
+   "devices": [
+    "mpc-sample"
+   ]
   }
  ],
  "bar": {

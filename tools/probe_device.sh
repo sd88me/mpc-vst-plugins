@@ -3,14 +3,18 @@
 # plugin formats MPC's JUCE host has compiled in (VST2 / VST3 / LV2). Changes nothing.
 #   ssh root@<device-ip> sh -s < tools/probe_device.sh
 # Please post the output for devices not listed in docs/NOTES.md (especially Gen2 units).
-B=${MPC_BIN:-/usr/bin/MPC}
+B=${MPC_BIN:-}
+if [ -z "$B" ]; then
+    if [ -f "/usr/bin/MPC Sample" ]; then B="/usr/bin/MPC Sample"
+    else B=/usr/bin/MPC; fi
+fi
 echo "== device"
 uname -m; grep -m1 -E "^VERSION=" /etc/os-release 2>/dev/null
 echo "cores: $(grep -c ^processor /proc/cpuinfo), parts: $(grep 'CPU part' /proc/cpuinfo | sort -u | awk '{print $4}' | tr '\n' ' ')"
 echo "max MHz: $(cat /sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq 2>/dev/null | sed 's/...$//')"
 grep -o 'isolcpus=[^ ]*' /proc/cmdline
 echo "MPC binary: $(dd if="$B" bs=1 skip=4 count=1 2>/dev/null | od -b | awk 'NR==1{print ($2=="002" ? "64-bit" : "32-bit")}')"
-p=$(pidof MPC)
+p=$(pidof MPC 2>/dev/null || pidof "MPC Sample" 2>/dev/null)
 if [ -n "$p" ]; then
     echo "== MPC audio threads (name cpu policy)"
     for t in /proc/$p/task/*; do
@@ -26,7 +30,7 @@ echo "VST3 (juce::VST3PluginFormat): $(has 'VST3PluginFormat')   GetPluginFactor
 echo "LV2  (juce::LV2PluginFormat):  $(has 'LV2PluginFormat')"
 echo "settings key parts: $(grep -xE -- 'pluginList|-arm|-arm64|-aarch64' $S | sort -u | tr '\n' ' ')"
 rm -f $S
-ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings 2>/dev/null
+ls /media/az01-internal/Settings/*/MPC.settings /data/Settings/*/MPC.settings /data/Settings/*/MPC?Sample/MPC?Sample.settings 2>/dev/null
 echo "== Synths locations (Gen2: offline analysis of a real device's rootfs/data dumps found /synths/Synths and"
 echo "   /synths/Expansions listed in MPC.settings SynthContentLocations, but /synths itself is a plain rootfs"
 echo "   folder with no systemd .mount unit on that unit; it may only become writable once something mounts a"
