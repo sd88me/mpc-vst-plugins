@@ -42,6 +42,10 @@
 
   <div class="pagelist">/*GUIDES*/</div>
 
+  <div class="plat" role="group" aria-label="Device">
+    <button type="button" data-plat="" aria-pressed="true">MPC / Force <span class="n" id="n-plat"></span></button>
+    <button type="button" data-plat="sample" aria-pressed="false" title="Made for the MPC Sample first, then instruments and effects with a Gen2 build: the Sample loads them the same way, but most are not tested on one yet">MPC Sample <span class="n" id="n-plat-sample"></span></button>
+  </div>
   <div class="tabs" role="tablist" aria-label="Catalog sections">
     <button type="button" role="tab" id="tab-all" aria-controls="panel-plugins" aria-selected="true" data-tab="all">All <span class="n" id="n-all"></span></button>
     <button type="button" role="tab" id="tab-instrument" aria-controls="panel-plugins" aria-selected="false" data-tab="instrument" tabindex="-1">Instruments <span class="n" id="n-instrument"></span></button>
@@ -54,10 +58,6 @@
 
   <div role="tabpanel" id="panel-plugins" aria-labelledby="tab-all">
   <div class="tools">
-    <div class="plat" role="group" aria-label="Device">
-      <button type="button" data-plat="" aria-pressed="true">MPC / Force <span class="n" id="n-plat"></span></button>
-      <button type="button" data-plat="sample" aria-pressed="false" title="Made for the MPC Sample first, then instruments and effects with a Gen2 build: the Sample loads them the same way, but most are not tested on one yet">MPC Sample <span class="n" id="n-plat-sample"></span></button>
-    </div>
     <label class="search">Search<input id="q" type="search" placeholder="Name, developer, style or tag"></label>
     <label>Style<select id="f-style"></select></label>
     <label>Developer<select id="f-dev"></select></label>
@@ -522,9 +522,8 @@ function render() {
   var nOut = out.reduce(function (n, p) { return n + (p.coll ? p.hit.length : 1); }, 0);   /* plugins, counting each collection member */
   var hid = !state.tier ? P.filter(function (p) { return tierOf(p) === "experimental" && (PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab)); }).length : 0;
   $("exp").hidden = !hid; $("exp-n").textContent = hid;
-  var inT = function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); };
-  $("n-plat").textContent = P.filter(function (p) { return inT(p) && !deviceNames(p).length; }).length;
-  $("n-plat-sample").textContent = P.filter(function (p) { return inT(p) && platOk(p, "sample"); }).length;
+  $("n-plat").textContent = P.filter(function (p) { return platOk(p, ""); }).length;   /* whole catalog: the switch sits above the tabs */
+  $("n-plat-sample").textContent = P.filter(function (p) { return platOk(p, "sample"); }).length;
   document.querySelectorAll("[data-plat]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-plat") === state.plat)); });
   $("l-gen").hidden = state.plat === "sample";
   PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return inTabKind(p, k); }).length; });
