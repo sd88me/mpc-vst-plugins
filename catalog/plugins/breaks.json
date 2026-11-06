@@ -1,0 +1,5 @@
+{ "id": "breaks", "name": "Breaks", "author": "Aaron Quint", "repo": "quirkey/mpc-plugins",
+  "kind": "instrument", "style": "drum-machine", "tags": ["breakbeat", "loop", "slicer", "tempo-sync", "lo-fi"], "license": "MIT",
+  "summary": "Plays a drum break in time with the song while the transport runs: 16th slices retriggered on the song grid, through the whole break whatever the loop length, with pitch, bit and sample-rate grit, time-stretch grains, half time, seeded variations and pad effects. Bring your own breaks.",
+  "screenshot": "https://raw.githubusercontent.com/quirkey/mpc-plugins/breaks-v0.9.6/docs/breaks.png",
+  "asset_pattern": "Breaks-*-mpc-armv7.zip" }

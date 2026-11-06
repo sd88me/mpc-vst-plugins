@@ -1,0 +1,5 @@
+{ "id": "samplerfilter", "name": "SamplerFilter", "author": "Aaron Quint", "repo": "quirkey/mpc-plugins",
+  "kind": "effect", "style": "filter", "tags": ["lo-fi", "low-pass", "bitcrusher", "vintage-sampler"], "license": "MIT",
+  "summary": "A late-80s rack-sampler style 6-pole low-pass (no resonance) with the sampler's bit-depth and sample-rate grit, drive and mix.",
+  "screenshot": "https://raw.githubusercontent.com/quirkey/mpc-plugins/samplerfilter-v1.1.3/docs/samplerfilter.png",
+  "asset_pattern": "SamplerFilter-*-mpc-armv7.zip" }
