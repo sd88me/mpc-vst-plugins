@@ -167,9 +167,10 @@ function verifiedOn(p) { return tierOf(p) !== "verified" ? [] : Array.isArray(p.
 var TIER_FILTERS = ["verified", "verified-gen1", "verified-gen2", "verified-sample", "listed", "experimental", "all"];
 /* devices an entry can be limited to (registry "devices"): it is offered only there, and its card says so instead of "Gen2" */
 var DEVICES = { "mpc-sample": "MPC Sample" };
+function deviceNames(p) { return (p.devices || []).filter(function (x) { return DEVICES[x]; }).map(function (x) { return DEVICES[x]; }); }
 function deviceTag(p) {
-  var d = (p.devices || []).filter(function (x) { return DEVICES[x]; });
-  return d.length ? '<span class="tag gen" title="' + esc("Only for the " + d.map(function (x) { return DEVICES[x]; }).join(" and ") + ": the installers don't offer it on other MPCs.") + '">' + esc(d.map(function (x) { return DEVICES[x]; }).join(", ")) + ' only</span>' : "";
+  var d = deviceNames(p);
+  return d.length ? '<span class="tag gen" title="' + esc("Only for the " + d.join(" and ") + ": the installers don't offer it on other MPCs.") + '">' + esc(d.join(", ")) + ' only</span>' : "";
 }
 /* Recommended tiebreaker: the date of the newest hardware test on the newest stable release ("" when none). */
 function testedDate(p) {
@@ -433,8 +434,8 @@ function card(p, big) {
   return head +
     '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + needsRow(v) + depsRow(v) + (deviceTag(p) ? '<dt>Devices</dt><dd>' + esc(p.devices.map(function (x) { return DEVICES[x] || x; }).join(", ")) + ' only</dd>' : p.kind !== "addin" ? osRow(v) + genRow(v) : "") + romRow(v) + installRow(p) +
     (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
-    '<div class="actions">' + (v && !v.gen2_only ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
-    (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="Gen2 MPC devices (aarch64, MPC OS 3.x)">Download (Gen2)</a>' : '') +
+    '<div class="actions">' + (v && !v.gen2_only && !deviceNames(p).length ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
+    (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="' + (deviceNames(p).length ? esc("For the " + deviceNames(p).join(" and ") + " (aarch64)") : 'Gen2 MPC devices (aarch64, MPC OS 3.x)') + '">Download (' + (deviceNames(p).length ? esc(deviceNames(p).join(", ")) : 'Gen2') + ')</a>' : '') +
     '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a>' +
     (v && ID_RE.test(p.id) ? '<label class="pick"><input type="checkbox" data-pick="' + esc(p.id) + '"' + (state.sel.indexOf(p.id) >= 0 ? " checked" : "") + '> Add to install list</label>' : '') +
     '</div>' + hist + '</article>';

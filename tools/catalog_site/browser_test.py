@@ -124,6 +124,8 @@ with sync_playwright() as p:
           smp.locator(".tag.tier-verified").all_text_contents() == ["Verified Sample"], str(smp.locator(".tag.tier-verified").all_text_contents()))
     check("a plugin for the MPC Sample only says so", smp.locator(".tag:has-text('MPC Sample only')").count() == 1
           and smp.locator(".tag:has-text('Gen2')").count() == 0, smp.inner_text()[:200])
+    dl = smp.locator("a.btn-l:has-text('Download')").all_text_contents()
+    check("a plugin for the MPC Sample only has one download, named for the Sample", dl == ["Download (MPC Sample)"], str(dl))
     pg.click("#tab-all")
     for val, gen in (("verified-gen1", "gen1"), ("verified-gen2", "gen2"), ("verified-sample", "sample")):
         pg.select_option("#f-tier", val)

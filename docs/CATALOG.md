@@ -175,7 +175,9 @@ The MPC Sample (AC50) runs MPC OS on aarch64, so it takes a release's Gen2 zip, 
 screen (the draw handler, the rack) loads and does nothing on a Live III. A registry entry can say so with `"devices": ["mpc-sample"]`
 (`DEVICES` in `catalog_build.py`; unknown ids are refused). Then:
 - `catalog.json` carries `devices`, and `catalog.tsv` a `devices` column (24th, comma list, `-` for every MPC).
-- The site shows "MPC Sample only" in place of the Gen2 tag, and a Devices row in the popup.
+- The site shows "MPC Sample only" in place of the Gen2 tag, and a Devices row in the popup. Its one download button is named for
+  the device, "Download (MPC Sample)", with no Gen1 button (2026-11-06, offline: the site browser test). The card's badge is the device
+  label, so its `tags` should not repeat it (no `mpc-sample` tag).
 - `mpc-store.sh` lists it as `[only for: mpc-sample]` and skips it (not an error) on other devices; the desktop app refuses it there
   (`CatPlugin.ForDevice`) and marks it. Both tell the Sample by its settings file (`MPC Sample.settings`); `MPC_STORE_DEVICE` overrides.
 - The quality bar asks for a Sample test (`tested-sample`) instead of Gen1 and Gen2 ones.
