@@ -892,6 +892,13 @@ class BuildTest(Base):
         gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1, pre=True)]}, {1: self.build("1.0.0")})
         self.assertEqual(catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "b"), set())[0]["plugins"][0]["tier"], "experimental")
 
+    def test_youtube_line_is_carried_into_catalog_json(self):
+        gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1)]}, {1: self.build("1.0.0")})
+        item = catalog_build.build([dict(self.ENTRY, youtube="https://youtu.be/abc123")], gh, os.path.join(self.tmp, "yt"), set())[0]["plugins"][0]
+        self.assertEqual(item["youtube"], "https://youtu.be/abc123")
+        gh = FakeGitHub({"acme/test-synth": [self.rel("v1.0.0", 1)]}, {1: self.build("1.0.0")})
+        self.assertNotIn("youtube", catalog_build.build([self.ENTRY], gh, os.path.join(self.tmp, "yt2"), set())[0]["plugins"][0])
+
     def test_verified_is_split_by_generation(self):
         def plugin(tested, gen2=True):
             z32 = self.build("1.0.0")
@@ -1276,6 +1283,43 @@ class SiteTest(unittest.TestCase):
         self.assertEqual(len(doc.getElementsByTagName("entry")), 1)
         self.assertIn("A <&>", doc.getElementsByTagName("title")[1].firstChild.data)
 
+    def test_plugin_feed(self):
+        """feed/<id>.xml: one plugin's releases, newest first, no yanked ones, a beta marked, text escaped, ids shared with feed.xml."""
+        import xml.dom.minidom
+        v = lambda ver, date, y=False, ch="stable", notes="": {"version": ver, "date": date, "url": "https://x/%s?a=1&b=2" % ver, "yanked": y, "channel": ch, "notes": notes}
+        p = {"id": "a", "name": "A <&>", "author": "Z", "summary": "s", "versions": [v("1.0.0", "2026-10-01"), v("1.2.0", "2026-10-20", notes="Fixes  the\nclick <b>noise</b>"),
+                                                                                       v("1.1.0", "2026-10-10", y=True), v("1.3.0-b", "2026-10-25", ch="beta")]}
+        doc = xml.dom.minidom.parseString(catalog_site.plugin_atom(p, "https://e.io/x/"))
+        entries = doc.getElementsByTagName("entry")
+        titles = [e.getElementsByTagName("title")[0].firstChild.data for e in entries]
+        self.assertEqual(titles, ["A <&> 1.3.0-b (beta)", "A <&> 1.2.0", "A <&> 1.0.0"])          # newest first, the yanked 1.1.0 is gone
+        ids = [e.getElementsByTagName("id")[0].firstChild.data for e in entries]
+        self.assertEqual(ids[1], "tag:mpc-vst-catalog,2026:a@1.2.0")
+        cat = {"schema": 1, "generated": "g", "plugins": [p]}
+        main = xml.dom.minidom.parseString(catalog_site.atom(cat, "https://e.io/x/"))
+        self.assertEqual({e.getElementsByTagName("id")[0].firstChild.data for e in main.getElementsByTagName("entry")}, set(ids))   # same ids as feed.xml
+        self.assertEqual(entries[1].getElementsByTagName("summary")[0].firstChild.data, "Fixes the click <b>noise</b>")        # notes: one line, escaped text
+        self.assertIn('rel="self" href="https://e.io/x/feed/a.xml"', catalog_site.plugin_atom(p, "https://e.io/x/"))
+        self.assertEqual(xml.dom.minidom.parseString(catalog_site.plugin_atom(dict(p, versions=[]))).getElementsByTagName("entry").length, 0)   # no release yet: an empty feed
+        many = dict(p, versions=[v("1.%d.0" % i, "2026-09-%02d" % (i % 28 + 1)) for i in range(40)])
+        self.assertEqual(len(xml.dom.minidom.parseString(catalog_site.plugin_atom(many)).getElementsByTagName("entry")), 30)
+
+    def test_collection_feed(self):
+        import xml.dom.minidom
+        cat = self.collection_catalog()
+        c = cat["collections"][0]; members = [p for p in cat["plugins"] if p.get("collection") == "pack"]
+        doc = xml.dom.minidom.parseString(catalog_site.collection_atom(c, members, "https://e.io/x/"))
+        titles = [e.getElementsByTagName("title")[0].firstChild.data for e in doc.getElementsByTagName("entry")]
+        self.assertTrue(all(t.startswith("Pack <&>") or t.startswith("Member 3") for t in titles), titles)   # only this collection's releases, none of Solo's
+        self.assertNotIn("Solo 1.0.0", " ".join(titles))
+        self.assertTrue(any("2 plugins updated" in t for t in titles), titles)                              # same-day releases are one entry, as in feed.xml
+        self.assertIn('rel="self" href="https://e.io/x/feed/c/pack.xml"', catalog_site.collection_atom(c, members, "https://e.io/x/"))
+        self.assertEqual(doc.getElementsByTagName("title")[0].firstChild.data, "Pack <&>: releases")
+
+    def test_share_page_advertises_its_feed(self):
+        html = catalog_site.share_page({"id": "a-b", "name": "A <b>", "author": "Z", "summary": "s"})
+        self.assertIn('<link rel="alternate" type="application/atom+xml" title="A &lt;b&gt;: releases" href="../feed/a-b.xml">', html)
+
     def collection_catalog(self):
         v = lambda ver, date, ch="stable": {"version": ver, "date": date, "url": "https://x/%s.zip" % ver, "yanked": False, "channel": ch}
         m = lambda i, vers, col="pack": {"id": "m%d" % i, "name": "Member %d" % i, "author": "Z", "summary": "s%d" % i, "kind": "effect",
@@ -1332,6 +1376,14 @@ class SiteTest(unittest.TestCase):
             self.assertEqual(catalog_build.check_entry(dict(BuildTest.ENTRY, license=lic)), [], lic)
         for lic in ("MIT AND MAME license", "MIT AND", "AND MIT", "MIT WITH Apache-2.0", "MIT Apache-2.0"):
             self.assertTrue(catalog_build.check_entry(dict(BuildTest.ENTRY, license=lic)), lic)
+
+    def test_registry_youtube_line(self):
+        """The optional "youtube" line: a youtube.com or youtu.be https link, validated, and carried into catalog.json."""
+        for good in ("https://www.youtube.com/watch?v=abc123", "https://youtu.be/abc123", "https://youtube.com/playlist?list=PL1", "https://m.youtube.com/watch?v=x1"):
+            self.assertEqual(catalog_build.check_entry(dict(BuildTest.ENTRY, youtube=good)), [], good)
+        for bad in ("http://youtu.be/abc123", "https://evil.example/youtube.com/x", "https://youtube.com.evil.example/x", "https://youtu.be/ a b",
+                    "javascript:alert(1)", "https://www.youtube.com/watch?v=" + "a" * 300, "", 7, None):
+            self.assertTrue(catalog_build.check_entry(dict(BuildTest.ENTRY, youtube=bad)), repr(bad))
 
     def test_registry_role_midi_only_on_an_instrument(self):
         ok = dict(BuildTest.ENTRY, kind="instrument", role="midi")
@@ -1434,10 +1486,10 @@ class PagesTest(unittest.TestCase):
     def test_repo_pages_render_with_nav(self):
         pages = catalog_site.load_pages(os.path.join(HERE, "..", "catalog", "pages"))
         self.assertGreaterEqual(len(pages), 3)
-        self.assertEqual([p["slug"] for p in pages], ["install", "faq", "build", "workflow"])
+        self.assertEqual([p["slug"] for p in pages], ["install", "faq", "build", "workflow", "privacy"])
         for p in pages:
             html = catalog_site.render_page(p, pages)
-            self.assertIn('aria-current="page"', html)
+            if not p.get("hidden"): self.assertIn('aria-current="page"', html)   # a hidden page (Privacy) has no menu entry, only a footer link
             for marker in ("/*NAV*/", "/*TITLE*/", "/*DESC*/", "/*BODY*/", "/*SITE_CSS*/"):
                 self.assertNotIn(marker, html)
         idx = catalog_site.render({"schema": 1, "generated": "x", "plugins": []}, pages)

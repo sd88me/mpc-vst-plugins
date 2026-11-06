@@ -11,7 +11,10 @@
    "kind": "instrument",
    "license": "MIT",
    "summary": "s",
-   "tags": [],
+   "tags": [
+    "synth",
+    "bass"
+   ],
    "source_available": false,
    "distribution": "release",
    "versions": [
@@ -123,7 +126,8 @@
     "screenshot",
     "tested"
    ],
-   "verified_on": []
+   "verified_on": [],
+   "youtube": "https://www.youtube.com/watch?v=abc123"
   },
   {
    "id": "three-only",
@@ -256,7 +260,9 @@
    "kind": "instrument",
    "license": "MIT",
    "summary": "s",
-   "tags": [],
+   "tags": [
+    "reverb"
+   ],
    "source_available": false,
    "distribution": "release",
    "versions": [
@@ -364,7 +370,10 @@
    "kind": "instrument",
    "license": "MIT",
    "summary": "s",
-   "tags": [],
+   "tags": [
+    "synth",
+    "fm"
+   ],
    "source_available": false,
    "distribution": "release",
    "versions": [

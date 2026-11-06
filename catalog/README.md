@@ -18,13 +18,16 @@ Design: `docs/CATALOG.md`. Formats: `docs/CATALOG_SPEC.md`.
    ```json
    { "id": "my-synth", "name": "My Synth", "author": "Your name", "repo": "you/my-synth-vst",
      "kind": "instrument", "license": "MIT", "summary": "One line.",
-     "style": "sampler", "tags": ["rompler"], "screenshot": "optional https URL", "asset_pattern": "*-mpc-armv7.zip" }
+     "style": "sampler", "tags": ["rompler"], "screenshot": "optional https URL", "youtube": "optional https://youtu.be/... link", "asset_pattern": "*-mpc-armv7.zip" }
    ```
    `style` and `tags` (lowercase slugs) feed the site's Style filter and search; pick a short, common word such as
    `synth`, `sampler`, `drum-machine`, `reverb`, `delay`, `utility`. If your license is not on the open-source list but
    the source is public, add `"source_available": true`: the plugin is listed with a "Restricted use" badge and
    its own license text shown. `screenshot` is an `https://` link to an image (a raw GitHub link to a PNG/JPG in your
    repo, pinned to a tag or commit); the card shows it in a 2:1 frame, cropping other shapes. Anything but `https://` is ignored.
+   `youtube` is an optional `https://youtube.com/...` or `https://youtu.be/...` link (a demo video or playlist); the plugin's popup on the catalog
+   page shows a Video button next to "Copy link". Any other address fails the registry check. `tags` are clickable on the cards and drive the Tag
+   filter (the dropdown lists tags used by two or more plugins), so reuse common ones before inventing new ones.
    A plugin that exists for Gen2 (aarch64) only, because its engine can't run on 32-bit ARM, sets `"asset_pattern": "*-mpc-aarch64.zip"` and
    ships just that zip (docs/GEN2.md); it is listed as "Gen2 only".
 3. CI checks the entry and your latest release. Once merged, new releases appear automatically (nightly, or
@@ -44,7 +47,7 @@ credited to different authors are counted separately, so a repo that hosts a few
 
 The card shows the collection's screenshot (or a collage of the members'), how many instruments and effects it holds, and the first few
 members; View all opens a list grouped by kind where people tick members (or Pick all) for the install list. The collection appears under
-each tab its members cover, sorted by its best member tier and total downloads. A release that updates several members on one day is one
+each tab its members cover, sorted by its best member tier and its most downloaded member. A release that updates several members on one day is one
 feed entry. (Live since 2026-11-02.)
 
 Open-source licenses (list in `tools/catalog_build.py`) or public source with `source_available` set. No versions or
@@ -114,7 +117,7 @@ the card: a plugin with no badge is simply in the catalog (the Listed tier), and
 - **Experimental**: no stable release yet (a beta alone counts), or a maintainer capped the entry with `"tier": "experimental"`
   (for example a bulk port nobody has run). Hidden from the default catalog view, shown by the Tier filter.
 
-The default sort ("Recommended") lists featured plugins, then Verified, then Listed. Within a tier, ties go to Verified on both generations, then the newest hardware-test date, then downloads, then name. `"featured": true` in the
+The default sort ("Recommended") lists featured plugins, then Verified, then Listed. Plugins are ordered by evidence points: a Verified plugin with every build tested earns 3 (a Gen1-only plugin tested on Gen1 counts as fully tested, as does a dual Gen1 and Gen2 plugin tested on both), a dual build tested on one generation 1.5, and a Listed plugin 0. Where the catalog shows community reports, each person who reported the newest release working adds 1 (an older release 0.25, a like 0.1), so a handful of independent confirmations can outrank one recorded test. Experimental plugins are always last. Ties go to the newest hardware-test date, then downloads, then name. `"featured": true` in the
 registry entry is a maintainer's pick and is ignored for Experimental plugins. A listing can be capped, never raised, by the
 registry: `"tier"` accepts only `"experimental"`.
 

@@ -20,7 +20,7 @@
   <section class="mast">
     <div>
       <h1>Community plugins for Akai MPC OS</h1>
-      <p>Open VST2 instruments and effects that run natively on standalone MPC and Force, plus addins that extend MPC OS. Each listing links to its source and license and ships as a checksummed release.</p>
+      <p>Open VST2 instruments and effects for standalone MPC and Force, plus addins that extend MPC OS. Every listing links to its source and license and ships as a checksummed release.</p>
     </div>
     <svg class="mpc" viewBox="0 0 560 334" role="img" aria-label="Line drawing of an MPC: screen with four Q-Link encoders and buttons beneath it, a jog wheel below, and sixteen pads on the left">
       <rect class="body" x="4" y="4" width="552" height="326" rx="18"/>
@@ -57,13 +57,13 @@
     <label class="search">Search<input id="q" type="search" placeholder="Name, developer, style or tag"></label>
     <label>Style<select id="f-style"></select></label>
     <label>Developer<select id="f-dev"></select></label>
-    <label>License<select id="f-lic"></select></label>
-    <label>Distribution<select id="f-dist"></select></label>
+    <label>Tag<select id="f-tag"></select></label>
     <label>MPC OS<select id="f-os"></select></label>
     <label>Device<select id="f-gen"></select></label>
     <label>Tier<select id="f-tier"></select></label>
     <label>Sort by<select id="sort"></select></label>
   </div>
+  <div class="tagbar" id="tagbar" hidden></div>
   <div class="status">
     <span id="count" aria-live="polite"></span>
     <span>
@@ -77,7 +77,9 @@
   <p class="empty" id="empty" hidden>No plugins match these filters.</p>
   <div class="modal" id="modal" hidden>
     <div class="modal-in" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <button class="modal-share" type="button" id="modal-share">Copy link</button>
+      <div class="modal-tools"><button class="modal-share" type="button" id="modal-share">Copy link</button>
+      <a class="modal-share" id="modal-video" target="_blank" rel="noopener noreferrer" hidden>&#9654; Video</a>
+      <a class="modal-share" id="modal-follow" type="application/atom+xml" title="Follow this plugin's new releases in a feed reader" hidden>&#128276; Follow updates</a></div>
       <button class="modal-x" type="button" id="modal-x" aria-label="Close">&times;</button>
       <div id="modal-body"></div>
     </div>
@@ -87,7 +89,7 @@
   <details class="install" id="inst" hidden>
     <summary><span id="inst-count"></span><span class="hint">Get the install command</span></summary>
     <div class="body">
-      <p>Needs SSH access as <b>root</b> to your device (a modded unit). Save your project first: the script asks before it stops MPC, installs everything you ticked, and starts MPC once.</p>
+      <p>Needs root SSH access to a modded device. Save your project first: the script asks before stopping MPC, installs everything you ticked, then starts MPC once.</p>
       <label class="ipl">Your device's IP address<input id="ip" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" placeholder="e.g. 192.168.1.20"></label>
       <p class="ipbad" id="ipbad" role="alert" hidden>Use the address as numbers and dots (or a host name): letters, digits, dots and hyphens only.</p>
       <p class="lab">Paste this into a terminal (Terminal on Mac, PowerShell on Windows 10 or later)</p>
@@ -95,14 +97,14 @@
       <div class="actions"><button class="btn-l primary" type="button" id="copy-main">Copy command</button><span class="copied" id="copied" role="status"></span></div>
       <details class="how">
         <summary>Read the script first (recommended)</summary>
-        <p>It is one plain shell script. Download it, read it, check its hash, then run it:</p>
+        <p>One plain shell script. Download it, read it, check its hash, then run it:</p>
         <pre class="cmd"><code id="cmd-review"></code></pre>
         <p class="also" id="hashline"></p>
-        <p class="also"><a id="script-link" href="mpc-store.sh">Open mpc-store.sh in your browser</a>. It only installs what you name, checks each download against the checksum in the catalog, and never restarts MPC without asking.</p>
+        <p class="also"><a id="script-link" href="mpc-store.sh">Open mpc-store.sh in your browser</a>. It installs only what you name, checks each download against the catalog checksum, and asks before restarting MPC.</p>
       </details>
       <details class="how">
         <summary>Other commands</summary>
-        <p class="also">Same first part, different last word: <code>list</code> (what is available and installed), <code>update</code> (newer versions of what you installed with this script), <code>remove &lt;id&gt;</code>, <code>prune</code> (delete old backups of MPC's settings), <code>sync</code> (register plugin folders you copied into Synths by hand).</p>
+        <p class="also">Same start, different last word: <code>list</code> (what is available and installed), <code>update</code> (newer versions of what you installed with this script), <code>remove &lt;id&gt;</code>, <code>prune</code> (delete old backups of MPC's settings), <code>sync</code> (register plugin folders you copied into Synths by hand).</p>
         <pre class="cmd"><code id="cmd-more"></code></pre>
       </details>
     </div>
@@ -110,12 +112,12 @@
   </div>
 
   <div role="tabpanel" id="panel-patches" aria-labelledby="tab-patches" hidden>
-    <p class="tabintro">Advanced and optional. These change the device itself, so they are never part of the plugin install: the installer app lists them read-only, and each is run by hand with the script shown. <a href="patches.html">Open as its own page</a></p>
+    <p class="tabintro">Advanced and optional. These change the device itself, so they are never part of the plugin install. Run each by hand with its script; the installer app only lists them. <a href="patches.html">Open as its own page</a></p>
     /*PATCHES_HTML*/
   </div>
 
   <div role="tabpanel" id="panel-apps" aria-labelledby="tab-apps" hidden>
-    <p class="tabintro">Desktop tools that work alongside a standalone MPC but are not plugins. Nothing here is installed on the device by the catalog: each links to its own release page.</p>
+    <p class="tabintro">Desktop tools for use alongside a standalone MPC. Not plugins, and the catalog installs none of them: each links to its own release page.</p>
     <div class="tools">
       <label class="search">Search<input id="a-q" type="search" placeholder="Name, developer or description"></label>
       <label>Platform<select id="a-plat"><option value="">All platforms</option><option value="macos">macOS</option><option value="windows">Windows</option><option value="linux">Linux</option></select></label>
@@ -126,7 +128,7 @@
 
   <footer>Community-provided software. Installing runs a script as root on your device: check the source and the checksum first. Not affiliated with or endorsed by Akai Professional. Use at your own risk, with no warranty: a plugin or patch can crash MPC, lose unsaved work or, at worst, leave the device needing a reinstall of its OS. Back up first.<br>
     Questions, testing and release news: <a href="https://discord.gg/sRRysZSgu3">Open MPC on Discord</a>.<br>
-    Catalog generated <span id="gen"></span>. <a href="catalog.json">catalog.json</a></footer>
+    Catalog generated <span id="gen"></span>. <a href="catalog.json">catalog.json</a>. <a href="privacy.html">Privacy</a>.</footer>
 </main>
 
 <script id="data" type="application/json">/*CATALOG_JSON*/</script>
@@ -134,7 +136,9 @@
 <script>
 var CAT = JSON.parse(document.getElementById("data").textContent);
 var P = CAT.plugins;
-var state = { tab: "all", q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: [], open: "", coll: "" };
+/* sign-in handoff (community signals): the Worker sends the browser back with #ott=<one-time token>; take it before render() rewrites the hash */
+var OTT = (location.hash.match(/(?:^#|&)ott=([^&]+)/) || [])[1] || "";
+var state = { tab: "all", q: "", style: "", dev: "", tags: [], os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: [], open: "", coll: "" };
 var STORE = JSON.parse(document.getElementById("store").textContent);
 var BY_WARNING = "The result contains firmware-derived data: build it yourself, install it on your own devices only, never share it.";
 var ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -179,10 +183,34 @@ function testedDate(p) {
   if (v) (v.tested || []).forEach(function (t) { if ((t.date || "") > d) d = t.date; });
   return d;
 }
+/* The generations the newest stable release ships: a Gen2 build adds Gen2, a Gen2-only release has no Gen1. */
+function shippedGens(p) {
+  var v = p.versions.filter(function (x) { return !x.yanked && x.channel === "stable"; })[0], g = [];
+  /* an entry limited to devices (registry "devices") ships only for those: a Sample-only addin tested on a Sample is complete, not half verified */
+  if (v && deviceNames(p).length) return p.devices.indexOf("mpc-sample") >= 0 ? ["sample"] : [];
+  if (v) { if (!v.gen2_only) g.push("gen1"); if (v.gen2 || v.gen2_only) g.push("gen2"); }
+  return g;
+}
+/* Evidence points, the Recommended sort's main key (maintainer decision 2026-11-05: independent people reporting it works count for more than the
+   author's own record). A complete Verified plugin (every generation it ships is verified: a Gen1-only build tested on Gen1, a Gen2-only build
+   tested on Gen2, or a dual build tested on both) is worth VERIFIED_POINTS, a dual build verified on one generation half that, Listed 0. The community
+   adds its own points (window.communityScore, set by the community preview: people reporting the newest release working count 1 each, older
+   reports a quarter, likes a tenth), so 4 people confirming beat a Verified badge with no reports, and 2 do not. Experimental always sorts last.
+   Without the preview, or without counts, this is the old order: complete Verified, partly verified, Listed. */
+var VERIFIED_POINTS = 3;
+function verifiedPoints(p) {
+  if (p.coll) return p.vpoints || 0;
+  if (tierOf(p) !== "verified") return 0;
+  var ok = verifiedOn(p);
+  return shippedGens(p).some(function (g) { return ok.indexOf(g) < 0; }) ? VERIFIED_POINTS / 2 : VERIFIED_POINTS;
+}
+function community(p) { return window.communityScore ? window.communityScore(p) : 0; }
+function evidence(p) { return verifiedPoints(p) + community(p); }
+function expLast(p) { return tierOf(p) === "experimental" ? 1 : 0; }
 var SORTS = {
-  /* featured, tier, Verified generations (both before one), newest test date, downloads, then name */
-  recommended: { label: "Recommended",     cmp: function (a, b) { return (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || TIERS[tierOf(a)].rank - TIERS[tierOf(b)].rank ||
-    verifiedOn(b).length - verifiedOn(a).length || testedDate(b).localeCompare(testedDate(a)) || b.downloads - a.downloads || a.name.localeCompare(b.name); }, desc: false },
+  /* featured, experimental last, then evidence points (verification + community reports), newest test date, downloads, then name */
+  recommended: { label: "Recommended",     cmp: function (a, b) { return (b.featured ? 1 : 0) - (a.featured ? 1 : 0) || expLast(a) - expLast(b) ||
+    evidence(b) - evidence(a) || testedDate(b).localeCompare(testedDate(a)) || b.downloads - a.downloads || a.name.localeCompare(b.name); }, desc: false },
   name:      { label: "Name",              cmp: function (a, b) { return a.name.localeCompare(b.name); }, desc: false },
   updated:   { label: "Recently updated",  cmp: function (a, b) { return a.updated.localeCompare(b.updated); }, desc: true },
   added:     { label: "Newest in catalog", cmp: function (a, b) { return (a.added || "").localeCompare(b.added || "") || b.name.localeCompare(a.name); }, desc: true },
@@ -192,6 +220,16 @@ var SORTS = {
 };
 function $(id) { return document.getElementById(id); }
 function esc(s) { return String(s == null ? "" : s).replace(/[&<>"]/g, function (c) { return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+/* Tags: pick one or several (a plugin must carry all of them); the Search box still finds any tag by typing. Tags on 2+ plugins are listed in the
+   dropdown; a tag on one plugin is reachable by clicking it on its card. The choice is part of the URL hash (tags=a,b). */
+var TAGN = {}; P.forEach(function (p) { (p.tags || []).forEach(function (t) { TAGN[t] = (TAGN[t] || 0) + 1; }); });
+function fillTags() {
+  var names = Object.keys(TAGN).filter(function (t) { return TAGN[t] >= 2 && state.tags.indexOf(t) < 0; }).sort(function (a, b) { return TAGN[b] - TAGN[a] || a.localeCompare(b); });
+  $("f-tag").innerHTML = '<option value="">' + (state.tags.length ? "Add another tag" : "Any tag") + '</option>' + names.map(function (t) { return '<option value="' + esc(t) + '">' + esc(t) + ' (' + TAGN[t] + ')</option>'; }).join("");
+  $("f-tag").value = "";
+  $("tagbar").hidden = !state.tags.length;
+  $("tagbar").innerHTML = state.tags.length ? '<span>Tags:</span> ' + state.tags.map(function (t) { return '<button type="button" class="tagx" data-untag="' + esc(t) + '" aria-label="Remove tag ' + esc(t) + '">' + esc(t) + ' &times;</button>'; }).join(" ") + ' <button type="button" class="linkbtn" data-untag="*">Clear tags</button>' : "";
+}
 function uniq(f) { var o = {}; P.forEach(function (p) { var v = f(p); if (v) o[v] = 1; }); return Object.keys(o).sort(); }
 function fillSelect(id, all, values, label) {
   $(id).innerHTML = '<option value="">' + all + '</option>' + values.map(function (v) { return '<option value="' + esc(v) + '">' + esc(label ? label(v) : v) + '</option>'; }).join("");
@@ -201,13 +239,11 @@ var KINDS = { instrument: "Instruments", midi: "MIDI", effect: "Effects", addin:
 /* a plugin with role "midi" is listed under the MIDI tab, not Instruments */
 function inTabKind(p, k) { if (k === "all") return true; return kindsOf(p).some(function (c) { return (c === "instrument" && p.role === "midi" && c === p.kind ? "midi" : c) === k; }); }
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
-fillSelect("f-dist", "Any distribution", ["release", "build-yourself"], function (v) { return v === "release" ? "Download a release zip" : "Build it yourself"; });
 fillSelect("f-tier", "Verified and unverified", TIER_FILTERS, function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "verified-gen1" ? "Verified on Gen1" : v === "verified-gen2" ? "Verified on Gen2" : v === "verified-sample" ? "Verified on MPC Sample" : v === "listed" ? "Not yet verified" : "Experimental only"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
 fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 only"; });
 fillSelect("f-style", "All styles", uniq(function (p) { return p.style; }), title);
 fillSelect("f-dev", "All developers", uniq(function (p) { return p.author; }));
-fillSelect("f-lic", "Any license", ["open", "source-available"], function (v) { return v === "open" ? "Open source" : "Source-available (restricted use)"; });
 $("sort").innerHTML = Object.keys(SORTS).map(function (k) { return '<option value="' + k + '">' + SORTS[k].label + '</option>'; }).join("");
 $("gen").textContent = CAT.generated || "";
 
@@ -262,12 +298,9 @@ function match(p, anyText) {   /* anyText: the search already matched (a collect
   if (PLUGIN_TABS.indexOf(s.tab) >= 0 && !inTabKind(p, s.tab)) return false;
   if (s.tier === "all") {} else if (/^verified-/.test(s.tier)) { if (verifiedOn(p).indexOf(s.tier.slice(9)) < 0) return false; }
   else if (s.tier) { if (tierOf(p) !== s.tier) return false; } else if (tierOf(p) === "experimental") return false;
-  if (s.dist === "build-yourself" && !isBY(p)) return false;
-  if (s.dist === "release" && isBY(p)) return false;
   if (s.style && p.style !== s.style) return false;
   if (s.dev && p.author !== s.dev) return false;
-  if (s.lic === "open" && p.source_available) return false;
-  if (s.lic === "source-available" && !p.source_available) return false;
+  if (s.tags.length) { var pt = p.tags || []; if (!s.tags.every(function (t) { return pt.indexOf(t) >= 0; })) return false; }
   if (s.gen) { var sv = shown(p); if (!sv || !!sv.gen2 !== (s.gen === "gen2")) return false; }
   if (s.os) { var g = osGens(shown(p)); if (!g || (s.os === "2x") !== (g.indexOf("2.x") >= 0)) return false; }
   return true;
@@ -310,7 +343,8 @@ function collItem(c) {
   hit.forEach(function (p) { verifiedOn(p).forEach(function (g) { gens[g] = 1; }); if (testedDate(p) > td) td = testedDate(p); });
   return { coll: c, hit: hit, inTab: inTab, id: c.id, name: c.title, author: c.author, kind: tabKindOf(inTab[0] || hit[0]),
            featured: hit.some(function (p) { return p.featured; }), tier: tierOf(best), verified_on: Object.keys(gens).sort(), testedDate: td,
-           downloads: typeof c.downloads === "number" ? c.downloads : c.mem.reduce(function (n, p) { return n + (p.downloads || 0); }, 0),
+           vpoints: hit.reduce(function (m, p) { return Math.max(m, verifiedPoints(p)); }, 0),
+           downloads: collDownloads(c),
            updated: c.updated || "", added: c.added || "", versions: [] };
 }
 function collShot(c, list, big) {   /* the collection's screenshot, else a collage of up to four members' */
@@ -323,7 +357,7 @@ function collShot(c, list, big) {   /* the collection's screenshot, else a colla
 }
 function collCard(it) {
   /* the members the search or a filter picked out are listed ("2 of 20 match"); hiding experimental ones by default is not a search */
-  var s = state, narrowed = !!(s.q || s.style || s.dev || s.lic || s.dist || s.os || s.gen || (s.tier && s.tier !== "all"));
+  var s = state, narrowed = !!(s.q || s.style || s.dev || s.tags.length || s.os || s.gen || (s.tier && s.tier !== "all"));
   var c = it.coll, href = 'p/c/' + encodeURIComponent(c.id) + '.html', filtered = narrowed && it.hit.length < it.inTab.length, max = filtered ? 8 : 4;
   var tags = ['<span class="tag coll" title="Several plugins from one repo, each with its own release, version and install checkbox">Collection</span>'].concat(tierTags(it));
   var chips = it.hit.slice(0, max).map(function (p) { return '<a class="chip" href="p/' + encodeURIComponent(p.id) + '.html" data-open="' + esc(p.id) + '">' + esc(p.name) + '</a>'; }).join("") +
@@ -331,6 +365,7 @@ function collCard(it) {
   return '<article class="card coll" data-tier="' + tierOf(it) + '" data-collection="' + esc(c.id) + '">' + collShot(c, it.inTab, false) +
     '<header><div><h2><a class="open" href="' + href + '" data-coll="' + esc(c.id) + '">' + esc(c.title) + '</a></h2><div class="by">by ' + esc(c.author) + '</div></div>' +
     '<span class="ver" title="Plugins in this collection">' + it.inTab.length + ' plugins</span></header>' +
+    collBar(c, it.downloads, false) +
     '<div class="tags">' + tags.join("") + '</div><p class="counts">' + esc(kindCount(it.inTab)) + '</p><p>' + esc(c.summary) + '</p>' +
     (filtered ? '<p class="line matchline">' + it.hit.length + ' of ' + it.inTab.length + ' match your search and filters:</p>' : '') +
     '<div class="chips">' + chips + '</div>' +
@@ -353,15 +388,38 @@ function collDetail(c) {
         return '<li class="member" data-tier="' + tierOf(p) + '">' + (canPick(p) ? '<label class="pick"><input type="checkbox" data-pick="' + esc(p.id) + '" aria-label="Add ' + esc(p.name) + ' to install list"' +
           (state.sel.indexOf(p.id) >= 0 ? " checked" : "") + '></label>' : '<span></span>') + '<div><div class="mrow"><a class="nm" href="p/' + encodeURIComponent(p.id) + '.html" data-open="' + esc(p.id) + '">' + esc(p.name) + '</a>' +
           (v ? '<span class="ver">v' + esc(v.version) + (v.channel === "beta" ? " beta" : "") + '</span>' : '<span class="ver">' + (isBY(p) ? "build it yourself" : p.latest_beta ? "beta only" : "no release") + '</span>') + tierTags(p).join("") + '</div>' +
-          '<div class="sum">' + esc(p.summary) + '</div></div></li>';
+          '<div class="sum">' + esc(p.summary) + '</div>' + (window.signalsMember ? signalsMember(p) : '') + '</div></li>';
       }).join("") + '</ul></section>';
   }).join("");
   return '<article class="card big coll" data-tier="' + tierOf(best) + '">' + collShot(c, c.mem, true) +
     '<header><div><h2 id="modal-title">' + esc(c.title) + '</h2><div class="by">by ' + esc(c.author) + '</div></div><span class="ver">' + c.mem.length + ' plugins</span></header>' +
+    collBar(c, collDownloads(c), true) +
     '<div class="tags">' + tags.join("") + '</div><p class="counts">' + esc(kindCount(c.mem)) + '</p><p>' + esc(c.summary) + '</p>' +
-    '<dl class="meta"><dt>Updated</dt><dd>' + esc(c.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + (c.downloads || 0).toLocaleString() + ' (all members)</dd><dt>Source</dt><dd>' + esc(c.repo) + '</dd></dl>' +
-    '<p class="line">Each plugin has its own release and version. Tick the ones you want: they join the install list below the catalog.</p>' + groups +
+    '<dl class="meta"><dt>Updated</dt><dd>' + esc(c.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + collDownloads(c).toLocaleString() + ' (most downloaded plugin)</dd><dt>Source</dt><dd>' + esc(c.repo) + '</dd></dl>' +
+    '<p class="line">Each plugin has its own release and version. Tick the ones you want to add them to the install list below.</p>' + groups +
     '<div class="actions"><a class="btn-l" href="https://github.com/' + esc(c.repo) + '">Source</a></div></article>';
+}
+/* The downloads figure (all versions) in the bar under the title, so it stays visible while the details are folded. With the community preview on, that bar
+   also holds the working count, likes and Works for me; without it, or while the service is down, it is just the downloads. */
+function statBar(n, what, tip) {
+  if (typeof n !== "number") return "";
+  return '<div class="sig stat"><span class="sig-n" title="' + esc(tip) + '"><span aria-hidden="true">&#8681;</span> <strong>' + n.toLocaleString() + '</strong> ' + esc(what) + '</span></div>';
+}
+function plugBar(p, big) {
+  var r = window.signalsTop ? signalsTop(p, big) : "";
+  return r || (isBY(p) ? "" : statBar(p.downloads, "downloads", "Downloads of every version"));
+}
+/* A collection shows its best member's downloads, not the sum: many small plugins would otherwise outrank one popular plugin (same rule as the evidence ranking). */
+function collDownloads(c) { return c.mem.reduce(function (m, p) { return Math.max(m, p.downloads || 0); }, 0); }
+function collBar(c, n, big) {
+  var r = window.signalsColl ? signalsColl(c, big, n) : "";
+  return r || statBar(n, "downloads", "Downloads of the most downloaded plugin in the collection");
+}
+/* what the folded Details line says: who tested it */
+function detailsHint(v) {
+  if (!v) return "";
+  var t = (v.tested || []).map(function (x) { return x.device; }).filter(function (d, i, a) { return d && a.indexOf(d) === i; });
+  return t.length ? "Tested on " + t.join(", ") : "Not yet tested";
 }
 /* The author's one line of extra requirements (release.py --requires: ROMs, a network connection, root SSH), from the shown version. */
 function needsRow(v) { return v && v.requires ? '<dt>Needs</dt><dd>' + esc(v.requires) + '</dd>' : ""; }
@@ -399,7 +457,7 @@ function card(p, big) {
   if (deviceTag(p)) tags.push(deviceTag(p));
   else if (!by && p.kind !== "addin" && genTag(v)) tags.push(genTag(v));
   if (!by && userFiles(v).length) tags.push('<span class="tag warn" title="' + esc("Needs files you supply: " + userFiles(v).map(function (x) { return x.label; }).join(", ")) + '">Needs your own ROM</span>');
-  (p.tags || []).forEach(function (t) { if (!(by && t === "firmware-derived")) tags.push('<span class="tag">' + esc(t) + '</span>'); });
+  (p.tags || []).forEach(function (t) { if (!(by && t === "firmware-derived")) tags.push(big ? '<span class="tag">' + esc(t) + '</span>' : '<button type="button" class="tag tag-btn" data-tag="' + esc(t) + '" title="Show plugins tagged ' + esc(t) + '">' + esc(t) + '</button>'); });
   var hist = p.versions.length ? '<details class="vers"><summary>Versions (' + p.versions.length + ')</summary><table>' + p.versions.map(function (x) {
     var cols = by ? '<td><a href="' + esc(safeUrl(x.source_url)) + '">tag ' + esc(x.tag) + '</a></td>' : '<td>' + size(x.size) + '</td><td title="sha256 ' + esc(x.sha256) + '">' + esc(x.sha256.slice(0, 10)) + '</td>';
     return '<tr class="' + (x.yanked ? "y" : "") + '"><td>v' + esc(x.version) + '</td><td>' + esc(x.date) + '</td><td>' + esc(x.channel) + (x.yanked ? ", yanked" : "") + '</td>' + cols + '</tr>';
@@ -412,7 +470,8 @@ function card(p, big) {
   var head = '<article class="card' + (by ? " by" : "") + (big ? " big" : "") + '" data-tier="' + tierOf(p) + '">' + shot + crumb + '<header><div><h2' + (big ? ' id="modal-title">' + esc(p.name)
     : '><a class="open" href="p/' + encodeURIComponent(p.id) + '.html" data-open="' + esc(p.id) + '">' + esc(p.name) + '</a>') + '</h2><div class="by">by ' + esc(p.author) + '</div></div>' +
     (v ? '<span class="ver" title="Latest ' + (by ? "tag" : esc(v.channel) + " release") + '">v' + esc(v.version) + (v.channel === "beta" ? " beta" : "") + '</span>' : '<span class="ver">' + (by ? "no tag" : "no release") + '</span>') + '</header>' +
-    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>' + hooksLine(p) + barLine(p);
+    plugBar(p, big) +
+    '<div class="tags">' + tags.join("") + '</div><p>' + esc(p.summary) + '</p>' + hooksLine(p) + barLine(p) + (big && window.signalsDetail ? signalsDetail(p) : '');
   if (by) {
     var b = p.build, docs = safeUrl(b.docs_url.replace("{tag}", v ? v.tag : "HEAD"));
     var names = p.requires_user_files.map(function (f) { return esc(f.name); }).join("; ");
@@ -432,8 +491,9 @@ function card(p, big) {
       '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a></div>' + hist + '</article>';
   }
   return head +
+    '<details class="more"' + (big ? " open" : "") + '><summary>Details<span class="hint">' + esc(detailsHint(v)) + '</span></summary>' +
     '<dl class="meta"><dt>Updated</dt><dd>' + esc(p.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + p.downloads.toLocaleString() + '</dd>' + testedRow(v) + needsRow(v) + depsRow(v) + (deviceTag(p) ? '<dt>Devices</dt><dd>' + esc(p.devices.map(function (x) { return DEVICES[x] || x; }).join(", ")) + ' only</dd>' : p.kind !== "addin" ? osRow(v) + genRow(v) : "") + romRow(v) + installRow(p) +
-    (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl>' +
+    (v && p.kind !== "addin" ? '<dt>Projects</dt><dd>Compat ' + v.param_compat + ' (saved projects break only when this changes)</dd>' : '') + '<dt>Source</dt><dd>' + esc(p.repo) + '</dd></dl></details>' +
     '<div class="actions">' + (v && !v.gen2_only && !deviceNames(p).length ? '<a class="btn-l primary" href="' + esc(v.url) + '"' + (v.gen2 ? ' title="MPC Live/One/X/Key and Force (32-bit ARM)"' : '') + '>Download' + (v.gen2 ? ' (Gen1)' : '') + '</a>' : '') +
     (v && v.gen2 && v.assets && v.assets.aarch64 ? '<a class="btn-l primary" href="' + esc(v.assets.aarch64.url) + '" title="' + (deviceNames(p).length ? esc("For the " + deviceNames(p).join(" and ") + " (aarch64)") : 'Gen2 MPC devices (aarch64, MPC OS 3.x)') + '">Download (' + (deviceNames(p).length ? esc(deviceNames(p).join(", ")) : 'Gen2') + ')</a>' : '') +
     '<a class="btn-l" href="https://github.com/' + esc(p.repo) + '">Source</a>' +
@@ -458,7 +518,7 @@ function render() {
   save();
 }
 function url() {
-  var d = { tab: state.tab === "all" ? "" : state.tab, q: state.q, style: state.style, dev: state.dev, lic: state.lic, dist: state.dist, os: state.os, gen: state.gen, tier: state.tier, sort: state.sort === "recommended" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(","), c: state.coll || "", p: state.open || "" }, q = [];
+  var d = { tab: state.tab === "all" ? "" : state.tab, q: state.q, style: state.style, dev: state.dev, tags: state.tags.join(","), os: state.os, gen: state.gen, tier: state.tier, sort: state.sort === "recommended" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(","), c: state.coll || "", p: state.open || "" }, q = [];
   Object.keys(d).forEach(function (k) { if (d[k]) q.push(k + "=" + encodeURIComponent(d[k])); });
   return q.length ? "#" + q.join("&") : location.pathname + location.search;
 }
@@ -471,6 +531,7 @@ function load() {
     var i = kv.indexOf("="); if (i < 0) return;
     var k = kv.slice(0, i), v = decodeURIComponent(kv.slice(i + 1));
     if (k === "rev" || k === "beta") state[k] = v === "1";
+    else if (k === "tags") state.tags = v.split(",").filter(function (t, i, a) { return TAGN[t] && a.indexOf(t) === i; });
     else if (k === "c") state.coll = ID_RE.test(v) && COLL[v] ? v : "";
     else if (k === "p") state.open = ID_RE.test(v) && P.some(function (p) { return p.id === v; }) ? v : "";
     else if (k === "sel") state.sel = v.split(",").filter(function (id) { return ID_RE.test(id) && P.some(function (p) { return p.id === id && !isBY(p); }); });
@@ -510,9 +571,16 @@ addEventListener("hashchange", function () { load(); sync(); render(); showTab(s
 /* Plugin popup: the screenshot opens the card over a dark backdrop. Its link is the page's hash plus p=<catalog id> (ids never
    change), so it can be shared; Back, Escape, the backdrop and the close button all close it. */
 var pushed = 0, returnTo = null;   /* pushed: popup states this page added to the history (a member opened from a collection is two) */
+var YT_RE = /^https:\/\/(www\.|m\.|music\.)?youtube\.com\/[^\s]+$|^https:\/\/youtu\.be\/[^\s]+$/;
 function modal() {
   var p = state.open && BYID[state.open], c = !p && state.coll && COLL[state.coll];
   $("modal-body").innerHTML = p ? card(p, true) : c ? collDetail(c) : "";
+  var yt = p && typeof p.youtube === "string" && YT_RE.test(p.youtube) ? p.youtube : "";   /* the catalog's optional youtube line */
+  $("modal-video").hidden = !yt; if (yt) $("modal-video").href = yt;
+  var fl = p && ID_RE.test(p.id) && p.versions.length > 0;   /* feed/<id>.xml: this plugin's releases (tools/catalog_site.py plugin_atom) */
+  var fc = !p && c && ID_RE.test(c.id);                       /* feed/c/<id>.xml: the collection's releases (collection_atom) */
+  $("modal-follow").hidden = !(fl || fc); if (fl) $("modal-follow").href = "feed/" + encodeURIComponent(p.id) + ".xml"; else if (fc) $("modal-follow").href = "feed/c/" + encodeURIComponent(c.id) + ".xml";
+  if (window.signalsModal) signalsModal(fl ? p : null, fc ? c : null);   /* the community preview turns Follow into a toggle */
   $("modal").hidden = !(p || c);
   document.body.classList.toggle("modal-open", !!(p || c));
   if (p || c) $("modal-x").focus();
@@ -581,13 +649,16 @@ function filterApps() {
   $("a-empty").hidden = n > 0;
 }
 $("a-q").addEventListener("input", filterApps); $("a-plat").addEventListener("change", filterApps);
-var map = { "q": "q", "f-style": "style", "f-dev": "dev", "f-lic": "lic", "f-dist": "dist", "f-os": "os", "f-gen": "gen", "f-tier": "tier", "sort": "sort" };
+var map = { "q": "q", "f-style": "style", "f-dev": "dev", "f-os": "os", "f-gen": "gen", "f-tier": "tier", "sort": "sort" };
 Object.keys(map).forEach(function (id) { $(id).addEventListener(id === "q" ? "input" : "change", function () { state[map[id]] = $(id).value; if (id === "sort") state.rev = false; render(); }); });
+$("f-tag").addEventListener("change", function () { var t = $("f-tag").value; if (t && state.tags.indexOf(t) < 0) state.tags.push(t); fillTags(); render(); });
+$("tagbar").addEventListener("click", function (e) { var b = e.target.closest("[data-untag]"); if (!b) return; var t = b.getAttribute("data-untag"); state.tags = t === "*" ? [] : state.tags.filter(function (x) { return x !== t; }); fillTags(); render(); });
+$("grid").addEventListener("click", function (e) { var b = e.target.closest("[data-tag]"); if (!b) return; var t = b.getAttribute("data-tag"); if (TAGN[t] && state.tags.indexOf(t) < 0) state.tags.push(t); fillTags(); render(); });
 $("show-exp").addEventListener("click", function () { state.tier = "all"; sync(); render(); });
 $("beta").addEventListener("change", function () { state.beta = $("beta").checked; render(); });
 $("dir").addEventListener("click", function () { state.rev = !state.rev; render(); });
-$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", style: "", dev: "", lic: "", dist: "", os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: state.sel, open: "", coll: "" }; sync(); render(); });
-function sync() { Object.keys(map).forEach(function (id) { $(id).value = state[map[id]]; }); $("beta").checked = state.beta; }
+$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", style: "", dev: "", tags: [], os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: state.sel, open: "", coll: "" }; sync(); render(); });
+function sync() { Object.keys(map).forEach(function (id) { $(id).value = state[map[id]]; }); $("beta").checked = state.beta; fillTags(); }
 load(); sync(); render(); showTab(state.tab); filterApps(); modal();
 
 /* Install command: ssh into the device, download mpc-store.sh from this site, run it. The plugin ids are validated above and the
@@ -646,6 +717,397 @@ put("sbtns", h);
 var lit = { 1: "on", 2: "on", 6: "alt", 9: "on", 11: "on pulse", 14: "alt" };
 h = ""; for (i = 0; i < 16; i++) { var r = Math.floor(i / 4), c = i % 4; h += '<rect class="pad ' + (lit[i] || "") + '" x="' + (26 + c * 63) + '" y="' + (26 + r * 71) + '" width="57" height="65" rx="5"/>'; }
 put("pads", h);
+</script>
+<script>
+/* Community signals (docs/COMMUNITY_SIGNALS.md): reported-working count, likes, sign-in and, in the plugin popup, who reported what plus the
+   plugin repo's open GitHub issues. Preview: only when the page is opened with ?signals=1. Nothing here is needed to browse; if the service
+   is down the cards simply show no counts. The token lives in localStorage only and is sent to nothing but the service. GitHub is read
+   straight from the browser (no token), on demand, cached for ten minutes. */
+(function () {
+  /* Preview switch: ?signals=1 turns it on and the browser remembers it (sign-in comes back to the page address without its query string);
+     ?signals=0 turns it off again. Removed together with the gate when the preview ends. */
+  var PREVIEW = "openmpc-signals-preview", on = false;
+  try {
+    if (/(^|[?&])signals=1(&|$)/.test(location.search)) localStorage.setItem(PREVIEW, "1");
+    else if (/(^|[?&])signals=0(&|$)/.test(location.search)) localStorage.removeItem(PREVIEW);
+    on = localStorage.getItem(PREVIEW) === "1";
+  } catch (e) { on = /(^|[?&])signals=1(&|$)/.test(location.search); }
+  if (!on) return;
+  var API = String(window.__SIGNALS_API || "https://openmpc-signals.open-mpc.workers.dev").replace(/\/$/, "");
+  var TOKEN = "openmpc-signals-token", LAST = "openmpc-signals-last", GH = "openmpc-gh:", REPO_RE = /^[\w.-]+\/[\w.-]+$/;
+  var DEVICES = ["MPC Live", "MPC Live II", "MPC Live III", "MPC One", "MPC One+", "MPC X", "MPC Key 37", "MPC Key 61", "Force"];
+  var counts = null, me = null, token = null, details = {}, toastTimer = 0;
+  function keep(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} return null; }
+  token = keep(TOKEN);
+  function call(method, path, body) {
+    var h = { "content-type": "application/json" }; if (token) h.authorization = "Bearer " + token;
+    return fetch(API + path, { method: method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) }).then(function (r) {
+      return r.text().then(function (t) { var d = null; try { d = JSON.parse(t); } catch (e) {} return { status: r.status, data: d, token: r.headers.get("set-auth-token") }; });
+    });
+  }
+  function blank() { return { working: 0, likes: 0, versions: {} }; }
+  /* A collection shows its best plugin's figures, not a sum: a set of 22 would always beat a single plugin, and one person confirming three members
+     would count three times. working and likes are the highest of any member, covered is how many members have any report or like. */
+  function collAgg(c) {
+    var o = { working: 0, likes: 0, versions: {}, covered: 0, n: c.mem.length, top: "" };
+    c.mem.forEach(function (q) {
+      var x = counts && counts[q.id]; if (!x) return;
+      if (x.working > o.working) { o.working = x.working; o.top = q.name; }
+      if (x.likes > o.likes) o.likes = x.likes;
+      if (x.working || x.likes) o.covered++;
+    });
+    return o;
+  }
+  function sig(p) { return p.coll ? collAgg(p.coll) : (counts && counts[p.id]) || blank(); }
+  function newest(p) { var v = p.versions.filter(function (x) { return !x.yanked && x.channel === "stable"; })[0]; return v ? v.version : ""; }
+  function issueUrl(p) {
+    var v = newest(p), body = "Plugin: " + p.name + (v ? " " + v : "") + "\nDevice:\nMPC OS:\n\nWhat happened:\n";
+    return "https://github.com/" + p.repo + "/issues/new?title=" + encodeURIComponent(p.name + ": ") + "&body=" + encodeURIComponent(body);
+  }
+  function myReports(id) { return me ? me.reports.filter(function (r) { return r.plugin_id === id; }) : []; }
+  function liked(id) { return !!me && me.likes.indexOf(id) >= 0; }
+  function bump(id) { return counts[id] || (counts[id] = blank()); }
+  function failed(r) { return (r.data && r.data.error) || "Something went wrong; try again later."; }
+
+  /* ---- the strip under the title bar of every card (and the popup) ---- */
+  window.signalsMember = function (p) { return signalsTop(p, false, true); };   /* a collection's member row */
+  window.signalsColl = function (c, big, downloads) {
+    if (!counts) return "";
+    var a = collAgg(c);
+    return '<div class="sig" data-sig-coll="' + esc(c.id) + '">' +
+      '<span class="sig-n" title="' + esc("The most people to confirm any one plugin in this set works on their device" + (a.top ? " (" + a.top + ")" : "") + ". Community reports, not hardware verification.") + '"><span aria-hidden="true">&#10003;</span> <strong>' + a.working + '</strong> working</span>' +
+      '<span class="sig-v" title="The most likes on any one plugin in this set">&#9825; ' + a.likes + '</span>' +
+      (typeof downloads === "number" ? '<span class="sig-v" title="Downloads of the most downloaded plugin in the collection">&#8681; ' + downloads.toLocaleString() + '</span>' : '') +
+      '<span class="sig-v sig-line">Best of ' + a.n + ' plugins, ' + a.covered + ' with reports.' + (big ? " Report on each plugin below." : "") + '</span></div>';
+  };
+  window.signalsTop = function (p, big, mini) {
+    if (!counts || p.coll || !ID_RE.test(p.id)) return "";
+    var c = sig(p), mine = myReports(p.id).length, on = liked(p.id);
+    /* one row: the readouts on the left, the two buttons together on the right */
+    return '<div class="sig' + (mini ? " mini" : "") + '" data-sig="' + esc(p.id) + '"><span class="sig-read">' +
+      '<span class="sig-n" title="People who confirmed this plugin works on their own device. Community reports, not hardware verification."><span aria-hidden="true">&#10003;</span> <strong>' + c.working + '</strong> working</span>' +
+      (mini || typeof p.downloads !== "number" ? "" : '<span class="sig-v" title="Downloads of every version"><span aria-hidden="true">&#8681;</span> ' + p.downloads.toLocaleString() + '</span>') +
+      '</span><span class="sig-acts">' +
+      '<button type="button" class="sig-like" data-sig-like="' + esc(p.id) + '" aria-pressed="' + on + '" aria-label="Like (' + c.likes + ' likes)" title="Like">' + (on ? "&#9829;" : "&#9825;") + ' ' + c.likes + '</button>' +
+      '<button type="button" class="sig-btn' + (mine ? " done" : "") + '" data-sig-work="' + esc(p.id) + '"' + (mine ? ' title="You reported this plugin as working"' : "") + '>' + (mine ? "Reported &#10003;" : "Works for me") + '</button></span></div>';
+  };
+
+  /* ---- the Community section of the popup ---- */
+  window.signalsDetail = function (p) {
+    if (!counts || p.coll || !ID_RE.test(p.id)) return "";
+    return '<section class="sig-detail" data-sig-detail="' + esc(p.id) + '"><h3>Community</h3><div class="sig-comm"><p class="sig-note">Loading reports...</p></div>' +
+      '<h3>Issues on GitHub</h3><div class="sig-gh"><p class="sig-note">Loading issues...</p></div></section>';
+  };
+  function fetchDetail(id) {
+    if (details[id]) return Promise.resolve(details[id]);
+    return fetch(API + "/api/plugin?id=" + encodeURIComponent(id)).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) { if (d) details[id] = d; return d; }, function () { return null; });
+  }
+  /* Which version an issue belongs to: the newest known version its title or body names (the prefilled "Report an issue" text does), else the
+     newest release that existed on the day it was opened ("by date", shown as such). */
+  function matchVersion(p, issue) {
+    var order = p.versions.map(function (v) { return v.version; }), text = String(issue.title || "") + " " + String(issue.body || "").slice(0, 2000), best = -1, m, re = /v?(\d+\.\d+\.\d+(?:-[\w.]+)?)/g;
+    while ((m = re.exec(text))) {
+      var pre = text.charAt(m.index - 1), at = order.indexOf(m[1]);
+      if (/[\d.]/.test(pre) || at < 0) continue;
+      if (best < 0 || at < best) best = at;
+    }
+    if (best >= 0) return { v: order[best], by: "text" };
+    var d = String(issue.created_at || "").slice(0, 10);
+    for (var k = 0; k < p.versions.length; k++) if ((p.versions[k].date || "") <= d) return { v: order[k], by: "date" };
+    return order.length ? { v: order[order.length - 1], by: "date" } : { v: "", by: "" };
+  }
+  function fetchGh(p) {
+    var repo = p.repo; if (!REPO_RE.test(repo)) return Promise.resolve(null);
+    var key = GH + "v2:" + repo + "@" + (p.versions[0] ? p.versions[0].version : "");
+    try { var hit = JSON.parse(sessionStorage.getItem(key) || "null"); if (hit && Date.now() - hit.t < 600000) return Promise.resolve(hit.v); } catch (e) {}
+    var get = function (path) { return fetch("https://api.github.com/repos/" + repo + path, { headers: { accept: "application/vnd.github+json" } }).then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); }); };
+    return get("").then(function (info) {
+      var out = { has_issues: !!info.has_issues, has_discussions: !!info.has_discussions, issues: [], capped: false };
+      var done = function () { try { sessionStorage.setItem(key, JSON.stringify({ t: Date.now(), v: out })); } catch (e) {} return out; };
+      if (!out.has_issues) return done();
+      /* open and closed together, newest first. GitHub's own open_issues_count includes pull requests, so the counts come from this list. */
+      return get("/issues?state=all&per_page=50").then(function (list) {
+        out.capped = list.length >= 50;
+        out.issues = list.filter(function (i) { return !i.pull_request; }).map(function (i) {
+          var m = matchVersion(p, i);
+          return { n: i.number, title: String(i.title || ""), url: i.html_url, comments: i.comments || 0, date: String(i.created_at || "").slice(0, 10), closed: i.state === "closed" ? String(i.closed_at || "").slice(0, 10) || "closed" : "", v: m.v, by: m.by };
+        });
+        return done();
+      });
+    }).catch(function () { return null; });
+  }
+  function byVersion(g) { var o = {}; (g && g.issues || []).forEach(function (i) { (o[i.v] = o[i.v] || []).push(i); }); return o; }
+  function states(list) { var o = { open: 0, closed: 0 }; list.forEach(function (i) { o[i.closed ? "closed" : "open"]++; }); return o; }
+  function stateText(c) { return (c.open ? c.open + " open" : "") + (c.open && c.closed ? " &middot; " : "") + (c.closed ? c.closed + " closed" : ""); }
+  function issueLi(i) {
+    return '<li' + (i.closed ? ' class="sig-closed"' : '') + '><a href="' + esc(safeUrl(i.url)) + '" target="_blank" rel="noopener">' + esc(i.title) + '</a> <span class="sig-v">#' + i.n + ' &middot; ' + (i.closed ? 'closed ' + esc(i.closed) : 'open') + ' &middot; ' + i.comments + (i.comments === 1 ? " comment" : " comments") + ' &middot; opened ' + esc(i.date) +
+      (i.by === "date" ? ' &middot; <span title="The issue names no version, so it is placed under the newest release on the day it was opened.">placed by date</span>' : '') + '</span></li>';
+  }
+  function openFirst(list) { return list.slice().sort(function (a, b) { return (a.closed ? 1 : 0) - (b.closed ? 1 : 0); }); }   /* stable: newest first within each */
+  function renderComm(p, d) {
+    if (!d) return '<p class="sig-note">Reports are not available right now.</p>';
+    var nv = newest(p), mine = myReports(p.id);
+    var h = '<p class="sig-head"><strong>' + d.working + '</strong> ' + (d.working === 1 ? "person" : "people") + ' reported working' + (nv && d.versions[nv] ? ' <span class="sig-v">&middot; ' + d.versions[nv] + ' on v' + esc(nv) + '</span>' : '') + ' <span class="sig-v">&middot; &#9829; ' + d.likes + '</span></p>';
+    if (!d.working) h += '<p class="sig-note">No reports yet. Be the first to say it works on your device.</p>';
+    if (d.devices.length) h += '<table class="sig-table"><caption>Reported on</caption>' + d.devices.map(function (x) { return '<tr><td>' + esc(x.device) + '</td><td>OS ' + esc(x.os) + '</td><td>' + x.n + (x.n === 1 ? " person" : " people") + '</td></tr>'; }).join("") + '</table>';
+    if (d.recent.length) h += '<table class="sig-table"><caption>Latest reports</caption>' + d.recent.map(function (x) { return '<tr><td>' + esc(x.date) + '</td><td>v' + esc(x.version) + '</td><td>' + esc(x.device) + ', OS ' + esc(x.os) + '</td></tr>'; }).join("") + '</table>';
+    if (mine.length) h += '<p class="sig-note">Your reports:</p><ul class="sig-mine">' + mine.map(function (r, i) { return '<li>v' + esc(r.version) + ', ' + esc(r.device) + ', OS ' + esc(r.os) + ' <button type="button" class="linkbtn" data-sig-wd="' + i + '">Withdraw</button></li>'; }).join("") + '</ul>';
+    return h + '<p class="sig-note">Community reports, not hardware verification. The Tested on line above is the author\'s own record. Releases of this plugin: <a href="feed/' + encodeURIComponent(p.id) + '.xml">RSS feed</a>.</p>';
+  }
+  function renderGh(p, g) {
+    var all = "https://github.com/" + p.repo + "/issues", links = '<p class="sig-links"><a class="btn-l" href="' + esc(issueUrl(p)) + '" target="_blank" rel="noopener">Report an issue</a> <a href="' + esc(all) + '" target="_blank" rel="noopener">All issues</a>' +
+      (g && g.has_discussions ? ' <a href="https://github.com/' + esc(p.repo) + '/discussions" target="_blank" rel="noopener">Discussions</a>' : '') + '</p>';
+    if (!g) return '<p class="sig-note">Could not load issues from GitHub just now. <a href="' + esc(all) + '" target="_blank" rel="noopener">Open the issues page</a> or <a href="' + esc(issueUrl(p)) + '" target="_blank" rel="noopener">report an issue</a>.</p>';
+    if (!g.has_issues) return '<p class="sig-note">The author has turned Issues off for this repository. Ask in the <a href="https://discord.gg/sRRysZSgu3">Open MPC Discord</a> instead.</p>' + (g.has_discussions ? '<p><a href="https://github.com/' + esc(p.repo) + '/discussions" target="_blank" rel="noopener">Discussions on GitHub</a></p>' : '');
+    var groups = byVersion(g), n = g.issues.length, tot = states(g.issues);
+    if (!n) return '<p class="sig-note">No issues yet.</p>' + links;
+    var cap = g.capped ? ' <span class="sig-v">(the latest 50 issues and pull requests)</span>' : '';
+    if (!p.versions.length) return '<p>' + stateText(tot) + ' issues.' + cap + '</p><ul class="sig-issues">' + openFirst(g.issues).slice(0, 8).map(issueLi).join("") + '</ul>' + links;   /* no version list to attach them to */
+    var parts = p.versions.map(function (v) { return groups[v.version] ? 'v' + esc(v.version) + ' (' + stateText(states(groups[v.version])) + ')' : ""; }).filter(Boolean).join(", ");
+    return '<p>' + stateText(tot) + ' ' + (n === 1 ? "issue" : "issues") + ' by version: ' + parts + '. <button type="button" class="linkbtn" data-sig-showvers>Show them in the version history</button>' + cap + '</p>' + links;
+  }
+  /* the version history under the details: each row gets its downloads, working count and issues (open and closed), which expand under the row */
+  function enhanceVersions(p, d, g) {
+    var det = $("modal-body").querySelector("details.vers"); if (!det || det.hasAttribute("data-sig-done")) return;
+    det.setAttribute("data-sig-done", "1");
+    var groups = byVersion(g), all = { open: 0, closed: 0 }, dl = {}; p.versions.forEach(function (v) { dl[v.version] = v.downloads; });
+    det.querySelectorAll("table tr").forEach(function (tr) {
+      var v = tr.firstElementChild ? tr.firstElementChild.textContent.replace(/^v/, "") : "", issues = groups[v] || [], st = states(issues);
+      tr.insertAdjacentHTML("beforeend", '<td class="sig-vc">' + (typeof dl[v] === "number" ? dl[v].toLocaleString() + ' downloads' : '') + '</td><td class="sig-vc">' + (d ? (d.versions[v] || 0) + ' working' : '') + '</td><td class="sig-vc">' +
+        (issues.length ? '<button type="button" class="linkbtn" data-sig-vi="' + esc(v) + '" aria-expanded="false">' + stateText(st) + '</button>' : (g && g.has_issues ? 'no issues' : '')) + '</td>');
+      if (issues.length) { all.open += st.open; all.closed += st.closed; tr.insertAdjacentHTML("afterend", '<tr class="sig-vi" hidden><td colspan="9"><ul class="sig-issues">' + openFirst(issues).map(issueLi).join("") + '</ul></td></tr>'); }
+    });
+    if (all.open || all.closed) det.querySelector("summary").insertAdjacentHTML("beforeend", ' <span class="sig-v">&middot; ' + stateText(all) + ' ' + (all.open + all.closed === 1 ? "issue" : "issues") + '</span>');
+  }
+  function fill() {
+    var el = $("modal-body").querySelector("[data-sig-detail]:not([data-filled])"); if (!el) return;
+    el.setAttribute("data-filled", "1"); var p = BYID[el.getAttribute("data-sig-detail")]; if (!p) return;
+    var dp = fetchDetail(p.id).then(function (d) { var t = el.querySelector(".sig-comm"); if (t) t.innerHTML = renderComm(p, d); return d; });
+    var gp = fetchGh(p).then(function (g) { var t = el.querySelector(".sig-gh"); if (t) t.innerHTML = renderGh(p, g); return g; });
+    Promise.all([dp, gp]).then(function (r) { if (document.body.contains(el)) enhanceVersions(p, r[0], r[1]); });
+  }
+  new MutationObserver(fill).observe($("modal-body"), { childList: true });
+  function repaintPopup() {
+    if ($("modal").hidden) return;
+    var top = $("modal").scrollTop;
+    if (state.open && BYID[state.open]) $("modal-body").innerHTML = card(BYID[state.open], true);
+    else if (state.coll && COLL[state.coll]) $("modal-body").innerHTML = collDetail(COLL[state.coll]);
+    else return;
+    $("modal").scrollTop = top;
+  }
+
+  /* the Recommended sort adds this to the verification points: people reporting the newest release working (1 each), people who only reported
+     older releases (a quarter), and likes (a tenth) */
+  window.communityScore = function (p) {
+    if (!counts) return 0;
+    var one = function (q) {
+      var c = counts[q.id]; if (!c) return 0;
+      var nv = newest(q), nw = (nv && c.versions[nv]) || 0;
+      return nw + 0.25 * Math.max(0, c.working - nw) + 0.1 * c.likes;
+    };
+    return p.coll ? p.hit.reduce(function (m, q) { return Math.max(m, one(q)); }, 0) : one(p);   /* a collection counts as its best matching plugin */
+  };
+  /* ---- follow a plugin: a toggle in the popup (the same button is a plain link to the plugin's feed when signed out of the preview or the service is down) ---- */
+  function following(id) { return !!me && (me.follows || []).indexOf(id) >= 0; }
+  function followingAll(c) { return c.mem.length > 0 && c.mem.every(function (q) { return following(q.id); }); }
+  window.signalsModal = function (p, c) { paintFollow(p, c); };
+  function paintFollow(p, c) {
+    var a = $("modal-follow"); if (!a) return;
+    if (c && !p && counts !== null) {   /* a collection: follow every member */
+      var all = followingAll(c); a.setAttribute("aria-pressed", String(all)); a.setAttribute("role", "button");
+      a.textContent = all ? "\uD83D\uDD14 Following all " + c.mem.length : "\uD83D\uDD14 Follow all " + c.mem.length;
+      a.title = all ? "You follow every plugin in this collection. Press to stop following them all." : "Follow every plugin in this collection: their releases appear in your personal feed.";
+      return;
+    }
+    if (!p || counts === null) { a.removeAttribute("aria-pressed"); a.textContent = "\uD83D\uDD14 Follow updates"; return; }
+    var on = following(p.id); a.setAttribute("aria-pressed", String(on)); a.setAttribute("role", "button");
+    a.textContent = on ? "\uD83D\uDD14 Following" : "\uD83D\uDD14 Follow";
+    a.title = on ? "You hear about this plugin's new releases in your personal feed. Press to stop." : "Follow this plugin's new releases: they appear in your personal feed.";
+  }
+  function toggleFollow(id) {
+    if (!me) { signInDialog(); return; }
+    var on = !following(id);
+    call(on ? "POST" : "DELETE", "/api/follow", { plugin: id }).then(function (x) {
+      if (x.status !== 200) { say(failed(x)); return; }
+      me.follows = me.follows || [];
+      if (on) { me.follows.push(id); if (x.data && x.data.feedUrl) me.feedUrl = x.data.feedUrl; say("Following " + BYID[id].name + ". Your feed address is under your name, Following and my feed."); }
+      else me.follows = me.follows.filter(function (q) { return q !== id; });
+      paintFollow(BYID[id]); if (dlg.open && dlg.dataset.kind === "follows") followsDialog();
+    });
+  }
+  function toggleFollowColl(c) {
+    if (!me) { signInDialog(); return; }
+    var on = !followingAll(c), ids = c.mem.map(function (q) { return q.id; }).filter(function (id) { return following(id) !== on; }), last = null;
+    ids.reduce(function (chain, id) {   /* one request after another: each follow is its own small write */
+      return chain.then(function (ok) {
+        if (!ok) return false;
+        return call(on ? "POST" : "DELETE", "/api/follow", { plugin: id }).then(function (x) {
+          if (x.status !== 200) { say(failed(x)); return false; }
+          me.follows = me.follows || [];
+          if (on) { me.follows.push(id); if (x.data && x.data.feedUrl) me.feedUrl = x.data.feedUrl; } else me.follows = me.follows.filter(function (q) { return q !== id; });
+          return true;
+        });
+      });
+    }, Promise.resolve(true)).then(function (ok) {
+      if (ok) say(on ? "Following all " + c.mem.length + " plugins of " + c.title + ". Your feed address is under your name, Following and my feed." : "Stopped following the plugins of " + c.title + ".");
+      paintFollow(null, c); if (dlg.open && dlg.dataset.kind === "follows") followsDialog();
+    });
+  }
+  $("modal-follow").addEventListener("click", function (e) {
+    if (counts === null) return;   /* no service: it stays a plain link to the feed */
+    if (state.open && BYID[state.open]) { e.preventDefault(); toggleFollow(state.open); }
+    else if (state.coll && COLL[state.coll]) { e.preventDefault(); toggleFollowColl(COLL[state.coll]); }
+  });
+  function followsDialog() {
+    var f = (me && me.follows) || [];
+    open('<h2>Following and my feed</h2>' + (f.length
+      ? '<p>New releases of the plugins you follow appear in your personal feed. Add this address to a feed reader. Anyone who has the address can read your list of followed plugins, so keep it private; regenerate it to cancel the old one.</p>' +
+        '<label>Your feed address<input id="sig-feed" readonly value="' + esc(me.feedUrl || "") + '"></label>' +
+        '<div class="actions"><button type="button" class="btn-l primary" data-sig-copy>Copy address</button><button type="button" class="btn-l" data-sig-rotate>Regenerate address</button></div>' +
+        '<h3>You follow</h3><ul class="sig-mine">' + f.map(function (id) { return '<li>' + esc(BYID[id] ? BYID[id].name : id) + ' <button type="button" class="linkbtn" data-sig-unfollow="' + esc(id) + '">Unfollow</button></li>'; }).join("") + '</ul>'
+      : '<p>You are not following any plugins yet. Press Follow in a plugin\'s popup to hear about its new releases.</p>') +
+      '<div class="actions"><button type="button" class="btn-l" data-sig-close>Close</button></div><p class="sig-err" id="sig-err" role="alert"></p>');
+    dlg.dataset.kind = "follows";
+  }
+  /* ---- sorts, only once the counts are known ---- */
+  function addSorts() {
+    SORTS.working = { label: "Most reported working", cmp: function (a, b) { return (sig(a).working - sig(b).working) || a.name.localeCompare(b.name); }, desc: true };
+    SORTS.likes = { label: "Most liked", cmp: function (a, b) { return (sig(a).likes - sig(b).likes) || a.name.localeCompare(b.name); }, desc: true };
+    var cur = $("sort").value;
+    $("sort").innerHTML = Object.keys(SORTS).map(function (k) { return '<option value="' + k + '">' + SORTS[k].label + '</option>'; }).join("");
+    $("sort").value = SORTS[cur] ? cur : "recommended";
+  }
+
+  /* ---- the account button in the sticky header, and a short message line ---- */
+  var li = document.createElement("li"), acct = document.createElement("div"); acct.className = "sig-acct"; li.appendChild(acct);
+  var navList = document.querySelector(".bar nav ul"); if (navList) navList.appendChild(li);
+  var toast = document.createElement("div"); toast.id = "sig-toast"; toast.className = "sig-toast"; toast.setAttribute("role", "status"); toast.hidden = true; document.body.appendChild(toast);
+  function say(t) { toast.textContent = t; toast.hidden = !t; clearTimeout(toastTimer); if (t) toastTimer = setTimeout(function () { toast.hidden = true; }, 7000); }
+  function paintAcct() {
+    acct.innerHTML = me
+      ? '<button type="button" class="sig-who" id="sig-who" aria-haspopup="true" aria-expanded="false">' + esc(me.user.name) + ' &#9662;</button><div class="sig-menu" id="sig-menu" hidden><button type="button" id="sig-follows">Following and my feed</button><button type="button" id="sig-out">Sign out</button><button type="button" id="sig-del">Delete my account</button></div>'
+      : '<button type="button" class="sig-btn sig-primary" id="sig-in">Sign in</button>';
+  }
+  function refresh() { paintAcct(); render(); repaintPopup(); 
+    var pf = $("modal-follow") && !$("modal-follow").hidden;
+    if (pf && state.open && BYID[state.open]) paintFollow(BYID[state.open]); else if (pf && state.coll && COLL[state.coll]) paintFollow(null, COLL[state.coll]); else paintFollow(null); }
+  function closeMenu() { var m = $("sig-menu"); if (m) { m.hidden = true; $("sig-who").setAttribute("aria-expanded", "false"); } }
+  function forget() { token = null; me = null; keep(TOKEN, null); details = {}; }
+  acct.addEventListener("click", function (e) {
+    var t = e.target.closest("button"); if (!t) return;
+    if (t.id === "sig-in") signInDialog();
+    else if (t.id === "sig-who") { var m = $("sig-menu"); m.hidden = !m.hidden; t.setAttribute("aria-expanded", String(!m.hidden)); }
+    else if (t.id === "sig-follows") { closeMenu(); followsDialog(); }
+    else if (t.id === "sig-out") { call("POST", "/api/auth/sign-out", {}).then(function () {}, function () {}); forget(); say("Signed out."); refresh(); }
+    else if (t.id === "sig-del") {
+      closeMenu();
+      if (confirm("Delete your account and every report and like it made? This cannot be undone.")) call("DELETE", "/api/me", { confirm: "delete my account" }).then(function (x) {
+        if (x.status !== 200) { say(failed(x)); return; }
+        forget(); loadCounts().then(function () { say("Your account was deleted."); refresh(); });
+      });
+    }
+  });
+  document.addEventListener("click", function (e) { if (!e.target.closest(".sig-acct")) closeMenu(); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeMenu(); });
+
+  /* ---- dialogs ---- */
+  var dlg = document.createElement("dialog"); dlg.id = "sig-dialog"; dlg.className = "sig-dialog"; document.body.appendChild(dlg);
+  dlg.addEventListener("click", function (e) { if (e.target === dlg) dlg.close(); });
+  function open(html) { dlg.innerHTML = html; if (!dlg.open) dlg.showModal(); }
+  function signInDialog() {
+    open('<h2>Sign in</h2><ul class="sig-points"><li>Report that a plugin works, like it, follow updates.</li><li>We keep your provider, its id and your email.</li><li>Browsing needs no account. <a href="privacy.html">Privacy</a>.</li></ul>' +
+      '<div class="actions"><button type="button" class="btn-l primary" data-sig-provider="discord">Discord</button><button type="button" class="btn-l primary" data-sig-provider="google">Google</button><button type="button" class="btn-l primary" data-sig-provider="github">GitHub</button><button type="button" class="btn-l" data-sig-close>Cancel</button></div>');
+  }
+  /* A normal navigation to the service, not a fetch: the OAuth "state" cookie has to be set while the browser is on the service's own site
+     (github.io and workers.dev are different sites, so a cross-site fetch cannot keep it and the provider's return fails with state_mismatch). */
+  function startSignIn(provider) {
+    location.href = API + "/api/signin/start?provider=" + encodeURIComponent(provider) + "&return=" + encodeURIComponent(location.origin + location.pathname);
+  }
+  function reportDialog(p) {
+    var last = {}; try { last = JSON.parse(keep(LAST) || "{}"); } catch (e) {}
+    var vers = p.versions.filter(function (x) { return !x.yanked; });
+    open('<h2>' + esc(p.name) + ': works on my device</h2><p class="sig-note">A community report, not hardware verification. One report per plugin version, device and OS.</p>' +
+      '<form id="sig-form"><label>Version<select name="version">' + vers.map(function (x) { return '<option value="' + esc(x.version) + '">v' + esc(x.version) + (x.channel === "beta" ? " (beta)" : "") + '</option>'; }).join("") + '</select></label>' +
+      '<label>Device<select name="device">' + DEVICES.map(function (d) { return '<option' + (d === last.device ? " selected" : "") + '>' + esc(d) + '</option>'; }).join("") + '</select></label>' +
+      '<label>MPC OS<input name="os" required maxlength="32" placeholder="e.g. 3.9.1" value="' + esc(last.os || "") + '"></label>' +
+      '<div class="actions"><button type="submit" class="btn-l primary">Send report</button><button type="button" class="btn-l" data-sig-close>Cancel</button></div></form><p class="sig-err" id="sig-err" role="alert"></p>');
+    dlg.dataset.plugin = p.id;
+  }
+  dlg.addEventListener("click", function (e) {
+    var t = e.target.closest("button"); if (!t) return;
+    if (t.hasAttribute("data-sig-close")) dlg.close();
+    else if (t.getAttribute("data-sig-provider")) startSignIn(t.getAttribute("data-sig-provider"));
+    else if (t.hasAttribute("data-sig-unfollow")) toggleFollow(t.getAttribute("data-sig-unfollow"));
+    else if (t.hasAttribute("data-sig-rotate")) call("POST", "/api/feed/rotate", {}).then(function (x) {
+      if (x.status !== 200 || !x.data) { $("sig-err").textContent = failed(x); return; }
+      me.feedUrl = x.data.feedUrl; followsDialog(); $("sig-err").textContent = "New address made; the old one no longer works.";
+    });
+    else if (t.hasAttribute("data-sig-copy")) {
+      var inp = $("sig-feed"), done = function () { $("sig-err").textContent = "Copied."; };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(inp.value).then(done, function () { inp.select(); });
+      else { inp.select(); }
+    }
+  });
+  dlg.addEventListener("close", function () { dlg.dataset.kind = ""; });
+  dlg.addEventListener("submit", function (e) {
+    e.preventDefault(); var f = e.target, id = dlg.dataset.plugin;
+    var rep = { plugin: id, version: f.version.value, device: f.device.value, os: f.os.value.trim() };
+    call("POST", "/api/working", rep).then(function (x) {
+      if (x.status !== 200) { $("sig-err").textContent = failed(x); return; }
+      keep(LAST, JSON.stringify({ device: rep.device, os: rep.os }));
+      var first = !myReports(id).length; me.reports.unshift({ plugin_id: id, version: rep.version, device: rep.device, os: rep.os });
+      if (x.data.created && first) { var c = bump(id); c.working++; c.versions[rep.version] = (c.versions[rep.version] || 0) + 1; }
+      delete details[id]; dlg.close(); refresh();
+    });
+  });
+
+  /* ---- the buttons on cards and in the popup (delegated: both are re-rendered) ---- */
+  function onClick(e) {
+    var w = e.target.closest("[data-sig-work]"), l = e.target.closest("[data-sig-like]"), d = e.target.closest("[data-sig-wd]");
+    var vi = e.target.closest("[data-sig-vi]"), sv = e.target.closest("[data-sig-showvers]");
+    if (vi) { var row = vi.closest("tr").nextElementSibling, on = row.hidden; row.hidden = !on; vi.setAttribute("aria-expanded", String(on)); return; }
+    if (sv) { var dv = $("modal-body").querySelector("details.vers"); if (dv) { dv.open = true; dv.scrollIntoView({ block: "center" }); var first = dv.querySelector("[data-sig-vi]"); if (first) first.focus(); } return; }
+    if (d) {
+      var id = d.closest("[data-sig-detail]").getAttribute("data-sig-detail"), r = myReports(id)[+d.getAttribute("data-sig-wd")]; if (!r) return;
+      call("DELETE", "/api/working", { plugin: r.plugin_id, version: r.version, device: r.device, os: r.os }).then(function (x) {
+        if (x.status !== 200) { say(failed(x)); return; }
+        me.reports = me.reports.filter(function (q) { return q !== r; }); if (!myReports(id).length) bump(id).working = Math.max(0, bump(id).working - 1);
+        delete details[id]; refresh();
+      });
+      return;
+    }
+    if (!w && !l) return;
+    if (!me) { signInDialog(); return; }
+    if (w) { reportDialog(BYID[w.getAttribute("data-sig-work")]); return; }
+    var pid = l.getAttribute("data-sig-like"), on = !liked(pid), c = bump(pid);
+    call(on ? "POST" : "DELETE", "/api/like", { plugin: pid }).then(function (x) {
+      if (x.status !== 200) { say(failed(x)); return; }
+      if (on) { me.likes.push(pid); c.likes++; } else { me.likes = me.likes.filter(function (q) { return q !== pid; }); c.likes = Math.max(0, c.likes - 1); }
+      delete details[pid]; refresh();
+    });
+  }
+  $("grid").addEventListener("click", onClick); $("modal-body").addEventListener("click", onClick);
+
+  function loadCounts() {
+    return fetch(API + "/api/counts").then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (d && d.counts && typeof d.counts === "object") { var first = !counts; counts = d.counts; if (first) addSorts(); }
+    }, function () {});
+  }
+  function loadMe() {
+    if (!token) { me = null; return Promise.resolve(); }
+    return call("GET", "/api/me").then(function (r) {
+      if (r.status === 200 && r.data && r.data.user) me = r.data; else { me = null; if (r.status === 401) { token = null; keep(TOKEN, null); } }
+    }, function () { me = null; });
+  }
+  /* start: finish a sign-in that just came back to this page, then load counts and the person's own data */
+  var back = Promise.resolve(), note = "";
+  if (OTT) back = call("POST", "/api/auth/one-time-token/verify", { token: decodeURIComponent(OTT) }).then(function (r) {
+    if (r.status === 200 && r.token) { token = r.token; keep(TOKEN, token); note = "You are signed in."; } else note = "Sign-in did not finish; try again.";
+  }, function () { note = "Sign-in did not finish; try again."; });
+  else if (/(^#|&)signin=failed/.test(location.hash)) note = "Sign-in did not finish; try again.";
+  paintAcct();
+  back.then(function () { return Promise.all([loadCounts(), loadMe()]); }).then(function () { refresh(); if (note) say(note); });
+})();
 </script>
 </body>
 </html>

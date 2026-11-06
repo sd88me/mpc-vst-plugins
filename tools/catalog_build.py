@@ -102,6 +102,8 @@ def check_entry(e, fname=None):
     if "flags_reviewed" in e and not (isinstance(e["flags_reviewed"], list) and e["flags_reviewed"]
                                       and all(c in catalog_check.RISKY_CALLS for c in e["flags_reviewed"])):
         p.append("flags_reviewed must list risky-call categories a maintainer has reviewed: %s" % ", ".join(catalog_check.RISKY_CALLS))
+    if "youtube" in e and not (isinstance(e["youtube"], str) and YOUTUBE.fullmatch(e["youtube"])):
+        p.append("youtube must be an https://youtube.com/... or https://youtu.be/... link (a video or playlist; no spaces, at most 200 characters)")
     if "collection" in e and not (isinstance(e["collection"], str) and ID.fullmatch(e["collection"])):
         p.append("collection must be the id of a file in catalog/collections/ (a lowercase slug)")
     if "featured" in e and not isinstance(e["featured"], bool):
@@ -130,6 +132,7 @@ def check_entry(e, fname=None):
     return p
 
 
+YOUTUBE = re.compile(r"https://(?:(?:www\.|m\.|music\.)?youtube\.com/|youtu\.be/)[^\s]{4,170}")   # the optional "youtube" line of a registry entry
 GEN2_DEVICE = re.compile(r"gen\s*2", re.I)   # a tested.json device naming Gen2, e.g. "MPC Live III (Gen2)" (docs/GEN2.md)
 SAMPLE_DEVICE = re.compile(r"mpc\s*sample", re.I)   # a tested.json device naming the MPC Sample (its own badge, not Gen2)
 
@@ -678,7 +681,7 @@ def build(entries, src, cache, yanked, keep=10, now=None, require_portable=(), a
         versions.sort(key=lambda v: deps.key(v["version"]), reverse=True)
         versions = versions[:keep]
         item = {k: e[k] for k in ("id", "name", "author", "repo", "kind", "license", "summary") }
-        for k in ("screenshot", "homepage", "style", "role", "devices"):
+        for k in ("screenshot", "homepage", "style", "role", "devices", "youtube"):
             if e.get(k):
                 item[k] = e[k]
         col = (collections or {}).get(e.get("collection"))
