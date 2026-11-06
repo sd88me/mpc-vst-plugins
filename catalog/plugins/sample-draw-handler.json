@@ -7,11 +7,10 @@
   "style": "utility",
   "tags": [
     "screen",
-    "plugin-pages",
-    "mpc-sample"
+    "plugin-pages"
   ],
   "license": "MIT",
-  "summary": "Shares the MPC Sample's screen with plugins and addins, which the Sample otherwise gives no way to draw on: a plugin built with a Sample page shows its knobs, dial and readouts there, and a long hold of PAD FX opens the RACK page. Control and screenshots on a local port. MPC Sample only.",
+  "summary": "Lets plugins and addins draw their own page on the MPC Sample's screen. Needed by MPC Sample Rack.",
   "screenshot": "https://raw.githubusercontent.com/jacob-sabella/mpc-addin-sample-draw-handler/3db0a761ac2e8ac74d52fef433e576b6c966fee1/docs/screenshots/stompbox-page.gif",
   "asset_pattern": "MPC-Sample-draw-handler-addin-*-mpc-aarch64.zip",
   "devices": ["mpc-sample"]
