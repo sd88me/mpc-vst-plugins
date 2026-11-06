@@ -375,4 +375,13 @@ details.more > dl.meta { margin-top: 4px; }
 .card .folds > details.fold ul { margin: 0; padding-left: 20px; }
 .card .folds > details.fold > summary::before { margin: 0; }
 .card .folds > details.fold > dl.meta { margin: 0; padding-top: 0; border-top: 0; }
-.smpline { margin: 0 0 12px; }
+
+/* Device switch at the top of the filters: MPC / Force or MPC Sample, as two big buttons with counts like the tabs. */
+.plat { grid-column: 1 / -1; display: flex; gap: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; width: max-content; max-width: 100%; }
+.plat button { font: 700 14px/1 var(--display); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: var(--panel);
+  border: 0; padding: 12px 20px; cursor: pointer; white-space: nowrap; }
+.plat button + button { border-left: 1px solid var(--line); }
+.plat button:hover { color: var(--fg); }
+.plat button[aria-pressed=true] { color: #fff; background: var(--accent); }
+.plat .n { font: 500 12px var(--text); letter-spacing: 0; margin-left: 6px; opacity: .8; }
+@media (max-width: 520px) { .plat { width: 100%; } .plat button { flex: 1; padding: 12px 10px; } }

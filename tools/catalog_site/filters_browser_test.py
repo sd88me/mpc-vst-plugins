@@ -54,21 +54,28 @@ with sync_playwright() as p:
     check("the bar sits between the title bar and the tags", order.index("sig") == order.index("header") + 1 and order[order.index("sig") + 1] == "tags", order)
     coll = pg.locator("article.card.coll").first
     check("a collection card shows its most downloaded member's downloads in the same place", "40" in coll.locator(".sig.stat").inner_text(), coll.locator(".sig.stat").inner_text() if coll.locator(".sig.stat").count() else "none")
-    # 2c. the MPC Sample view (Device filter): Sample-only entries are hidden elsewhere, with a count and a link to the view
+    # 2c. the device switch (MPC / Force | MPC Sample) at the top of the filters
     pg.goto(URL); pg.wait_for_timeout(300)
-    check("default view: the Sample-only addin is hidden, and a line says so", "SAMPLE ONLY" not in names(pg) and pg.locator("#smp").is_visible() and pg.locator("#smp-n").inner_text() == "1 plugin", pg.locator("#smp").inner_text())
+    mpc, smp = pg.locator('[data-plat=""]'), pg.locator('[data-plat="sample"]')
+    check("default: MPC / Force is pressed, the Sample-only addin is hidden, and each button has a count",
+          mpc.get_attribute("aria-pressed") == "true" and "SAMPLE ONLY" not in names(pg) and pg.locator("#n-plat").inner_text().isdigit() and pg.locator("#n-plat-sample").inner_text().isdigit())
     pg.select_option("#f-gen", "gen2"); pg.wait_for_timeout(100)
     check("the Gen2 filter does not show Sample-only entries", "SAMPLE ONLY" not in names(pg))
-    pg.locator("#show-smp").click(); pg.wait_for_timeout(100)
+    smp.click(); pg.wait_for_timeout(100)
     sv = names(pg)
-    check("Show the MPC Sample view: the Sample-only addin plus plugins with a Gen2 build, with a note, and it is in the URL",
-          sv[0] == "SAMPLE ONLY" and len(sv) > 1 and pg.locator("#smp-note").is_visible() and not pg.locator("#smp").is_visible() and "gen=sample" in pg.evaluate("location.hash"), sv)
-    pg.goto(URL + "#gen=sample&tab=addin"); pg.wait_for_timeout(300)
+    check("MPC Sample: the Sample-only addin first, then plugins with a Gen2 build; the Gen1/Gen2 filter is hidden; it is in the URL",
+          sv[0] == "SAMPLE ONLY" and len(sv) > 1 and smp.get_attribute("aria-pressed") == "true" and not pg.locator("#f-gen").is_visible() and "plat=sample" in pg.evaluate("location.hash"), sv)
+    pg.click("#tab-addin"); pg.wait_for_timeout(100)
     check("the Sample view leaves out addins not made for the Sample", names(pg) == ["SAMPLE ONLY"], names(pg))
-    pg.goto(URL + "#gen=sample"); pg.wait_for_timeout(300)
-    check("a shared link opens the Sample view", "SAMPLE ONLY" in names(pg) and pg.locator("#f-gen").input_value() == "sample")
     pg.click("#tab-all"); pg.locator("#clear").click(); pg.wait_for_timeout(100)
-    check("Clear filters goes back to the MPC view", "SAMPLE ONLY" not in names(pg) and pg.locator("#smp").is_visible())
+    check("Clear filters keeps the device choice", "SAMPLE ONLY" in names(pg))
+    mpc.click(); pg.wait_for_timeout(100)
+    check("MPC / Force goes back", "SAMPLE ONLY" not in names(pg) and pg.locator("#f-gen").is_visible())
+    pg.goto(URL + "#plat=sample"); pg.wait_for_timeout(300)
+    check("a shared link opens the Sample view", "SAMPLE ONLY" in names(pg))
+    pg.goto(URL + "#plat=nonsense"); pg.wait_for_timeout(300)
+    check("an unknown device in a link falls back to MPC / Force", "SAMPLE ONLY" not in names(pg))
+    pg.goto(URL); pg.wait_for_timeout(300)
     # 3. the popup: tags are plain text there, and the video button
     pg.locator('a[data-open="test-synth"]').first.click(); pg.wait_for_timeout(300)
     check("the popup has its Details open", pg.locator("#modal-body details.more").get_attribute("open") is not None and pg.locator("#modal-body dl.meta").is_visible())

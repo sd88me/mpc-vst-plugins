@@ -118,7 +118,7 @@ with sync_playwright() as p:
     both = pg.locator("#grid article:has(h2:has-text('Tested Two')) .tag.tier-verified").all_text_contents()
     check("a plugin tested on both generations has two Verified badges", both == ["Verified Gen1", "Verified Gen2"], str(both))
     # the MPC Sample has its own badge, and an entry limited to it (registry "devices") says so instead of "Gen2"
-    pg.click("#tab-addin"); pg.select_option("#f-gen", "sample")   # Sample-only entries show in the MPC Sample view only
+    pg.click("#tab-addin"); pg.click('[data-plat="sample"]')   # Sample-only entries show in the MPC Sample view only
     smp = pg.locator("#grid article:has(h2:has-text('Sample Only'))")
     check("a plugin tested on an MPC Sample has the Verified Sample badge",
           smp.locator(".tag.tier-verified").all_text_contents() == ["Verified Sample"], str(smp.locator(".tag.tier-verified").all_text_contents()))
@@ -126,13 +126,13 @@ with sync_playwright() as p:
           and smp.locator(".tag:has-text('Gen2')").count() == 0, smp.inner_text()[:200])
     dl = smp.locator("a.btn-l:has-text('Download')").all_text_contents()
     check("a plugin for the MPC Sample only has one download, named for the Sample", dl == ["Download (MPC Sample)"], str(dl))
-    pg.select_option("#f-gen", ""); pg.click("#tab-all")
+    pg.click('[data-plat=""]'); pg.click("#tab-all")
     for val, gen in (("verified-gen1", "gen1"), ("verified-gen2", "gen2"), ("verified-sample", "sample")):
-        pg.select_option("#f-gen", "sample" if gen == "sample" else ""); pg.select_option("#f-tier", val)
+        pg.click('[data-plat="%s"]' % ("sample" if gen == "sample" else "")); pg.select_option("#f-tier", val)
         cards = pg.locator("#grid article.card")
         wrong = [i for i in range(cards.count()) if cards.nth(i).locator(".tag.tier-verified[data-gen=%s]" % gen).count() != 1]
         check("Tier filter %s shows only cards with that badge" % val, cards.count() >= 1 and not wrong, "%d cards, wrong %s" % (cards.count(), wrong))
-    pg.select_option("#f-tier", ""); pg.select_option("#f-gen", "")
+    pg.select_option("#f-tier", ""); pg.click('[data-plat=""]')
     check("experimental plugins are hidden by default", pg.locator(".tag.tier-experimental").count() == 0)
     check("the hidden-experimental note offers them", pg.locator("#exp").is_visible())
     pg.click("#show-exp")

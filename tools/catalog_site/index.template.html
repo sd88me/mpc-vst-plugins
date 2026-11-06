@@ -54,12 +54,16 @@
 
   <div role="tabpanel" id="panel-plugins" aria-labelledby="tab-all">
   <div class="tools">
+    <div class="plat" role="group" aria-label="Device">
+      <button type="button" data-plat="" aria-pressed="true">MPC / Force <span class="n" id="n-plat"></span></button>
+      <button type="button" data-plat="sample" aria-pressed="false" title="Made for the MPC Sample first, then instruments and effects with a Gen2 build: the Sample loads them the same way, but most are not tested on one yet">MPC Sample <span class="n" id="n-plat-sample"></span></button>
+    </div>
     <label class="search">Search<input id="q" type="search" placeholder="Name, developer, style or tag"></label>
     <label>Style<select id="f-style"></select></label>
     <label>Developer<select id="f-dev"></select></label>
     <label>Tag<select id="f-tag"></select></label>
     <label>MPC OS<select id="f-os"></select></label>
-    <label>Device<select id="f-gen"></select></label>
+    <label id="l-gen">Device<select id="f-gen"></select></label>
     <label>Tier<select id="f-tier"></select></label>
     <label>Sort by<select id="sort"></select></label>
   </div>
@@ -73,8 +77,6 @@
     </span>
   </div>
 
-  <p class="line smpline" id="smp" hidden><span id="smp-n"></span> for the MPC Sample only. <button class="linkbtn" type="button" id="show-smp">Show the MPC Sample view</button></p>
-  <p class="line smpline" id="smp-note" hidden>MPC Sample view: plugins made for the Sample first, then instruments and effects with a Gen2 build, which the Sample loads the same way. Most of those are not tested on a Sample yet.</p>
   <div class="grid" id="grid"></div>
   <p class="empty" id="empty" hidden>No plugins match these filters.</p>
   <div class="modal" id="modal" hidden>
@@ -140,7 +142,7 @@ var CAT = JSON.parse(document.getElementById("data").textContent);
 var P = CAT.plugins;
 /* sign-in handoff (community signals): the Worker sends the browser back with #ott=<one-time token>; take it before render() rewrites the hash */
 var OTT = (location.hash.match(/(?:^#|&)ott=([^&]+)/) || [])[1] || "";
-var state = { tab: "all", q: "", style: "", dev: "", tags: [], os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: [], open: "", coll: "" };
+var state = { tab: "all", plat: "", q: "", style: "", dev: "", tags: [], os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: [], open: "", coll: "" };
 var STORE = JSON.parse(document.getElementById("store").textContent);
 var BY_WARNING = "The result contains firmware-derived data: build it yourself, install it on your own devices only, never share it.";
 var ID_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -243,7 +245,7 @@ function inTabKind(p, k) { if (k === "all") return true; return kindsOf(p).some(
 var title = function (s) { return s.replace(/-/g, " ").replace(/^./, function (c) { return c.toUpperCase(); }); };
 fillSelect("f-tier", "Verified and unverified", TIER_FILTERS, function (v) { return v === "all" ? "All tiers" : v === "verified" ? "Verified only" : v === "verified-gen1" ? "Verified on Gen1" : v === "verified-gen2" ? "Verified on Gen2" : v === "verified-sample" ? "Verified on MPC Sample" : v === "listed" ? "Not yet verified" : "Experimental only"; });
 fillSelect("f-os", "Any MPC OS", ["2x", "3x"], function (v) { return v === "2x" ? "Works on MPC OS 2.x" : "MPC OS 3.x only"; });
-fillSelect("f-gen", "Any MPC or Force", ["gen2", "gen1", "sample"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : v === "gen1" ? "Gen1 only" : "MPC Sample"; });
+fillSelect("f-gen", "Any device", ["gen2", "gen1"], function (v) { return v === "gen2" ? "Has a Gen2 (aarch64) build" : "Gen1 only"; });
 fillSelect("f-style", "All styles", uniq(function (p) { return p.style; }), title);
 fillSelect("f-dev", "All developers", uniq(function (p) { return p.author; }));
 $("sort").innerHTML = Object.keys(SORTS).map(function (k) { return '<option value="' + k + '">' + SORTS[k].label + '</option>'; }).join("");
@@ -294,6 +296,12 @@ function osRow(v) {
   if (g.indexOf("2.x") >= 0) return '<dt>MPC OS</dt><dd>2.x and 3.x (' + (tested2x(v) ? "tested on a 2.x unit" : "checked against 2.15.1's own skins, not yet tested on a 2.x unit") + ')</dd>';
   return '<dt>MPC OS</dt><dd>3.x only' + (osWhy(v) ? ' (' + esc(osWhy(v)) + ')' : '') + '</dd>';
 }
+/* Device switch: "MPC / Force" hides entries made only for the MPC Sample (registry "devices"); "MPC Sample" shows those, then instruments,
+   effects and MIDI plugins with a Gen2 (aarch64) build, which it loads the same way (PR #706). Addins not made for it are left out: they hook MPC itself. */
+function platOk(p, plat) {
+  var only = deviceNames(p).length > 0, sv = shown(p);
+  return (plat === undefined ? state.plat : plat) === "sample" ? only || !!(sv && sv.gen2 && p.kind !== "addin") : !only;
+}
 function match(p, anyText) {   /* anyText: the search already matched (a collection's own title or summary) */
   var s = state, hay = [p.name, p.author, p.style || "", (p.tags || []).join(" "), p.summary].join(" ").toLowerCase();
   if (s.q && !anyText && hay.indexOf(s.q.toLowerCase()) < 0) return false;
@@ -303,12 +311,9 @@ function match(p, anyText) {   /* anyText: the search already matched (a collect
   if (s.style && p.style !== s.style) return false;
   if (s.dev && p.author !== s.dev) return false;
   if (s.tags.length) { var pt = p.tags || []; if (!s.tags.every(function (t) { return pt.indexOf(t) >= 0; })) return false; }
-  /* The MPC Sample view (Device filter "MPC Sample"): entries made for it (registry "devices") plus instruments, effects and MIDI plugins with a
-     Gen2 (aarch64) build, which it loads the same way (PR #706). Every other view hides the Sample-only entries; render() says how many and links to the Sample view. */
-  var sv = shown(p), only = deviceNames(p).length > 0;
-  if (s.gen === "sample") { if (!only && !(sv && sv.gen2 && p.kind !== "addin")) return false; }   /* addins hook MPC itself: only Sample ones */
-  else if (only) return false;
-  else if (s.gen) { if (!sv || !!sv.gen2 !== (s.gen === "gen2")) return false; }
+  if (!platOk(p)) return false;
+  var sv = shown(p);
+  if (s.gen && !s.plat) { if (!sv || !!sv.gen2 !== (s.gen === "gen2")) return false; }
   if (s.os) { var g = osGens(shown(p)); if (!g || (s.os === "2x") !== (g.indexOf("2.x") >= 0)) return false; }
   return true;
 }
@@ -511,15 +516,17 @@ function render() {
   var out = P.filter(function (p) { return !collOf(p) && match(p); }), so = SORTS[state.sort];
   C.forEach(function (c) { var it = collItem(c); if (it) out.push(it); });
   out.sort(function (a, b) { var r = so.cmp(a, b); return (so.desc ? -r : r) * (state.rev ? -1 : 1); });
-  if (state.gen === "sample") out = out.filter(function (p) { return !p.coll && deviceNames(p).length; }).concat(out.filter(function (p) { return p.coll || !deviceNames(p).length; }));   /* made for it first */
+  if (state.plat === "sample") out = out.filter(function (p) { return !p.coll && deviceNames(p).length; }).concat(out.filter(function (p) { return p.coll || !deviceNames(p).length; }));   /* made for it first */
   $("grid").innerHTML = out.map(function (p) { return p.coll ? collCard(p) : card(p); }).join("");
   $("empty").hidden = out.length > 0;
   var nOut = out.reduce(function (n, p) { return n + (p.coll ? p.hit.length : 1); }, 0);   /* plugins, counting each collection member */
   var hid = !state.tier ? P.filter(function (p) { return tierOf(p) === "experimental" && (PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab)); }).length : 0;
   $("exp").hidden = !hid; $("exp-n").textContent = hid;
-  var smp = state.gen === "sample" ? 0 : P.filter(function (p) { return deviceNames(p).length && (PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab)); }).length;
-  $("smp").hidden = !smp; $("smp-n").textContent = smp + (smp === 1 ? " plugin" : " plugins");
-  $("smp-note").hidden = state.gen !== "sample";
+  var inT = function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); };
+  $("n-plat").textContent = P.filter(function (p) { return inT(p) && !deviceNames(p).length; }).length;
+  $("n-plat-sample").textContent = P.filter(function (p) { return inT(p) && platOk(p, "sample"); }).length;
+  document.querySelectorAll("[data-plat]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-plat") === state.plat)); });
+  $("l-gen").hidden = state.plat === "sample";
   PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return inTabKind(p, k); }).length; });
   var inTab = P.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); }).length;
   $("count").textContent = nOut + " of " + inTab + " " + (state.tab === "midi" ? "MIDI plugins" : state.tab === "all" ? "plugins" : (KINDS[state.tab] || "plugins").toLowerCase());
@@ -529,7 +536,7 @@ function render() {
   save();
 }
 function url() {
-  var d = { tab: state.tab === "all" ? "" : state.tab, q: state.q, style: state.style, dev: state.dev, tags: state.tags.join(","), os: state.os, gen: state.gen, tier: state.tier, sort: state.sort === "recommended" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(","), c: state.coll || "", p: state.open || "" }, q = [];
+  var d = { tab: state.tab === "all" ? "" : state.tab, plat: state.plat, q: state.q, style: state.style, dev: state.dev, tags: state.tags.join(","), os: state.os, gen: state.gen, tier: state.tier, sort: state.sort === "recommended" ? "" : state.sort, rev: state.rev ? "1" : "", beta: state.beta ? "1" : "", sel: state.sel.join(","), c: state.coll || "", p: state.open || "" }, q = [];
   Object.keys(d).forEach(function (k) { if (d[k]) q.push(k + "=" + encodeURIComponent(d[k])); });
   return q.length ? "#" + q.join("&") : location.pathname + location.search;
 }
@@ -542,6 +549,7 @@ function load() {
     var i = kv.indexOf("="); if (i < 0) return;
     var k = kv.slice(0, i), v = decodeURIComponent(kv.slice(i + 1));
     if (k === "rev" || k === "beta") state[k] = v === "1";
+    else if (k === "plat") state.plat = v === "sample" ? "sample" : "";
     else if (k === "tags") state.tags = v.split(",").filter(function (t, i, a) { return TAGN[t] && a.indexOf(t) === i; });
     else if (k === "c") state.coll = ID_RE.test(v) && COLL[v] ? v : "";
     else if (k === "p") state.open = ID_RE.test(v) && P.some(function (p) { return p.id === v; }) ? v : "";
@@ -666,10 +674,10 @@ $("f-tag").addEventListener("change", function () { var t = $("f-tag").value; if
 $("tagbar").addEventListener("click", function (e) { var b = e.target.closest("[data-untag]"); if (!b) return; var t = b.getAttribute("data-untag"); state.tags = t === "*" ? [] : state.tags.filter(function (x) { return x !== t; }); fillTags(); render(); });
 $("grid").addEventListener("click", function (e) { var b = e.target.closest("[data-tag]"); if (!b) return; var t = b.getAttribute("data-tag"); if (TAGN[t] && state.tags.indexOf(t) < 0) state.tags.push(t); fillTags(); render(); });
 $("show-exp").addEventListener("click", function () { state.tier = "all"; sync(); render(); });
-$("show-smp").addEventListener("click", function () { state.gen = "sample"; sync(); render(); });
+document.querySelectorAll("[data-plat]").forEach(function (b) { b.addEventListener("click", function () { state.plat = b.getAttribute("data-plat"); if (state.plat) state.gen = ""; sync(); render(); }); });
 $("beta").addEventListener("change", function () { state.beta = $("beta").checked; render(); });
 $("dir").addEventListener("click", function () { state.rev = !state.rev; render(); });
-$("clear").addEventListener("click", function () { state = { tab: state.tab, q: "", style: "", dev: "", tags: [], os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: state.sel, open: "", coll: "" }; sync(); render(); });
+$("clear").addEventListener("click", function () { state = { tab: state.tab, plat: state.plat, q: "", style: "", dev: "", tags: [], os: "", gen: "", tier: "", sort: "recommended", rev: false, beta: false, sel: state.sel, open: "", coll: "" }; sync(); render(); });
 function sync() { Object.keys(map).forEach(function (id) { $(id).value = state[map[id]]; }); $("beta").checked = state.beta; fillTags(); }
 load(); sync(); render(); showTab(state.tab); filterApps(); modal();
 
