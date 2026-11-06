@@ -9,8 +9,6 @@ own **native MPC touchscreen page**. No bridge, no background app, no `LD_PRELOA
 
 [**Plugin catalog**](https://open-mpc.github.io/) · [**Installer app**](https://github.com/open-mpc/mpc-vst-plugins/releases/tag/desktop-v1.1.2) · [**Plugin Manager VST**](tools/plugin_manager_g2/README.md) · [Build guide](https://open-mpc.github.io/build.html) · [Release workflow](https://open-mpc.github.io/workflow.html)
 
-[![The OpenMPC Plugin Manager VST on an MPC touchscreen](tools/plugin_manager_g2/docs/screenshots/manager-discover-light.png)](tools/plugin_manager_g2/README.md)
-
 ## What is in the box
 
 | | |
@@ -74,6 +72,8 @@ Emulator and firmware ports (big.LITTLE pinning, ring buffers, PGO): [docs/EMULA
   (shown as "Restricted use").
 
 ## Installing
+
+[![The OpenMPC Plugin Manager VST on an MPC touchscreen](tools/plugin_manager_g2/docs/screenshots/manager-discover-light.png)](tools/plugin_manager_g2/README.md)
 
 | Route | For |
 |---|---|
