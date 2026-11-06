@@ -14,6 +14,7 @@ def names(pg): return pg.locator("#grid article.card h2").all_inner_texts()
 
 with sync_playwright() as p:
     b = p.chromium.launch(); ctx = b.new_context(viewport={"width": 1280, "height": 900}); pg = ctx.new_page(); errs = []
+    pg.route("https://*.workers.dev/**", lambda r: r.abort())   # the community service is down: cards show only downloads, no buttons
     pg.on("pageerror", lambda e: errs.append(str(e))); pg.route("https://shots.invalid/**", lambda r: r.fulfill(status=404))
     pg.goto(URL); pg.wait_for_timeout(300)
     # 1. License and Distribution are gone
@@ -42,13 +43,13 @@ with sync_playwright() as p:
     pg.fill("#q", "reverb"); pg.wait_for_timeout(100)
     check("typing in Search still finds a tag (a collection holding such plugins matches too)", "OLD CATALOG" in names(pg) and "TEST SYNTH" not in names(pg), names(pg))
     pg.fill("#q", "")
-    # 2b. the details fold and the downloads bar (no community preview: just the downloads)
+    # 2b. the details fold and the downloads bar (community service down: just the downloads)
     card = pg.locator("article.card", has=pg.locator('a[data-open="test-synth"]')).first
     check("a card's Details are folded by default, with who tested it as a hint", card.locator("details.more").count() == 1 and card.locator("details.more").get_attribute("open") is None and not card.locator("dl.meta").is_visible() and "Not yet tested" in card.locator("details.more summary").inner_text(), card.locator("details.more summary").inner_text())
     card.locator("details.more summary").click(); pg.wait_for_timeout(100)
     check("pressing it opens them", card.locator("dl.meta").is_visible() and "updated" in card.locator("dl.meta").inner_text().lower())
     bar = card.locator(".sig.stat")
-    check("the downloads count is in a bar under the title, even with the details folded, and there are no community buttons without the preview", bar.count() == 1 and "6" in bar.inner_text() and "downloads" in bar.inner_text() and card.locator(".sig-btn").count() == 0, bar.inner_text() if bar.count() else "")
+    check("the downloads count is in a bar under the title, even with the details folded, and there are no community buttons while the service is down", bar.count() == 1 and "6" in bar.inner_text() and "downloads" in bar.inner_text() and card.locator(".sig-btn").count() == 0, bar.inner_text() if bar.count() else "")
     order = card.evaluate("el => [...el.children].map(c => c.className.split(' ')[0] || c.tagName.toLowerCase())")
     check("the bar sits between the title bar and the tags", order.index("sig") == order.index("header") + 1 and order[order.index("sig") + 1] == "tags", order)
     coll = pg.locator("article.card.coll").first

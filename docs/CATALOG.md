@@ -128,7 +128,7 @@ Listed is the unlabelled middle, still computed and filterable as "Not yet verif
 "Recommended", is featured, then evidence points, with experimental always last (2026-11-05, offline; maintainer decision: people reporting a plugin works count
 for more than the author's own record). A complete Verified plugin (every generation it ships verified: a Gen1-only build tested on Gen1, a
 Gen2-only build tested on Gen2, or a dual build tested on both) is worth 3 points, a dual build verified on one generation 1.5, Listed 0.
-When the community preview is on, each person who reported the newest release working adds 1, a person who only reported an older release
+With the community service reachable (public since 2026-11-06), each person who reported the newest release working adds 1, a person who only reported an older release
 0.25, and each like 0.1, so 4 people confirming a Listed plugin beat a Verified badge with no reports, and 2 do not. Without community counts the
 order is the old one (complete Verified, partly verified, Listed). Ties go to the newest hardware-test date, downloads, and finally name. Verified is split by device generation (2026-10-12, offline: unit tests and a
 headless-browser check): `verified_on` in `catalog.json` lists `gen1` and/or `gen2` (`verified_on` in `catalog_build.py`). A `tested.json`
