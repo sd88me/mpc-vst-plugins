@@ -52,7 +52,7 @@ with sync_playwright() as p:
     order = card.evaluate("el => [...el.children].map(c => c.className.split(' ')[0] || c.tagName.toLowerCase())")
     check("the bar sits between the title bar and the tags", order.index("sig") == order.index("header") + 1 and order[order.index("sig") + 1] == "tags", order)
     coll = pg.locator("article.card.coll").first
-    check("a collection card shows its total downloads in the same place", "55" in coll.locator(".sig.stat").inner_text(), coll.locator(".sig.stat").inner_text() if coll.locator(".sig.stat").count() else "none")
+    check("a collection card shows its most downloaded member's downloads in the same place", "40" in coll.locator(".sig.stat").inner_text(), coll.locator(".sig.stat").inner_text() if coll.locator(".sig.stat").count() else "none")
     # 3. the popup: tags are plain text there, and the video button
     pg.locator('a[data-open="test-synth"]').first.click(); pg.wait_for_timeout(300)
     check("the popup has its Details open", pg.locator("#modal-body details.more").get_attribute("open") is not None and pg.locator("#modal-body dl.meta").is_visible())

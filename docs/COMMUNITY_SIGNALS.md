@@ -156,7 +156,7 @@ setting `hidden`; counts exclude hidden rows. State this in the announcement so 
     (tooltip: community reports, not hardware verification), a like heart with its count, and "Works for me".
   - **Collections (2026-11-05):** a collection card shows the same strip with its **best plugin's** figures, not a sum (maintainer's call: a set of 22
     would always beat a single plugin, and one person confirming three members would count three times): "✓ 30 working" is the most people to
-    confirm any one member (the tooltip names it), "♡" the most likes on any one member, plus the total downloads of its members and a line
+    confirm any one member (the tooltip names it), "♡" the most likes on any one member, plus the downloads of its most downloaded member (not the sum) and a line
     "Best of 22 plugins (8 with reports)". No buttons on the card: "Open the set to report on a plugin". The collection popup has the same strip under
     its title bar and a compact strip on every member row (count, like, Works for me), and a "Follow all N" toggle that follows each member (one request
     per plugin). The collection also has its own Atom feed, `feed/c/<id>.xml` ("N plugins updated" entries, as in `feed.xml`). "Most reported

@@ -186,6 +186,8 @@ function testedDate(p) {
 /* The generations the newest stable release ships: a Gen2 build adds Gen2, a Gen2-only release has no Gen1. */
 function shippedGens(p) {
   var v = p.versions.filter(function (x) { return !x.yanked && x.channel === "stable"; })[0], g = [];
+  /* an entry limited to devices (registry "devices") ships only for those: a Sample-only addin tested on a Sample is complete, not half verified */
+  if (v && deviceNames(p).length) return p.devices.indexOf("mpc-sample") >= 0 ? ["sample"] : [];
   if (v) { if (!v.gen2_only) g.push("gen1"); if (v.gen2 || v.gen2_only) g.push("gen2"); }
   return g;
 }

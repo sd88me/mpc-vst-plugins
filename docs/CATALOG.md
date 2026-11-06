@@ -82,7 +82,7 @@ checks, `tested.json` tier, uid and download; `catalog.tsv`, the installer and `
 - **`catalog.json`:** `collections[]` with members, kind counts, best member tier, total downloads (`docs/CATALOG_SPEC.md`).
 - **Site:** one card per collection (its screenshot, else a collage of up to four member screenshots; title, author, Collection badge,
   "13 instruments · 7 effects", best tier, the first member chips and +N, View all and Source). It shows under each tab its members cover,
-  with counts and chips for that kind, and sorts by its best member tier and total downloads. (2026-11-05, offline: grid cards fold their Details by default and show downloads in a bar under the title; a collection's community figures are its best member's, not a sum.) Search and filters match the members and list the ones that
+  with counts and chips for that kind, and sorts by its best member tier and its most downloaded member's downloads. (2026-11-05, offline: grid cards fold their Details by default and show downloads in a bar under the title; a collection's community figures and downloads are its best member's, not a sum, 2026-11-06: a sum let a 100-plugin collection outrank any single plugin; `catalog.json` still carries the total.) Search and filters match the members and list the ones that
   match; a search for the collection's title lists all of them. `#c=<id>`, shared as `p/c/<id>.html`, opens the collection view:
   members by kind, each with its install checkbox and a Pick all per group, feeding the same install list. A member's popup and its
   `p/<id>.html` say "Part of <title>". Entries without a collection look as before.
