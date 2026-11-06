@@ -138,3 +138,31 @@ calls from the driver, aarch64 (Gen2) `.so` files, and Windows/macOS builds of t
 2. Done for Acid-303 (see "Prototype"). Next: params and state chunks, threads, the build on Windows (MSVC or mingw) and macOS
    (arm64 host: dynarmic's arm64 back end).
 3. Then the helper process with shared-memory transport, the VST3 shell, the Windows/macOS builds and the editor windows.
+
+## Moving to its own repo (planned 2026-11-06)
+
+Everything for running MPC plugins on a desktop moves to one repo (working name `mpc-vst-desktop`). It has two methods:
+the native VST3 rebuild (DESKTOP_VST3.md) and this host for released `.so` files. They share the VST3 shell, the skin
+renderer and the Windows/macOS editor work.
+
+**Moves, with history (`git filter-repo --path ...`):** `wrapper/vst3_wrap.c`, `wrapper/vst3_abi.h`,
+`wrapper/vst3_editor.c`, `wrapper/resample.h`, `tools/build_vst3.sh`, `tools/test_vst3.sh`, `tools/vst3_host_test.c`,
+`tools/desktop_skin.py`, `docs/DESKTOP_VST3.md` and `docs/images/desktop-vst3/`, `docs/MPC_HOST.md`, `poc/mpc_host/`.
+
+**Stays here:** the engine contract the rebuild compiles against (`wrapper/engine.h`, `plugin_dir.h`, `popup.h`),
+`tools/gen_vst.py` (`params.h`), the skin builder, and NOTES.md facts. The new repo pins this one as a submodule; its
+scripts already take this repo's path (`$MV` in `build_vst3.sh`).
+
+**Keeping existing workflows working:**
+1. The same command in the new repo: `tools/build_vst3.sh <port>/vst.json [--install]`.
+2. Here, `tools/build_vst3.sh` and `tools/test_vst3.sh` become stubs for a few months. They say the scripts have moved,
+   run the real one if the new repo is checked out next to this one, and otherwise print the clone command.
+3. `docs/DESKTOP_VST3.md` stays as a short pointer page, so old links work. Update the README (two places),
+   PORTING.md's desktop checklist item, the skill's step 8, CLAUDE.md, ROADMAP.md and COMPATIBILITY.md to link to the new repo.
+4. Tag this repo `pre-desktop-split` before the cleanup PR.
+5. Announce the move in the Open MPC Discord, and mention the VST3 wrapper's author in the cleanup PR.
+6. New repo CI: build and test one probe port (e.g. `poc/uiprobe`) against this repo's latest main, to catch `engine.h`
+   or `gen_vst.py` changes early.
+
+Who uses it (checked 2026-11-06): no workflow in this repo builds VST3; no other tool here calls the scripts; no code
+search hit for `vst3_wrap` outside this repo; one author in the history.
