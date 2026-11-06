@@ -342,7 +342,7 @@ function collItem(c) {
   return { coll: c, hit: hit, inTab: inTab, id: c.id, name: c.title, author: c.author, kind: tabKindOf(inTab[0] || hit[0]),
            featured: hit.some(function (p) { return p.featured; }), tier: tierOf(best), verified_on: Object.keys(gens).sort(), testedDate: td,
            vpoints: hit.reduce(function (m, p) { return Math.max(m, verifiedPoints(p)); }, 0),
-           downloads: typeof c.downloads === "number" ? c.downloads : c.mem.reduce(function (n, p) { return n + (p.downloads || 0); }, 0),
+           downloads: collDownloads(c),
            updated: c.updated || "", added: c.added || "", versions: [] };
 }
 function collShot(c, list, big) {   /* the collection's screenshot, else a collage of up to four members' */
@@ -391,9 +391,9 @@ function collDetail(c) {
   }).join("");
   return '<article class="card big coll" data-tier="' + tierOf(best) + '">' + collShot(c, c.mem, true) +
     '<header><div><h2 id="modal-title">' + esc(c.title) + '</h2><div class="by">by ' + esc(c.author) + '</div></div><span class="ver">' + c.mem.length + ' plugins</span></header>' +
-    collBar(c, c.downloads || 0, true) +
+    collBar(c, collDownloads(c), true) +
     '<div class="tags">' + tags.join("") + '</div><p class="counts">' + esc(kindCount(c.mem)) + '</p><p>' + esc(c.summary) + '</p>' +
-    '<dl class="meta"><dt>Updated</dt><dd>' + esc(c.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + (c.downloads || 0).toLocaleString() + ' (all members)</dd><dt>Source</dt><dd>' + esc(c.repo) + '</dd></dl>' +
+    '<dl class="meta"><dt>Updated</dt><dd>' + esc(c.updated || "n/a") + '</dd><dt>Downloads</dt><dd>' + collDownloads(c).toLocaleString() + ' (most downloaded plugin)</dd><dt>Source</dt><dd>' + esc(c.repo) + '</dd></dl>' +
     '<p class="line">Each plugin has its own release and version. Tick the ones you want to add them to the install list below.</p>' + groups +
     '<div class="actions"><a class="btn-l" href="https://github.com/' + esc(c.repo) + '">Source</a></div></article>';
 }
@@ -407,9 +407,11 @@ function plugBar(p, big) {
   var r = window.signalsTop ? signalsTop(p, big) : "";
   return r || (isBY(p) ? "" : statBar(p.downloads, "downloads", "Downloads of every version"));
 }
+/* A collection shows its best member's downloads, not the sum: many small plugins would otherwise outrank one popular plugin (same rule as the evidence ranking). */
+function collDownloads(c) { return c.mem.reduce(function (m, p) { return Math.max(m, p.downloads || 0); }, 0); }
 function collBar(c, n, big) {
   var r = window.signalsColl ? signalsColl(c, big, n) : "";
-  return r || statBar(n, "downloads", "Downloads of every plugin in the collection");
+  return r || statBar(n, "downloads", "Downloads of the most downloaded plugin in the collection");
 }
 /* what the folded Details line says: who tested it */
 function detailsHint(v) {
@@ -773,7 +775,7 @@ put("pads", h);
     return '<div class="sig" data-sig-coll="' + esc(c.id) + '">' +
       '<span class="sig-n" title="' + esc("The most people to confirm any one plugin in this set works on their device" + (a.top ? " (" + a.top + ")" : "") + ". Community reports, not hardware verification.") + '"><span aria-hidden="true">&#10003;</span> <strong>' + a.working + '</strong> working</span>' +
       '<span class="sig-v" title="The most likes on any one plugin in this set">&#9825; ' + a.likes + '</span>' +
-      (typeof downloads === "number" ? '<span class="sig-v" title="Downloads of every plugin in the collection">&#8681; ' + downloads.toLocaleString() + '</span>' : '') +
+      (typeof downloads === "number" ? '<span class="sig-v" title="Downloads of the most downloaded plugin in the collection">&#8681; ' + downloads.toLocaleString() + '</span>' : '') +
       '<span class="sig-v sig-line">Best of ' + a.n + ' plugins, ' + a.covered + ' with reports.' + (big ? " Report on each plugin below." : "") + '</span></div>';
   };
   window.signalsTop = function (p, big, mini) {
