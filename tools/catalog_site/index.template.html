@@ -526,8 +526,8 @@ function render() {
   $("n-plat-sample").textContent = P.filter(function (p) { return platOk(p, "sample"); }).length;
   document.querySelectorAll("[data-plat]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-plat") === state.plat)); });
   $("l-gen").hidden = state.plat === "sample";
-  PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return inTabKind(p, k); }).length; });
-  var inTab = P.filter(function (p) { return PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab); }).length;
+  PLUGIN_TABS.forEach(function (k) { $("n-" + k).textContent = P.filter(function (p) { return inTabKind(p, k) && platOk(p); }).length; });   /* tab counts follow the device switch */
+  var inTab = P.filter(function (p) { return (PLUGIN_TABS.indexOf(state.tab) < 0 || inTabKind(p, state.tab)) && platOk(p); }).length;
   $("count").textContent = nOut + " of " + inTab + " " + (state.tab === "midi" ? "MIDI plugins" : state.tab === "all" ? "plugins" : (KINDS[state.tab] || "plugins").toLowerCase());
   var down = so.desc !== state.rev;
   $("dir").textContent = down ? "Z-A / high-low" : "A-Z / low-high";

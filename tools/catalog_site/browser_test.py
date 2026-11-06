@@ -210,7 +210,7 @@ with sync_playwright() as p:
     chips = lambda: coll.locator(".chip:not(.more)").all_text_contents()
     check("first members as chips, the experimental one hidden by default, no match line", sorted(chips()) == ["Pack Gate", "Pack Kick", "Pack Seq", "Pack Verb"]
           and coll.locator(".chip.more").count() == 0 and coll.locator(".matchline").count() == 0, str(chips()))
-    check("the count line counts plugins, members included", pg.locator("#count").text_content().startswith("7 of 10 "), pg.locator("#count").text_content())
+    check("the count line counts plugins, members included", pg.locator("#count").text_content().startswith("7 of 9 "), pg.locator("#count").text_content())
     pg.select_option("#f-tier", "all")
     check("more members than chips: +N", len(chips()) == 4 and coll.locator(".chip.more").text_content() == "+1")
     pg.select_option("#f-tier", "")

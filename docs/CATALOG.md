@@ -191,7 +191,7 @@ screen (the draw handler, the rack) loads and does nothing on a Live III. A regi
   the site browser tests). MPC / Force (the default) hides the entries limited to the Sample. MPC Sample shows them first, then
   instruments, effects and MIDI plugins with a Gen2 build, which the Sample loads the same way (PR #706; addins are left out because they
   hook MPC itself); the button's tooltip says most are not tested on a Sample, and the Gen1/Gen2 Device filter is hidden there. The choice
-  is in the page address (`#plat=sample`) and survives Clear filters.
+  is in the page address (`#plat=sample`) and survives Clear filters. The plugin tabs' counts and the "N of M" line follow the switch.
 - `mpc-store.sh` lists it as `[only for: mpc-sample]` and skips it (not an error) on other devices; the desktop app refuses it there
   (`CatPlugin.ForDevice`) and marks it. Both tell the Sample by its settings file (`MPC Sample.settings`); `MPC_STORE_DEVICE` overrides.
 - The quality bar asks for a Sample test (`tested-sample`) instead of Gen1 and Gen2 ones.
