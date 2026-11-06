@@ -106,6 +106,9 @@ short rate-limit counters. Add an account deletion button and a short privacy no
 setting `hidden`; counts exclude hidden rows. State this in the announcement so nobody is surprised.
 
 ## Progress
+- **2026-11-06:** live and public. Worker source is in `worker/` of the repo
+  [open-mpc/open-mpc.github.io](https://github.com/open-mpc/open-mpc.github.io/tree/main/worker) (the catalog workflow's org mirror keeps
+  that folder); deployed with `npx wrangler deploy` from there, at https://openmpc-signals.open-mpc.workers.dev. Setup and moderation: `worker/SETUP.md`.
 - **Step 2 built 2026-11-05, offline only:** scratch repo `~/openmpc-signals` (schema, `GET /api/counts`, 8 tests on Miniflare's local
   D1, all pass; the count queries use the indexes). Nothing deployed; no accounts, writes or sign-in yet.
 

@@ -108,9 +108,10 @@ jobs:
         run: |
           git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/open-mpc/open-mpc.github.io.git" org
           # the whole site (pages, catalog files, mpc-store.sh and its helpers): open-mpc.github.io/ is the address users go to.
-          # Everything but .git and the repo's README is replaced, so files the site no longer has are removed too.
+          # Everything but .git, the repo's README and worker/ (the community signals Worker's source, docs/COMMUNITY_SIGNALS.md) is
+          # replaced, so files the site no longer has are removed too.
           [ -f dist/site/index.html ] && [ -f dist/site/catalog.json ] || { echo "no site in the artifact"; exit 1; }
-          find org -mindepth 1 -maxdepth 1 ! -name .git ! -name README.md -exec rm -rf {} +
+          find org -mindepth 1 -maxdepth 1 ! -name .git ! -name README.md ! -name worker -exec rm -rf {} +
           cp -a dist/site/. org/
           cd org
           git add -A
