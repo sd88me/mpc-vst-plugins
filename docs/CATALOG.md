@@ -187,11 +187,12 @@ screen (the draw handler, the rack) loads and does nothing on a Live III. A regi
 - The site shows "MPC Sample only" in place of the Gen2 tag, and a Devices row in the popup. Its one download button is named for
   the device, "Download (MPC Sample)", with no Gen1 button (2026-11-06, offline: the site browser test). The card's badge is the device
   label, so its `tags` should not repeat it (no `mpc-sample` tag).
-- The catalog page has a device switch above the section tabs, "MPC / Force" | "MPC Sample", each with its catalog-wide count (2026-11-06, offline:
-  the site browser tests). MPC / Force (the default) hides the entries limited to the Sample. MPC Sample shows them first, then
-  instruments, effects and MIDI plugins with a Gen2 build, which the Sample loads the same way (PR #706; addins are left out because they
-  hook MPC itself); the button's tooltip says most are not tested on a Sample, and the Gen1/Gen2 Device filter is hidden there. The choice
-  is in the page address (`#plat=sample`) and survives Clear filters. The plugin tabs' counts and the "N of M" line follow the switch.
+- The catalog page has a device switch above the section tabs, "MPC / Force" | "MPC Sample", each with its catalog-wide count (2026-11-06,
+  offline: the site browser tests). MPC / Force (the default) hides the entries limited to the Sample. MPC Sample lists only entries with
+  evidence for it (maintainer decision 2026-11-06): made for the Sample (`devices`), Verified Sample (`tested.json`), or reported working on
+  an MPC Sample through the community service (its `sample` count). A Gen2 build alone is not enough. While nothing qualifies, the view says
+  how to add a report. The Gen1/Gen2 Device filter is hidden there; the choice is in the page address (`#plat=sample`) and survives Clear
+  filters; the plugin tabs' counts and the "N of M" line follow the switch. "MPC Sample" is in the Works for me device list.
 - `mpc-store.sh` lists it as `[only for: mpc-sample]` and skips it (not an error) on other devices; the desktop app refuses it there
   (`CatPlugin.ForDevice`) and marks it. Both tell the Sample by its settings file (`MPC Sample.settings`); `MPC_STORE_DEVICE` overrides.
 - The quality bar asks for a Sample test (`tested-sample`) instead of Gen1 and Gen2 ones.

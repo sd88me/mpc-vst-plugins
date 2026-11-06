@@ -63,8 +63,8 @@ with sync_playwright() as p:
     check("the Gen2 filter does not show Sample-only entries", "SAMPLE ONLY" not in names(pg))
     smp.click(); pg.wait_for_timeout(100)
     sv = names(pg)
-    check("MPC Sample: the Sample-only addin first, then plugins with a Gen2 build; the Gen1/Gen2 filter is hidden; it is in the URL",
-          sv[0] == "SAMPLE ONLY" and len(sv) > 1 and smp.get_attribute("aria-pressed") == "true" and not pg.locator("#f-gen").is_visible() and "plat=sample" in pg.evaluate("location.hash"), sv)
+    check("MPC Sample: only entries with evidence for it (a Gen2 build alone is not enough); the Gen1/Gen2 filter is hidden; it is in the URL",
+          sv == ["SAMPLE ONLY"] and smp.get_attribute("aria-pressed") == "true" and not pg.locator("#f-gen").is_visible() and "plat=sample" in pg.evaluate("location.hash"), sv)
     check("the tab counts and the count line follow the switch", pg.locator("#n-all").inner_text() == pg.locator("#n-plat-sample").inner_text() and (" of %s " % pg.locator("#n-plat-sample").inner_text()) in pg.locator("#count").inner_text(), (pg.locator("#n-all").inner_text(), pg.locator("#count").inner_text()))
     pg.click("#tab-addin"); pg.wait_for_timeout(100)
     check("the Sample view leaves out addins not made for the Sample", names(pg) == ["SAMPLE ONLY"], names(pg))
