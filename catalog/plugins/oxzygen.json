@@ -1,0 +1,22 @@
+{
+  "id": "oxzygen",
+  "name": "OxZygen",
+  "author": "3dthc",
+  "repo": "3dthc/OxZygen",
+  "kind": "instrument",
+  "style": "synth",
+  "tags": [
+    "choir",
+    "vocal",
+    "cinematic",
+    "ambient",
+    "winds",
+    "brass",
+    "bells",
+    "lo-fi"
+  ],
+  "license": "MIT",
+  "summary": "A dark, cinematic instrument: choirs, sung doos, flutes, reeds, brass, atmospheric strings, bells, Juno-style synths, wind and textures from CC0 recordings, in two layered slots with filter, lo-fi, delay, reverb and sub. 96 presets; a CRT crystal-ball orb reacts as you play. Gen1 (MPC OS 3.x, plus an OS 2.x zip) and Gen2.",
+  "asset_pattern": "OxZygen-*-mpc-armv7.zip",
+  "screenshot": "https://raw.githubusercontent.com/3dthc/OxZygen/81d822170ccccda8b30ea5b8ed7e859c8f934eab/docs/img/player.png"
+}
