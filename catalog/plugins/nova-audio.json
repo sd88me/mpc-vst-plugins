@@ -1,0 +1,17 @@
+{
+  "id": "nova-audio",
+  "name": "Nova Audio",
+  "author": "3dthc",
+  "repo": "3dthc/mpc-addin-nova-audio",
+  "kind": "addin",
+  "style": "utility",
+  "tags": [
+    "audio-input",
+    "hardware-synth",
+    "mininova",
+    "ld-preload"
+  ],
+  "license": "MIT",
+  "summary": "Lets a plugin play the MPC's audio inputs as its own sound, so a hardware synth becomes one ordinary MPC track: played, monitored, recorded, mixed and resampled on the plugin's own track, with no separate audio track and no Monitor switching. Written for Nova Editor but not MiniNova-specific; any plugin can read the tap.",
+  "asset_pattern": "*-mpc-armv7.zip"
+}
