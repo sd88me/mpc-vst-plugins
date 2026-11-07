@@ -2,7 +2,7 @@
   "id": "retrolooper-force",
   "name": "RetroLooper One (Force)",
   "kind": "effect",
-  "summary": "Experimental Force 3.10 audio looper. Live Arrange, audio and pad validation pending; matching helper installs automatically.",
+  "summary": "Stereo looper for Force 3.10 with overdubs, host sync and direct Matrix Audio clip bounce.",
   "tags": [
     "looper",
     "overdub",
@@ -13,9 +13,9 @@
   "license": "GPL-3.0-only",
   "style": "looper",
   "screenshot": "https://raw.githubusercontent.com/asearan/Retrolooper-One-MPC-Force/force-v0.1.0/docs/images/retrolooper-force-thumbnail.jpg",
-  "asset_pattern": "RetroLooper-Force-[0-9]*-mpc-armv7.zip",
+  "asset_pattern": "Retrolooper-One-Force-[0-9]*-mpc-armv7.zip",
   "depends": [
-    "retrolooper-force-controls=0.1.0"
+    "retrolooper-force-controls=0.2.5"
   ],
   "tier": "experimental"
 }
