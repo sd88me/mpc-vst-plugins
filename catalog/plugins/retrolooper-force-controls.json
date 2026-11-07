@@ -1,0 +1,17 @@
+{
+  "id": "retrolooper-force-controls",
+  "name": "RetroLooper One Controls (Force)",
+  "kind": "addin",
+  "summary": "Experimental Force-only integration for RetroLooper One. Live functional validation pending. Installed with the effect.",
+  "tags": [
+    "looper",
+    "utility"
+  ],
+  "author": "Retroloop USA / IAMTHEBAND LLC",
+  "repo": "asearan/Retrolooper-One-MPC-Force",
+  "license": "GPL-3.0-only",
+  "style": "utility",
+  "screenshot": "https://raw.githubusercontent.com/asearan/Retrolooper-One-MPC-Force/force-v0.1.0/docs/images/retrolooper-force-thumbnail.jpg",
+  "asset_pattern": "RetroLooper-Force-Controls-*-mpc-armv7.zip",
+  "tier": "experimental"
+}
