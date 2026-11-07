@@ -1,0 +1,17 @@
+{
+  "id": "retrolooper-force-controls",
+  "name": "RetroLooper One Controls (Force)",
+  "kind": "addin",
+  "summary": "Matching Force 3.10 helper for Matrix clip bounce, track selection and the looper pad grid.",
+  "tags": [
+    "looper",
+    "utility"
+  ],
+  "author": "Retroloop USA / IAMTHEBAND LLC",
+  "repo": "asearan/Retrolooper-One-MPC-Force",
+  "license": "GPL-3.0-only",
+  "style": "utility",
+  "screenshot": "https://raw.githubusercontent.com/asearan/Retrolooper-One-MPC-Force/force-v0.1.0/docs/images/retrolooper-force-thumbnail.jpg",
+  "asset_pattern": "Retrolooper-One-Force-Controls-*-mpc-armv7.zip",
+  "tier": "experimental"
+}

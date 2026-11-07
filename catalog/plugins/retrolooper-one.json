@@ -1,0 +1,20 @@
+{
+  "id": "retrolooper-one",
+  "name": "RetroLooper One (MPC One+)",
+  "kind": "effect",
+  "summary": "Stereo audio-track overdubbing for MPC One+ 3.10.0.49; matching integration helper installs automatically.",
+  "tags": [
+    "looper",
+    "overdub",
+    "utility"
+  ],
+  "author": "Retroloop USA / IAMTHEBAND LLC",
+  "repo": "asearan/Retrolooper-One-MPC-Force",
+  "license": "GPL-3.0-only",
+  "style": "looper",
+  "screenshot": "https://raw.githubusercontent.com/asearan/Retrolooper-One-MPC-Force/mpc-v0.3.6/docs/images/retrolooper-one-thumbnail.jpg",
+  "asset_pattern": "RetroLooper-One-*-mpc-armv7.zip",
+  "depends": [
+    "retrolooper-buttons=0.2.7"
+  ]
+}
